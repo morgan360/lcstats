@@ -1,0 +1,10 @@
+{% extends "_base.html" %}
+{% block content %}
+<h2>Welcome, {{ request.user.username }}!</h2>
+
+<p><strong>Total Score:</strong> {{ profile.total_score }}</p>
+<p><strong>Lessons Completed:</strong> {{ profile.lessons_completed }}</p>
+<p><strong>Last Active:</strong> {{ profile.last_activity|date:"M d, Y H:i" }}</p>
+
+<a href="{% url 'logout' %}" class="btn btn-primary">Logout</a>
+{% endblock %}

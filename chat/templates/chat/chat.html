@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Ask a Maths Question</h1>
+
+<form method="get">
+  <input type="text" name="query" value="{{ query }}" placeholder="Enter your question...">
+  <button type="submit">Ask</button>
+</form>
+
+{% if answer %}
+  <hr>
+  <div class="answer">
+    {{ answer|safe }}
+  </div>
+
+  {% if notes %}
+    <h2>Related Notes</h2>
+    <ul>
+      {% for note in notes %}
+        <li>{{ note|truncatewords:25 }}</li>
+      {% endfor %}
+    </ul>
+  {% endif %}
+{% endif %}
+{% endblock %}

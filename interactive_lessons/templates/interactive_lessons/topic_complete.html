@@ -1,0 +1,9 @@
+{% extends "_base.html" %}
+{% block title %}{{ topic_name }} Complete{% endblock %}
+{% block content %}
+<div class="card text-center">
+  <h2>🎉 You’ve completed {{ topic_name }}!</h2>
+  <p>Great work. You can review your answers or try another topic.</p>
+  <a href="/interactive/" class="btn">Back to Topics</a>
+</div>
+{% endblock %}

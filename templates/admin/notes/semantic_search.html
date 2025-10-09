@@ -1,0 +1,27 @@
+{% extends "admin/base_site.html" %}
+{% block content %}
+  <h1>{{ title }}</h1>
+
+  <form method="get" style="margin-bottom: 20px;">
+    {{ form.as_p }}
+    <button type="submit" class="button">Search</button>
+  </form>
+
+  {% if results %}
+    <h2>Results</h2>
+    <table class="table">
+      <thead>
+        <tr><th>Score</th><th>Title</th><th>Snippet</th></tr>
+      </thead>
+      <tbody>
+        {% for sim, note in results %}
+        <tr>
+          <td>{{ sim|floatformat:3 }}</td>
+          <td><a href="{% url 'admin:notes_note_change' note.id %}">{{ note.title }}</a></td>
+          <td>{{ note.content|truncatewords:30 }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% endif %}
+{% endblock %}

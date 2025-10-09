@@ -1,0 +1,198 @@
+{% extends "_base.html" %}
+{% block title %}{{ topic.name }} | LCAI Maths{% endblock %}
+
+{% block content %}
+<div class="card">
+    <h2>{{ topic.name }}</h2>
+    <p><strong>Question {{ index }} of {{ total }}</strong></p>
+
+    {% if question.section %}
+        <h3 style="color:#004aad;">{{ question.section }}</h3>
+    {% endif %}
+
+    <!-- ✅ Rendered Markdown/KaTeX question text -->
+    <div id="question-text" style="margin-top:10px; line-height:1.6;">
+        {{ question.text|safe }}
+    </div>
+
+    {% with img=question.get_image %}
+        {% if img %}
+            <div style="margin-top:15px; text-align:center;">
+                <img src="{{ img }}" alt="Question image"
+                     style="max-width:100%; height:auto; border-radius:8px;">
+            </div>
+        {% endif %}
+    {% endwith %}
+
+    <!-- ✅ Student answer form -->
+    <form method="POST" style="margin-top:20px;">
+        {% csrf_token %}
+        <textarea name="student_answer" rows="5"
+                  style="width:100%;padding:10px;border:1px solid #ccc;border-radius:4px;">{{ student_answer }}</textarea>
+
+        <input type="hidden" name="hint_viewed" id="hint-viewed" value="0">
+        <input type="hidden" name="solution_viewed" id="solution-viewed" value="0">
+
+        <div style="margin-top:10px;">
+            <button type="submit" class="btn">Check Answer</button>
+            {% if result %}
+                <button type="submit" name="next" class="btn" style="background-color:#00994c;">Next →</button>
+            {% endif %}
+        </div>
+    </form>
+
+    {% if result %}
+        <div class="card" style="background:#f1f5ff;margin-top:20px;">
+            <h3>AI Feedback</h3>
+            <p><strong>Score:</strong> {{ result.score }}</p>
+            <p><strong>Feedback:</strong> {{ result.feedback|safe }}</p>
+            {% if result.hint %}
+                <p><strong>Hint:</strong> {{ result.hint|safe }}</p>
+            {% endif %}
+        </div>
+    {% endif %}
+
+    <!-- ✅ Collapsible hint and solution -->
+    <details style="margin-top:15px;" onclick="document.getElementById('hint-viewed').value='1'">
+        <summary><strong>Hint</strong></summary>
+        <div style="margin-top:10px;">{{ question.hint|safe }}</div>
+    </details>
+
+    <details style="margin-top:15px;" onclick="document.getElementById('solution-viewed').value='1'">
+        <summary><strong>Full Solution</strong></summary>
+        <div style="margin-top:10px;">{{ question.solution|safe }}</div>
+    </details>
+</div>
+
+<!-- ✅ Question navigation controls -->
+<hr style="margin-top:40px;">
+<div style="display:flex;justify-content:space-between;align-items:center;margin-top:15px;">
+    {% if index > 1 %}
+        <a href="{% url 'question_view' topic.id index|add:'-1' %}"
+           class="btn"
+           style="background-color:#004aad;color:white;padding:6px 14px;border-radius:4px;text-decoration:none;">
+           ⬅ Previous
+        </a>
+    {% else %}
+        <span></span>
+    {% endif %}
+
+    {% if index < total %}
+        <a href="{% url 'question_view' topic.id index|add:'1' %}"
+           class="btn"
+           style="background-color:#00994c;color:white;padding:6px 14px;border-radius:4px;text-decoration:none;">
+           Skip ➡
+        </a>
+    {% else %}
+        <a href="{% url 'topic_complete' topic.name %}"
+           class="btn"
+           style="background-color:#00994c;color:white;padding:6px 14px;border-radius:4px;text-decoration:none;">
+           Finish
+        </a>
+    {% endif %}
+</div>
+
+<!-- ✅ Numbered question list -->
+<div style="text-align:center;margin-top:25px;">
+    {% for q in questions %}
+        {% if forloop.counter == index %}
+            <span style="font-weight:bold;color:#004aad;">{{ forloop.counter }}</span>
+        {% else %}
+            <a href="{% url 'question_view' topic.id forloop.counter %}"
+               style="color:#333;text-decoration:none;">{{ forloop.counter }}</a>
+        {% endif %}
+        {% if not forloop.last %} | {% endif %}
+    {% endfor %}
+</div>
+
+<!-- 💬 Floating Info Bot Button -->
+<button id="open-info-bot"
+        style="position:fixed;bottom:30px;right:30px;background:#004aad;color:white;
+               border:none;border-radius:50%;width:60px;height:60px;font-size:28px;
+               box-shadow:0 2px 6px rgba(0,0,0,0.3);cursor:pointer;">
+    💬
+</button>
+
+<!-- 🧠 Info Bot Modal -->
+<div id="info-modal" style="
+    display:none;
+    position:fixed;top:0;left:0;width:100%;height:100%;
+    background:rgba(0,0,0,0.5);backdrop-filter:blur(3px);
+    z-index:1000;justify-content:center;align-items:center;
+">
+    <div style="
+        background:white;padding:20px;border-radius:10px;width:90%;max-width:600px;
+        box-shadow:0 4px 10px rgba(0,0,0,0.3);position:relative;
+    ">
+        <button id="close-info-bot"
+                style="position:absolute;top:10px;right:15px;background:none;border:none;
+                       font-size:22px;cursor:pointer;color:#333;">×</button>
+
+        <h3 style="color:#004aad;">Ask about this topic</h3>
+
+        <textarea id="info-query" rows="3"
+                  style="width:100%;padding:10px;border:1px solid #ccc;border-radius:4px;"
+                  placeholder="Ask a question about this topic..."></textarea>
+        <button id="ask-info-btn"
+                style="margin-top:10px;background:#004aad;color:white;border:none;
+                       padding:8px 16px;border-radius:4px;">
+            Ask
+        </button>
+
+        <div id="info-answer"
+             style="margin-top:15px;background:#f8f9ff;padding:15px;border-radius:10px;
+                    border:1px solid #d0d7e1;line-height:1.7;">
+        </div>
+    </div>
+</div>
+
+<!-- ✅ MathJax Rendering Script -->
+<script>
+function renderLatex() {
+    if (window.MathJax && window.MathJax.typesetPromise) {
+        MathJax.typesetPromise().catch(err => console.error("MathJax render error:", err));
+    }
+}
+
+// Run once page is ready
+document.addEventListener("DOMContentLoaded", renderLatex);
+// Re-run after short delay (ensures async MathJax is ready)
+setTimeout(renderLatex, 1000);
+// Re-render when hint or solution is toggled
+document.querySelectorAll("details").forEach(det => det.addEventListener("toggle", renderLatex));
+</script>
+
+<!-- ✅ Info Bot Modal Script -->
+<script>
+const modal = document.getElementById("info-modal");
+const openBtn = document.getElementById("open-info-bot");
+const closeBtn = document.getElementById("close-info-bot");
+const askBtn = document.getElementById("ask-info-btn");
+const answerBox = document.getElementById("info-answer");
+
+openBtn.addEventListener("click", () => modal.style.display = "flex");
+closeBtn.addEventListener("click", () => modal.style.display = "none");
+window.addEventListener("click", (e) => { if (e.target === modal) modal.style.display = "none"; });
+
+askBtn.addEventListener("click", async () => {
+    const query = document.getElementById("info-query").value.trim();
+    if (!query) {
+        answerBox.innerHTML = "Please enter a question.";
+        return;
+    }
+
+    answerBox.innerHTML = "<em>Thinking...</em>";
+    try {
+        const response = await fetch(`/interactive/info-bot/{{ topic.slug }}/?query=` + encodeURIComponent(query));
+        if (!response.ok) throw new Error("Network error");
+        const data = await response.json();
+        answerBox.innerHTML = data.answer;
+
+        // Re-render LaTeX if present
+        renderLatex();
+    } catch (err) {
+        answerBox.innerHTML = "⚠️ " + err.message;
+    }
+});
+</script>
+{% endblock %}

@@ -1,0 +1,20 @@
+{% extends "_base.html" %}
+{% block title %}Choose a Topic{% endblock %}
+{% block content %}
+
+<h2>Choose a Topic</h2>
+
+<ul>
+  {% for topic in topics %}
+    <li style="margin-bottom:20px;">
+      <a href="{% url 'question_view' topic.id 1 %}" style="font-weight:bold;">
+        {{ topic.name }}
+      </a><br>
+      <a href="{% url 'question_view' topic.id 1 %}" class="start-link">
+        Start interactive quiz →
+      </a>
+    </li>
+  {% endfor %}
+</ul>
+
+{% endblock %}

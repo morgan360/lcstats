@@ -1,0 +1,45 @@
+{% extends "_base.html" %}
+{% block title %}{{ topic.name }} – Question {{ index }}{% endblock %}
+{% block content %}
+
+<h2>{{ topic.name }}</h2>
+<p><strong>Question {{ index }} of {{ total }}</strong></p>
+
+<div style="margin:20px 0; line-height:1.6;">
+    {{ question.text|safe }}
+</div>
+
+<form method="post" style="margin-top:20px;">
+    {% csrf_token %}
+    <textarea name="student_answer" rows="4" style="width:100%;padding:10px;border:1px solid #ccc;border-radius:4px;"></textarea>
+
+    <div style="margin-top:10px;">
+        <button type="submit" name="submit" class="btn">Submit</button>
+
+        {% if index > 1 %}
+            <a href="{% url 'question_view' topic.id index|add:'-1' %}" class="btn">⬅ Previous</a>
+        {% endif %}
+
+        {% if index < total %}
+            <a href="{% url 'question_view' topic.id index|add:'1' %}" class="btn">Skip ➡</a>
+        {% else %}
+            <a href="{% url 'topic_complete' topic.name %}" class="btn">Finish</a>
+        {% endif %}
+    </div>
+</form>
+
+<hr style="margin:30px 0;">
+
+<!-- Question number list -->
+<div style="text-align:center;">
+    {% for q in questions %}
+        {% if forloop.counter == index %}
+            <span style="font-weight:bold;color:#004aad;">{{ forloop.counter }}</span>
+        {% else %}
+            <a href="{% url 'question_view' topic.id forloop.counter %}">{{ forloop.counter }}</a>
+        {% endif %}
+        {% if not forloop.last %} | {% endif %}
+    {% endfor %}
+</div>
+
+{% endblock %}

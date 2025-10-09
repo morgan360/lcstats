@@ -1,0 +1,13 @@
+{% extends "admin/change_list.html" %}
+{% block object-tools %}
+  <div class="object-tools">
+    <ul class="object-tools">
+      <li>
+        <a href="{% url 'admin:notes_semantic_search' %}" class="button">
+          🔍 Semantic Search
+        </a>
+      </li>
+    </ul>
+  </div>
+  {{ block.super }}
+{% endblock %}

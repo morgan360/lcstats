@@ -1,0 +1,74 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}LCAI Maths{% endblock %}</title>
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+
+    <!-- MathJax for LaTeX rendering -->
+    <script>
+        window.MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+                displayMath: [['$$', '$$'], ['\\[', '\\]']],
+                processEscapes: true,
+                processEnvironments: true
+            },
+            svg: {fontCache: 'global'}
+        };
+    </script>
+    <script id="MathJax-script"
+            src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+</head>
+
+<body>
+<nav>
+    <a href="/" class="logo"><strong>LCAI Maths</strong></a>
+    <div class="nav-links">
+        <a href="{% url 'select_topic' %}">Interactive Lessons</a>
+        <a href="{% url 'notes_topic' 'Statistics Summary' %}">Summary Notes</a>
+        <a href="/about/">About</a>
+        <a href="/contact/">Contact</a>
+
+        {% if request.user.is_staff %}
+            <a href="/admin/" style="color:#ffea00;font-weight:bold;">Admin</a>
+        {% endif %}
+
+        <!-- ✅ Student login / dashboard links -->
+        {% if user.is_authenticated %}
+            <span class="username" style="margin-right:10px;">
+        👋 {{ user.username }}
+    </span>
+            <a href="{% url 'dashboard' %}">Dashboard</a>
+            <a href="{% url 'logout' %}">Logout</a>
+        {% else %}
+            <a href="{% url 'login' %}">Login</a>
+            <a href="{% url 'signup' %}">Sign Up</a>
+        {% endif %}
+
+    </div>
+</nav>
+
+<main>
+    {% block content %}
+    {% endblock %}
+</main>
+
+<footer>
+    &copy; 2025/26 LCAI Maths. All rights reserved.
+</footer>
+<script>
+function renderLatex() {
+    if (window.MathJax && window.MathJax.typesetPromise) {
+        MathJax.typesetPromise();
+    }
+}
+
+// Automatically re-render LaTeX after page load
+document.addEventListener("DOMContentLoaded", renderLatex);
+</script>
+
+</body>
+</html>

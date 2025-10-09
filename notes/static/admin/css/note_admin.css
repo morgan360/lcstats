@@ -1,0 +1,19 @@
+/* Force admin form fields to stack vertically and use full width */
+fieldset.module.aligned.stacked .form-row {
+  display: block !important;
+  width: 100% !important;
+  margin-bottom: 1rem !important;
+}
+
+fieldset.module.aligned.stacked .form-row label {
+  display: block !important;
+  font-weight: bold;
+  margin-bottom: 6px;
+}
+
+fieldset.module.aligned.stacked .form-row textarea {
+  width: 100% !important;
+  font-family: monospace;
+  font-size: 14px;
+  line-height: 1.5;
+}

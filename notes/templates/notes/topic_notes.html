@@ -1,0 +1,24 @@
+{% extends "_base.html" %}
+{% block title %}{{ topic_name }} | Summary Notes{% endblock %}
+
+{% block content %}
+  <div class="container" style="max-width:900px;margin:auto;">
+    <h2 style="color:#004aad;margin-bottom:30px;">{{ topic_name }}</h2>
+
+    {% for note in notes %}
+      <div class="card" style="margin-bottom:25px;padding:20px;border-radius:12px;background:#f8f9fa;">
+        <h3 style="color:#004aad;margin-bottom:10px;">{{ note.title }}</h3>
+        <div style="line-height:1.7;font-size:1rem;">
+          <p style="white-space:pre-line;">{{ note.content|safe }}</p>
+        </div>
+
+        {% if note.image %}
+          <div style="text-align:center;margin-top:15px;">
+            <img src="{{ note.image.url }}" alt="{{ note.title }}"
+                 style="max-width:100%;border-radius:8px;box-shadow:0 2px 6px rgba(0,0,0,0.1);">
+          </div>
+        {% endif %}
+      </div>
+    {% endfor %}
+  </div>
+{% endblock %}

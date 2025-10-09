@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}LCAI Maths{% endblock %}</title>
+
+  <!-- Tailwind CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- MathJax for equations -->
+  <script id="MathJax-script" async
+    src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js">
+  </script>
+</head>
+<body class="bg-gray-50 text-gray-800 font-sans min-h-screen flex flex-col">
+
+  <!-- ✅ Navbar -->
+  <nav class="bg-blue-600 text-white shadow-md">
+    <div class="max-w-6xl mx-auto px-4 py-3 flex justify-between items-center">
+      <a href="/" class="text-xl font-bold hover:text-yellow-200">LCAI Maths</a>
+      <div class="space-x-6">
+        <a href="/interactive/" class="hover:text-yellow-200">Interactive</a>
+        <a href="/about/" class="hover:text-yellow-200">About</a>
+        <a href="/contact/" class="hover:text-yellow-200">Contact</a>
+      </div>
+    </div>
+  </nav>
+
+  <!-- ✅ Page Content -->
+  <main class="flex-grow max-w-5xl mx-auto px-6 py-8">
+    {% block content %}
+    {% endblock %}
+  </main>
+
+  <!-- ✅ Footer -->
+  <footer class="bg-blue-600 text-white text-center py-4 mt-10">
+    <p class="text-sm">&copy; 2025 LCAI Maths. All rights reserved.</p>
+  </footer>
+
+</body>
+</html>

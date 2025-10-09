@@ -1,0 +1,2 @@
+[markdown.extensions]
+markdown_katex = markdown_katex.extension:KatexExtension
