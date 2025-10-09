@@ -1,3 +1,68 @@
-# Ignore environment and secrets
+# =========================
+# Django / Python
+# =========================
+*.pyc
+*.pyo
+*.pyd
+__pycache__/
+db.sqlite3
+media/
+staticfiles/
+local_settings.py
+
+# =========================
+# Environment & Secrets
+# =========================
 .env
 *.env
+.env.*
+
+# =========================
+# Virtual Environments
+# =========================
+venv/
+.venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+
+# =========================
+# IDEs / Editors
+# =========================
+# PyCharm
+.idea/
+# VS Code
+.vscode/
+
+# =========================
+# OS Files
+# =========================
+.DS_Store
+Thumbs.db
+
+# =========================
+# Logs / Temporary
+# =========================
+*.log
+*.pot
+*.mo
+*.py[cod]
+__pycache__/
+*.sqlite3
+*.coverage
+.coverage.*
+htmlcov/
+*.tmp
+*.swp
+*.swo
+*.bak
+*.orig
+*.rej
+
+# =========================
+# Node / Frontend builds (if used)
+# =========================
+node_modules/
+dist/
+build/
