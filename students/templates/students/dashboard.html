@@ -1,10 +1,35 @@
 {% extends "_base.html" %}
 {% block content %}
-<h2>Welcome, {{ request.user.username }}!</h2>
-
+<h2>Welcome, {{ profile.user.username }}</h2>
+<p><strong>Total Attempts:</strong> {{ total_attempts }}</p>
+<p><strong>Accuracy:</strong> {{ accuracy }}%</p>
 <p><strong>Total Score:</strong> {{ profile.total_score }}</p>
 <p><strong>Lessons Completed:</strong> {{ profile.lessons_completed }}</p>
-<p><strong>Last Active:</strong> {{ profile.last_activity|date:"M d, Y H:i" }}</p>
 
-<a href="{% url 'logout' %}" class="btn btn-primary">Logout</a>
+<h3>Recent Attempts</h3>
+<table>
+  <tr><th>Question</th><th>Topic</th><th>Score</th><th>Result</th></tr>
+  {% for a in recent_attempts %}
+  <tr>
+    <td>{{ a.question.text|truncatechars:40 }}</td>
+    <td>{{ a.question.topic.name }}</td>
+    <td>{{ a.score_awarded }}</td>
+    <td>{% if a.is_correct %}✅{% else %}❌{% endif %}</td>
+  </tr>
+  {% endfor %}
+</table>
+
+<h3>Performance by Topic</h3>
+<table>
+  <tr><th>Topic</th><th>Attempts</th><th>Avg Score</th><th>Correct</th></tr>
+  {% for t in topic_summary %}
+  <tr>
+    <td>{{ t.question__topic__name }}</td>
+    <td>{{ t.attempts }}</td>
+    <td>{{ t.avg_score|floatformat:1 }}</td>
+    <td>{{ t.correct }}</td>
+  </tr>
+  {% endfor %}
+</table>
+
 {% endblock %}

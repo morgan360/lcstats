@@ -8,12 +8,13 @@ from django.utils import timezone
 import markdown
 from markdown_katex import KatexExtension   # ✅ for math rendering
 import random
-
+from students.models import QuestionAttempt
 from .models import Topic, Question
 from .stats_tutor import mark_student_answer
 from notes.helpers.match_note import match_note
 from django.shortcuts import render, get_object_or_404, redirect
 from interactive_lessons.models import Topic, Question  # adjust names to match your models
+from django.contrib.auth.decorators import login_required
 
 client = OpenAI()
 
@@ -151,15 +152,53 @@ def topic_complete(request, topic_name):
 # -------------------------------------------------------------------------
 # QUESTION VIEW – for numbered list navigation
 # -------------------------------------------------------------------------
+@login_required
 def question_view(request, topic_id, number):
     topic = get_object_or_404(Topic, id=topic_id)
-    questions = topic.questions.all().order_by('id')
+    questions = topic.questions.all().order_by("id")
     total = questions.count()
 
     if number < 1 or number > total:
-        return redirect('question_view', topic_id=topic.id, number=1)
+        return redirect("question_view", topic_id=topic.id, number=1)
 
     question = questions[number - 1]
+    student_answer = ""
+    result = None
+
+    # ✅ Handle "Check Answer" submission
+    if request.method == "POST":
+        student_answer = request.POST.get("student_answer", "")
+        hint_used = request.POST.get("hint_viewed") == "1"
+        solution_used = request.POST.get("solution_viewed") == "1"
+
+        # Skip marking if it's the Next button
+        if "next" not in request.POST:
+            result = mark_student_answer(
+                question_text=question.text,
+                student_answer=student_answer,
+                correct_answer=question.answer,
+                hint_used=hint_used,
+                solution_used=solution_used,
+            )
+
+            # ✅ Record progress attempt
+            try:
+                QuestionAttempt.objects.create(
+                    student=request.user.studentprofile,
+                    question=question,
+                    student_answer=student_answer,
+                    score_awarded=result.get("score", 0),
+                    is_correct=result.get("is_correct", False),
+                )
+            except Exception as e:
+                print(f"[Progress Tracking Error] {e}")
+
+        # ✅ Handle "Next →" button
+        if "next" in request.POST:
+            if number < total:
+                return redirect("question_view", topic_id=topic.id, number=number + 1)
+            else:
+                return redirect("topic_complete", topic_name=topic.name)
 
     # ✅ Render Markdown + LaTeX before sending to template
     question.text = render_math_markdown(question.text)
@@ -167,10 +206,13 @@ def question_view(request, topic_id, number):
     question.solution = render_math_markdown(getattr(question, "solution", ""))
 
     context = {
-        'topic': topic,
-        'question': question,
-        'index': number,
-        'total': total,
-        'questions': questions,
+        "topic": topic,
+        "question": question,
+        "index": number,
+        "total": total,
+        "questions": questions,
+        "student_answer": student_answer,
+        "result": result,
     }
-    return render(request, 'interactive_lessons/quiz.html', context)
+
+    return render(request, "interactive_lessons/quiz.html", context)

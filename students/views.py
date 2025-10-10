@@ -1,6 +1,9 @@
 from django.shortcuts import render, redirect
 from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth.decorators import login_required
+from django.contrib.auth.views import LogoutView
+from django.db.models import Avg, Count, Q
+from .models import StudentProfile
 
 # Signup view — handles registration
 def signup_view(request):
@@ -17,9 +20,46 @@ def signup_view(request):
 # Dashboard view — shows student profile info (requires login)
 @login_required
 def dashboard_view(request):
-    profile, created = request.user.studentprofile, False
-    try:
-        profile = request.user.studentprofile
-    except StudentProfile.DoesNotExist:
-        profile = StudentProfile.objects.create(user=request.user)
-    return render(request, 'students/dashboard.html', {'profile': profile})
+    # Ensure profile exists for the logged-in user
+    profile, _ = StudentProfile.objects.get_or_create(user=request.user)
+
+    # Retrieve all attempts, newest first
+    attempts = profile.attempts.select_related("question").order_by("-attempted_at")
+
+    # --- Overall accuracy ---
+    total_attempts = attempts.count()
+    correct_attempts = attempts.filter(is_correct=True).count()
+    accuracy = round((correct_attempts / total_attempts) * 100, 1) if total_attempts else 0
+
+    # --- Topic-wise performance summary ---
+    topic_summary = (
+        profile.attempts
+        .values("question__topic__name")  # ✅ uses topic name from interactive_lessons
+        .annotate(
+            avg_score=Avg("score_awarded"),
+            attempts=Count("id"),
+            correct=Count("id", filter=Q(is_correct=True)),
+        )
+        .order_by("question__topic__name")
+    )
+
+    # Update profile totals
+    profile.update_progress()
+
+    context = {
+        "profile": profile,
+        "accuracy": accuracy,
+        "recent_attempts": attempts[:10],
+        "topic_summary": topic_summary,
+        "total_attempts": total_attempts,
+    }
+    return render(request, "students/dashboard.html", context)
+
+
+class LogoutViewAllowGet(LogoutView):
+    # ✅ allow GET at the dispatcher level
+    http_method_names = ["get", "post", "head", "options"]
+
+    def get(self, request, *args, **kwargs):
+        # Treat GET like POST so it actually logs out
+        return self.post(request, *args, **kwargs)
