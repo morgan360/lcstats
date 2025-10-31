@@ -57,6 +57,8 @@ INSTALLED_APPS = [
     'students',
 ]
 INSTALLED_APPS += ['markdownx']
+INSTALLED_APPS += ["markdownify"]
+MARKDOWNIFY = {"default": {"BLEACH": False}}
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',

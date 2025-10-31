@@ -8,5 +8,7 @@ python manage.py test_embeddings descriptive-statistics --prompt "explain how to
 
 python manage.py test_embeddings
 
-python manage.py test_embeddings descriptive-statistics --prompt "define mode" --top 5
+python manage.py test_embeddings descriptive-statistics --prompt "define mode" --top 
 
+### Format in chat gpt
+“Format this for my solution box — use proper KaTeX/MathJax blocks.”

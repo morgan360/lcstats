@@ -1,73 +1,148 @@
 from openai import OpenAI
-import json
+from fractions import Fraction
+import json, re, math
+from interactive_lessons.services.utils_math import compare_algebraic
 
 client = OpenAI()
 
-def mark_student_answer(question_text, student_answer, correct_answer, hint_used=False, solution_used=False):
+def normalise_numeric_answer(answer):
     """
-    Evaluate a student's answer to a statistics question using GPT.
-    Returns a structured dict: {score, feedback, hint}.
-    Applies deductions if the student viewed a hint or solution.
+    Extract numeric values (fractions, decimals, degrees, radians) from a student's answer string.
+    Returns a sorted list of floats in radians for easy comparison.
     """
+    if not answer:
+        return []
 
-    # Base prompt sent to GPT
+    answer = answer.strip()
+
+    # replace degree symbol with radians equivalent
+    answer = answer.replace("°", "*pi/180")
+
+    # handle common forms of pi
+    answer = re.sub(r"(?<![a-zA-Z])π", "pi", answer)
+
+    # remove labels like x=, X=, etc.
+    answer = re.sub(r"[xX=]", "", answer)
+
+    # split on commas/semicolons
+    parts = re.split(r"[,;]+", answer)
+    parts = [p.strip() for p in parts if p.strip()]
+
+    values = []
+    for p in parts:
+        try:
+            from sympy import sympify
+            val = float(sympify(p).evalf())  # evaluate radians/π etc.
+            values.append(val)
+        except Exception:
+            try:
+                values.append(float(Fraction(p)))
+            except Exception:
+                continue
+
+    return sorted(values)
+
+
+def compare_answers(student_ans, correct_ans, tol=0.02):
+    """
+    Compare two lists of numeric answers, order-independent, within a tolerance.
+    Returns a score fraction (1.0 = perfect match, 0.5 = one correct, 0 = none).
+    """
+    if not student_ans or not correct_ans:
+        return 0.0
+
+    matched = 0
+    used = set()
+    for s in student_ans:
+        for i, c in enumerate(correct_ans):
+            if i not in used and math.isclose(s, c, abs_tol=tol):
+                matched += 1
+                used.add(i)
+                break
+
+    return matched / len(correct_ans)
+
+
+def mark_student_answer(question_text, student_answer, correct_answer,
+                        hint_used=False, solution_used=False):
+    # --- 1️⃣ Local numeric or algebraic check first ---
+    student_vals = normalise_numeric_answer(student_answer)
+    correct_vals = normalise_numeric_answer(correct_answer)
+
+    auto_score = compare_answers(student_vals, correct_vals)
+
+    # ✅ New: algebraic check fallback if numeric failed
+    algebraic_match = False
+    if auto_score == 0 and student_answer and correct_answer:
+        algebraic_match = compare_algebraic(student_answer, correct_answer)
+        if algebraic_match:
+            auto_score = 1.0
+
+    # --- 2️⃣ Quick results if clear match ---
+    if auto_score == 1.0:
+        base_score = 100
+        feedback = "Excellent — fully correct algebraic simplification."
+        hint = "Well done! You simplified accurately."
+    elif auto_score >= 0.5:
+        base_score = 70
+        feedback = "Partially correct — one element of your answer matches."
+        hint = "Recheck coefficients and signs."
+    elif student_vals or algebraic_match:
+        base_score = 50
+        feedback = "Your answer is close but not fully simplified."
+        hint = "Try simplifying the expression completely."
+    else:
+        # fallback to GPT if neither numeric nor algebraic match
+        base_score, feedback, hint = gpt_grade(question_text, student_answer, correct_answer)
+
+    # --- 3️⃣ Apply deductions for hint/solution use ---
+    deduction = 0
+    if hint_used:
+        deduction += 20
+    if solution_used:
+        deduction += 50
+
+    final_score = max(0, base_score - deduction)
+
+    return {
+        "score": final_score,
+        "feedback": feedback,
+        "hint": hint
+    }
+
+
+
+def gpt_grade(question_text, student_answer, correct_answer):
+    """
+    Uses GPT as a fallback for conceptual / algebraic answers.
+    """
     prompt = f"""
-    You are an experienced Leaving Certificate Higher Level Maths teacher.
+    You are an experienced Leaving Certificate Higher Level Maths teacher
+    grading a student's answer.
 
-    Evaluate the student's answer to the following question.
-    Be concise and constructive.
-    Return your response strictly in JSON format with these keys:
-    - "score": integer from 0–100
-    - "feedback": one-sentence evaluation
-    - "hint": one practical study tip (if relevant)
+    Evaluate numerically and conceptually, but be tolerant of equivalent forms.
+    Accept decimals or fractions as equivalent within ±0.02.
+    Accept roots in any order.
+
+    Output strict JSON only with:
+    - "score": integer 0–100
+    - "feedback": concise one-line evaluation
+    - "hint": short study tip
 
     Question: {question_text}
     Correct Answer: {correct_answer}
     Student Answer: {student_answer}
-
-    Example of correct JSON:
-    {{
-      "score": 85,
-      "feedback": "Good understanding but a small arithmetic slip in calculating the mean.",
-      "hint": "Double-check division when computing averages."
-    }}
     """
-
-    # Default fallback
-    result = {"score": 0, "feedback": "No response from AI.", "hint": ""}
 
     try:
         response = client.chat.completions.create(
-            model="gpt-4o-mini",  # fast + inexpensive; change to gpt-5 if preferred
+            model="gpt-4o-mini",
             messages=[{"role": "user", "content": prompt}],
             temperature=0.3,
         )
-
-        # Get raw content
         raw = response.choices[0].message.content.strip()
-
-        # Parse JSON safely
-        try:
-            result = json.loads(raw)
-        except json.JSONDecodeError:
-            # GPT sometimes adds commentary — handle that gracefully
-            json_part = raw[raw.find("{"): raw.rfind("}") + 1]
-            result = json.loads(json_part) if json_part else {"score": 0, "feedback": raw, "hint": ""}
-
-        # Apply deductions
-        deduction = 0
-        if hint_used:
-            deduction += 20   # -20% if they viewed the hint
-        if solution_used:
-            deduction += 50   # -50% if they viewed the full solution
-
-        result["score"] = max(0, result.get("score", 0) - deduction)
-
-        # Ensure all keys exist
-        result.setdefault("hint", "")
-        result.setdefault("feedback", "")
-
+        json_part = raw[raw.find("{"): raw.rfind("}") + 1]
+        data = json.loads(json_part)
+        return data.get("score", 0), data.get("feedback", ""), data.get("hint", "")
     except Exception as e:
-        result = {"score": 0, "feedback": f"Error during grading: {e}", "hint": ""}
-
-    return result
+        return 0, f"Error during grading: {e}", ""
