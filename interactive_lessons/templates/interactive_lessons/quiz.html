@@ -2,7 +2,7 @@
 {% block title %}{{ topic.name }} | LCAI Maths{% endblock %}
 
 {% block content %}
-    <div class="card" style="max-width:750px; margin:0 auto; padding:20px;">
+    <div class="card" style="max-width:750px; margin:0 auto; padding:20px;" data-topic-slug="{{ topic.slug }}">
         <h2 style="color:#004aad; margin-bottom:0.4em;">{{ topic.name }}</h2>
         <p style="margin:0; font-weight:600;">Question {{ index }} of {{ total }}</p>
 
@@ -15,14 +15,14 @@
             <details style="background-color:#fff8dc; border:1px solid #f0d98c; border-radius:6px; padding:12px;">
                 <summary style="cursor:pointer; font-weight:600; color:#004aad;">💡 Hint</summary>
                 <div style="margin-top:10px; white-space:pre-wrap; line-height:1.6;">
-                    {{ question.text|safe }}
+                    {{ question.hint|safe }}
                 </div>
 
                 {% with img=question.get_image %}
                     {% if img %}
                         <div style="margin-top:10px; text-align:center;">
                             <img src="{{ img }}" alt="Question image"
-                                 style="max-width:60%; height:auto; border-radius:6px;">
+                                 style="max-width:75%; height:auto; border-radius:6px;">
                         </div>
                     {% endif %}
                 {% endwith %}
@@ -40,14 +40,22 @@
                     <div style="flex:1;">{{ part.prompt|safe }}</div>
                 </div>
 
-                <!-- ✨ Hint Box for Expected Answer Format -->
-                {% if part.hint %}
+                <!-- QuestionPart Image -->
+                {% if part.image %}
+                    <div style="margin-top:10px; text-align:center;">
+                        <img src="{{ part.image.url }}" alt="Question part image"
+                             style="max-width:75%; height:auto; border-radius:6px; border:1px solid #ddd;">
+                    </div>
+                {% endif %}
+
+                <!-- ✨ Expected Answer Format Box -->
+                {% if part.expected_format %}
                     <details
                             style="margin-top:8px; background-color:#f0f7ff; border:1px solid #cfe2ff; border-radius:5px; padding:8px;">
                         <summary style="font-weight:600; color:#004aad; cursor:pointer;">💭 Expected Answer Format
                         </summary>
                         <div style="margin-top:6px; line-height:1.5;">
-                            {{ part.hint|safe }}
+                            {{ part.expected_format|safe }}
                         </div>
                     </details>
                 {% endif %}
@@ -65,6 +73,16 @@
                     </button>
                     <div id="feedback-{{ part.id }}" style="display:none; font-size:0.95em;"></div>
                 </div>
+
+                <!-- Part Solution -->
+                {% if part.solution %}
+                    <details style="margin-top:10px; background-color:#e8f5e9; border:1px solid #a5d6a7; border-radius:5px; padding:10px;">
+                        <summary style="font-weight:600; color:#2e7d32; cursor:pointer;">📝 Solution for {{ part.label }}</summary>
+                        <div style="margin-top:8px; line-height:1.6;">
+                            {{ part.solution|safe }}
+                        </div>
+                    </details>
+                {% endif %}
             </div>
         {% endfor %}
 
@@ -83,7 +101,7 @@
                     {% if question.solution_image %}
                         <div style="margin-top:15px; text-align:center;">
                             <img src="{{ question.solution_image.url }}" alt="Solution image"
-                                 style="max-width:100%; height:auto; border-radius:8px;">
+                                 style="max-width:75%; height:auto; border-radius:8px;">
                         </div>
                     {% endif %}
                 </div>
@@ -98,6 +116,36 @@
                         style="background-color:#00994c; color:white;">Next →
                 </button>
             </form>
+        </div>
+    </div>
+
+    <!-- InfoBot Section -->
+    <div style="max-width:750px; margin:30px auto; padding:20px; background-color:#f0f8ff; border:1px solid #b3d9ff; border-radius:8px;">
+        <h3 style="color:#004aad; margin-top:0;">🤖 Ask InfoBot</h3>
+        <p style="margin:0 0 12px 0; font-size:0.9em; color:#555;">
+            Need help with this topic? Ask a question and get instant answers from our AI tutor.
+        </p>
+
+        <div style="display:flex; gap:8px; align-items:flex-start;">
+            <input type="text"
+                   id="infobot-query"
+                   placeholder="e.g., What is the quadratic formula?"
+                   style="flex:1; padding:10px; border:1px solid #ccc; border-radius:4px; font-size:1em;">
+            <button id="infobot-ask-btn"
+                    class="btn"
+                    style="background-color:#004aad; color:white; padding:10px 20px; white-space:nowrap;">
+                Ask
+            </button>
+        </div>
+
+        <div id="infobot-answer"
+             style="margin-top:15px; padding:15px; background-color:white; border-radius:6px; display:none; line-height:1.6;">
+            <!-- Answer will be inserted here -->
+        </div>
+
+        <div id="infobot-loading"
+             style="margin-top:15px; color:#004aad; display:none;">
+            🔄 Thinking...
         </div>
     </div>
 

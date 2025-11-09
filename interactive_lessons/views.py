@@ -171,10 +171,10 @@ def question_view(request, topic_id, number):
     #  GET or full-page render
     # ------------------------------------------------------------------
     # Render question and part content (Math/KaTeX compatible)
-    question.text = render_math_markdown(question.text)
+    question.hint = render_math_markdown(question.hint)
     for part in parts:
         part.prompt = render_math_markdown(part.prompt)
-        part.hint = render_math_markdown(part.hint or "")
+        part.expected_format = render_math_markdown(part.expected_format or "")
         part.solution = render_math_markdown(part.solution or "")
 
     # ✅ Render the full-question solution text (if any)

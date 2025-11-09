@@ -27,8 +27,10 @@ class QuestionPartInline(admin.StackedInline):
         "order",
         "label",
         "prompt",
+        "image",
         "answer",
-        "hint",
+        "expected_format",
+        "solution",
         "expected_type",
         "scale",
         "max_marks",
@@ -48,28 +50,57 @@ class QuestionAdmin(admin.ModelAdmin):
         "topic",
         "order",
         "section",
+        "exam_badge",
         "preview_image",
         "preview_solution_image",
     )
     list_editable = ["section", "order"]
     list_select_related = ("topic",)
-    list_filter = ("topic", "section")
-    search_fields = ("text", "section")
+    list_filter = (
+        "topic",
+        "section",
+        "is_exam_question",
+        "exam_year",
+        "paper_type",
+    )
+    search_fields = ("hint", "section", "source_pdf_name")
     ordering = ("topic__name", "order")
     save_on_top = True
 
-    fields = (
-        "topic",
-        "order",
-        "section",
-        "text",
-        "solution",
-        "image",
-        "image_url",
-        "solution_image",
+    fieldsets = (
+        ("Basic Information", {
+            "fields": ("topic", "order", "section")
+        }),
+        ("Question Content", {
+            "fields": ("hint", "image", "image_url")
+        }),
+        ("Solution", {
+            "fields": ("solution", "solution_image"),
+            "classes": ("collapse",)
+        }),
+        ("Exam Paper Metadata", {
+            "fields": ("is_exam_question", "exam_year", "paper_type", "source_pdf_name"),
+            "classes": ("collapse",)
+        }),
     )
 
     inlines = [QuestionPartInline]
+
+    # --- Exam Badge Display ---------------------------------------------------
+
+    def exam_badge(self, obj):
+        """Display exam year and paper type as a badge."""
+        if obj.is_exam_question:
+            paper = obj.get_paper_type_display() if obj.paper_type else "?"
+            year = obj.exam_year or "?"
+            return format_html(
+                '<span style="background:#4CAF50;color:white;padding:2px 8px;'
+                'border-radius:3px;font-size:11px;font-weight:bold;">'
+                '{} {}</span>',
+                year, paper
+            )
+        return "-"
+    exam_badge.short_description = "Exam"
 
     # --- Image previews -------------------------------------------------------
 

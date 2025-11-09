@@ -3,6 +3,40 @@ from notes.utils import search_similar
 from notes.models import Note
 from django.conf import settings
 
+def expand_query(query: str) -> str:
+    """
+    Expand short queries with context to improve embedding similarity.
+    E.g., 'mean' → 'what is the mean average in statistics how to calculate'
+    """
+    import re
+
+    # Common expansions for math terms
+    expansions = {
+        'mean': 'mean average central value sum divided count',
+        'median': 'median middle value sorted data',
+        'mode': 'mode most frequent common value',
+        'standard deviation': 'standard deviation SD spread variance dispersion',
+        'variance': 'variance spread squared deviation',
+        'range': 'range difference maximum minimum',
+        'quartile': 'quartile Q1 Q2 Q3 percentile 25% 75%',
+        'correlation': 'correlation relationship association r value',
+    }
+
+    # Make query lowercase for matching
+    query_lower = query.lower()
+
+    # Check if query contains any key terms
+    expanded_terms = []
+    for term, expansion in expansions.items():
+        if term in query_lower:
+            expanded_terms.append(expansion)
+
+    # Combine original query with expansions
+    if expanded_terms:
+        return f"{query} {' '.join(expanded_terms)}"
+
+    return query
+
 def match_note(query: str, topic: str = None, threshold: float = None, top_n: int = 5):
     """
     Retrieve the most relevant note for a given query.
@@ -15,8 +49,13 @@ def match_note(query: str, topic: str = None, threshold: float = None, top_n: in
     # 1️⃣ Pick threshold from settings if not passed in
     threshold = threshold or getattr(settings, "FAQ_MATCH_THRESHOLD", 0.72)
 
-    # 2️⃣ Use your robust search_similar() util
-    scored = search_similar(query, topic=topic, top_n=top_n)
+    # 2️⃣ Expand query for better matching
+    expanded_query = expand_query(query)
+    if expanded_query != query:
+        print(f"🔍 Query expanded: '{query}' → '{expanded_query[:80]}...'")
+
+    # 3️⃣ Use your robust search_similar() util with expanded query
+    scored = search_similar(expanded_query, topic=topic, top_n=top_n)
 
     if not scored:
         print("⚠️ No notes retrieved.")
