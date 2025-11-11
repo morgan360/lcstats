@@ -38,9 +38,9 @@ OPENAI_ORG_ID = os.getenv("OPENAI_ORG_ID")
 # ------------------------------------------------------------
 # Core Django settings
 # ------------------------------------------------------------
-SECRET_KEY = 'django-insecure-(^ho@c-=9k!bieu%$g#3gz=tt5i(@6w)rw+3)410r%xk)m&o4$'
-DEBUG = True
-ALLOWED_HOSTS = []
+SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-(^ho@c-=9k!bieu%$g#3gz=tt5i(@6w)rw+3)410r%xk)m&o4$')
+DEBUG = os.getenv('DEBUG', 'True') == 'True'
+ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', '').split(',')
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -95,11 +95,11 @@ WSGI_APPLICATION = 'lcstats.wsgi.application'
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.mysql",
-        "NAME": "lcaim",  # <-- note the name change
-        "USER": "morgan",
-        "PASSWORD": "help1234",
-        "HOST": "127.0.0.1",
-        "PORT": "3306",
+        "NAME": os.getenv("DB_NAME", "lcaim"),
+        "USER": os.getenv("DB_USER", "morgan"),
+        "PASSWORD": os.getenv("DB_PASSWORD", "help1234"),
+        "HOST": os.getenv("DB_HOST", "127.0.0.1"),
+        "PORT": os.getenv("DB_PORT", "3306"),
         "OPTIONS": {
             "init_command": "SET sql_mode='STRICT_TRANS_TABLES'",
         },
