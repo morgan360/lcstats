@@ -2,10 +2,183 @@
 {% block title %}Home | LCAI Maths{% endblock %}
 
 {% block content %}
-<div class="text-center" style="margin-top: 60px;">
-  <h1>Welcome to LCAI Maths</h1>
-  <p>Practice Leaving Cert Honours Maths with interactive AI-powered lessons.</p>
+<div style="max-width: 1100px; margin: 40px auto; padding: 20px;">
 
-  <a href="/interactive/" class="btn">Start Learning</a>
+    <!-- Hero Section -->
+    <div style="text-align: center; margin-bottom: 50px;">
+        <h1 style="color: #004aad; font-size: 2.5em; margin-bottom: 15px;">
+            Welcome to LCAI Maths
+        </h1>
+        <p style="font-size: 1.2em; color: #555; max-width: 700px; margin: 0 auto 30px;">
+            Master Leaving Certificate Honours Maths with AI-powered interactive practice questions,
+            instant feedback, and personalized hints.
+        </p>
+    </div>
+
+    <!-- Two Column Layout: Features + Login -->
+    <div style="display: grid; grid-template-columns: 1.5fr 1fr; gap: 40px; margin-bottom: 40px;">
+
+        <!-- Left Column: Features -->
+        <div>
+            <h2 style="color: #004aad; margin-bottom: 20px;">What You'll Get</h2>
+
+            <div style="background-color: #f7f7f7; border-left: 4px solid #004aad; padding: 15px; margin-bottom: 15px; border-radius: 4px;">
+                <h3 style="color: #004aad; margin: 0 0 8px 0; font-size: 1.1em;">📚 112 Practice Questions</h3>
+                <p style="margin: 0; line-height: 1.6;">
+                    Comprehensive coverage of all Leaving Cert Honours Maths topics including Algebra,
+                    Probability, Statistics, Calculus, and more.
+                </p>
+            </div>
+
+            <div style="background-color: #f7f7f7; border-left: 4px solid #00994c; padding: 15px; margin-bottom: 15px; border-radius: 4px;">
+                <h3 style="color: #00994c; margin: 0 0 8px 0; font-size: 1.1em;">🤖 AI-Powered Feedback</h3>
+                <p style="margin: 0; line-height: 1.6;">
+                    Get instant, intelligent feedback on your answers. The AI understands mathematical
+                    expressions and provides detailed explanations.
+                </p>
+            </div>
+
+            <div style="background-color: #f7f7f7; border-left: 4px solid #cc0000; padding: 15px; margin-bottom: 15px; border-radius: 4px;">
+                <h3 style="color: #cc0000; margin: 0 0 8px 0; font-size: 1.1em;">💡 Smart Hints & Solutions</h3>
+                <p style="margin: 0; line-height: 1.6;">
+                    Stuck on a problem? Get contextual hints and step-by-step solutions to help you
+                    learn the method, not just the answer.
+                </p>
+            </div>
+
+            <div style="background-color: #f7f7f7; border-left: 4px solid #ff9800; padding: 15px; margin-bottom: 15px; border-radius: 4px;">
+                <h3 style="color: #ff9800; margin: 0 0 8px 0; font-size: 1.1em;">📊 Track Your Progress</h3>
+                <p style="margin: 0; line-height: 1.6;">
+                    Monitor your improvement across different topics with detailed progress tracking
+                    and performance analytics.
+                </p>
+            </div>
+
+            <div style="background-color: #f7f7f7; border-left: 4px solid #9c27b0; padding: 15px; margin-bottom: 15px; border-radius: 4px;">
+                <h3 style="color: #9c27b0; margin: 0 0 8px 0; font-size: 1.1em;">📧 Direct Teacher Support</h3>
+                <p style="margin: 0; line-height: 1.6;">
+                    Need extra help? Contact your teacher directly from any question page for
+                    personalized assistance.
+                </p>
+            </div>
+        </div>
+
+        <!-- Right Column: Login Form or Dashboard Link -->
+        <div>
+            {% if user.is_authenticated %}
+                <!-- User is logged in -->
+                <div style="background-color: #e8f5e9; border: 2px solid #00994c; border-radius: 8px; padding: 30px; text-align: center;">
+                    <h2 style="color: #00994c; margin: 0 0 15px 0;">Welcome back, {{ user.username }}!</h2>
+                    <p style="margin-bottom: 25px; font-size: 1.1em;">Ready to continue your learning journey?</p>
+
+                    <a href="{% url 'dashboard' %}"
+                       class="btn"
+                       style="background-color: #00994c; color: white; padding: 12px 30px; font-size: 1.1em; display: inline-block; margin-bottom: 15px; text-decoration: none; border-radius: 4px;">
+                        Go to Dashboard
+                    </a>
+
+                    <br>
+
+                    <a href="{% url 'select_topic' %}"
+                       class="btn"
+                       style="background-color: #004aad; color: white; padding: 12px 30px; font-size: 1.1em; display: inline-block; text-decoration: none; border-radius: 4px;">
+                        Browse Topics
+                    </a>
+                </div>
+            {% else %}
+                <!-- User is not logged in - show login form -->
+                <div style="background-color: #f0f8ff; border: 2px solid #004aad; border-radius: 8px; padding: 30px;">
+                    <h2 style="color: #004aad; margin: 0 0 20px 0; text-align: center;">Login to Start</h2>
+
+                    {% if messages %}
+                        {% for message in messages %}
+                            <div style="background-color: {% if message.tags == 'error' %}#ffebee{% else %}#e8f5e9{% endif %};
+                                        border: 1px solid {% if message.tags == 'error' %}#ef5350{% else %}#66bb6a{% endif %};
+                                        padding: 12px;
+                                        border-radius: 4px;
+                                        margin-bottom: 15px;">
+                                {{ message }}
+                            </div>
+                        {% endfor %}
+                    {% endif %}
+
+                    <form method="POST" action="{% url 'login' %}">
+                        {% csrf_token %}
+
+                        <div style="margin-bottom: 20px;">
+                            <label for="username" style="display: block; margin-bottom: 5px; font-weight: 600; color: #333;">
+                                Username
+                            </label>
+                            <input type="text"
+                                   id="username"
+                                   name="username"
+                                   required
+                                   style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; font-size: 1em; box-sizing: border-box;">
+                        </div>
+
+                        <div style="margin-bottom: 20px;">
+                            <label for="password" style="display: block; margin-bottom: 5px; font-weight: 600; color: #333;">
+                                Password
+                            </label>
+                            <input type="password"
+                                   id="password"
+                                   name="password"
+                                   required
+                                   style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; font-size: 1em; box-sizing: border-box;">
+                        </div>
+
+                        <input type="hidden" name="next" value="{% url 'dashboard' %}">
+
+                        <button type="submit"
+                                class="btn"
+                                style="width: 100%; background-color: #004aad; color: white; padding: 12px; font-size: 1.1em; border: none; border-radius: 4px; cursor: pointer; font-weight: 600;">
+                            Login
+                        </button>
+                    </form>
+
+                    <div style="text-align: center; margin-top: 20px; padding-top: 20px; border-top: 1px solid #ddd;">
+                        <p style="margin: 0 0 10px 0; color: #666;">Don't have an account?</p>
+                        <a href="{% url 'signup' %}"
+                           style="color: #004aad; font-weight: 600; text-decoration: none;">
+                            Sign up here
+                        </a>
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Topics Preview Section -->
+    <div style="background-color: #fafafa; padding: 30px; border-radius: 8px; margin-top: 40px;">
+        <h2 style="color: #004aad; text-align: center; margin-bottom: 25px;">Available Topics</h2>
+
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
+            <div style="background-color: white; padding: 15px; border-radius: 6px; border-left: 4px solid #004aad; text-align: center;">
+                <strong>Probability</strong><br>
+                <span style="color: #666; font-size: 0.9em;">26 questions</span>
+            </div>
+            <div style="background-color: white; padding: 15px; border-radius: 6px; border-left: 4px solid #00994c; text-align: center;">
+                <strong>Descriptive Statistics</strong><br>
+                <span style="color: #666; font-size: 0.9em;">37 questions</span>
+            </div>
+            <div style="background-color: white; padding: 15px; border-radius: 6px; border-left: 4px solid #cc0000; text-align: center;">
+                <strong>Complex Numbers</strong><br>
+                <span style="color: #666; font-size: 0.9em;">22 questions</span>
+            </div>
+            <div style="background-color: white; padding: 15px; border-radius: 6px; border-left: 4px solid #ff9800; text-align: center;">
+                <strong>Inferential Statistics</strong><br>
+                <span style="color: #666; font-size: 0.9em;">12 questions</span>
+            </div>
+            <div style="background-color: white; padding: 15px; border-radius: 6px; border-left: 4px solid #9c27b0; text-align: center;">
+                <strong>Algebra</strong><br>
+                <span style="color: #666; font-size: 0.9em;">7 questions</span>
+            </div>
+            <div style="background-color: white; padding: 15px; border-radius: 6px; border-left: 4px solid #009688; text-align: center;">
+                <strong>And More...</strong><br>
+                <span style="color: #666; font-size: 0.9em;">Calculus, Finance, etc.</span>
+            </div>
+        </div>
+    </div>
+
 </div>
 {% endblock %}
