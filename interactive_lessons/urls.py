@@ -13,4 +13,7 @@ urlpatterns = [
 
     # --- Topic completion page ---
     path("<str:topic_name>/complete/", views.topic_complete, name="topic_complete"),
+
+    # --- Contact teacher about a question ---
+    path("question/<int:question_id>/contact/", views.question_contact, name="question_contact"),
 ]

@@ -2,6 +2,9 @@ from django.contrib.auth.decorators import login_required
 from django.shortcuts import render, get_object_or_404, redirect
 from django.utils.safestring import mark_safe
 from django.http import JsonResponse
+from django.core.mail import send_mail
+from django.conf import settings
+from django.contrib import messages
 import markdown
 from markdown_katex import KatexExtension
 from openai import OpenAI
@@ -11,6 +14,7 @@ from students.models import QuestionAttempt
 from interactive_lessons.services.marking import grade_submission
 from notes.models import InfoBotQuery
 from notes.helpers.match_note import match_note
+from .forms import QuestionContactForm
 
 client = OpenAI()
 
@@ -203,3 +207,68 @@ def question_view(request, topic_id, number):
     }
 
     return render(request, "interactive_lessons/quiz.html", context)
+
+# ----------------------------------------------------------------------
+# Contact teacher about a question
+# ----------------------------------------------------------------------
+@login_required
+def question_contact(request, question_id):
+    """Allow students to email the teacher about a specific question"""
+    question = get_object_or_404(Question, id=question_id)
+    
+    if request.method == "POST":
+        form = QuestionContactForm(
+            request.POST,
+            question=question,
+            student=request.user
+        )
+        
+        if form.is_valid():
+            subject = form.cleaned_data['subject']
+            message = form.cleaned_data['message']
+            
+            # Build email content
+            email_body = f"""
+Student Question/Inquiry
+
+From: {request.user.get_full_name() or request.user.username} ({request.user.email})
+
+Question Details:
+- Topic: {question.topic.name}
+- Question: Q{question.order}
+{f'- Section: {question.section}' if question.section else ''}
+
+Subject: {subject}
+
+Message:
+{message}
+
+---
+View question in admin: {request.build_absolute_uri(f'/admin/interactive_lessons/question/{question.id}/change/')}
+            """
+            
+            try:
+                send_mail(
+                    subject=f"[LCAI Maths] Student Question: {subject}",
+                    message=email_body,
+                    from_email=settings.DEFAULT_FROM_EMAIL,
+                    recipient_list=[settings.TEACHER_EMAIL],
+                    fail_silently=False,
+                )
+                
+                messages.success(request, "Your message has been sent! I'll get back to you soon.")
+                return redirect('question_view', topic_id=question.topic.id, number=question.order)
+                
+            except Exception as e:
+                messages.error(request, f"Sorry, there was an error sending your message. Please try again or email directly.")
+                print(f"[Email Error] {e}")
+    
+    else:
+        form = QuestionContactForm(question=question, student=request.user)
+    
+    context = {
+        'form': form,
+        'question': question,
+    }
+    
+    return render(request, 'interactive_lessons/question_contact.html', context)

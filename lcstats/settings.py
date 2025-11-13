@@ -40,7 +40,10 @@ OPENAI_ORG_ID = os.getenv("OPENAI_ORG_ID")
 # ------------------------------------------------------------
 SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-(^ho@c-=9k!bieu%$g#3gz=tt5i(@6w)rw+3)410r%xk)m&o4$')
 DEBUG = os.getenv('DEBUG', 'True') == 'True'
-ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', '').split(',')
+
+# Parse ALLOWED_HOSTS from environment variable, remove empty strings
+allowed_hosts_str = os.getenv('ALLOWED_HOSTS', '')
+ALLOWED_HOSTS = [host.strip() for host in allowed_hosts_str.split(',') if host.strip()]
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -143,3 +146,20 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 LOGIN_URL = '/students/login/'
 LOGIN_REDIRECT_URL = '/students/dashboard/'
 LOGOUT_REDIRECT_URL = '/students/login/'
+
+# ------------------------------------------------------------
+# Email Configuration
+# ------------------------------------------------------------
+# Email backend for sending emails
+EMAIL_BACKEND = os.getenv('EMAIL_BACKEND', 'django.core.mail.backends.console.EmailBackend')
+
+# SMTP settings (only needed if using SMTP backend in production)
+EMAIL_HOST = os.getenv('EMAIL_HOST', 'smtp.gmail.com')
+EMAIL_PORT = int(os.getenv('EMAIL_PORT', 587))
+EMAIL_USE_TLS = os.getenv('EMAIL_USE_TLS', 'True') == 'True'
+EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER', '')
+EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD', '')
+
+# Default email addresses
+DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', 'noreply@lcaimaths.com')
+TEACHER_EMAIL = os.getenv('TEACHER_EMAIL', 'morganmcknight@gmail.com')

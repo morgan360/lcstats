@@ -1,0 +1,71 @@
+{% extends "_base.html" %}
+{% block title %}Contact Teacher | LCAI Maths{% endblock %}
+
+{% block content %}
+<div class="card" style="max-width:600px; margin:0 auto; padding:30px;">
+    <h2 style="color:#004aad; margin-bottom:0.5em;">📧 Contact Teacher</h2>
+
+    <p style="margin:0 0 1em 0; color:#555;">
+        <strong>About Question:</strong> {{ question.topic.name }} - Q{{ question.order }}
+        {% if question.section %}<br><strong>Section:</strong> {{ question.section }}{% endif %}
+    </p>
+
+    {% if messages %}
+        {% for message in messages %}
+            <div style="padding:12px; margin-bottom:15px; border-radius:6px;
+                        {% if message.tags == 'success' %}background-color:#d4edda; border:1px solid #c3e6cb; color:#155724;{% endif %}
+                        {% if message.tags == 'error' %}background-color:#f8d7da; border:1px solid #f5c6cb; color:#721c24;{% endif %}">
+                {{ message }}
+            </div>
+        {% endfor %}
+    {% endif %}
+
+    <form method="post" style="margin-top:20px;">
+        {% csrf_token %}
+
+        <div style="margin-bottom:20px;">
+            <label for="id_subject" style="display:block; font-weight:600; margin-bottom:6px; color:#004aad;">
+                Subject
+            </label>
+            {{ form.subject }}
+            {% if form.subject.errors %}
+                <div style="color:#dc3545; font-size:0.9em; margin-top:4px;">
+                    {{ form.subject.errors }}
+                </div>
+            {% endif %}
+        </div>
+
+        <div style="margin-bottom:20px;">
+            <label for="id_message" style="display:block; font-weight:600; margin-bottom:6px; color:#004aad;">
+                Your Message
+            </label>
+            {{ form.message }}
+            {% if form.message.errors %}
+                <div style="color:#dc3545; font-size:0.9em; margin-top:4px;">
+                    {{ form.message.errors }}
+                </div>
+            {% endif %}
+            <small style="color:#666; font-size:0.85em; display:block; margin-top:4px;">
+                Please describe your question or what you need help with.
+            </small>
+        </div>
+
+        <div style="display:flex; gap:10px;">
+            <button type="submit" class="btn" style="background-color:#004aad; color:white; padding:10px 20px;">
+                📤 Send Message
+            </button>
+            <a href="{% url 'question_view' question.topic.id question.order %}"
+               class="btn"
+               style="background-color:#6c757d; color:white; padding:10px 20px; text-decoration:none;">
+                Cancel
+            </a>
+        </div>
+    </form>
+
+    <div style="margin-top:25px; padding-top:20px; border-top:1px solid #ddd; font-size:0.9em; color:#666;">
+        <p style="margin:0;">
+            <strong>Note:</strong> Your email address ({{ request.user.email }}) will be included so the teacher can reply directly to you.
+        </p>
+    </div>
+</div>
+{% endblock %}
