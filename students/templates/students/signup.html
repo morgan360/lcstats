@@ -1,10 +1,127 @@
 {% extends "_base.html" %}
+{% block title %}Sign Up | LCAI Maths{% endblock %}
+
 {% block content %}
-<h2>Sign Up</h2>
-<form method="post">
-  {% csrf_token %}
-  {{ form.as_p }}
-  <button type="submit">Register</button>
-</form>
-<a href="{% url 'login' %}">Already have an account?</a>
+<div class="card" style="max-width: 500px; margin: 40px auto; padding: 30px;">
+    <h2 style="color: #004aad; margin-bottom: 10px;">Create Your Account</h2>
+    <p style="color: #666; margin-bottom: 25px;">Enter your registration code to get started with LCAI Maths.</p>
+
+    {% if messages %}
+        {% for message in messages %}
+            <div style="background-color: {% if message.tags == 'error' %}#ffebee{% else %}#e8f5e9{% endif %};
+                        border: 1px solid {% if message.tags == 'error' %}#ef5350{% else %}#66bb6a{% endif %};
+                        padding: 12px;
+                        border-radius: 4px;
+                        margin-bottom: 20px;">
+                {{ message }}
+            </div>
+        {% endfor %}
+    {% endif %}
+
+    <form method="post" style="margin-bottom: 20px;">
+        {% csrf_token %}
+
+        {% if form.non_field_errors %}
+            <div style="background-color: #ffebee; border: 1px solid #ef5350; padding: 12px; border-radius: 4px; margin-bottom: 15px;">
+                {{ form.non_field_errors }}
+            </div>
+        {% endif %}
+
+        <div style="margin-bottom: 20px;">
+            <label for="{{ form.username.id_for_label }}" style="display: block; margin-bottom: 5px; font-weight: 600; color: #333;">
+                Username *
+            </label>
+            {{ form.username }}
+            {% if form.username.errors %}
+                <div style="color: #d32f2f; font-size: 0.9em; margin-top: 5px;">
+                    {{ form.username.errors }}
+                </div>
+            {% endif %}
+            {% if form.username.help_text %}
+                <div style="font-size: 0.85em; color: #666; margin-top: 5px;">
+                    {{ form.username.help_text }}
+                </div>
+            {% endif %}
+        </div>
+
+        <div style="margin-bottom: 20px;">
+            <label for="{{ form.password1.id_for_label }}" style="display: block; margin-bottom: 5px; font-weight: 600; color: #333;">
+                Password *
+            </label>
+            {{ form.password1 }}
+            {% if form.password1.errors %}
+                <div style="color: #d32f2f; font-size: 0.9em; margin-top: 5px;">
+                    {{ form.password1.errors }}
+                </div>
+            {% endif %}
+            {% if form.password1.help_text %}
+                <div style="font-size: 0.85em; color: #666; margin-top: 5px;">
+                    {{ form.password1.help_text }}
+                </div>
+            {% endif %}
+        </div>
+
+        <div style="margin-bottom: 20px;">
+            <label for="{{ form.password2.id_for_label }}" style="display: block; margin-bottom: 5px; font-weight: 600; color: #333;">
+                Confirm Password *
+            </label>
+            {{ form.password2 }}
+            {% if form.password2.errors %}
+                <div style="color: #d32f2f; font-size: 0.9em; margin-top: 5px;">
+                    {{ form.password2.errors }}
+                </div>
+            {% endif %}
+            {% if form.password2.help_text %}
+                <div style="font-size: 0.85em; color: #666; margin-top: 5px;">
+                    {{ form.password2.help_text }}
+                </div>
+            {% endif %}
+        </div>
+
+        <div style="margin-bottom: 25px;">
+            <label for="{{ form.registration_code.id_for_label }}" style="display: block; margin-bottom: 5px; font-weight: 600; color: #333;">
+                Registration Code *
+            </label>
+            {{ form.registration_code }}
+            {% if form.registration_code.errors %}
+                <div style="color: #d32f2f; font-size: 0.9em; margin-top: 5px;">
+                    {{ form.registration_code.errors }}
+                </div>
+            {% endif %}
+            {% if form.registration_code.help_text %}
+                <div style="font-size: 0.85em; color: #666; margin-top: 5px;">
+                    {{ form.registration_code.help_text }}
+                </div>
+            {% endif %}
+        </div>
+
+        <button type="submit" class="btn" style="width: 100%; background-color: #004aad; color: white; padding: 12px; font-size: 1.1em; border: none; border-radius: 4px; cursor: pointer; font-weight: 600;">
+            Create Account
+        </button>
+    </form>
+
+    <div style="text-align: center; padding-top: 20px; border-top: 1px solid #ddd;">
+        <p style="margin: 0; color: #666;">Already have an account?</p>
+        <a href="{% url 'login' %}" style="color: #004aad; font-weight: 600; text-decoration: none;">
+            Log in here
+        </a>
+    </div>
+</div>
+
+<style>
+    input[type="text"], input[type="password"] {
+        width: 100%;
+        padding: 10px;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        font-size: 1em;
+        box-sizing: border-box;
+    }
+
+    input[type="text"]:focus, input[type="password"]:focus {
+        outline: none;
+        border-color: #004aad;
+        box-shadow: 0 0 0 2px rgba(0, 74, 173, 0.1);
+    }
+</style>
 {% endblock %}

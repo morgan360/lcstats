@@ -1,19 +1,31 @@
 from django.shortcuts import render, redirect
-from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.views import LogoutView
 from django.db.models import Avg, Count, Q
-from .models import StudentProfile
+from django.contrib import messages
+from .models import StudentProfile, RegistrationCode
+from .forms import SignupFormWithCode
 
-# Signup view — handles registration
+# Signup view — handles registration with code validation
 def signup_view(request):
     if request.method == 'POST':
-        form = UserCreationForm(request.POST)
+        form = SignupFormWithCode(request.POST)
         if form.is_valid():
-            form.save()
-            return redirect('login')  # after signup, go to login page
+            # Save the user
+            user = form.save()
+
+            # Mark the registration code as used
+            code = form.cleaned_data.get('registration_code')
+            try:
+                reg_code = RegistrationCode.objects.get(code=code)
+                reg_code.use_code()
+            except RegistrationCode.DoesNotExist:
+                pass  # Already validated in form
+
+            messages.success(request, 'Account created successfully! You can now log in.')
+            return redirect('login')
     else:
-        form = UserCreationForm()
+        form = SignupFormWithCode()
     return render(request, 'students/signup.html', {'form': form})
 
 
