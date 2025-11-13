@@ -39,6 +39,14 @@ Ask the user: **"Please paste the question image or provide the file path to the
 3. **Output Structure** - Provide clear sections mapping to Django fields:
 
 ```
+## METADATA
+**Topic:** [Topic name]
+**Section:** [Section name - REQUIRED]
+**Order:** [Question order number]
+**Is Exam Question:** [Yes/No]
+**Exam Year:** [If applicable]
+**Paper Type:** [If applicable]
+
 ## QUESTION HINT (Question.hint field)
 [Provide basic theory/revision notes relevant to this question. Include:
 - Key formula(s) needed
@@ -121,8 +129,80 @@ After extracting the question, ask:
 1. Analyze the question content to infer the most likely topic
 2. If confident (>80%), suggest the topic and ask for confirmation
 3. If uncertain, present 2-3 likely options and ask the user to choose
-4. Ask the user for the **section** name if applicable (e.g., "2023 Paper 1" for organized questions, or leave blank)
-5. Ask for the **order** number (position within the topic, default to next available)
+
+3. **Determine the section:**
+
+**IMPORTANT:** Every question should have a section to help organize and categorize questions within a topic.
+
+**Section Guidelines:**
+- For **exam questions**: Use format like "2023 Paper 1", "2024 Paper 2", etc.
+- For **practice questions**: Infer the section from the question content based on the specific sub-topic or concept being tested
+
+**Common Sections by Topic:**
+
+**Algebra:**
+- Substitution
+- Simplify
+- Formulae
+- Quadratic Equations
+- Quadratic Equations - Discriminant
+- Inequalities
+- Area Calculations
+- Integration
+- Simultaneous Equations
+
+**Complex Numbers:**
+- Basic Complex Numbers
+- Adding and Subtracting Complex Numbers
+- Multiplying and Dividing Complex Numbers
+- Argand Diagrams
+- Modulus and Argument
+
+**Probability:**
+- Counting Principles
+- Permutations
+- Permutations with Restrictions
+- Combinations
+- Combinations with Restrictions
+- Independent Events
+- Compound Probability
+- Conditional Probability
+- Probability Basics
+- Probability Estimation
+- Probability Rules
+- Sample Space
+- Expected Value
+- Probability without Replacement
+- Normal Distribution
+
+**Inferential Statistics:**
+- Central Limit Theorem
+- Sampling Distribution
+- Confidence Intervals
+- Confidence Intervals for Proportions
+- Hypothesis Testing
+
+**Descriptive Statistics:**
+- Mean, Median, Mode
+- Histograms and Distributions
+- Box Plots
+- Scatter Plots
+- Correlation and Regression
+- Standard Deviation
+
+**Finance:**
+- Simple Interest
+- Compound Interest
+- Depreciation
+- Loans and Mortgages
+
+**Process:**
+1. Analyze the question content to determine the specific concept/sub-topic
+2. Suggest an appropriate section name based on the guidelines above
+3. If the question covers a new concept not in the list, propose a clear, descriptive section name
+4. Ask the user for confirmation or alternative section name
+
+4. Ask for the **order** number (position within the topic, default to next available)
 
 ## Step 4: Generate Database Creation Code
 
