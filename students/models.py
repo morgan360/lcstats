@@ -2,6 +2,7 @@ from django.db import models
 from django.utils import timezone
 from django.contrib.auth.models import User
 from interactive_lessons.models import Question, QuestionPart
+from django.contrib.sessions.models import Session
 import secrets
 
 
@@ -121,3 +122,76 @@ class RegistrationCode(models.Model):
 
     class Meta:
         ordering = ['-created_at']
+
+
+# -------------------------------------------------------------------------
+# LOGIN HISTORY
+# -------------------------------------------------------------------------
+class LoginHistory(models.Model):
+    """Track all login attempts (successful and failed)"""
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='login_history',
+        null=True,
+        blank=True,
+        help_text="User who attempted to login (null for failed attempts)"
+    )
+    username_attempted = models.CharField(
+        max_length=150,
+        help_text="Username used in login attempt"
+    )
+    timestamp = models.DateTimeField(auto_now_add=True)
+    success = models.BooleanField(default=True)
+    ip_address = models.GenericIPAddressField(null=True, blank=True)
+    user_agent = models.TextField(blank=True, help_text="Browser/device information")
+    session_key = models.CharField(max_length=40, blank=True)
+
+    class Meta:
+        ordering = ['-timestamp']
+        verbose_name = 'Login History'
+        verbose_name_plural = 'Login History'
+        indexes = [
+            models.Index(fields=['-timestamp']),
+            models.Index(fields=['user', '-timestamp']),
+        ]
+
+    def __str__(self):
+        status = "✓" if self.success else "✗"
+        return f"{status} {self.username_attempted} - {self.timestamp.strftime('%Y-%m-%d %H:%M:%S')}"
+
+
+# -------------------------------------------------------------------------
+# USER SESSION
+# -------------------------------------------------------------------------
+class UserSession(models.Model):
+    """Track active user sessions"""
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='active_sessions'
+    )
+    session = models.OneToOneField(
+        Session,
+        on_delete=models.CASCADE,
+        related_name='user_session'
+    )
+    ip_address = models.GenericIPAddressField(null=True, blank=True)
+    user_agent = models.TextField(blank=True)
+    login_time = models.DateTimeField(auto_now_add=True)
+    last_activity = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-last_activity']
+        verbose_name = 'Active Session'
+        verbose_name_plural = 'Active Sessions'
+
+    def __str__(self):
+        return f"{self.user.username} - {self.login_time.strftime('%Y-%m-%d %H:%M:%S')}"
+
+    def is_active(self):
+        """Check if the session is still valid"""
+        try:
+            return self.session.expire_date > timezone.now()
+        except:
+            return False
