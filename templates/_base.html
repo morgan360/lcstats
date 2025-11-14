@@ -22,8 +22,8 @@
     <div class="nav-links">
         <a href="{% url 'select_topic' %}">Interactive Lessons</a>
         <a href="{% url 'notes_topic' 'Statistics Summary' %}">Summary Notes</a>
-        <a href="/about/">About</a>
-        <a href="/contact/">Contact</a>
+        <a href="{% url 'about' %}">About</a>
+        <a href="{% url 'contact' %}">Contact</a>
 
         {% if request.user.is_staff %}
             <a href="/admin/" style="color:#ffea00;font-weight:bold;">Admin</a>

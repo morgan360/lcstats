@@ -1,0 +1,132 @@
+{% extends "_base.html" %}
+{% block title %}About | LCAI Maths{% endblock %}
+
+{% block content %}
+<div style="max-width: 900px; margin: 40px auto; padding: 20px;">
+
+    <!-- Page Header -->
+    <div style="text-align: center; margin-bottom: 40px;">
+        <h1 style="color: #004aad; font-size: 2.5em; margin-bottom: 15px;">
+            About LCAI Maths
+        </h1>
+        <p style="font-size: 1.2em; color: #555; max-width: 700px; margin: 0 auto;">
+            Empowering students to excel in Leaving Certificate Honours Maths through AI-powered learning
+        </p>
+    </div>
+
+    <!-- Mission Section -->
+    <div style="background-color: #f0f8ff; border-left: 4px solid #004aad; padding: 25px; margin-bottom: 30px; border-radius: 4px;">
+        <h2 style="color: #004aad; margin: 0 0 15px 0;">Our Mission</h2>
+        <p style="margin: 0; line-height: 1.8; font-size: 1.05em;">
+            LCAI Maths was created to provide Leaving Certificate students with an innovative,
+            AI-powered platform for mastering Honours Maths. We believe that with the right tools
+            and personalized feedback, every student can achieve their full potential in mathematics.
+        </p>
+    </div>
+
+    <!-- What We Offer Section -->
+    <div style="margin-bottom: 30px;">
+        <h2 style="color: #004aad; margin-bottom: 20px;">What We Offer</h2>
+
+        <div style="background-color: #f7f7f7; padding: 20px; margin-bottom: 15px; border-radius: 4px;">
+            <h3 style="color: #00994c; margin: 0 0 10px 0; font-size: 1.2em;">📚 Comprehensive Question Bank</h3>
+            <p style="margin: 0; line-height: 1.6;">
+                Over 112 carefully crafted practice questions covering all major topics in the
+                Leaving Cert Honours Maths curriculum, including Probability, Statistics,
+                Complex Numbers, Calculus, Algebra, and more.
+            </p>
+        </div>
+
+        <div style="background-color: #f7f7f7; padding: 20px; margin-bottom: 15px; border-radius: 4px;">
+            <h3 style="color: #00994c; margin: 0 0 10px 0; font-size: 1.2em;">🤖 AI-Powered Feedback</h3>
+            <p style="margin: 0; line-height: 1.6;">
+                Our intelligent marking system understands mathematical expressions and provides
+                instant, detailed feedback on your answers. Get explanations tailored to your
+                specific response, not just generic solutions.
+            </p>
+        </div>
+
+        <div style="background-color: #f7f7f7; padding: 20px; margin-bottom: 15px; border-radius: 4px;">
+            <h3 style="color: #00994c; margin: 0 0 10px 0; font-size: 1.2em;">💡 Smart Learning Support</h3>
+            <p style="margin: 0; line-height: 1.6;">
+                Access contextual hints, step-by-step solutions, and summary notes for each topic.
+                Our AI tutor can answer your questions and help you understand difficult concepts
+                in a way that makes sense to you.
+            </p>
+        </div>
+
+        <div style="background-color: #f7f7f7; padding: 20px; margin-bottom: 15px; border-radius: 4px;">
+            <h3 style="color: #00994c; margin: 0 0 10px 0; font-size: 1.2em;">📊 Progress Tracking</h3>
+            <p style="margin: 0; line-height: 1.6;">
+                Monitor your improvement over time with detailed analytics showing your performance
+                across different topics, question types, and difficulty levels.
+            </p>
+        </div>
+
+        <div style="background-color: #f7f7f7; padding: 20px; margin-bottom: 15px; border-radius: 4px;">
+            <h3 style="color: #00994c; margin: 0 0 10px 0; font-size: 1.2em;">👨‍🏫 Teacher Support</h3>
+            <p style="margin: 0; line-height: 1.6;">
+                Need extra help? Contact your teacher directly from any question page for
+                personalized guidance and support when you need it most.
+            </p>
+        </div>
+    </div>
+
+    <!-- How It Works Section -->
+    <div style="background-color: #e8f5e9; border-left: 4px solid #00994c; padding: 25px; margin-bottom: 30px; border-radius: 4px;">
+        <h2 style="color: #00994c; margin: 0 0 15px 0;">How It Works</h2>
+        <ol style="margin: 0; padding-left: 25px; line-height: 2;">
+            <li><strong>Sign up</strong> with your registration code provided by your teacher</li>
+            <li><strong>Choose a topic</strong> from our comprehensive curriculum coverage</li>
+            <li><strong>Work through questions</strong> at your own pace</li>
+            <li><strong>Get instant feedback</strong> from our AI marking system</li>
+            <li><strong>Track your progress</strong> and identify areas for improvement</li>
+            <li><strong>Contact your teacher</strong> when you need additional support</li>
+        </ol>
+    </div>
+
+    <!-- Technology Section -->
+    <div style="margin-bottom: 30px;">
+        <h2 style="color: #004aad; margin-bottom: 20px;">Our Technology</h2>
+        <p style="line-height: 1.8; font-size: 1.05em; margin-bottom: 15px;">
+            LCAI Maths leverages cutting-edge artificial intelligence to provide intelligent,
+            context-aware feedback on student work. Our system can:
+        </p>
+        <ul style="line-height: 1.8; font-size: 1.05em;">
+            <li>Understand and evaluate mathematical expressions in multiple formats</li>
+            <li>Provide step-by-step explanations tailored to your approach</li>
+            <li>Generate contextual hints that guide without giving away the answer</li>
+            <li>Answer questions about mathematical concepts using natural language</li>
+            <li>Adapt to your learning style and pace</li>
+        </ul>
+    </div>
+
+    <!-- CTA Section -->
+    <div style="background-color: #f0f8ff; border: 2px solid #004aad; border-radius: 8px; padding: 30px; text-align: center; margin-top: 40px;">
+        <h2 style="color: #004aad; margin: 0 0 15px 0;">Ready to Start Learning?</h2>
+        <p style="margin-bottom: 25px; font-size: 1.1em;">
+            Join LCAI Maths today and take your mathematical skills to the next level
+        </p>
+
+        {% if user.is_authenticated %}
+            <a href="{% url 'dashboard' %}"
+               class="btn"
+               style="background-color: #00994c; color: white; padding: 12px 30px; font-size: 1.1em; display: inline-block; text-decoration: none; border-radius: 4px;">
+                Go to Dashboard
+            </a>
+        {% else %}
+            <a href="{% url 'signup' %}"
+               class="btn"
+               style="background-color: #004aad; color: white; padding: 12px 30px; font-size: 1.1em; display: inline-block; margin-right: 10px; text-decoration: none; border-radius: 4px;">
+                Sign Up
+            </a>
+            <a href="{% url 'login' %}"
+               class="btn"
+               style="background-color: #00994c; color: white; padding: 12px 30px; font-size: 1.1em; display: inline-block; text-decoration: none; border-radius: 4px;">
+                Login
+            </a>
+        {% endif %}
+    </div>
+
+</div>
+{% endblock %}
