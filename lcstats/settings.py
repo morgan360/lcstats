@@ -95,19 +95,28 @@ WSGI_APPLICATION = 'lcstats.wsgi.application'
 # ------------------------------------------------------------
 # Database
 # ------------------------------------------------------------
-DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.mysql",
-        "NAME": os.getenv("DB_NAME", "lcaim"),
-        "USER": os.getenv("DB_USER", "morgan"),
-        "PASSWORD": os.getenv("DB_PASSWORD", "help1234"),
-        "HOST": os.getenv("DB_HOST", "127.0.0.1"),
-        "PORT": os.getenv("DB_PORT", "3306"),
-        "OPTIONS": {
-            "init_command": "SET sql_mode='STRICT_TRANS_TABLES'",
-        },
+# Use SQLite for local development if USE_SQLITE is set
+if os.getenv("USE_SQLITE", "False") == "True":
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.sqlite3",
+            "NAME": BASE_DIR / "db.sqlite3",
+        }
     }
-}
+else:
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.mysql",
+            "NAME": os.getenv("DB_NAME", "lcaim"),
+            "USER": os.getenv("DB_USER", "morgan"),
+            "PASSWORD": os.getenv("DB_PASSWORD", "help1234"),
+            "HOST": os.getenv("DB_HOST", "127.0.0.1"),
+            "PORT": os.getenv("DB_PORT", "3306"),
+            "OPTIONS": {
+                "init_command": "SET sql_mode='STRICT_TRANS_TABLES'",
+            },
+        }
+    }
 
 
 # ------------------------------------------------------------
