@@ -1,0 +1,128 @@
+{% extends "_base.html" %}
+{% block title %}About | LCAI Maths{% endblock %}
+
+{% block content %}
+<div style="max-width: 900px; margin: 40px auto; padding: 20px;">
+
+    <!-- Header Section -->
+    <div style="text-align: center; margin-bottom: 40px;">
+        <h1 style="color: #004aad; font-size: 2.5em; margin-bottom: 15px;">
+            About LCAI Maths
+        </h1>
+        <p style="font-size: 1.2em; color: #555; max-width: 700px; margin: 0 auto;">
+            Empowering Leaving Certificate students with AI-powered mathematics practice and personalized learning.
+        </p>
+    </div>
+
+    <!-- Mission Section -->
+    <div style="background-color: #f0f8ff; border-left: 4px solid #004aad; padding: 25px; margin-bottom: 30px; border-radius: 4px;">
+        <h2 style="color: #004aad; margin: 0 0 15px 0;">Our Mission</h2>
+        <p style="line-height: 1.8; margin: 0 0 10px 0;">
+            LCAI Maths was created to help Leaving Certificate students master Honours Mathematics through
+            interactive, AI-powered practice. We believe that every student deserves access to high-quality,
+            personalized learning tools that adapt to their individual needs.
+        </p>
+        <p style="line-height: 1.8; margin: 0;">
+            By combining comprehensive question banks with intelligent feedback systems, we're making it easier
+            for students to practice, learn from mistakes, and build confidence in their mathematical abilities.
+        </p>
+    </div>
+
+    <!-- What We Offer Section -->
+    <div style="margin-bottom: 30px;">
+        <h2 style="color: #004aad; margin-bottom: 20px;">What We Offer</h2>
+
+        <div style="background-color: #f7f7f7; padding: 20px; margin-bottom: 15px; border-radius: 6px;">
+            <h3 style="color: #00994c; margin: 0 0 10px 0;">Comprehensive Question Bank</h3>
+            <p style="line-height: 1.6; margin: 0;">
+                Access over 112 practice questions covering all major topics in the Leaving Certificate Honours
+                Maths curriculum, including Probability, Statistics, Complex Numbers, Algebra, Calculus, and more.
+            </p>
+        </div>
+
+        <div style="background-color: #f7f7f7; padding: 20px; margin-bottom: 15px; border-radius: 6px;">
+            <h3 style="color: #cc0000; margin: 0 0 10px 0;">AI-Powered Feedback</h3>
+            <p style="line-height: 1.6; margin: 0;">
+                Our advanced AI system analyzes your answers and provides detailed, contextual feedback. Get instant
+                explanations, identify where you went wrong, and learn the correct approach to solving problems.
+            </p>
+        </div>
+
+        <div style="background-color: #f7f7f7; padding: 20px; margin-bottom: 15px; border-radius: 6px;">
+            <h3 style="color: #ff9800; margin: 0 0 10px 0;">Smart Hints & Solutions</h3>
+            <p style="line-height: 1.6; margin: 0;">
+                Stuck on a question? Request intelligent hints that guide you toward the solution without giving
+                away the answer. Access full step-by-step solutions when you need to understand the complete method.
+            </p>
+        </div>
+
+        <div style="background-color: #f7f7f7; padding: 20px; margin-bottom: 15px; border-radius: 6px;">
+            <h3 style="color: #9c27b0; margin: 0 0 10px 0;">Teacher Support</h3>
+            <p style="line-height: 1.6; margin: 0;">
+                Connect directly with your teacher from any question page. Ask for clarification, request additional
+                help, or discuss challenging concepts—all within the platform.
+            </p>
+        </div>
+
+        <div style="background-color: #f7f7f7; padding: 20px; margin-bottom: 15px; border-radius: 6px;">
+            <h3 style="color: #009688; margin: 0 0 10px 0;">Progress Tracking</h3>
+            <p style="line-height: 1.6; margin: 0;">
+                Monitor your learning journey with detailed progress tracking. See which topics you've mastered
+                and where you need more practice, helping you focus your study time effectively.
+            </p>
+        </div>
+    </div>
+
+    <!-- Technology Section -->
+    <div style="background-color: #fff3e0; border-left: 4px solid #ff9800; padding: 25px; margin-bottom: 30px; border-radius: 4px;">
+        <h2 style="color: #ff9800; margin: 0 0 15px 0;">Powered by Advanced Technology</h2>
+        <p style="line-height: 1.8; margin: 0;">
+            LCAI Maths leverages cutting-edge artificial intelligence and natural language processing to understand
+            mathematical expressions, evaluate student responses, and provide meaningful feedback. Our platform uses
+            KaTeX for beautiful mathematical rendering and integrates with OpenAI's advanced models to deliver
+            intelligent, context-aware assistance.
+        </p>
+    </div>
+
+    <!-- Who We Are Section -->
+    <div style="margin-bottom: 30px;">
+        <h2 style="color: #004aad; margin-bottom: 15px;">Who We Are</h2>
+        <p style="line-height: 1.8; margin: 0 0 10px 0;">
+            We are educators and technologists passionate about improving mathematics education. Our team combines
+            deep expertise in Leaving Certificate curriculum requirements with advanced AI and software development
+            skills to create an effective, user-friendly learning platform.
+        </p>
+        <p style="line-height: 1.8; margin: 0;">
+            Every question, hint, and solution has been carefully crafted to align with examination standards and
+            marking schemes, ensuring that students practice with material that truly prepares them for success.
+        </p>
+    </div>
+
+    <!-- Call to Action -->
+    <div style="background-color: #e8f5e9; border: 2px solid #00994c; border-radius: 8px; padding: 30px; text-align: center;">
+        <h2 style="color: #00994c; margin: 0 0 15px 0;">Ready to Get Started?</h2>
+        <p style="margin-bottom: 20px; font-size: 1.1em;">
+            Join LCAI Maths today and start mastering Leaving Certificate Honours Mathematics.
+        </p>
+        {% if user.is_authenticated %}
+            <a href="{% url 'dashboard' %}"
+               class="btn"
+               style="background-color: #00994c; color: white; padding: 12px 30px; font-size: 1.1em; display: inline-block; text-decoration: none; border-radius: 4px;">
+                Go to Dashboard
+            </a>
+        {% else %}
+            <a href="{% url 'signup' %}"
+               class="btn"
+               style="background-color: #00994c; color: white; padding: 12px 30px; font-size: 1.1em; display: inline-block; margin-right: 10px; text-decoration: none; border-radius: 4px;">
+                Sign Up
+            </a>
+            <a href="{% url 'login' %}"
+               class="btn"
+               style="background-color: #004aad; color: white; padding: 12px 30px; font-size: 1.1em; display: inline-block; text-decoration: none; border-radius: 4px;">
+                Login
+            </a>
+        {% endif %}
+    </div>
+
+</div>
+{% endblock %}

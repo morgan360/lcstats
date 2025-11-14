@@ -1,0 +1,138 @@
+{% extends "_base.html" %}
+{% block title %}Contact | LCAI Maths{% endblock %}
+
+{% block content %}
+<div style="max-width: 800px; margin: 40px auto; padding: 20px;">
+
+    <!-- Header Section -->
+    <div style="text-align: center; margin-bottom: 40px;">
+        <h1 style="color: #004aad; font-size: 2.5em; margin-bottom: 15px;">
+            Contact Us
+        </h1>
+        <p style="font-size: 1.2em; color: #555; max-width: 600px; margin: 0 auto;">
+            Have questions, feedback, or need assistance? We'd love to hear from you.
+        </p>
+    </div>
+
+    <!-- Messages -->
+    {% if messages %}
+        {% for message in messages %}
+            <div style="background-color: {% if message.tags == 'error' %}#ffebee{% elif message.tags == 'success' %}#e8f5e9{% else %}#e3f2fd{% endif %};
+                        border: 2px solid {% if message.tags == 'error' %}#ef5350{% elif message.tags == 'success' %}#66bb6a{% else %}#42a5f5{% endif %};
+                        padding: 15px;
+                        border-radius: 6px;
+                        margin-bottom: 25px;
+                        text-align: center;
+                        font-size: 1.1em;">
+                {{ message }}
+            </div>
+        {% endfor %}
+    {% endif %}
+
+    <!-- Contact Form -->
+    <div style="background-color: #f0f8ff; border: 2px solid #004aad; border-radius: 8px; padding: 35px;">
+        <h2 style="color: #004aad; margin: 0 0 25px 0; text-align: center;">Send us a Message</h2>
+
+        <form method="POST" action="{% url 'contact' %}">
+            {% csrf_token %}
+
+            <!-- Name Field -->
+            <div style="margin-bottom: 20px;">
+                <label for="{{ form.name.id_for_label }}" style="display: block; margin-bottom: 8px; font-weight: 600; color: #333;">
+                    Name *
+                </label>
+                {{ form.name }}
+                {% if form.name.errors %}
+                    <div style="color: #d32f2f; margin-top: 5px; font-size: 0.9em;">
+                        {{ form.name.errors }}
+                    </div>
+                {% endif %}
+            </div>
+
+            <!-- Email Field -->
+            <div style="margin-bottom: 20px;">
+                <label for="{{ form.email.id_for_label }}" style="display: block; margin-bottom: 8px; font-weight: 600; color: #333;">
+                    Email *
+                </label>
+                {{ form.email }}
+                {% if form.email.errors %}
+                    <div style="color: #d32f2f; margin-top: 5px; font-size: 0.9em;">
+                        {{ form.email.errors }}
+                    </div>
+                {% endif %}
+            </div>
+
+            <!-- Subject Field -->
+            <div style="margin-bottom: 20px;">
+                <label for="{{ form.subject.id_for_label }}" style="display: block; margin-bottom: 8px; font-weight: 600; color: #333;">
+                    Subject *
+                </label>
+                {{ form.subject }}
+                {% if form.subject.errors %}
+                    <div style="color: #d32f2f; margin-top: 5px; font-size: 0.9em;">
+                        {{ form.subject.errors }}
+                    </div>
+                {% endif %}
+            </div>
+
+            <!-- Message Field -->
+            <div style="margin-bottom: 25px;">
+                <label for="{{ form.message.id_for_label }}" style="display: block; margin-bottom: 8px; font-weight: 600; color: #333;">
+                    Message *
+                </label>
+                {{ form.message }}
+                {% if form.message.errors %}
+                    <div style="color: #d32f2f; margin-top: 5px; font-size: 0.9em;">
+                        {{ form.message.errors }}
+                    </div>
+                {% endif %}
+            </div>
+
+            <!-- Submit Button -->
+            <button type="submit"
+                    class="btn"
+                    style="width: 100%; background-color: #004aad; color: white; padding: 14px; font-size: 1.1em; border: none; border-radius: 4px; cursor: pointer; font-weight: 600;">
+                Send Message
+            </button>
+        </form>
+    </div>
+
+    <!-- Additional Contact Information -->
+    <div style="margin-top: 40px; padding: 25px; background-color: #f7f7f7; border-radius: 6px;">
+        <h3 style="color: #004aad; margin: 0 0 15px 0;">Other Ways to Reach Us</h3>
+
+        <div style="margin-bottom: 15px;">
+            <strong style="color: #333;">For Students:</strong>
+            <p style="margin: 5px 0 0 0; line-height: 1.6;">
+                If you have questions about specific practice problems, you can contact your teacher directly
+                from any question page using the "Contact Teacher" button.
+            </p>
+        </div>
+
+        <div style="margin-bottom: 15px;">
+            <strong style="color: #333;">Technical Support:</strong>
+            <p style="margin: 5px 0 0 0; line-height: 1.6;">
+                Experiencing technical issues? Please use the form above and include details about the problem
+                you're encountering, including any error messages.
+            </p>
+        </div>
+
+        <div>
+            <strong style="color: #333;">General Inquiries:</strong>
+            <p style="margin: 5px 0 0 0; line-height: 1.6;">
+                For partnership opportunities, media inquiries, or general questions about LCAI Maths,
+                please use the contact form above.
+            </p>
+        </div>
+    </div>
+
+    <!-- Response Time Notice -->
+    <div style="margin-top: 20px; padding: 15px; background-color: #fff3e0; border-left: 4px solid #ff9800; border-radius: 4px;">
+        <p style="margin: 0; line-height: 1.6;">
+            <strong>Response Time:</strong> We typically respond to all inquiries within 24-48 hours during business days.
+            Thank you for your patience!
+        </p>
+    </div>
+
+</div>
+{% endblock %}
