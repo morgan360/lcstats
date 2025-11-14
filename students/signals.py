@@ -53,29 +53,21 @@ def log_user_login(sender, request, user, **kwargs):
 
     # Create or update user session record
     if session_key:
-        try:
-            session = Session.objects.get(session_key=session_key)
-            UserSession.objects.update_or_create(
-                session=session,
-                defaults={
-                    'user': user,
-                    'ip_address': ip_address,
-                    'user_agent': user_agent,
-                }
-            )
-        except Session.DoesNotExist:
-            pass
+        UserSession.objects.update_or_create(
+            session_key=session_key,
+            defaults={
+                'user': user,
+                'ip_address': ip_address,
+                'user_agent': user_agent,
+            }
+        )
 
 
 @receiver(user_logged_out)
 def log_user_logout(sender, request, user, **kwargs):
     """Clean up session when user logs out"""
     if hasattr(request, 'session') and request.session.session_key:
-        try:
-            session = Session.objects.get(session_key=request.session.session_key)
-            UserSession.objects.filter(session=session).delete()
-        except Session.DoesNotExist:
-            pass
+        UserSession.objects.filter(session_key=request.session.session_key).delete()
 
 
 @receiver(user_login_failed)
@@ -98,4 +90,4 @@ def log_failed_login(sender, credentials, request, **kwargs):
 @receiver(pre_delete, sender=Session)
 def cleanup_user_session(sender, instance, **kwargs):
     """Clean up UserSession when Session is deleted"""
-    UserSession.objects.filter(session=instance).delete()
+    UserSession.objects.filter(session_key=instance.session_key).delete()

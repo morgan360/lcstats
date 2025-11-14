@@ -8,7 +8,6 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('sessions', '0001_initial'),
         ('students', '0004_registrationcode'),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
@@ -36,11 +35,11 @@ class Migration(migrations.Migration):
             name='UserSession',
             fields=[
                 ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
+                ('session_key', models.CharField(help_text='Django session key', max_length=40, unique=True)),
                 ('ip_address', models.GenericIPAddressField(blank=True, null=True)),
                 ('user_agent', models.TextField(blank=True)),
                 ('login_time', models.DateTimeField(auto_now_add=True)),
                 ('last_activity', models.DateTimeField(auto_now=True)),
-                ('session', models.OneToOneField(on_delete=django.db.models.deletion.CASCADE, related_name='user_session', to='sessions.session')),
                 ('user', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='active_sessions', to=settings.AUTH_USER_MODEL)),
             ],
             options={

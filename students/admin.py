@@ -91,7 +91,7 @@ class UserSessionAdmin(admin.ModelAdmin):
     list_display = ('user_link', 'login_time', 'last_activity', 'time_active', 'ip_address', 'short_user_agent', 'is_active_display')
     list_filter = ('login_time', 'last_activity')
     search_fields = ('user__username', 'ip_address')
-    readonly_fields = ('user', 'session', 'ip_address', 'user_agent', 'login_time', 'last_activity')
+    readonly_fields = ('user', 'session_key', 'ip_address', 'user_agent', 'login_time', 'last_activity')
     date_hierarchy = 'login_time'
 
     def has_add_permission(self, request):
@@ -130,12 +130,14 @@ class UserSessionAdmin(admin.ModelAdmin):
     actions = ['terminate_sessions']
 
     def terminate_sessions(self, request, queryset):
+        from django.contrib.sessions.models import Session
         count = 0
         for user_session in queryset:
             try:
-                user_session.session.delete()
+                session = Session.objects.get(session_key=user_session.session_key)
+                session.delete()
                 count += 1
-            except:
+            except Session.DoesNotExist:
                 pass
         self.message_user(request, f"{count} session(s) terminated.")
     terminate_sessions.short_description = "Terminate selected sessions"

@@ -171,10 +171,10 @@ class UserSession(models.Model):
         on_delete=models.CASCADE,
         related_name='active_sessions'
     )
-    session = models.OneToOneField(
-        Session,
-        on_delete=models.CASCADE,
-        related_name='user_session'
+    session_key = models.CharField(
+        max_length=40,
+        unique=True,
+        help_text="Django session key"
     )
     ip_address = models.GenericIPAddressField(null=True, blank=True)
     user_agent = models.TextField(blank=True)
@@ -192,6 +192,7 @@ class UserSession(models.Model):
     def is_active(self):
         """Check if the session is still valid"""
         try:
-            return self.session.expire_date > timezone.now()
-        except:
+            session = Session.objects.get(session_key=self.session_key)
+            return session.expire_date > timezone.now()
+        except Session.DoesNotExist:
             return False

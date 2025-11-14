@@ -16,14 +16,10 @@ class SessionActivityMiddleware:
     def __call__(self, request):
         # Update session activity before processing the request
         if request.user.is_authenticated and hasattr(request, 'session') and request.session.session_key:
-            try:
-                session = Session.objects.get(session_key=request.session.session_key)
-                user_session = UserSession.objects.filter(session=session).first()
-                if user_session:
-                    # The last_activity field has auto_now=True, so it will update automatically
-                    user_session.save()
-            except Session.DoesNotExist:
-                pass
+            user_session = UserSession.objects.filter(session_key=request.session.session_key).first()
+            if user_session:
+                # The last_activity field has auto_now=True, so it will update automatically
+                user_session.save()
 
         response = self.get_response(request)
         return response
