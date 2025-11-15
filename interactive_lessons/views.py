@@ -9,7 +9,7 @@ import markdown
 from markdown_katex import KatexExtension
 from openai import OpenAI
 
-from .models import Topic, Question, QuestionPart
+from .models import Topic, Question, QuestionPart, StudentInquiry
 from students.models import QuestionAttempt
 from interactive_lessons.services.marking import grade_submission
 from notes.models import InfoBotQuery
@@ -226,7 +226,18 @@ def question_contact(request, question_id):
         if form.is_valid():
             subject = form.cleaned_data['subject']
             message = form.cleaned_data['message']
-            
+
+            # Save inquiry to database
+            inquiry = StudentInquiry.objects.create(
+                student=request.user,
+                question=question,
+                subject=subject,
+                message=message,
+                topic_name=question.topic.name,
+                question_number=f"Q{question.order}",
+                section_name=question.section if question.section else None,
+            )
+
             # Build email content
             email_body = f"""
 Student Question/Inquiry
@@ -244,9 +255,9 @@ Message:
 {message}
 
 ---
-View question in admin: {request.build_absolute_uri(f'/admin/interactive_lessons/question/{question.id}/change/')}
+View and reply in admin: {request.build_absolute_uri(f'/admin/interactive_lessons/studentinquiry/{inquiry.id}/change/')}
             """
-            
+
             try:
                 send_mail(
                     subject=f"[LCAI Maths] Student Question: {subject}",
@@ -255,10 +266,10 @@ View question in admin: {request.build_absolute_uri(f'/admin/interactive_lessons
                     recipient_list=[settings.TEACHER_EMAIL],
                     fail_silently=False,
                 )
-                
+
                 messages.success(request, "Your message has been sent! I'll get back to you soon.")
                 return redirect('question_view', topic_id=question.topic.id, number=question.order)
-                
+
             except Exception as e:
                 messages.error(request, f"Sorry, there was an error sending your message. Please try again or email directly.")
                 print(f"[Email Error] {e}")

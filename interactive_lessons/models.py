@@ -1,6 +1,7 @@
 # interactive_lessons/models.py
 from django.db import models
 from django.utils.text import slugify
+from django.contrib.auth.models import User
 from interactive_lessons.utils.katex_sanitizer import sanitize_katex
 
 
@@ -152,3 +153,61 @@ class QuestionPart(models.Model):
 
     def __str__(self):
         return f"{self.question} {self.label or self.order}"
+
+
+class StudentInquiry(models.Model):
+    """
+    Stores student inquiries/messages sent to teachers, along with teacher replies.
+    Allows teachers to respond to student questions through the admin interface.
+    """
+    STATUS_CHOICES = [
+        ('unanswered', 'Unanswered'),
+        ('answered', 'Answered'),
+    ]
+
+    student = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='inquiries',
+        help_text="Student who sent this inquiry"
+    )
+    question = models.ForeignKey(
+        Question,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='inquiries',
+        help_text="Question this inquiry is about (if any)"
+    )
+    subject = models.CharField(max_length=200, help_text="Subject of the inquiry")
+    message = models.TextField(help_text="Student's message")
+
+    # Metadata from the original question context
+    topic_name = models.CharField(max_length=200, blank=True, null=True)
+    question_number = models.CharField(max_length=50, blank=True, null=True)
+    section_name = models.CharField(max_length=200, blank=True, null=True)
+
+    # Teacher reply fields
+    reply = models.TextField(
+        blank=True,
+        null=True,
+        help_text="Teacher's reply to this inquiry"
+    )
+    status = models.CharField(
+        max_length=20,
+        choices=STATUS_CHOICES,
+        default='unanswered',
+        help_text="Whether this inquiry has been answered"
+    )
+
+    # Timestamps
+    created_at = models.DateTimeField(auto_now_add=True)
+    replied_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        verbose_name = 'Student Inquiry'
+        verbose_name_plural = 'Student Inquiries'
+
+    def __str__(self):
+        return f"{self.student.username} - {self.subject} ({self.status})"
