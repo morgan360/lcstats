@@ -6,7 +6,41 @@ This document explains how to use the daily student activity report feature.
 
 The daily student report summarizes topics and questions completed by all students in a specified time period. You can exclude specific users (like yourself) from the report.
 
-## Usage
+**Two ways to generate reports:**
+1. **Django Admin Actions** (Easiest - via web interface)
+2. **Management Command** (For automation/scheduling)
+
+## Method 1: Using Django Admin (Recommended)
+
+The easiest way to generate reports is directly from the Django admin interface:
+
+### Steps:
+
+1. **Log in to Django Admin** at `/admin/`
+2. **Navigate to Students → Student profiles**
+3. **Select the action:**
+   - For all students: Leave the checkboxes empty (no students selected)
+   - For specific students: Check the boxes next to students you want to include
+4. **Choose an action from the dropdown:**
+   - `📊 Generate Daily Report (24 hours)` - Last 24 hours
+   - `📊 Generate Weekly Report (7 days)` - Last 7 days
+5. **Click "Go"**
+6. **Download the report** - Your browser will download a `.txt` file
+
+### Features:
+
+- **Automatically excludes you** (the logged-in admin user) from the report
+- **Filter by students** - Select specific students to include only their data
+- **Instant download** - Report generated as a downloadable text file
+- **No configuration needed** - Works immediately after login
+
+### Report Filename:
+
+Downloads are named like: `student_report_1day_20251116.txt` or `student_report_7day_20251116.txt`
+
+---
+
+## Method 2: Using Management Command
 
 ### Basic Command
 
