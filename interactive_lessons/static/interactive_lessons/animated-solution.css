@@ -1,0 +1,357 @@
+/**
+ * Animated Solution Viewer Styles
+ * Provides styling for step-by-step solutions with speech bubbles
+ */
+
+.animated-solution-container {
+    max-width: 900px;
+    margin: 2rem auto;
+    background: #ffffff;
+    border-radius: 12px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    padding: 2rem;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+}
+
+/* Header */
+.solution-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+    padding-bottom: 1rem;
+    border-bottom: 2px solid #e0e0e0;
+}
+
+.solution-title {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: #2c3e50;
+    margin: 0;
+}
+
+.step-counter {
+    font-size: 1.1rem;
+    color: #7f8c8d;
+    font-weight: 500;
+}
+
+.step-counter .current-step {
+    color: #3498db;
+    font-weight: 700;
+    font-size: 1.3rem;
+}
+
+/* Content Area */
+.solution-content {
+    min-height: 400px;
+    margin-bottom: 2rem;
+}
+
+/* Speech Bubble */
+.speech-bubble {
+    position: relative;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 1.5rem 2rem;
+    border-radius: 20px;
+    margin-bottom: 2rem;
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+}
+
+.speech-bubble::before {
+    content: '';
+    position: absolute;
+    bottom: -10px;
+    left: 40px;
+    width: 0;
+    height: 0;
+    border-left: 15px solid transparent;
+    border-right: 15px solid transparent;
+    border-top: 15px solid #764ba2;
+}
+
+.speech-bubble-content {
+    font-size: 1.1rem;
+    line-height: 1.6;
+}
+
+.speech-bubble-content p {
+    margin: 0.5rem 0;
+}
+
+.speech-bubble-content .katex {
+    color: white;
+}
+
+/* Animate speech bubble entry */
+.speech-bubble.animate-in {
+    animation: slideInDown 0.5s ease-out;
+}
+
+@keyframes slideInDown {
+    from {
+        opacity: 0;
+        transform: translateY(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Visual Content Area */
+.step-visual-content {
+    background: #f8f9fa;
+    border-radius: 12px;
+    padding: 2rem;
+    min-height: 300px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.step-visual-content.animate-in {
+    animation: fadeInScale 0.5s ease-out;
+}
+
+@keyframes fadeInScale {
+    from {
+        opacity: 0;
+        transform: scale(0.95);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+/* Text Content */
+.step-text-content {
+    text-align: center;
+    font-size: 1.1rem;
+    color: #2c3e50;
+    width: 100%;
+}
+
+/* Calculation Display */
+.calculation-display,
+.calculation-box {
+    background: white;
+    padding: 2rem;
+    border-radius: 8px;
+    border: 2px solid #3498db;
+    font-size: 1.3rem;
+    text-align: center;
+    box-shadow: 0 2px 8px rgba(52, 152, 219, 0.2);
+}
+
+.step-calculation {
+    width: 100%;
+}
+
+/* Drawing Display */
+.step-drawing {
+    width: 100%;
+    text-align: center;
+}
+
+.drawing-image {
+    max-width: 100%;
+    height: auto;
+    border-radius: 8px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* GeoGebra Container */
+.step-geogebra {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+}
+
+.geogebra-container {
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* Navigation */
+.solution-navigation {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+    padding-top: 1.5rem;
+    border-top: 2px solid #e0e0e0;
+}
+
+.btn-prev,
+.btn-next {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: #3498db;
+    color: white;
+    border: none;
+    padding: 0.75rem 1.5rem;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 4px rgba(52, 152, 219, 0.3);
+}
+
+.btn-prev:hover:not(:disabled),
+.btn-next:hover:not(:disabled) {
+    background: #2980b9;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(52, 152, 219, 0.4);
+}
+
+.btn-prev:active:not(:disabled),
+.btn-next:active:not(:disabled) {
+    transform: translateY(0);
+}
+
+.btn-prev:disabled,
+.btn-next:disabled {
+    background: #bdc3c7;
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+
+.btn-prev svg,
+.btn-next svg {
+    width: 20px;
+    height: 20px;
+}
+
+/* Step Indicators */
+.step-indicators {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+.step-indicator {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: #bdc3c7;
+    border: none;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    padding: 0;
+}
+
+.step-indicator:hover {
+    background: #95a5a6;
+    transform: scale(1.2);
+}
+
+.step-indicator.active {
+    background: #3498db;
+    width: 16px;
+    height: 16px;
+    box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.2);
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .animated-solution-container {
+        padding: 1.5rem;
+        margin: 1rem;
+    }
+
+    .solution-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.5rem;
+    }
+
+    .solution-title {
+        font-size: 1.3rem;
+    }
+
+    .speech-bubble {
+        padding: 1rem 1.5rem;
+    }
+
+    .speech-bubble-content {
+        font-size: 1rem;
+    }
+
+    .step-visual-content {
+        padding: 1rem;
+        min-height: 250px;
+    }
+
+    .solution-navigation {
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+
+    .btn-prev,
+    .btn-next {
+        padding: 0.6rem 1.2rem;
+        font-size: 0.9rem;
+    }
+
+    .step-indicators {
+        order: -1;
+        width: 100%;
+        justify-content: center;
+        margin-bottom: 1rem;
+    }
+}
+
+/* Accessibility */
+@media (prefers-reduced-motion: reduce) {
+    .speech-bubble.animate-in,
+    .step-visual-content.animate-in {
+        animation: none;
+    }
+
+    .btn-prev:hover:not(:disabled),
+    .btn-next:hover:not(:disabled),
+    .step-indicator:hover {
+        transform: none;
+    }
+}
+
+/* Print Styles */
+@media print {
+    .solution-navigation {
+        display: none;
+    }
+
+    .animated-solution-container {
+        box-shadow: none;
+    }
+}
+
+/* Dark mode support (optional) */
+@media (prefers-color-scheme: dark) {
+    .animated-solution-container {
+        background: #2c3e50;
+        color: #ecf0f1;
+    }
+
+    .solution-title {
+        color: #ecf0f1;
+    }
+
+    .step-visual-content {
+        background: #34495e;
+        color: #ecf0f1;
+    }
+
+    .calculation-display,
+    .calculation-box {
+        background: #34495e;
+        color: #ecf0f1;
+        border-color: #3498db;
+    }
+}

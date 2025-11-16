@@ -9,7 +9,7 @@ import markdown
 from markdown_katex import KatexExtension
 from openai import OpenAI
 
-from .models import Topic, Question, QuestionPart, StudentInquiry
+from .models import Topic, Question, QuestionPart, StudentInquiry, AnimatedSolution, SolutionStep
 from students.models import QuestionAttempt
 from interactive_lessons.services.marking import grade_submission
 from notes.models import InfoBotQuery
@@ -205,6 +205,36 @@ def question_view(request, topic_id, number):
         for p in parts
     )
 
+    # ✅ Fetch animated solutions for each part
+    animated_solutions = {}
+    for part in parts:
+        try:
+            animated_sol = AnimatedSolution.objects.filter(
+                question_part=part,
+                is_active=True
+            ).prefetch_related('steps').first()
+
+            if animated_sol:
+                steps_data = []
+                for step in animated_sol.steps.all().order_by('order'):
+                    step_data = {
+                        'order': step.order,
+                        'step_type': step.step_type,
+                        'explanation': step.explanation,
+                        'calculation': step.calculation or '',
+                        'drawing_image': step.drawing_image.url if step.drawing_image else None,
+                        'geogebra_id': step.geogebra_id or None,
+                        'geogebra_settings': step.geogebra_settings or {},
+                    }
+                    steps_data.append(step_data)
+
+                animated_solutions[part.id] = {
+                    'title': animated_sol.title or 'Step-by-Step Solution',
+                    'steps': steps_data
+                }
+        except Exception as e:
+            print(f"[Animated Solution Error] {e}")
+
     context = {
         "topic": topic,
         "question": question,
@@ -217,6 +247,8 @@ def question_view(request, topic_id, number):
         "completed_parts": completed_parts,
         # ✅ Include this flag if you only want to show the solution after completion
         "all_parts_answered": all_parts_answered,
+        # ✅ Include animated solutions
+        "animated_solutions": animated_solutions,
     }
 
     return render(request, "interactive_lessons/quiz.html", context)

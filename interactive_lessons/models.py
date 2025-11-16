@@ -155,6 +155,113 @@ class QuestionPart(models.Model):
         return f"{self.question} {self.label or self.order}"
 
 
+class AnimatedSolution(models.Model):
+    """
+    Stores animated step-by-step solutions for question parts.
+    Each solution consists of multiple steps that students can navigate through.
+    """
+    question_part = models.OneToOneField(
+        QuestionPart,
+        on_delete=models.CASCADE,
+        related_name='animated_solution',
+        help_text="Question part this animated solution belongs to"
+    )
+    title = models.CharField(
+        max_length=200,
+        blank=True,
+        null=True,
+        help_text="Optional title for the animated solution"
+    )
+    is_active = models.BooleanField(
+        default=True,
+        help_text="Whether this animated solution is active and visible to students"
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ('question_part__question__order', 'question_part__order')
+
+    def __str__(self):
+        return f"Animated Solution for {self.question_part}"
+
+
+class SolutionStep(models.Model):
+    """
+    Individual step in an animated solution.
+    Each step can include text explanation, mathematical content, drawings, or GeoGebra visualizations.
+    """
+    STEP_TYPE_CHOICES = [
+        ('text', 'Text Explanation'),
+        ('calculation', 'Mathematical Calculation'),
+        ('drawing', 'Drawing/Diagram'),
+        ('geogebra', 'GeoGebra Interactive'),
+    ]
+
+    animated_solution = models.ForeignKey(
+        AnimatedSolution,
+        on_delete=models.CASCADE,
+        related_name='steps',
+        help_text="Animated solution this step belongs to"
+    )
+    order = models.PositiveIntegerField(
+        default=0,
+        help_text="Order of this step in the sequence"
+    )
+    step_type = models.CharField(
+        max_length=20,
+        choices=STEP_TYPE_CHOICES,
+        default='text',
+        help_text="Type of content for this step"
+    )
+
+    # Speech bubble content
+    explanation = models.TextField(
+        help_text="Explanation text shown in speech bubble (supports LaTeX with \\(...\\) or $$...$$)"
+    )
+
+    # Mathematical content
+    calculation = models.TextField(
+        blank=True,
+        null=True,
+        help_text="Mathematical calculation or formula (LaTeX format)"
+    )
+
+    # Drawing/Image
+    drawing_image = models.ImageField(
+        upload_to="solution_drawings/",
+        blank=True,
+        null=True,
+        help_text="Upload a diagram or drawing for this step"
+    )
+
+    # GeoGebra integration
+    geogebra_id = models.CharField(
+        max_length=100,
+        blank=True,
+        null=True,
+        help_text="GeoGebra app ID (e.g., 'bnvqawfu' from geogebra.org/m/bnvqawfu)"
+    )
+    geogebra_settings = models.JSONField(
+        blank=True,
+        null=True,
+        help_text="Optional GeoGebra settings (JSON format)"
+    )
+
+    # Additional notes
+    notes = models.TextField(
+        blank=True,
+        null=True,
+        help_text="Internal notes for teachers (not shown to students)"
+    )
+
+    class Meta:
+        ordering = ('animated_solution', 'order')
+
+    def __str__(self):
+        return f"Step {self.order + 1}: {self.step_type} - {self.explanation[:50]}"
+
+
 class StudentInquiry(models.Model):
     """
     Stores student inquiries/messages sent to teachers, along with teacher replies.

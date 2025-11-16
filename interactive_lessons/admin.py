@@ -5,7 +5,7 @@ from django.http import HttpResponseRedirect
 from django.db import models
 from django.forms import Textarea
 
-from .models import Topic, Question, QuestionPart, StudentInquiry
+from .models import Topic, Question, QuestionPart, StudentInquiry, AnimatedSolution, SolutionStep
 
 
 # --- Topic Admin --------------------------------------------------------------
@@ -279,3 +279,126 @@ LCAI Maths
                 )
 
         super().save_model(request, obj, form, change)
+
+
+# --- Animated Solution Admin --------------------------------------------------
+
+class SolutionStepInline(admin.TabularInline):
+    """Inline editor for solution steps"""
+    model = SolutionStep
+    extra = 1
+    fields = (
+        "order",
+        "step_type",
+        "explanation",
+        "calculation",
+        "drawing_image",
+        "geogebra_id",
+        "notes",
+    )
+    formfield_overrides = {
+        models.TextField: {"widget": Textarea(attrs={"rows": 2, "cols": 40})},
+    }
+
+
+@admin.register(AnimatedSolution)
+class AnimatedSolutionAdmin(admin.ModelAdmin):
+    list_display = (
+        "question_part",
+        "title",
+        "step_count",
+        "is_active",
+        "updated_at",
+    )
+    list_filter = (
+        "is_active",
+        "question_part__question__topic",
+    )
+    search_fields = (
+        "title",
+        "question_part__question__section",
+        "question_part__prompt",
+    )
+    ordering = (
+        "question_part__question__topic__name",
+        "question_part__question__order",
+        "question_part__order",
+    )
+
+    fieldsets = (
+        ("Solution Information", {
+            "fields": ("question_part", "title", "is_active")
+        }),
+        ("Timestamps", {
+            "fields": ("created_at", "updated_at"),
+            "classes": ("collapse",)
+        }),
+    )
+
+    readonly_fields = ("created_at", "updated_at")
+    inlines = [SolutionStepInline]
+
+    def step_count(self, obj):
+        """Display number of steps in the solution"""
+        count = obj.steps.count()
+        return format_html(
+            '<span style="background:#2196F3;color:white;padding:2px 8px;'
+            'border-radius:3px;font-size:11px;font-weight:bold;">'
+            '{} steps</span>',
+            count
+        )
+    step_count.short_description = "Steps"
+
+
+@admin.register(SolutionStep)
+class SolutionStepAdmin(admin.ModelAdmin):
+    """Direct admin for solution steps (for advanced editing)"""
+    list_display = (
+        "animated_solution",
+        "order",
+        "step_type",
+        "explanation_preview",
+        "has_geogebra",
+    )
+    list_filter = (
+        "step_type",
+        "animated_solution__question_part__question__topic",
+    )
+    search_fields = (
+        "explanation",
+        "calculation",
+        "animated_solution__title",
+    )
+    ordering = ("animated_solution", "order")
+
+    fieldsets = (
+        ("Step Information", {
+            "fields": ("animated_solution", "order", "step_type")
+        }),
+        ("Content", {
+            "fields": ("explanation", "calculation"),
+        }),
+        ("Visual Content", {
+            "fields": ("drawing_image", "geogebra_id", "geogebra_settings"),
+            "classes": ("collapse",)
+        }),
+        ("Notes", {
+            "fields": ("notes",),
+            "classes": ("collapse",)
+        }),
+    )
+
+    def explanation_preview(self, obj):
+        """Show preview of explanation text"""
+        preview = obj.explanation[:60] + "..." if len(obj.explanation) > 60 else obj.explanation
+        return preview
+    explanation_preview.short_description = "Explanation"
+
+    def has_geogebra(self, obj):
+        """Indicate if step has GeoGebra content"""
+        if obj.geogebra_id:
+            return format_html(
+                '<span style="color:#4CAF50;font-weight:bold;">✓ GeoGebra</span>'
+            )
+        return "-"
+    has_geogebra.short_description = "Interactive"

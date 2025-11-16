@@ -1,4 +1,5 @@
 {% extends "_base.html" %}
+{% load solution_filters %}
 {% block title %}{{ topic.name }} | LCAI Maths{% endblock %}
 
 {% block content %}
@@ -81,6 +82,22 @@
                         <div style="margin-top:8px; line-height:1.6;">
                             {{ part.solution|safe }}
                         </div>
+                    </details>
+                {% endif %}
+
+                <!-- Animated Step-by-Step Solution -->
+                {% if part.id in animated_solutions %}
+                    <details style="margin-top:10px; background-color:#fff3e0; border:1px solid #ffb74d; border-radius:5px; padding:10px;">
+                        <summary style="font-weight:600; color:#e65100; cursor:pointer;">🎬 Step-by-Step Solution</summary>
+                        <div id="animated-solution-{{ part.id }}" style="margin-top:10px;"></div>
+                        <script>
+                            document.addEventListener('DOMContentLoaded', function() {
+                                const solutionData_{{ part.id }} = {{ animated_solutions|get_item:part.id|safe }};
+                                if (solutionData_{{ part.id }}) {
+                                    new AnimatedSolutionViewer('animated-solution-{{ part.id }}', solutionData_{{ part.id }});
+                                }
+                            });
+                        </script>
                     </details>
                 {% endif %}
             </div>
@@ -197,7 +214,15 @@
     </div>
 {% endblock %}
 
+{% block extra_head %}
+    {% load static %}
+    <link rel="stylesheet" href="{% static 'interactive_lessons/animated-solution.css' %}">
+    <!-- GeoGebra API -->
+    <script src="https://www.geogebra.org/apps/deployggb.js"></script>
+{% endblock %}
+
 {% block extra_scripts %}
     {% load static %}
+    <script src="{% static 'interactive_lessons/animated-solution.js' %}"></script>
     <script src="{% static 'interactive_lessons/quiz.js' %}"></script>
 {% endblock %}
