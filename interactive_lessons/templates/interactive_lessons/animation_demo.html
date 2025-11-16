@@ -1,0 +1,219 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Binomial Distribution Animation Demo - LCAI Maths</title>
+
+    <!-- KaTeX for math rendering -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+
+    <!-- Animation CSS -->
+    <link rel="stylesheet" href="{% static 'interactive_lessons/animations.css' %}">
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+            line-height: 1.6;
+        }
+
+        h1 {
+            color: #004aad;
+            text-align: center;
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 30px;
+        }
+
+        .question-container {
+            background: white;
+            padding: 25px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .question-header {
+            font-size: 18px;
+            font-weight: bold;
+            color: #004aad;
+            margin-bottom: 15px;
+        }
+
+        .question-text {
+            margin-bottom: 20px;
+            font-size: 16px;
+        }
+
+        .question-parts {
+            margin-left: 20px;
+            margin-bottom: 20px;
+        }
+
+        .question-parts li {
+            margin: 10px 0;
+        }
+
+        .scenario-selector {
+            display: flex;
+            gap: 10px;
+            margin: 20px 0;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .scenario-btn {
+            flex: 1;
+            min-width: 200px;
+            padding: 15px;
+            background: white;
+            border: 2px solid #004aad;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .scenario-btn:hover {
+            background: #004aad;
+            color: white;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0, 74, 173, 0.3);
+        }
+
+        .scenario-btn strong {
+            display: block;
+            margin-bottom: 5px;
+            font-size: 16px;
+        }
+
+        .scenario-btn small {
+            font-size: 13px;
+            opacity: 0.8;
+        }
+
+        .footer-note {
+            text-align: center;
+            color: #666;
+            margin-top: 30px;
+            padding: 20px;
+            background: white;
+            border-radius: 8px;
+        }
+
+        .math-inline {
+            display: inline;
+        }
+    </style>
+</head>
+<body>
+    <h1>🏀 Binomial Distribution Animation</h1>
+    <p class="subtitle">Interactive visualization for probability problems</p>
+
+    <div class="question-container">
+        <div class="question-header">
+            Example 2: Basketball Free Throws
+        </div>
+        <div class="question-text">
+            A basketball player made <strong>80%</strong> free throws in the season.
+            Find the probability that tonight he:
+        </div>
+        <ol class="question-parts">
+            <li><strong>(i)</strong> Misses for the 1st time on his 5th free throw</li>
+            <li><strong>(ii)</strong> Makes his 1st basket on the 4th free throw</li>
+            <li><strong>(iii)</strong> Makes 1st basket on one of his first 3 free throws</li>
+        </ol>
+    </div>
+
+    <div class="scenario-selector">
+        <button class="scenario-btn" onclick="runScenario1()">
+            <strong>Scenario (i)</strong>
+            <small>First miss on 5th throw</small>
+        </button>
+        <button class="scenario-btn" onclick="runScenario2()">
+            <strong>Scenario (ii)</strong>
+            <small>First make on 4th throw</small>
+        </button>
+        <button class="scenario-btn" onclick="runScenario3()">
+            <strong>Scenario (iii)</strong>
+            <small>1 make in first 3 throws</small>
+        </button>
+    </div>
+
+    <div class="math-animation-container">
+        <div id="basketball-animation"></div>
+    </div>
+
+    <div class="animation-controls">
+        <button class="animation-btn animation-btn-secondary" onclick="animation.reset()">
+            Reset Animation
+        </button>
+    </div>
+
+    <div class="footer-note">
+        <strong>How to use:</strong> Click on one of the scenario buttons above to see an animated
+        visualization of the basketball free throws. The animation shows each throw sequence and
+        calculates the probability step-by-step.
+    </div>
+
+    <!-- Animation JavaScript -->
+    <script src="{% static 'interactive_lessons/binomial-animation.js' %}"></script>
+
+    <script>
+        // Initialize the animation
+        let animation = new BasketballAnimation('basketball-animation', {
+            width: 800,
+            height: 400,
+            throwDuration: 1000,
+            pauseBetweenThrows: 600
+        });
+
+        // Scenario functions
+        async function runScenario1() {
+            animation.reset();
+            await animation.animateSequence(
+                basketballScenarios.scenario1.sequence,
+                basketballScenarios.scenario1
+            );
+        }
+
+        async function runScenario2() {
+            animation.reset();
+            await animation.animateSequence(
+                basketballScenarios.scenario2.sequence,
+                basketballScenarios.scenario2
+            );
+        }
+
+        async function runScenario3() {
+            animation.reset();
+            await animation.animateSequence(
+                basketballScenarios.scenario3.sequence,
+                basketballScenarios.scenario3
+            );
+        }
+
+        // Render KaTeX math on page load
+        document.addEventListener("DOMContentLoaded", function() {
+            renderMathInElement(document.body, {
+                delimiters: [
+                    {left: "$$", right: "$$", display: true},
+                    {left: "$", right: "$", display: false},
+                    {left: "\\(", right: "\\)", display: false},
+                    {left: "\\[", right: "\\]", display: true}
+                ]
+            });
+        });
+    </script>
+</body>
+</html>

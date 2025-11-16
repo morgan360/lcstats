@@ -296,3 +296,10 @@ View and reply in admin: {request.build_absolute_uri(f'/admin/interactive_lesson
     }
     
     return render(request, 'interactive_lessons/question_contact.html', context)
+
+# ----------------------------------------------------------------------
+# Animation Demo
+# ----------------------------------------------------------------------
+def animation_demo(request):
+    """Demo page for binomial distribution basketball animation"""
+    return render(request, 'interactive_lessons/animation_demo.html')
