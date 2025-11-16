@@ -16,4 +16,7 @@ urlpatterns = [
 
     # --- Contact teacher about a question ---
     path("question/<int:question_id>/contact/", views.question_contact, name="question_contact"),
+
+    # --- Animation demo ---
+    path("demo/animation/", views.animation_demo, name="animation_demo"),
 ]

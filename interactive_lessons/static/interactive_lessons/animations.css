@@ -1,0 +1,344 @@
+/**
+ * Animation Styles for Math Question Examples
+ * Supports various mathematical visualization animations
+ */
+
+/* Container Styles */
+.math-animation-container {
+    max-width: 850px;
+    margin: 20px auto;
+    padding: 20px;
+    background: white;
+    border-radius: 10px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.animation-canvas-wrapper {
+    position: relative;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+/* Control Buttons */
+.animation-controls {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    margin: 15px 0;
+    flex-wrap: wrap;
+}
+
+.animation-btn {
+    padding: 10px 20px;
+    font-size: 14px;
+    font-weight: 600;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-family: Arial, sans-serif;
+}
+
+.animation-btn-primary {
+    background: #004aad;
+    color: white;
+}
+
+.animation-btn-primary:hover:not(:disabled) {
+    background: #003580;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 74, 173, 0.3);
+}
+
+.animation-btn-secondary {
+    background: #6c757d;
+    color: white;
+}
+
+.animation-btn-secondary:hover:not(:disabled) {
+    background: #545b62;
+}
+
+.animation-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.animation-btn-success {
+    background: #00994c;
+    color: white;
+}
+
+.animation-btn-danger {
+    background: #cc0000;
+    color: white;
+}
+
+/* Info Panel */
+.animation-info {
+    margin-top: 15px;
+    padding: 15px;
+    background: white;
+    border: 2px solid #004aad;
+    border-radius: 8px;
+    font-family: Arial, sans-serif;
+    line-height: 1.6;
+}
+
+.animation-info strong {
+    color: #004aad;
+}
+
+/* Step-by-step animations */
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateX(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes scaleIn {
+    from {
+        opacity: 0;
+        transform: scale(0.8);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+@keyframes pulse {
+    0%, 100% {
+        transform: scale(1);
+    }
+    50% {
+        transform: scale(1.05);
+    }
+}
+
+@keyframes highlight {
+    0%, 100% {
+        background-color: transparent;
+    }
+    50% {
+        background-color: rgba(0, 74, 173, 0.2);
+    }
+}
+
+@keyframes bounce {
+    0%, 20%, 50%, 80%, 100% {
+        transform: translateY(0);
+    }
+    40% {
+        transform: translateY(-20px);
+    }
+    60% {
+        transform: translateY(-10px);
+    }
+}
+
+/* Calculation step animations */
+.calc-step {
+    animation: slideIn 0.5s ease;
+    margin: 8px 0;
+    padding: 8px 12px;
+    border-left: 3px solid #004aad;
+    background: #f8f9fa;
+}
+
+.calc-step.highlight {
+    animation: highlight 2s ease;
+}
+
+.calc-result {
+    animation: scaleIn 0.5s ease;
+    margin-top: 15px;
+    padding: 15px;
+    background: #00994c;
+    color: white;
+    border-radius: 6px;
+    font-weight: bold;
+    text-align: center;
+}
+
+/* Formula rendering animations */
+.formula-container {
+    margin: 20px 0;
+    padding: 15px;
+    background: #f0f7ff;
+    border-radius: 8px;
+    font-family: 'Times New Roman', serif;
+    font-size: 18px;
+}
+
+.formula-step {
+    animation: fadeIn 0.5s ease;
+    margin: 10px 0;
+    text-align: center;
+}
+
+.formula-equals {
+    display: inline-block;
+    margin: 0 10px;
+    animation: pulse 1s ease;
+}
+
+.formula-highlight {
+    background: rgba(255, 255, 0, 0.3);
+    padding: 2px 6px;
+    border-radius: 3px;
+    animation: pulse 2s infinite;
+}
+
+/* Sequence visualization */
+.sequence-container {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    margin: 20px 0;
+    flex-wrap: wrap;
+}
+
+.sequence-item {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    font-size: 24px;
+    animation: scaleIn 0.5s ease;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.sequence-item.success {
+    background: #00994c;
+    color: white;
+}
+
+.sequence-item.failure {
+    background: #cc0000;
+    color: white;
+}
+
+.sequence-item.current {
+    animation: pulse 1s infinite;
+    box-shadow: 0 0 20px rgba(0, 74, 173, 0.5);
+}
+
+/* Probability visualization */
+.probability-bar {
+    height: 30px;
+    background: linear-gradient(90deg, #00994c 0%, #ff9900 50%, #cc0000 100%);
+    border-radius: 15px;
+    margin: 20px 0;
+    position: relative;
+    overflow: hidden;
+}
+
+.probability-marker {
+    position: absolute;
+    width: 4px;
+    height: 100%;
+    background: #000;
+    animation: slideIn 1s ease;
+}
+
+/* Loading animation */
+.animation-loading {
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    border: 3px solid rgba(0, 74, 173, 0.3);
+    border-radius: 50%;
+    border-top-color: #004aad;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* Success/Error indicators */
+.result-indicator {
+    display: inline-block;
+    padding: 5px 10px;
+    border-radius: 4px;
+    font-weight: bold;
+    animation: scaleIn 0.3s ease;
+}
+
+.result-indicator.success {
+    background: #00994c;
+    color: white;
+}
+
+.result-indicator.error {
+    background: #cc0000;
+    color: white;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .math-animation-container {
+        padding: 15px;
+    }
+
+    .animation-btn {
+        padding: 8px 16px;
+        font-size: 13px;
+    }
+
+    .sequence-item {
+        width: 50px;
+        height: 50px;
+        font-size: 20px;
+    }
+
+    .formula-container {
+        font-size: 16px;
+        padding: 10px;
+    }
+}
+
+/* Accessibility */
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+}
+
+/* Print styles */
+@media print {
+    .animation-controls,
+    .animation-btn {
+        display: none;
+    }
+
+    .math-animation-container {
+        box-shadow: none;
+        border: 1px solid #ccc;
+    }
+}
