@@ -75,11 +75,20 @@
                 </div>
 
                 <!-- Part Solution -->
-                {% if part.solution %}
+                {% if part.solution or part.solution_image %}
                     <details style="margin-top:10px; background-color:#e8f5e9; border:1px solid #a5d6a7; border-radius:5px; padding:10px;">
                         <summary style="font-weight:600; color:#2e7d32; cursor:pointer;">📝 Solution for {{ part.label }}</summary>
                         <div style="margin-top:8px; line-height:1.6;">
-                            {{ part.solution|safe }}
+                            {% if part.solution %}
+                                {{ part.solution|safe }}
+                            {% endif %}
+
+                            {% if part.solution_image %}
+                                <div style="margin-top:15px; text-align:center;">
+                                    <img src="{{ part.solution_image.url }}" alt="Solution for {{ part.label }}"
+                                         style="max-width:100%; height:auto; border-radius:8px; box-shadow:0 2px 8px rgba(0,0,0,0.1);">
+                                </div>
+                            {% endif %}
                         </div>
                     </details>
                 {% endif %}

@@ -31,6 +31,7 @@ class QuestionPartInline(admin.StackedInline):
         "answer",
         "expected_format",
         "solution",
+        "solution_image",
         "expected_type",
         "scale",
         "max_marks",

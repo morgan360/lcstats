@@ -132,6 +132,12 @@ class QuestionPart(models.Model):
     answer = models.TextField(blank=True, null=True)
     expected_format = models.TextField(blank=True, null=True, help_text="Expected format of the answer (e.g., decimal, fraction, degrees)")
     solution = models.TextField(blank=True, null=True)
+    solution_image = models.ImageField(
+        upload_to="solutions/",
+        blank=True,
+        null=True,
+        help_text="Optional solution image for this part (e.g., worked solution diagram)"
+    )
     order = models.PositiveIntegerField(default=0)
 
     expected_type = models.CharField(
