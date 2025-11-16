@@ -9,13 +9,48 @@
       <div class="card" style="margin-bottom:25px;padding:20px;border-radius:12px;background:#f8f9fa;">
         <h3 style="color:#004aad;margin-bottom:10px;">{{ note.title }}</h3>
         <div style="line-height:1.7;font-size:1rem;">
-          <p style="white-space:pre-line;">{{ note.content|safe }}</p>
+          {{ note.content_html|safe }}
         </div>
 
         {% if note.image %}
-          <div style="text-align:center;margin-top:15px;">
-            <img src="{{ note.image.url }}" alt="{{ note.title }}"
-                 style="max-width:100%;border-radius:8px;box-shadow:0 2px 6px rgba(0,0,0,0.1);">
+          <div style="margin-top:15px;">
+            {% if note.image.url|slice:"-4:" == ".pdf" or note.image.url|slice:"-4:" == ".PDF" %}
+              {# PDF file - show card with open/download buttons #}
+              <div style="border:1px solid #e0e0e0;border-radius:8px;padding:20px;background:white;box-shadow:0 2px 6px rgba(0,0,0,0.05);">
+                <div style="display:flex;align-items:center;margin-bottom:20px;">
+                  <svg style="width:48px;height:48px;margin-right:15px;color:#1976d2;" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20M10,19L12,15H9V10H15V15L13,19H10Z"/>
+                  </svg>
+                  <div style="flex:1;">
+                    <div style="font-weight:600;color:#333;margin-bottom:4px;">PDF Study Guide</div>
+                    <div style="color:#666;font-size:0.9em;">Click to view in a new tab</div>
+                  </div>
+                </div>
+
+                <div style="display:flex;gap:12px;">
+                  <a href="{{ note.image.url }}" target="_blank"
+                     style="flex:1;display:flex;align-items:center;justify-content:center;padding:12px 20px;background:#1976d2;color:white;border-radius:6px;text-decoration:none;font-weight:600;">
+                    <svg style="width:18px;height:18px;margin-right:8px;" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M14,3V5H17.59L7.76,14.83L9.17,16.24L19,6.41V10H21V3M19,19H5V5H12V3H5C3.89,3 3,3.9 3,5V19A2,2 0 0,0 5,21H19A2,2 0 0,0 21,19V12H19V19Z"/>
+                    </svg>
+                    Open PDF
+                  </a>
+                  <a href="{{ note.image.url }}" download
+                     style="flex:1;display:flex;align-items:center;justify-content:center;padding:12px 20px;background:white;color:#1976d2;border:2px solid #1976d2;border-radius:6px;text-decoration:none;font-weight:600;">
+                    <svg style="width:18px;height:18px;margin-right:8px;" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20M12,19L8,15H10.5V12H13.5V15H16L12,19Z"/>
+                    </svg>
+                    Download
+                  </a>
+                </div>
+              </div>
+            {% else %}
+              {# Regular image file #}
+              <div style="text-align:center;">
+                <img src="{{ note.image.url }}" alt="{{ note.title }}"
+                     style="max-width:100%;border-radius:8px;box-shadow:0 2px 6px rgba(0,0,0,0.1);">
+              </div>
+            {% endif %}
           </div>
         {% endif %}
       </div>

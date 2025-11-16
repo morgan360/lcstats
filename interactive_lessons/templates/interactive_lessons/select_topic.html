@@ -4,15 +4,32 @@
 
 <h2>Choose a Topic</h2>
 
-<ul>
-  {% for topic in topics %}
-    <li style="margin-bottom:20px;">
-      <a href="{% url 'question_view' topic.id 1 %}" style="font-weight:bold;">
-        {{ topic.name }}
-      </a><br>
-      <a href="{% url 'question_view' topic.id 1 %}" class="start-link">
-        Start interactive quiz →
-      </a>
+<ul style="list-style:none;padding:0;">
+  {% for item in topics_with_notes %}
+    <li style="margin-bottom:25px;padding:20px;background:#f8f9fa;border-radius:8px;">
+      <div style="display:flex;justify-content:space-between;align-items:start;">
+        <div style="flex:1;">
+          <a href="{% url 'question_view' item.topic.id 1 %}" style="font-weight:bold;font-size:1.2em;color:#004aad;">
+            {{ item.topic.name }}
+          </a>
+          <div style="margin-top:8px;">
+            <a href="{% url 'question_view' item.topic.id 1 %}" class="start-link" style="color:#1976d2;">
+              Start interactive quiz →
+            </a>
+          </div>
+        </div>
+        {% if item.has_notes %}
+          <div style="margin-left:15px;">
+            <a href="{% url 'notes_topic' item.topic.slug %}"
+               style="display:inline-block;padding:8px 15px;background:#e3f2fd;color:#1976d2;border-radius:6px;text-decoration:none;font-size:0.9em;white-space:nowrap;">
+              <svg style="width:16px;height:16px;vertical-align:middle;margin-right:5px;" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20M10,19L12,15H9V10H15V15L13,19H10Z"/>
+              </svg>
+              Study Resources ({{ item.note_count }})
+            </a>
+          </div>
+        {% endif %}
+      </div>
     </li>
   {% endfor %}
 </ul>

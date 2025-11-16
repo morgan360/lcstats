@@ -80,8 +80,21 @@ def info_bot(request, topic_slug):
 # Topic selection / completion
 # ----------------------------------------------------------------------
 def select_topic(request):
+    from notes.models import Note
     topics = Topic.objects.all().order_by("name")
-    return render(request, "interactive_lessons/select_topic.html", {"topics": topics})
+    # Annotate topics with note counts for showing available resources
+    topics_with_notes = []
+    for topic in topics:
+        note_count = Note.objects.filter(topic=topic).count()
+        topics_with_notes.append({
+            'topic': topic,
+            'has_notes': note_count > 0,
+            'note_count': note_count
+        })
+    return render(request, "interactive_lessons/select_topic.html", {
+        "topics": topics,
+        "topics_with_notes": topics_with_notes
+    })
 
 
 def topic_complete(request, topic_name):

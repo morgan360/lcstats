@@ -32,7 +32,7 @@ class Note(models.Model):
     )
     content = models.TextField()
     metadata = models.TextField(blank=True, null=True, help_text="Sample prompts or summary for embedding")
-    image = models.ImageField(upload_to="notes/", blank=True, null=True)
+    image = models.FileField(upload_to="notes/", blank=True, null=True, help_text="Upload PDF or image file")
     embedding = models.JSONField(null=True, blank=True)
     _content_hash = models.CharField(max_length=64, blank=True, null=True, editable=False)
 
