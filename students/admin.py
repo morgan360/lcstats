@@ -12,7 +12,7 @@ class StudentProfileAdmin(admin.ModelAdmin):
     list_display = ('user', 'total_score', 'lessons_completed', 'last_activity')
     search_fields = ('user__username', 'user__email')
     readonly_fields = ('last_activity',)
-    actions = ['generate_daily_report', 'generate_weekly_report']
+    actions = ['generate_daily_report', 'generate_weekly_report', 'generate_monthly_report', 'generate_yearly_report']
 
     def _generate_report(self, request, queryset, days=1):
         """Helper method to generate activity report"""
@@ -156,6 +156,16 @@ class StudentProfileAdmin(admin.ModelAdmin):
         """Generate a report for the last 7 days"""
         return self._generate_report(request, queryset, days=7)
     generate_weekly_report.short_description = "📊 Generate Weekly Report (7 days)"
+
+    def generate_monthly_report(self, request, queryset):
+        """Generate a report for the last 30 days"""
+        return self._generate_report(request, queryset, days=30)
+    generate_monthly_report.short_description = "📊 Generate Monthly Report (30 days)"
+
+    def generate_yearly_report(self, request, queryset):
+        """Generate a report for the last 365 days"""
+        return self._generate_report(request, queryset, days=365)
+    generate_yearly_report.short_description = "📊 Generate Yearly Report (365 days)"
 
 
 @admin.register(QuestionAttempt)
