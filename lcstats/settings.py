@@ -56,8 +56,9 @@ INSTALLED_APPS = [
     'home',
     'notes',
     'chat',
-"interactive_lessons",
+    'interactive_lessons',
     'students',
+    'revision',
 ]
 INSTALLED_APPS += ['markdownx']
 INSTALLED_APPS += ["markdownify"]

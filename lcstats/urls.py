@@ -11,6 +11,7 @@ urlpatterns = [
     path("markdownx/", include("markdownx.urls")),
     path("notes/", include("notes.urls")),
     path('students/', include('students.urls')),
+    path('revision/', include('revision.urls')),
 
 ]
 if settings.DEBUG:
