@@ -97,6 +97,14 @@ def select_topic(request):
     })
 
 
+@login_required
+def topic_quiz(request, topic_slug):
+    """Redirect to the first question of a topic's quiz"""
+    topic = get_object_or_404(Topic, slug=topic_slug)
+    # Redirect to the first question (number=1) for this topic
+    return redirect('question_view', topic_id=topic.id, number=1)
+
+
 def topic_complete(request, topic_name):
     return render(request, "interactive_lessons/topic_complete.html", {"topic_name": topic_name})
 
