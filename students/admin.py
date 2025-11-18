@@ -4,6 +4,11 @@ from django.utils import timezone
 from django.http import HttpResponse
 from django.db.models import Count, Avg, Q
 from datetime import timedelta
+from io import BytesIO
+from reportlab.lib.pagesizes import letter
+from reportlab.lib import colors
+from reportlab.lib.styles import getSampleStyleSheet
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
 from .models import StudentProfile, QuestionAttempt, RegistrationCode, LoginHistory, UserSession
 
 
@@ -15,7 +20,7 @@ class StudentProfileAdmin(admin.ModelAdmin):
     actions = ['generate_daily_report', 'generate_weekly_report', 'generate_monthly_report', 'generate_yearly_report']
 
     def _generate_report(self, request, queryset, days=1):
-        """Helper method to generate activity report"""
+        """Helper method to generate activity report as PDF"""
         # Calculate date range
         end_date = timezone.now()
         start_date = end_date - timedelta(days=days)
@@ -24,126 +29,102 @@ class StudentProfileAdmin(admin.ModelAdmin):
         attempts_in_period = QuestionAttempt.objects.filter(
             attempted_at__gte=start_date,
             attempted_at__lte=end_date
-        ).exclude(student__user=request.user)
+        ).exclude(student__user=request.user).select_related('student__user', 'question__topic')
 
         # If specific students selected, filter to those
         if queryset.exists():
             attempts_in_period = attempts_in_period.filter(student__in=queryset)
 
-        # Overall statistics
-        total_attempts = attempts_in_period.count()
-        correct_attempts = attempts_in_period.filter(is_correct=True).count()
-        accuracy = (correct_attempts / total_attempts * 100) if total_attempts > 0 else 0
-
-        # Topics worked on
-        topics_data = attempts_in_period.values(
-            'question__topic__name'
-        ).annotate(
-            attempt_count=Count('id'),
-            correct_count=Count('id', filter=Q(is_correct=True)),
-            avg_score=Avg('score_awarded')
-        ).order_by('-attempt_count')
-
-        # Unique questions
-        unique_questions = attempts_in_period.values('question__id').distinct().count()
-
-        # Per-student breakdown
-        student_stats = []
+        # Get students to report
         students_to_report = queryset if queryset.exists() else StudentProfile.objects.exclude(user=request.user)
 
+        # Create PDF
+        buffer = BytesIO()
+        doc = SimpleDocTemplate(buffer, pagesize=letter)
+        elements = []
+        styles = getSampleStyleSheet()
+
+        # Title
+        title = Paragraph(f"<b>Student Question Attempts Report ({days} Day{'s' if days > 1 else ''})</b>", styles['Heading1'])
+        elements.append(title)
+        elements.append(Spacer(1, 12))
+
+        # Generate report for each student
         for student in students_to_report:
-            student_attempts = attempts_in_period.filter(student=student)
-            attempt_count = student_attempts.count()
+            student_attempts = attempts_in_period.filter(student=student).order_by('question__topic__name', '-attempted_at')
 
-            if attempt_count > 0:
-                correct_count = student_attempts.filter(is_correct=True).count()
-                student_accuracy = (correct_count / attempt_count * 100) if attempt_count > 0 else 0
-                avg_score = student_attempts.aggregate(Avg('score_awarded'))['score_awarded__avg'] or 0
+            if student_attempts.count() == 0:
+                continue
 
-                student_topics = student_attempts.values(
-                    'question__topic__name'
-                ).annotate(count=Count('id')).order_by('-count')
+            # Student name
+            student_name = Paragraph(f"<b>{student.user.get_full_name() or student.user.username}</b>", styles['Heading2'])
+            elements.append(student_name)
+            elements.append(Spacer(1, 6))
 
-                student_stats.append({
-                    'username': student.user.username,
-                    'full_name': student.user.get_full_name() or student.user.username,
-                    'attempt_count': attempt_count,
-                    'correct_count': correct_count,
-                    'accuracy': student_accuracy,
-                    'avg_score': avg_score,
-                    'topics': list(student_topics),
-                    'total_score': student.total_score,
-                    'lessons_completed': student.lessons_completed,
-                })
+            # Group by topic
+            current_topic = None
+            topic_data = []
 
-        student_stats.sort(key=lambda x: x['attempt_count'], reverse=True)
+            for attempt in student_attempts:
+                topic_name = attempt.question.topic.name if attempt.question.topic else 'No Topic'
 
-        # Generate text report
-        lines = []
-        lines.append('=' * 70)
-        lines.append(f'STUDENT ACTIVITY REPORT ({days} DAY{"S" if days > 1 else ""})')
-        lines.append('=' * 70)
-        lines.append(f"Period: {start_date.strftime('%Y-%m-%d %H:%M')} to {end_date.strftime('%Y-%m-%d %H:%M')}")
-        lines.append(f"Generated by: {request.user.username}")
-        lines.append(f"Excluded user: {request.user.username}")
-        if queryset.exists():
-            lines.append(f"Filtered to {queryset.count()} selected student(s)")
-        lines.append('')
+                if current_topic != topic_name:
+                    # Add previous topic's table
+                    if topic_data:
+                        elements.append(Paragraph(f"<i>{current_topic}</i>", styles['Heading3']))
+                        elements.append(Spacer(1, 4))
 
-        lines.append('-' * 70)
-        lines.append('OVERALL SUMMARY')
-        lines.append('-' * 70)
-        lines.append(f"Active Students: {len(student_stats)}")
-        lines.append(f"Total Attempts: {total_attempts}")
-        lines.append(f"Correct Answers: {correct_attempts}")
-        lines.append(f"Overall Accuracy: {accuracy:.1f}%")
-        lines.append(f"Unique Questions Attempted: {unique_questions}")
-        lines.append('')
+                        table = Table(topic_data, colWidths=[90, 70, 270])
+                        table.setStyle(TableStyle([
+                            ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
+                            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+                            ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+                            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                            ('FONTSIZE', (0, 0), (-1, 0), 9),
+                            ('BOTTOMPADDING', (0, 0), (-1, 0), 8),
+                            ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
+                            ('GRID', (0, 0), (-1, -1), 1, colors.black)
+                        ]))
+                        elements.append(table)
+                        elements.append(Spacer(1, 10))
 
-        if topics_data:
-            lines.append('-' * 70)
-            lines.append('TOPICS WORKED ON')
-            lines.append('-' * 70)
-            lines.append(f"{'Topic':<30} {'Attempts':<10} {'Correct':<10} {'Avg Score':<10}")
-            lines.append('-' * 70)
-            for topic in topics_data:
-                topic_name = topic['question__topic__name'] or 'Uncategorized'
-                lines.append(
-                    f"{topic_name:<30} {topic['attempt_count']:<10} "
-                    f"{topic['correct_count']:<10} {topic['avg_score']:.1f}%"
-                )
-            lines.append('')
+                    # Start new topic
+                    current_topic = topic_name
+                    topic_data = [['Date', 'Result', 'Question']]
 
-        if student_stats:
-            lines.append('-' * 70)
-            lines.append('STUDENT BREAKDOWN')
-            lines.append('-' * 70)
-            for student in student_stats:
-                lines.append(f"\n{student['full_name']} ({student['username']})")
-                lines.append(f"  Attempts: {student['attempt_count']}")
-                lines.append(f"  Correct: {student['correct_count']} ({student['accuracy']:.1f}%)")
-                lines.append(f"  Average Score: {student['avg_score']:.1f}%")
-                lines.append(f"  Total Score (cumulative): {student['total_score']}")
-                lines.append(f"  Lessons Completed (cumulative): {student['lessons_completed']}")
+                # Add attempt
+                date_str = attempt.attempted_at.strftime('%Y-%m-%d %H:%M')
+                result = 'Correct' if attempt.is_correct else 'Wrong'
+                question_text = attempt.question.text[:55] + '...' if len(attempt.question.text) > 55 else attempt.question.text
+                topic_data.append([date_str, result, question_text])
 
-                if student['topics']:
-                    lines.append(f"  Topics:")
-                    for topic in student['topics'][:5]:
-                        topic_name = topic['question__topic__name'] or 'Uncategorized'
-                        lines.append(f"    - {topic_name}: {topic['count']} attempts")
-        else:
-            lines.append('No student activity in this period.')
+            # Add final topic's table
+            if topic_data and len(topic_data) > 1:
+                elements.append(Paragraph(f"<i>{current_topic}</i>", styles['Heading3']))
+                elements.append(Spacer(1, 4))
 
-        lines.append('')
-        lines.append('=' * 70)
-        lines.append(f"Report generated at: {timezone.now().strftime('%Y-%m-%d %H:%M:%S')}")
-        lines.append('=' * 70)
+                table = Table(topic_data, colWidths=[90, 70, 270])
+                table.setStyle(TableStyle([
+                    ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
+                    ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+                    ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+                    ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                    ('FONTSIZE', (0, 0), (-1, 0), 9),
+                    ('BOTTOMPADDING', (0, 0), (-1, 0), 8),
+                    ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
+                    ('GRID', (0, 0), (-1, -1), 1, colors.black)
+                ]))
+                elements.append(table)
 
-        report_text = '\n'.join(lines)
+            elements.append(Spacer(1, 20))
 
-        # Return as downloadable text file
-        response = HttpResponse(report_text, content_type='text/plain')
-        filename = f'student_report_{days}day_{end_date.strftime("%Y%m%d")}.txt'
+        # Build PDF
+        doc.build(elements)
+        buffer.seek(0)
+
+        # Return as downloadable PDF
+        response = HttpResponse(buffer.getvalue(), content_type='application/pdf')
+        filename = f'student_report_{days}day_{end_date.strftime("%Y%m%d")}.pdf'
         response['Content-Disposition'] = f'attachment; filename="{filename}"'
         return response
 

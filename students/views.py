@@ -5,6 +5,10 @@ from django.db.models import Avg, Count, Q
 from django.contrib import messages
 from django.http import HttpResponse
 from django.utils import timezone
+from reportlab.lib.pagesizes import letter
+from reportlab.lib import colors
+from reportlab.lib.styles import getSampleStyleSheet
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
 from .models import StudentProfile, RegistrationCode, QuestionAttempt
 from .forms import SignupFormWithCode
 
@@ -81,69 +85,94 @@ class LogoutViewAllowGet(LogoutView):
 
 @login_required
 def download_attempts_report(request):
-    """Generate and download a report of all question attempts for the logged-in student"""
+    """Generate and download a PDF report of question attempts by topic"""
+    from io import BytesIO
+
     profile = StudentProfile.objects.get(user=request.user)
 
-    # Get all attempts for this student, ordered by most recent first
-    attempts = QuestionAttempt.objects.filter(student=profile).select_related(
+    # Get all attempts organized by topic
+    attempts_by_topic = QuestionAttempt.objects.filter(student=profile).select_related(
         'question', 'question__topic'
-    ).order_by('-attempted_at')
+    ).order_by('question__topic__name', '-attempted_at')
 
-    # Calculate statistics
-    total_attempts = attempts.count()
-    correct_attempts = attempts.filter(is_correct=True).count()
-    accuracy = (correct_attempts / total_attempts * 100) if total_attempts > 0 else 0
-    total_score = sum(a.score_awarded for a in attempts)
-    avg_score = total_score / total_attempts if total_attempts > 0 else 0
+    # Create PDF
+    buffer = BytesIO()
+    doc = SimpleDocTemplate(buffer, pagesize=letter)
+    elements = []
+    styles = getSampleStyleSheet()
 
-    # Generate text report
-    lines = []
-    lines.append('=' * 80)
-    lines.append('STUDENT QUESTION ATTEMPTS REPORT')
-    lines.append('=' * 80)
-    lines.append(f"Student: {request.user.get_full_name() or request.user.username}")
-    lines.append(f"Username: {request.user.username}")
-    lines.append(f"Generated: {timezone.now().strftime('%Y-%m-%d %H:%M:%S')}")
-    lines.append('')
+    # Title
+    title = Paragraph(f"<b>Question Attempts by Topic</b>", styles['Heading1'])
+    elements.append(title)
+    elements.append(Spacer(1, 12))
 
-    lines.append('-' * 80)
-    lines.append('SUMMARY')
-    lines.append('-' * 80)
-    lines.append(f"Total Attempts: {total_attempts}")
-    lines.append(f"Correct Answers: {correct_attempts}")
-    lines.append(f"Accuracy: {accuracy:.1f}%")
-    lines.append(f"Average Score: {avg_score:.1f}%")
-    lines.append(f"Total Score: {total_score:.1f}")
-    lines.append(f"Lessons Completed: {profile.lessons_completed}")
-    lines.append('')
+    # Student info
+    student_info = Paragraph(f"Student: {request.user.username}", styles['Normal'])
+    elements.append(student_info)
+    elements.append(Spacer(1, 20))
 
-    if attempts:
-        lines.append('-' * 80)
-        lines.append('DETAILED QUESTION ATTEMPTS')
-        lines.append('-' * 80)
-        lines.append(f"{'Date/Time':<20} {'Topic':<20} {'Score':<8} {'Result':<8} {'Question'}")
-        lines.append('-' * 80)
+    # Group attempts by topic
+    current_topic = None
+    topic_data = []
 
-        for attempt in attempts:
-            date_str = attempt.attempted_at.strftime('%Y-%m-%d %H:%M')
-            topic = (attempt.question.topic.name if attempt.question.topic else 'N/A')[:19]
-            score = f"{attempt.score_awarded:.1f}%"
-            result = "Correct" if attempt.is_correct else "Wrong"
-            question = attempt.question.text[:50]
+    for attempt in attempts_by_topic:
+        topic_name = attempt.question.topic.name if attempt.question.topic else 'No Topic'
 
-            lines.append(f"{date_str:<20} {topic:<20} {score:<8} {result:<8} {question}")
-    else:
-        lines.append('No attempts recorded yet.')
+        # If new topic, add previous topic's table and start new one
+        if current_topic != topic_name:
+            if topic_data:
+                # Add previous topic's table
+                elements.append(Paragraph(f"<b>{current_topic}</b>", styles['Heading2']))
+                elements.append(Spacer(1, 6))
 
-    lines.append('')
-    lines.append('=' * 80)
-    lines.append('END OF REPORT')
-    lines.append('=' * 80)
+                table = Table(topic_data, colWidths=[100, 80, 250])
+                table.setStyle(TableStyle([
+                    ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
+                    ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+                    ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+                    ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                    ('FONTSIZE', (0, 0), (-1, 0), 10),
+                    ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+                    ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
+                    ('GRID', (0, 0), (-1, -1), 1, colors.black)
+                ]))
+                elements.append(table)
+                elements.append(Spacer(1, 20))
 
-    report_text = '\n'.join(lines)
+            # Start new topic
+            current_topic = topic_name
+            topic_data = [['Date', 'Result', 'Question']]
 
-    # Return as downloadable text file
-    response = HttpResponse(report_text, content_type='text/plain')
-    filename = f'question_attempts_{request.user.username}_{timezone.now().strftime("%Y%m%d_%H%M%S")}.txt'
+        # Add attempt to current topic
+        date_str = attempt.attempted_at.strftime('%Y-%m-%d %H:%M')
+        result = 'Correct' if attempt.is_correct else 'Wrong'
+        question_text = attempt.question.text[:60] + '...' if len(attempt.question.text) > 60 else attempt.question.text
+        topic_data.append([date_str, result, question_text])
+
+    # Add final topic's table
+    if topic_data and len(topic_data) > 1:
+        elements.append(Paragraph(f"<b>{current_topic}</b>", styles['Heading2']))
+        elements.append(Spacer(1, 6))
+
+        table = Table(topic_data, colWidths=[100, 80, 250])
+        table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+            ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, 0), 10),
+            ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+            ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
+            ('GRID', (0, 0), (-1, -1), 1, colors.black)
+        ]))
+        elements.append(table)
+
+    # Build PDF
+    doc.build(elements)
+    buffer.seek(0)
+
+    # Return as downloadable PDF
+    response = HttpResponse(buffer.getvalue(), content_type='application/pdf')
+    filename = f'question_attempts_{request.user.username}_{timezone.now().strftime("%Y%m%d")}.pdf'
     response['Content-Disposition'] = f'attachment; filename="{filename}"'
     return response
