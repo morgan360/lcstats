@@ -81,15 +81,23 @@ def info_bot(request, topic_slug):
 # ----------------------------------------------------------------------
 def select_topic(request):
     from notes.models import Note
+    from revision.models import RevisionModule
     topics = Topic.objects.all().order_by("name")
-    # Annotate topics with note counts for showing available resources
+    # Annotate topics with note counts and revision module info
     topics_with_notes = []
     for topic in topics:
         note_count = Note.objects.filter(topic=topic).count()
+        # Check if this topic has a published revision module
+        revision_module = RevisionModule.objects.filter(
+            topic=topic,
+            is_published=True
+        ).first()
         topics_with_notes.append({
             'topic': topic,
             'has_notes': note_count > 0,
-            'note_count': note_count
+            'note_count': note_count,
+            'has_revision': revision_module is not None,
+            'revision_module': revision_module
         })
     return render(request, "interactive_lessons/select_topic.html", {
         "topics": topics,
