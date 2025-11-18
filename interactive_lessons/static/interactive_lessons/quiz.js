@@ -97,4 +97,89 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     });
   }
+
+  // --------------------------------------------------------------------
+  // ✅ Handle InfoBot queries
+  // --------------------------------------------------------------------
+  // Use setTimeout to ensure DOM is fully loaded
+  setTimeout(() => {
+    const infobotQueryInput = document.getElementById("infobot-query");
+    const infobotAskBtn = document.getElementById("infobot-ask-btn");
+    const infobotAnswer = document.getElementById("infobot-answer");
+    const infobotLoading = document.getElementById("infobot-loading");
+
+    if (infobotQueryInput && infobotAskBtn && infobotAnswer && infobotLoading) {
+      console.log("InfoBot initialized successfully");
+
+      // Handle Ask button click
+      infobotAskBtn.addEventListener("click", async () => {
+        console.log("InfoBot Ask button clicked");
+        const query = infobotQueryInput.value.trim();
+        if (!query) {
+          alert("Please enter a question first.");
+          return;
+        }
+        console.log("Query:", query);
+
+        // Show loading, hide answer
+        infobotLoading.style.display = "block";
+        infobotAnswer.style.display = "none";
+        infobotAnswer.innerHTML = "";
+
+        try {
+          // Extract topic slug from URL or data attribute
+          const topicElement = document.querySelector("[data-topic-slug]");
+          const topicSlug = topicElement ? topicElement.dataset.topicSlug : "";
+
+          if (!topicSlug) {
+            throw new Error("Topic slug not found");
+          }
+
+          // Make AJAX request to InfoBot endpoint
+          const response = await fetch(`/interactive/info-bot/${topicSlug}/?query=${encodeURIComponent(query)}`, {
+            method: "GET",
+            headers: {
+              "X-Requested-With": "XMLHttpRequest"
+            }
+          });
+
+          const data = await response.json();
+
+          // Hide loading, show answer
+          infobotLoading.style.display = "none";
+
+          if (data.answer) {
+            infobotAnswer.innerHTML = data.answer;
+            infobotAnswer.style.display = "block";
+
+            // Scroll to answer
+            infobotAnswer.scrollIntoView({ behavior: "smooth", block: "nearest" });
+          } else {
+            infobotAnswer.innerHTML = "<div style='color:red;'>Sorry, I couldn't find an answer to that question.</div>";
+            infobotAnswer.style.display = "block";
+          }
+
+        } catch (error) {
+          console.error("InfoBot error:", error);
+          infobotLoading.style.display = "none";
+          infobotAnswer.innerHTML = "<div style='color:red;'>Error: Unable to get an answer. Please try again.</div>";
+          infobotAnswer.style.display = "block";
+        }
+      });
+
+      // Allow Enter key to submit query
+      infobotQueryInput.addEventListener("keypress", (e) => {
+        if (e.key === "Enter") {
+          infobotAskBtn.click();
+        }
+      });
+    } else {
+      console.error("InfoBot elements not found:", {
+        infobotQueryInput,
+        infobotAskBtn,
+        infobotAnswer,
+        infobotLoading
+      });
+    }
+  }, 100); // Wait 100ms for DOM to be fully ready
 });
