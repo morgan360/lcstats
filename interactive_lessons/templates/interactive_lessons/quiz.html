@@ -128,45 +128,6 @@
         </div>
     </div>
 
-    <!-- InfoBot and Contact Section -->
-    <div style="max-width:750px; margin:30px auto; padding:20px; background-color:#f0f8ff; border:1px solid #b3d9ff; border-radius:8px;">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
-            <h3 style="color:#004aad; margin:0;">🤖 Ask InfoBot</h3>
-            <a href="{% url 'question_contact' question.id %}"
-               class="btn"
-               style="background-color:#00994c; color:white; padding:6px 12px; text-decoration:none; font-size:0.9em; border-radius:4px;">
-                📧 Contact Teacher
-            </a>
-        </div>
-        <p style="margin:0 0 12px 0; font-size:0.9em; color:#555;">
-            Need help with this topic? Ask a question and get instant answers from our AI tutor.
-        </p>
-
-        <div style="display:flex; gap:8px; align-items:flex-start;">
-            <input type="text"
-                   id="infobot-query"
-                   placeholder="e.g., What is the quadratic formula?"
-                   style="flex:1; padding:10px; border:1px solid #ccc; border-radius:4px; font-size:1em;">
-            <button id="infobot-ask-btn"
-                    class="btn"
-                    style="background-color:#004aad; color:white; padding:10px 20px; white-space:nowrap;">
-                Ask
-            </button>
-        </div>
-
-        <div id="infobot-answer"
-             style="margin-top:15px; padding:15px; background-color:white; border-radius:6px; display:none; line-height:1.6;">
-            <!-- Answer will be inserted here -->
-        </div>
-
-        <div id="infobot-loading"
-             style="margin-top:15px; color:#004aad; display:none;">
-            🔄 Thinking...
-        </div>
-    </div>
-
-    <hr style="margin-top:30px; max-width:750px; margin-left:auto; margin-right:auto;">
-
     <!-- Navigation -->
     <div style="max-width:750px; margin:0 auto; display:flex; justify-content:space-between; align-items:center;">
         {% if index > 1 %}
