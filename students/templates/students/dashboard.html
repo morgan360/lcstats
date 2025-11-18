@@ -6,6 +6,12 @@
 <p><strong>Total Score:</strong> {{ profile.total_score }}</p>
 <p><strong>Lessons Completed:</strong> {{ profile.lessons_completed }}</p>
 
+<div style="margin: 20px 0;">
+  <a href="{% url 'download_attempts_report' %}" style="display: inline-block; padding: 10px 20px; background-color: #007bff; color: white; text-decoration: none; border-radius: 5px;">
+    Download Question Attempts Report
+  </a>
+</div>
+
 <h3>Recent Attempts</h3>
 <table>
   <tr><th>Question</th><th>Topic</th><th>Score</th><th>Result</th></tr>
