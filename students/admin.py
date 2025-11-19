@@ -19,7 +19,7 @@ class StudentProfileAdmin(admin.ModelAdmin):
     list_display = ('user', 'total_score', 'lessons_completed', 'last_activity')
     search_fields = ('user__username', 'user__email')
     readonly_fields = ('last_activity',)
-    actions = ['generate_daily_report', 'generate_weekly_report', 'generate_monthly_report', 'generate_yearly_report', 'generate_all_attempts_report']
+    actions = ['generate_daily_report', 'generate_weekly_report', 'generate_monthly_report', 'generate_yearly_report', 'generate_all_attempts_report', 'generate_weekly_attempts_report']
 
     def _generate_report(self, request, queryset, days=1):
         """Helper method to generate activity report as PDF"""
@@ -251,9 +251,9 @@ class StudentProfileAdmin(admin.ModelAdmin):
         # Get all attempts for these students
         all_attempts = QuestionAttempt.objects.filter(student__in=students_to_report)
 
-        # Part 1: Overall attempts per student (sorted by student)
+        # Part 1: Overall attempts per student (sorted by attempt count)
         student_data = []
-        for student in students_to_report.order_by('user__username'):
+        for student in students_to_report:
             attempt_count = all_attempts.filter(student=student).count()
             if attempt_count > 0:
                 student_data.append({
@@ -262,9 +262,12 @@ class StudentProfileAdmin(admin.ModelAdmin):
                     'total_attempts': attempt_count,
                 })
 
+        # Sort by total attempts (descending)
+        student_data.sort(key=lambda x: x['total_attempts'], reverse=True)
+
         # Part 2: Attempts by topic for each student
         topic_breakdown = []
-        for student in students_to_report.order_by('user__username'):
+        for student in students_to_report:
             student_attempts = all_attempts.filter(student=student)
             if student_attempts.count() > 0:
                 # Get topic-wise breakdown
@@ -398,6 +401,175 @@ class StudentProfileAdmin(admin.ModelAdmin):
         response['Content-Disposition'] = f'attachment; filename="{filename}"'
         return response
     generate_all_attempts_report.short_description = "📋 Generate All-Time Attempts Report (By Student & Topic)"
+
+    def generate_weekly_attempts_report(self, request, queryset):
+        """Generate a PDF report of question attempts over the last 7 days by student and topic"""
+        # Get all students (exclude admin if needed)
+        students_to_report = queryset if queryset.exists() else StudentProfile.objects.exclude(user=request.user)
+
+        # Calculate 7 days ago
+        seven_days_ago = timezone.now() - timedelta(days=7)
+
+        # Get attempts from last 7 days for these students
+        recent_attempts = QuestionAttempt.objects.filter(
+            student__in=students_to_report,
+            attempted_at__gte=seven_days_ago
+        )
+
+        # Part 1: Overall attempts per student (sorted by attempt count)
+        student_data = []
+        for student in students_to_report:
+            attempt_count = recent_attempts.filter(student=student).count()
+            if attempt_count > 0:
+                student_data.append({
+                    'username': student.user.username,
+                    'full_name': student.user.get_full_name() or student.user.username,
+                    'total_attempts': attempt_count,
+                })
+
+        # Sort by total attempts (descending)
+        student_data.sort(key=lambda x: x['total_attempts'], reverse=True)
+
+        # Part 2: Attempts by topic for each student
+        topic_breakdown = []
+        for student in students_to_report:
+            student_attempts = recent_attempts.filter(student=student)
+            if student_attempts.count() > 0:
+                # Get topic-wise breakdown
+                topics = student_attempts.values(
+                    'question__topic__name'
+                ).annotate(
+                    attempt_count=Count('id')
+                ).order_by('question__topic__name')
+
+                if topics:
+                    topic_breakdown.append({
+                        'username': student.user.username,
+                        'full_name': student.user.get_full_name() or student.user.username,
+                        'topics': list(topics),
+                    })
+
+        # Sort topic_breakdown by total attempts (descending)
+        topic_breakdown.sort(key=lambda x: sum(t['attempt_count'] for t in x['topics']), reverse=True)
+
+        # Generate PDF
+        buffer = BytesIO()
+        doc = SimpleDocTemplate(buffer, pagesize=letter, topMargin=0.5*inch, bottomMargin=0.5*inch)
+        story = []
+        styles = getSampleStyleSheet()
+
+        # Custom styles
+        title_style = ParagraphStyle('CustomTitle', parent=styles['Heading1'], fontSize=16, textColor=colors.HexColor('#1f4788'), alignment=TA_CENTER)
+        heading_style = ParagraphStyle('CustomHeading', parent=styles['Heading2'], fontSize=12, textColor=colors.HexColor('#1f4788'))
+
+        # Title
+        story.append(Paragraph('STUDENT QUESTION ATTEMPTS REPORT - LAST 7 DAYS', title_style))
+        story.append(Spacer(1, 0.2*inch))
+
+        # Metadata
+        meta_data = [
+            ['Period:', f"{seven_days_ago.strftime('%Y-%m-%d %H:%M')} to {timezone.now().strftime('%Y-%m-%d %H:%M')}"],
+            ['Generated by:', request.user.username],
+            ['Generated at:', timezone.now().strftime('%Y-%m-%d %H:%M:%S')],
+        ]
+        if queryset.exists():
+            meta_data.append(['Filtered to:', f'{queryset.count()} selected student(s)'])
+
+        meta_table = Table(meta_data, colWidths=[1.5*inch, 5*inch])
+        meta_table.setStyle(TableStyle([
+            ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),
+            ('FONTSIZE', (0, 0), (-1, -1), 9),
+            ('TEXTCOLOR', (0, 0), (0, -1), colors.grey),
+        ]))
+        story.append(meta_table)
+        story.append(Spacer(1, 0.3*inch))
+
+        # Part 1: Overall attempts list (sorted by attempts)
+        story.append(Paragraph('PART 1: TOTAL QUESTION ATTEMPTS BY STUDENT (LAST 7 DAYS)', heading_style))
+        story.append(Spacer(1, 0.1*inch))
+
+        if student_data:
+            part1_data = [['Student', 'Username', 'Total Attempts']]
+            for student in student_data:
+                part1_data.append([
+                    student['full_name'],
+                    student['username'],
+                    str(student['total_attempts'])
+                ])
+
+            part1_table = Table(part1_data, colWidths=[2.5*inch, 2*inch, 2*inch])
+            part1_table.setStyle(TableStyle([
+                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
+                ('FONTSIZE', (0, 0), (-1, -1), 9),
+                ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#1f4788')),
+                ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+                ('ALIGN', (2, 0), (2, -1), 'CENTER'),
+                ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
+                ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#f0f0f0')]),
+            ]))
+            story.append(part1_table)
+            story.append(Spacer(1, 0.2*inch))
+
+            # Summary
+            summary_text = f"Active Students (last 7 days): {len(student_data)} | Total Attempts: {sum(s['total_attempts'] for s in student_data)}"
+            story.append(Paragraph(summary_text, styles['Normal']))
+        else:
+            story.append(Paragraph('No student attempts found in the last 7 days.', styles['Normal']))
+
+        story.append(Spacer(1, 0.4*inch))
+
+        # Part 2: Topic breakdown
+        story.append(Paragraph('PART 2: QUESTION ATTEMPTS BY TOPIC (PER STUDENT)', heading_style))
+        story.append(Spacer(1, 0.2*inch))
+
+        if topic_breakdown:
+            for i, student in enumerate(topic_breakdown):
+                if i > 0:
+                    story.append(PageBreak())
+
+                story.append(Paragraph(f"{student['full_name']} ({student['username']})", styles['Heading3']))
+                story.append(Spacer(1, 0.1*inch))
+
+                topic_data = [['Topic', 'Attempts']]
+                total_student_attempts = 0
+                for topic in student['topics']:
+                    topic_name = topic['question__topic__name'] or 'Uncategorized'
+                    attempt_count = topic['attempt_count']
+                    total_student_attempts += attempt_count
+                    topic_data.append([topic_name, str(attempt_count)])
+
+                # Add total row
+                topic_data.append(['TOTAL', str(total_student_attempts)])
+
+                topic_table = Table(topic_data, colWidths=[4.5*inch, 2*inch])
+                topic_table.setStyle(TableStyle([
+                    ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                    ('FONTNAME', (0, 1), (-1, -2), 'Helvetica'),
+                    ('FONTNAME', (0, -1), (-1, -1), 'Helvetica-Bold'),
+                    ('FONTSIZE', (0, 0), (-1, -1), 9),
+                    ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#1f4788')),
+                    ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+                    ('BACKGROUND', (0, -1), (-1, -1), colors.HexColor('#e8f4f8')),
+                    ('ALIGN', (1, 0), (1, -1), 'CENTER'),
+                    ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
+                    ('ROWBACKGROUNDS', (0, 1), (-1, -2), [colors.white, colors.HexColor('#f0f0f0')]),
+                ]))
+                story.append(topic_table)
+                story.append(Spacer(1, 0.2*inch))
+        else:
+            story.append(Paragraph('No topic data available.', styles['Normal']))
+
+        # Build PDF
+        doc.build(story)
+        buffer.seek(0)
+
+        # Return as downloadable PDF
+        response = HttpResponse(buffer.getvalue(), content_type='application/pdf')
+        filename = f'student_attempts_7days_{timezone.now().strftime("%Y%m%d_%H%M%S")}.pdf'
+        response['Content-Disposition'] = f'attachment; filename="{filename}"'
+        return response
+    generate_weekly_attempts_report.short_description = "📅 Generate 7-Day Attempts Report (By Student & Topic)"
 
 
 @admin.register(QuestionAttempt)
