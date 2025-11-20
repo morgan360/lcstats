@@ -52,14 +52,21 @@ class NoteAdmin(admin.ModelAdmin):
 # ---------- InfoBotQuery Admin ----------
 @admin.register(InfoBotQuery)
 class InfoBotQueryAdmin(admin.ModelAdmin):
-    list_display = ("created_at", "topic_slug", "source_type", "confidence", "short_question")
+    list_display = ("created_at", "topic_slug", "source_type", "confidence", "short_question", "short_answer")
     list_filter = ("topic_slug", "source_type")
     search_fields = ("question", "answer", "sources")
     ordering = ("-created_at",)
+    readonly_fields = ("created_at", "question", "answer", "confidence", "sources", "source_type", "topic_slug")
 
     def short_question(self, obj):
         return (obj.question[:80] + "…") if len(obj.question) > 80 else obj.question
     short_question.short_description = "Question"
+
+    def short_answer(self, obj):
+        if not obj.answer:
+            return "(no answer)"
+        return (obj.answer[:100] + "…") if len(obj.answer) > 100 else obj.answer
+    short_answer.short_description = "Answer"
 
     # Optional: color-code confidence for quick visual scanning
     def confidence_display(self, obj):
