@@ -3,11 +3,11 @@ from django.contrib import messages
 from django.core.mail import send_mail
 from django.conf import settings
 from django.db.models import Count
-from django.contrib.sessions.models import Session
 from django.utils import timezone
-from django.contrib.auth.models import User
+from datetime import timedelta
 from .forms import ContactForm
 from interactive_lessons.models import Topic, Question
+from students.models import UserSession
 
 
 def home(request):
@@ -20,17 +20,11 @@ def home(request):
     ).filter(question_count__gt=0).order_by('-question_count')
 
     # Count active logged-in students
-    # Get all non-expired sessions
-    active_sessions = Session.objects.filter(expire_date__gte=timezone.now())
-    user_ids = []
-    for session in active_sessions:
-        data = session.get_decoded()
-        user_id = data.get('_auth_user_id')
-        if user_id:
-            user_ids.append(int(user_id))
-
-    # Count unique logged-in users
-    active_users_count = len(set(user_ids))
+    # Consider a user "active" if they had activity in the last 3 hours
+    activity_threshold = timezone.now() - timedelta(hours=3)
+    active_users_count = UserSession.objects.filter(
+        last_activity__gte=activity_threshold
+    ).values('user').distinct().count()
 
     context = {
         'total_questions': total_questions,
