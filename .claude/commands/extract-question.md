@@ -94,7 +94,9 @@ Keep it concise (2-4 sentences) and educational for revision purposes]
 
 6. **Field Mapping Reference:**
    - **Question.hint** → General hint for all parts (theory/formula reminder)
-   - **QuestionPart.expected_format** → Answer format specification (e.g., "decimal to 2 places")
+   - **QuestionPart.expected_format** → Answer format specification (e.g., "decimal to 2 places", "Integer value", "Surd form")
+     - **IMPORTANT:** Do NOT include actual answer values in expected_format (e.g., DON'T write "x=√2, y=2√2" - instead write "Surd form")
+     - Keep it generic and descriptive of the format only
    - **QuestionPart.prompt** → The actual question text for each part
    - **QuestionPart.answer** → The correct answer
    - **QuestionPart.solution** → Worked solution for that part (in steps)

@@ -23,7 +23,7 @@
             <h2 style="color: #004aad; margin-bottom: 20px;">What You'll Get</h2>
 
             <div style="background-color: #f7f7f7; border-left: 4px solid #004aad; padding: 15px; margin-bottom: 15px; border-radius: 4px;">
-                <h3 style="color: #004aad; margin: 0 0 8px 0; font-size: 1.1em;">📚 112 Practice Questions</h3>
+                <h3 style="color: #004aad; margin: 0 0 8px 0; font-size: 1.1em;">📚 {{ total_questions }} Practice Questions</h3>
                 <p style="margin: 0; line-height: 1.6;">
                     Comprehensive coverage of all Leaving Cert Honours Maths topics including Algebra,
                     Probability, Statistics, Calculus, and more.
@@ -59,6 +59,14 @@
                 <p style="margin: 0; line-height: 1.6;">
                     Need extra help? Contact your teacher directly from any question page for
                     personalized assistance.
+                </p>
+            </div>
+
+            <div style="background-color: #f7f7f7; border-left: 4px solid #009688; padding: 15px; margin-bottom: 15px; border-radius: 4px;">
+                <h3 style="color: #009688; margin: 0 0 8px 0; font-size: 1.1em;">👥 {{ active_users_count }} Student{{ active_users_count|pluralize }} Online</h3>
+                <p style="margin: 0; line-height: 1.6;">
+                    Join your classmates who are actively learning right now. Study together and
+                    see how you compare with others on the platform.
                 </p>
             </div>
         </div>
@@ -153,30 +161,13 @@
         <h2 style="color: #004aad; text-align: center; margin-bottom: 25px;">Available Topics</h2>
 
         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
-            <div style="background-color: white; padding: 15px; border-radius: 6px; border-left: 4px solid #004aad; text-align: center;">
-                <strong>Probability</strong><br>
-                <span style="color: #666; font-size: 0.9em;">26 questions</span>
-            </div>
-            <div style="background-color: white; padding: 15px; border-radius: 6px; border-left: 4px solid #00994c; text-align: center;">
-                <strong>Descriptive Statistics</strong><br>
-                <span style="color: #666; font-size: 0.9em;">37 questions</span>
-            </div>
-            <div style="background-color: white; padding: 15px; border-radius: 6px; border-left: 4px solid #cc0000; text-align: center;">
-                <strong>Complex Numbers</strong><br>
-                <span style="color: #666; font-size: 0.9em;">22 questions</span>
-            </div>
-            <div style="background-color: white; padding: 15px; border-radius: 6px; border-left: 4px solid #ff9800; text-align: center;">
-                <strong>Inferential Statistics</strong><br>
-                <span style="color: #666; font-size: 0.9em;">12 questions</span>
-            </div>
-            <div style="background-color: white; padding: 15px; border-radius: 6px; border-left: 4px solid #9c27b0; text-align: center;">
-                <strong>Algebra</strong><br>
-                <span style="color: #666; font-size: 0.9em;">7 questions</span>
-            </div>
-            <div style="background-color: white; padding: 15px; border-radius: 6px; border-left: 4px solid #009688; text-align: center;">
-                <strong>And More...</strong><br>
-                <span style="color: #666; font-size: 0.9em;">Calculus, Finance, etc.</span>
-            </div>
+            {% for topic in topics_with_counts %}
+                {% cycle '#004aad' '#00994c' '#cc0000' '#ff9800' '#9c27b0' '#009688' '#3f51b5' '#e91e63' as border_color silent %}
+                <div style="background-color: white; padding: 15px; border-radius: 6px; border-left: 4px solid {{ border_color }}; text-align: center;">
+                    <strong>{{ topic.name }}</strong><br>
+                    <span style="color: #666; font-size: 0.9em;">{{ topic.question_count }} question{{ topic.question_count|pluralize }}</span>
+                </div>
+            {% endfor %}
         </div>
     </div>
 
