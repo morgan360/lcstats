@@ -6,7 +6,9 @@ from django.conf import settings
 from django.db.models import Count
 from django.http import JsonResponse
 from django.utils import timezone
+from django.utils.safestring import mark_safe
 from datetime import timedelta
+import markdown
 from .forms import ContactForm
 from .models import NewsItem
 from interactive_lessons.models import Topic, Question
@@ -29,8 +31,27 @@ def home(request):
         last_activity__gte=activity_threshold
     ).values('user').distinct().count()
 
-    # Get active news items
+    # Get active news items and render their markdown content
     news_items = NewsItem.get_active_for_user(request.user if request.user.is_authenticated else None)
+
+    # Pre-render markdown to HTML for each news item
+    for item in news_items:
+        # Use markdown-katex extension if available, otherwise plain markdown
+        try:
+            item.content_html = mark_safe(
+                markdown.markdown(
+                    item.content,
+                    extensions=['markdown_katex', 'fenced_code', 'tables', 'nl2br']
+                )
+            )
+        except:
+            # Fallback to basic markdown if markdown-katex is not available
+            item.content_html = mark_safe(
+                markdown.markdown(
+                    item.content,
+                    extensions=['fenced_code', 'tables', 'nl2br']
+                )
+            )
 
     context = {
         'total_questions': total_questions,
