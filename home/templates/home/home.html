@@ -1,4 +1,5 @@
 {% extends "_base.html" %}
+{% load markdownify %}
 {% block title %}Home | LCAI Maths{% endblock %}
 
 {% block content %}
@@ -14,6 +15,96 @@
             instant feedback, and personalized hints.
         </p>
     </div>
+
+    <!-- News & Announcements Section -->
+    {% if news_items %}
+    <div style="margin-bottom: 40px;">
+        <h2 style="color: #004aad; margin-bottom: 20px; text-align: center;">News & Announcements</h2>
+        {% for item in news_items %}
+        <div id="news-{{ item.id }}" style="background-color: #fff; border: 2px solid #e0e0e0; border-radius: 8px; padding: 20px; margin-bottom: 20px; position: relative; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+            <!-- Category and Pinned Badges -->
+            <div style="margin-bottom: 10px;">
+                {% if item.is_pinned %}
+                <span style="background: linear-gradient(135deg, #ff6b6b, #ee5a52); color: white; padding: 4px 10px; border-radius: 4px; font-size: 0.85em; font-weight: 600; margin-right: 8px; display: inline-block;">
+                    📌 PINNED
+                </span>
+                {% endif %}
+                {% if item.category == 'new_content' %}
+                <span style="background: #4caf50; color: white; padding: 4px 10px; border-radius: 4px; font-size: 0.85em; font-weight: 600; display: inline-block;">
+                    {{ item.get_category_display }}
+                </span>
+                {% elif item.category == 'tips' %}
+                <span style="background: #ff9800; color: white; padding: 4px 10px; border-radius: 4px; font-size: 0.85em; font-weight: 600; display: inline-block;">
+                    {{ item.get_category_display }}
+                </span>
+                {% elif item.category == 'system' %}
+                <span style="background: #9c27b0; color: white; padding: 4px 10px; border-radius: 4px; font-size: 0.85em; font-weight: 600; display: inline-block;">
+                    {{ item.get_category_display }}
+                </span>
+                {% elif item.category == 'event' %}
+                <span style="background: #f44336; color: white; padding: 4px 10px; border-radius: 4px; font-size: 0.85em; font-weight: 600; display: inline-block;">
+                    {{ item.get_category_display }}
+                </span>
+                {% else %}
+                <span style="background: #2196f3; color: white; padding: 4px 10px; border-radius: 4px; font-size: 0.85em; font-weight: 600; display: inline-block;">
+                    {{ item.get_category_display }}
+                </span>
+                {% endif %}
+            </div>
+
+            <!-- Title -->
+            <h3 style="color: #333; margin: 10px 0; font-size: 1.4em;">{{ item.title }}</h3>
+
+            <!-- Content -->
+            <div style="color: #555; line-height: 1.7; margin: 15px 0;">
+                {{ item.content|markdownify }}
+            </div>
+
+            <!-- Date -->
+            <div style="color: #999; font-size: 0.9em; margin-top: 15px;">
+                <em>{{ item.publish_date|date:"F j, Y" }}</em>
+            </div>
+
+            <!-- Dismiss Button (only for logged-in users and dismissible items) -->
+            {% if user.is_authenticated and item.is_dismissible %}
+            <button onclick="dismissNews({{ item.id }})"
+                    style="position: absolute; top: 15px; right: 15px; background: #e74c3c; color: white; border: none; padding: 6px 12px; cursor: pointer; border-radius: 4px; font-size: 0.85em; font-weight: 600; transition: background 0.3s;">
+                ✕ Dismiss
+            </button>
+            {% endif %}
+        </div>
+        {% endfor %}
+    </div>
+
+    <script>
+    function dismissNews(newsId) {
+        if (!confirm('Dismiss this news item? You won\'t see it again.')) return;
+
+        fetch(`/news/dismiss/${newsId}/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': '{{ csrf_token }}',
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                const newsElement = document.getElementById(`news-${newsId}`);
+                newsElement.style.transition = 'opacity 0.3s';
+                newsElement.style.opacity = '0';
+                setTimeout(() => newsElement.remove(), 300);
+            } else {
+                alert(data.error || 'Could not dismiss this item');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('An error occurred');
+        });
+    }
+    </script>
+    {% endif %}
 
     <!-- Two Column Layout: Features + Login -->
     <div style="display: grid; grid-template-columns: 1.5fr 1fr; gap: 40px; margin-bottom: 40px;">

@@ -1,11 +1,14 @@
-from django.shortcuts import render, redirect
+from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
+from django.contrib.auth.decorators import login_required
 from django.core.mail import send_mail
 from django.conf import settings
 from django.db.models import Count
+from django.http import JsonResponse
 from django.utils import timezone
 from datetime import timedelta
 from .forms import ContactForm
+from .models import NewsItem
 from interactive_lessons.models import Topic, Question
 from students.models import UserSession
 
@@ -26,10 +29,14 @@ def home(request):
         last_activity__gte=activity_threshold
     ).values('user').distinct().count()
 
+    # Get active news items
+    news_items = NewsItem.get_active_for_user(request.user if request.user.is_authenticated else None)
+
     context = {
         'total_questions': total_questions,
         'topics_with_counts': topics_with_counts,
         'active_users_count': active_users_count,
+        'news_items': news_items,
     }
     return render(request, "home/home.html", context)
 
@@ -78,3 +85,21 @@ Message:
         form = ContactForm()
 
     return render(request, "home/contact.html", {"form": form})
+
+
+@login_required
+def dismiss_news_item(request, news_id):
+    """Allow students to dismiss news items (AJAX endpoint)"""
+    if request.method != 'POST':
+        return JsonResponse({'error': 'POST required'}, status=405)
+
+    news_item = get_object_or_404(NewsItem, id=news_id)
+
+    # Check if dismissible
+    if not news_item.is_dismissible:
+        return JsonResponse({'error': 'This news item cannot be dismissed'}, status=403)
+
+    # Add user to dismissed_by list
+    news_item.dismissed_by.add(request.user)
+
+    return JsonResponse({'success': True, 'message': 'News item dismissed'})
