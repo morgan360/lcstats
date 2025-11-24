@@ -83,10 +83,11 @@ def select_topic(request):
     from notes.models import Note
     from revision.models import RevisionModule
     topics = Topic.objects.all().order_by("name")
-    # Annotate topics with note counts and revision module info
+    # Annotate topics with note counts, question counts, and revision module info
     topics_with_notes = []
     for topic in topics:
         note_count = Note.objects.filter(topic=topic).count()
+        question_count = Question.objects.filter(topic=topic).count()
         # Check if this topic has a published revision module
         revision_module = RevisionModule.objects.filter(
             topic=topic,
@@ -96,6 +97,7 @@ def select_topic(request):
             'topic': topic,
             'has_notes': note_count > 0,
             'note_count': note_count,
+            'question_count': question_count,
             'has_revision': revision_module is not None,
             'revision_module': revision_module
         })

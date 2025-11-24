@@ -94,9 +94,21 @@ Keep it concise (2-4 sentences) and educational for revision purposes]
 
 6. **Field Mapping Reference:**
    - **Question.hint** → General hint for all parts (theory/formula reminder)
-   - **QuestionPart.expected_format** → Answer format specification (e.g., "decimal to 2 places", "Integer value", "Surd form")
-     - **IMPORTANT:** Do NOT include actual answer values in expected_format (e.g., DON'T write "x=√2, y=2√2" - instead write "Surd form")
-     - Keep it generic and descriptive of the format only
+   - **QuestionPart.expected_format** → Answer format specification with examples
+     - **CRITICAL:** ALWAYS include example answers in the format, BUT use DIFFERENT numbers/values than the actual answer
+     - **CRITICAL:** ALL mathematical expressions in expected_format MUST use KaTeX formatting with `$...$` delimiters
+     - Format pattern: "Description (e.g., example1 or example2)"
+     - Examples by type:
+       - Single numeric: "Single value (e.g., 7 or -5)" [NOT the actual answer]
+       - Multiple values: "Two values separated by comma (e.g., 3,7 or -1/3,5)" [NOT the actual answers]
+       - Factored form: "Factored form (e.g., `$(x-5)(x+3)$` or `$(x+a)(x+b)$`)" [NOT the actual factorization - USE KATEX]
+       - Difference of cubes: "Factored form (e.g., `$(y-5)(y^2+5y+25)$` or `$(a-b)(a^2+ab+b^2)$`)" [USE KATEX]
+       - Formula with square root: "Expression with square root (e.g., `$\sqrt{\frac{3F-\alpha-5V}{n}}$`)" [NOT the actual formula - USE KATEX]
+       - Formula with cube root: "Expression with cube root (e.g., `$\sqrt[3]{\frac{5A}{2\pi}}$` or `$\sqrt[3]{\frac{7B}{3C}}$`)" [USE KATEX]
+       - Fraction expression: "Fraction expression (e.g., `$\frac{aCd}{m}$` or `$\frac{pQs}{n}$`)" [USE KATEX]
+       - Equating coefficients: "Three values (e.g., a=7,b=5,c=-2)" [NOT the actual coefficients - no KaTeX needed for simple values]
+     - **IMPORTANT:** Do NOT use the actual answer in the examples - this would give away the answer to students
+     - **IMPORTANT:** Wrap ALL mathematical expressions in `$...$` so they render properly with KaTeX
    - **QuestionPart.prompt** → The actual question text for each part
    - **QuestionPart.answer** → The correct answer
    - **QuestionPart.solution** → Worked solution for that part (in steps)
@@ -235,7 +247,7 @@ QuestionPart.objects.create(
     label="(a)",
     prompt=r"""[Part (a) question text with KaTeX using $...$]""",
     answer=r"""[Answer]""",
-    expected_format="""[Expected format - e.g., "Integer value", "Decimal to 3 places"]""",
+    expected_format="""[Expected format with examples using DIFFERENT numbers - e.g., "Single value (e.g., 7 or -5)"]""",
     solution=r"""**Step 1:** [Describe what we're doing]
 
 [Math working with $...$]
@@ -275,9 +287,12 @@ print(f"✅ Created Question {question.id}: {question}")
 1. **Use raw strings** (r"""...""") for all text fields containing backslashes (KaTeX)
 2. **Use $ delimiters** for inline math, NOT \(...\)
 3. **Format solutions in steps** with **Step 1:**, **Step 2:** etc.
-4. **expected_format** should describe the answer format, NOT solving instructions
+4. **expected_format** MUST:
+   - Include examples with DIFFERENT numbers than the actual answer (students see this field)
+   - Use KaTeX formatting `$...$` for ALL mathematical expressions in the examples
+   - Examples: `$(x-5)(x+3)$`, `$\sqrt{x}$`, `$\frac{a}{b}$`, NOT plain text like (x-5)(x+3)
 5. **Only set exam metadata** if it's an actual exam question
-6. **Escape backslashes** properly: use single backslash in raw strings
+6. **Escape backslashes** properly: use single backslash in raw strings, but use `\$` in expected_format to escape dollar signs
 
 ## Output Format
 
