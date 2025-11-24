@@ -134,7 +134,7 @@
         <div>Topic</div>
         <div style="text-align: center;">Interactive Quiz</div>
         <div style="text-align: center;">Revision Notes</div>
-        <div style="text-align: center;">Study Resources</div>
+        <div style="text-align: center;">Cheat Sheets</div>
     </div>
 
     {% for item in topics_with_notes %}
@@ -172,13 +172,13 @@
         </div>
 
         <div style="display: flex; justify-content: center;">
-            {% if item.has_notes %}
-            <a href="{% url 'notes_topic' item.topic.slug %}" class="resource-btn btn-resources">
+            {% if item.has_cheatsheets %}
+            <a href="{% url 'cheatsheets_topic' item.topic.slug %}" class="resource-btn btn-resources">
                 <svg class="resource-icon" fill="currentColor" viewBox="0 0 24 24">
                     <path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20M10,19L12,15H9V10H15V15L13,19H10Z"/>
                 </svg>
-                Resources
-                <span class="count-badge">{{ item.note_count }}</span>
+                View
+                <span class="count-badge">{{ item.cheatsheet_count }}</span>
             </a>
             {% else %}
             <span class="resource-btn btn-disabled">
