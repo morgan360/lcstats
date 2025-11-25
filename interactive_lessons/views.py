@@ -112,11 +112,193 @@ def select_topic(request):
 
 
 @login_required
-def topic_quiz(request, topic_slug):
-    """Redirect to the first question of a topic's quiz"""
+def section_list(request, topic_slug):
+    """Display all sections within a topic with completion status"""
+    from interactive_lessons.models import Section
+    from students.models import QuestionAttempt
+
     topic = get_object_or_404(Topic, slug=topic_slug)
-    # Redirect to the first question (number=1) for this topic
-    return redirect('question_view', topic_id=topic.id, number=1)
+    sections = Section.objects.filter(topic=topic).prefetch_related('questions')
+
+    # Calculate completion status for each section
+    section_data = []
+    for section in sections:
+        questions = section.questions.all()
+        total_questions = questions.count()
+
+        if total_questions > 0:
+            # Count how many questions have been attempted by this student
+            attempted_question_ids = QuestionAttempt.objects.filter(
+                student=request.user.studentprofile,
+                question__in=questions
+            ).values_list('question_id', flat=True).distinct()
+
+            completed_questions = len(attempted_question_ids)
+            completion_percentage = int((completed_questions / total_questions) * 100)
+        else:
+            completed_questions = 0
+            completion_percentage = 0
+
+        section_data.append({
+            'section': section,
+            'total_questions': total_questions,
+            'completed_questions': completed_questions,
+            'completion_percentage': completion_percentage,
+            'is_completed': completion_percentage == 100
+        })
+
+    context = {
+        'topic': topic,
+        'section_data': section_data,
+    }
+
+    return render(request, 'interactive_lessons/section_list.html', context)
+
+
+@login_required
+def section_quiz(request, topic_slug, section_slug):
+    """Start quiz for a specific section"""
+    from interactive_lessons.models import Section
+
+    topic = get_object_or_404(Topic, slug=topic_slug)
+    section = get_object_or_404(Section, slug=section_slug, topic=topic)
+
+    # Get the first question in this section
+    first_question = section.questions.order_by('order').first()
+
+    if first_question:
+        return redirect('section_question_view',
+                       topic_slug=topic_slug,
+                       section_slug=section_slug,
+                       number=1)
+    else:
+        messages.warning(request, f"No questions available in {section.name}")
+        return redirect('section_list', topic_slug=topic_slug)
+
+
+@login_required
+def section_question_view(request, topic_slug, section_slug, number):
+    """
+    Question view filtered to a specific section.
+    Similar to question_view but only shows questions from the selected section.
+    """
+    from interactive_lessons.models import Section
+
+    topic = get_object_or_404(Topic, slug=topic_slug)
+    section = get_object_or_404(Section, slug=section_slug, topic=topic)
+    questions = section.questions.prefetch_related("parts").order_by("order")
+    total = questions.count()
+
+    # --- Bounds check ---
+    if number < 1 or number > total:
+        return redirect("section_question_view",
+                       topic_slug=topic_slug,
+                       section_slug=section_slug,
+                       number=1)
+
+    question = questions[number - 1]
+    parts = question.parts.all().order_by("order")
+
+    results = {}
+    student_answers = {}
+    completed_parts = set()
+
+    # ------------------------------------------------------------------
+    #  POST: grade a single QuestionPart (AJAX submission)
+    # ------------------------------------------------------------------
+    if request.method == "POST":
+        part_id = request.POST.get("part_id")
+        if part_id:
+            part = get_object_or_404(QuestionPart, id=part_id)
+            answer = request.POST.get(f"answer_{part.id}", "").strip()
+            student_answers[part.id] = answer
+
+            if answer:
+                # --- Grade the submission ---
+                result = grade_submission(
+                    question_part_id=part.id,
+                    student_answer=answer,
+                    hint_used=False,
+                    solution_used=False,
+                ) or {}
+
+                results[part.id] = result
+                completed_parts.add(part.id)
+
+                # --- Save attempt for progress tracking ---
+                try:
+                    QuestionAttempt.objects.create(
+                        student=request.user.studentprofile,
+                        question=part.question,
+                        question_part=part,
+                        student_answer=answer,
+                        score_awarded=result.get("score", 0),
+                        is_correct=result.get("is_correct", False),
+                    )
+                except Exception as e:
+                    print(f"[Progress Tracking Error] {e}")
+
+                # --- AJAX JSON feedback response ---
+                if request.headers.get("x-requested-with") == "XMLHttpRequest":
+                    return JsonResponse({
+                        "is_correct": result.get("is_correct", False),
+                        "score": result.get("score", 0),
+                        "feedback": result.get("feedback", "No feedback generated."),
+                    })
+
+        # --- Handle "Next" button ---
+        if "next" in request.POST:
+            if number < total:
+                return redirect("section_question_view",
+                               topic_slug=topic_slug,
+                               section_slug=section_slug,
+                               number=number + 1)
+            else:
+                # Section complete, redirect back to section list
+                messages.success(request, f"Section '{section.name}' completed!")
+                return redirect("section_list", topic_slug=topic_slug)
+
+    # ------------------------------------------------------------------
+    #  GET or full-page render
+    # ------------------------------------------------------------------
+    # Render question and part content (Math/KaTeX compatible)
+    question.hint = render_math_markdown(question.hint)
+    for part in parts:
+        part.prompt = render_math_markdown(part.prompt)
+        part.expected_format = render_math_markdown(part.expected_format or "")
+        part.solution = render_math_markdown(part.solution or "")
+
+    question.solution = render_math_markdown(question.solution or "")
+
+    # Optional: check if all parts were completed
+    all_parts_answered = all(
+        QuestionAttempt.objects.filter(
+            student=request.user.studentprofile, question_part=p
+        ).exists()
+        for p in parts
+    )
+
+    context = {
+        "topic": topic,
+        "section": section,
+        "question": question,
+        "parts": parts,
+        "index": number,
+        "total": total,
+        "questions": questions,
+        "student_answers": student_answers,
+        "results": results,
+        "completed_parts": completed_parts,
+        "all_parts_answered": all_parts_answered,
+    }
+
+    return render(request, "interactive_lessons/quiz.html", context)
+
+
+@login_required
+def topic_quiz(request, topic_slug):
+    """Redirect to section selection for the topic"""
+    return redirect('section_list', topic_slug=topic_slug)
 
 
 def topic_complete(request, topic_name):

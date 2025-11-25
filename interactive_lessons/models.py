@@ -21,6 +21,31 @@ class Topic(models.Model):
         ordering = ("name",)
 
 
+class Section(models.Model):
+    """
+    Represents a section within a topic (e.g., 'Sine Rule' within 'Trigonometry').
+    All questions must belong to a section for better organization and navigation.
+    """
+    name = models.CharField(max_length=200)
+    slug = models.SlugField(max_length=255, unique=True, blank=True)
+    topic = models.ForeignKey(Topic, on_delete=models.CASCADE, related_name="sections")
+    order = models.PositiveIntegerField(default=0)
+
+    def save(self, *args, **kwargs):
+        if not self.slug:
+            # Create slug from topic name + section name to ensure uniqueness
+            base_slug = slugify(f"{self.topic.name}-{self.name}")
+            self.slug = base_slug
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"{self.topic.name} - {self.name}"
+
+    class Meta:
+        ordering = ("topic", "order")
+        unique_together = ("topic", "name")
+
+
 class Question(models.Model):
     """
     Acts as a container or stem for one or more QuestionParts.
@@ -33,7 +58,8 @@ class Question(models.Model):
 
     topic = models.ForeignKey(Topic, on_delete=models.CASCADE, related_name="questions")
     order = models.PositiveIntegerField(default=0)
-    section = models.CharField(max_length=200, blank=True, null=True)
+    section_old = models.CharField(max_length=200, blank=True, null=True, help_text="DEPRECATED: Old text-based section field")
+    section = models.ForeignKey(Section, on_delete=models.PROTECT, related_name="questions", null=True, blank=True)
 
     # Optional introductory text or image (e.g. for a multi-part question)
     hint = models.TextField(blank=True, null=True, help_text="Hint for this question (applies to all parts).")

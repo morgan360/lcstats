@@ -5,15 +5,43 @@ from django.http import HttpResponseRedirect
 from django.db import models
 from django.forms import Textarea
 
-from .models import Topic, Question, QuestionPart, StudentInquiry
+from .models import Topic, Section, Question, QuestionPart, StudentInquiry
 
 
 # --- Topic Admin --------------------------------------------------------------
 
 @admin.register(Topic)
 class TopicAdmin(admin.ModelAdmin):
-    list_display = ["name"]
+    list_display = ["name", "slug"]
     search_fields = ["name"]
+    readonly_fields = ["slug"]
+
+
+# --- Section Admin ------------------------------------------------------------
+
+@admin.register(Section)
+class SectionAdmin(admin.ModelAdmin):
+    list_display = ["name", "topic", "order", "question_count"]
+    list_editable = ["order"]
+    list_filter = ["topic"]
+    search_fields = ["name", "topic__name"]
+    ordering = ["topic__name", "order"]
+    readonly_fields = ["slug", "question_count"]
+
+    fieldsets = (
+        ("Basic Information", {
+            "fields": ("name", "slug", "topic", "order")
+        }),
+        ("Statistics", {
+            "fields": ("question_count",),
+            "classes": ("collapse",)
+        }),
+    )
+
+    def question_count(self, obj):
+        """Display the number of questions in this section"""
+        return obj.questions.count()
+    question_count.short_description = "Questions"
 
 
 # --- Inline QuestionPart Admin -------------------------------------------------
