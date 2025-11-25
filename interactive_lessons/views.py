@@ -142,7 +142,7 @@ def render_math_markdown(text):
 @login_required
 def question_view(request, topic_id, number):
     topic = get_object_or_404(Topic, id=topic_id)
-    questions = topic.questions.prefetch_related("parts").order_by("id")
+    questions = topic.questions.prefetch_related("parts").order_by("order")
     total = questions.count()
 
     # --- Bounds check ---
