@@ -69,9 +69,21 @@ def dashboard_view(request):
 
 
 class LogoutViewAllowGet(LogoutView):
-    # ✅ allow GET at the dispatcher level
+    """
+    Custom logout view that allows GET requests (for simple link-based logout)
+    """
     http_method_names = ["get", "post", "head", "options"]
 
     def get(self, request, *args, **kwargs):
-        # Treat GET like POST so it actually logs out
-        return self.post(request, *args, **kwargs)
+        """Handle GET request by calling the parent post method"""
+        from django.contrib.auth import logout
+        from django.http import HttpResponseRedirect
+
+        # Perform logout
+        logout(request)
+
+        # Get redirect URL from next_page or default
+        next_page = self.get_next_page()
+        if next_page:
+            return HttpResponseRedirect(next_page)
+        return HttpResponseRedirect(self.get_default_redirect_url())

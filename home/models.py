@@ -95,8 +95,8 @@ class NewsItem(models.Model):
             models.Q(expiry_date__isnull=True) | models.Q(expiry_date__gt=now)
         )
 
-        # Exclude dismissed items (only if dismissible)
-        if user.is_authenticated:
+        # Exclude dismissed items (only if dismissible and user is authenticated)
+        if user and user.is_authenticated:
             items = items.exclude(
                 is_dismissible=True,
                 dismissed_by=user
