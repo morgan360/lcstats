@@ -75,15 +75,16 @@ class LogoutViewAllowGet(LogoutView):
     http_method_names = ["get", "post", "head", "options"]
 
     def get(self, request, *args, **kwargs):
-        """Handle GET request by calling the parent post method"""
+        """Handle GET request by performing logout and redirecting"""
         from django.contrib.auth import logout
+        from django.shortcuts import resolve_url
         from django.http import HttpResponseRedirect
 
         # Perform logout
         logout(request)
 
-        # Get redirect URL from next_page or default
-        next_page = self.get_next_page()
-        if next_page:
-            return HttpResponseRedirect(next_page)
-        return HttpResponseRedirect(self.get_default_redirect_url())
+        # Get redirect URL from next_page attribute or use default
+        next_page = self.next_page or self.get_success_url()
+        next_page = resolve_url(next_page)
+
+        return HttpResponseRedirect(next_page)
