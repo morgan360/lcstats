@@ -76,15 +76,17 @@ class QuestionPartInline(admin.StackedInline):
 @admin.register(Question)
 class QuestionAdmin(admin.ModelAdmin):
     list_display = (
+        "question_id_display",
         "topic",
         "order",
         "section",
         "exam_badge",
-        "preview_image",
-        "preview_solution_image",
+        "has_image_indicator",
+        "has_solution_indicator",
+        "parts_count",
     )
     list_editable = ["section", "order"]
-    list_select_related = ("topic",)
+    list_select_related = ("topic", "section")
     list_filter = (
         "topic",
         "section",
@@ -92,9 +94,13 @@ class QuestionAdmin(admin.ModelAdmin):
         "exam_year",
         "paper_type",
     )
-    search_fields = ("hint", "section", "source_pdf_name")
+    search_fields = ("id", "hint", "source_pdf_name", "topic__name", "section__name")
     ordering = ("topic__name", "order")
     save_on_top = True
+    list_per_page = 50  # Pagination for better performance
+
+    # Add actions for bulk operations
+    actions = ['duplicate_questions']
 
     fieldsets = (
         ("Basic Information", {
@@ -115,6 +121,11 @@ class QuestionAdmin(admin.ModelAdmin):
 
     inlines = [QuestionPartInline]
 
+    def get_queryset(self, request):
+        """Optimize queryset with prefetch_related to reduce database queries"""
+        qs = super().get_queryset(request)
+        return qs.select_related('topic', 'section').prefetch_related('parts')
+
     # --- Exam Badge Display ---------------------------------------------------
 
     def exam_badge(self, obj):
@@ -131,23 +142,33 @@ class QuestionAdmin(admin.ModelAdmin):
         return "-"
     exam_badge.short_description = "Exam"
 
-    # --- Image previews -------------------------------------------------------
+    # --- Lightweight indicators (faster than loading images) ------------------
 
-    def preview_image(self, obj):
-        """Thumbnail preview for the question image."""
-        if obj.image:
-            return format_html('<img src="{}" style="max-height:60px;">', obj.image.url)
-        elif obj.image_url:
-            return format_html('<img src="{}" style="max-height:60px;">', obj.image_url)
+    def has_image_indicator(self, obj):
+        """Show icon if question has an image (faster than loading thumbnails)"""
+        if obj.image or obj.image_url:
+            return format_html('✅')
         return "-"
-    preview_image.short_description = "Question Image"
+    has_image_indicator.short_description = "Image"
 
-    def preview_solution_image(self, obj):
-        """Thumbnail preview for the solution image."""
-        if obj.solution_image:
-            return format_html('<img src="{}" style="max-height:60px;">', obj.solution_image.url)
+    def has_solution_indicator(self, obj):
+        """Show icon if question has a solution (faster than loading thumbnails)"""
+        if obj.solution or obj.solution_image:
+            return format_html('✅')
         return "-"
-    preview_solution_image.short_description = "Solution Image"
+    has_solution_indicator.short_description = "Solution"
+
+    def question_id_display(self, obj):
+        """Display question ID for easy reference and searching"""
+        return f"#{obj.id}"
+    question_id_display.short_description = "ID"
+    question_id_display.admin_order_field = "id"
+
+    def parts_count(self, obj):
+        """Show number of question parts"""
+        # Use prefetched parts to avoid extra queries
+        return obj.parts.count() if hasattr(obj, 'parts') else 0
+    parts_count.short_description = "Parts"
 
     # --- Custom Save + Next Navigation ----------------------------------------
 

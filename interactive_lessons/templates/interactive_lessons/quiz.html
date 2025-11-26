@@ -170,24 +170,45 @@
     <!-- Navigation -->
     <div style="max-width:750px; margin:0 auto; display:flex; justify-content:space-between; align-items:center;">
         {% if index > 1 %}
-            <a href="{% url 'question_view' topic.id index|add:'-1' %}" class="btn"
-               style="background-color:#004aad; color:white; padding:6px 14px; border-radius:4px; text-decoration:none;">
-                ⬅ Previous
-            </a>
+            {% if section %}
+                <a href="{% url 'section_question_view' topic.slug section.slug index|add:'-1' %}" class="btn"
+                   style="background-color:#004aad; color:white; padding:6px 14px; border-radius:4px; text-decoration:none;">
+                    ⬅ Previous
+                </a>
+            {% else %}
+                <a href="{% url 'question_view' topic.id index|add:'-1' %}" class="btn"
+                   style="background-color:#004aad; color:white; padding:6px 14px; border-radius:4px; text-decoration:none;">
+                    ⬅ Previous
+                </a>
+            {% endif %}
         {% else %}
             <span></span>
         {% endif %}
 
         {% if index < total %}
-            <a href="{% url 'question_view' topic.id index|add:'1' %}" class="btn"
-               style="background-color:#00994c; color:white; padding:6px 14px; border-radius:4px; text-decoration:none;">
-                Skip ➡
-            </a>
+            {% if section %}
+                <a href="{% url 'section_question_view' topic.slug section.slug index|add:'1' %}" class="btn"
+                   style="background-color:#00994c; color:white; padding:6px 14px; border-radius:4px; text-decoration:none;">
+                    Skip ➡
+                </a>
+            {% else %}
+                <a href="{% url 'question_view' topic.id index|add:'1' %}" class="btn"
+                   style="background-color:#00994c; color:white; padding:6px 14px; border-radius:4px; text-decoration:none;">
+                    Skip ➡
+                </a>
+            {% endif %}
         {% else %}
-            <a href="{% url 'topic_complete' topic.name %}" class="btn"
-               style="background-color:#cc0000; color:white; padding:6px 14px; border-radius:4px; text-decoration:none;">
-                🛑 Finish
-            </a>
+            {% if section %}
+                <a href="{% url 'section_list' topic.slug %}" class="btn"
+                   style="background-color:#cc0000; color:white; padding:6px 14px; border-radius:4px; text-decoration:none;">
+                    🛑 Finish Section
+                </a>
+            {% else %}
+                <a href="{% url 'topic_complete' topic.name %}" class="btn"
+                   style="background-color:#cc0000; color:white; padding:6px 14px; border-radius:4px; text-decoration:none;">
+                    🛑 Finish
+                </a>
+            {% endif %}
         {% endif %}
 
     </div>
@@ -198,8 +219,13 @@
             {% if forloop.counter == index %}
                 <span style="font-weight:bold; color:#004aad;">{{ forloop.counter }}</span>
             {% else %}
-                <a href="{% url 'question_view' topic.id forloop.counter %}"
-                   style="color:#333; text-decoration:none;">{{ forloop.counter }}</a>
+                {% if section %}
+                    <a href="{% url 'section_question_view' topic.slug section.slug forloop.counter %}"
+                       style="color:#333; text-decoration:none;">{{ forloop.counter }}</a>
+                {% else %}
+                    <a href="{% url 'question_view' topic.id forloop.counter %}"
+                       style="color:#333; text-decoration:none;">{{ forloop.counter }}</a>
+                {% endif %}
             {% endif %}
             {% if not forloop.last %} | {% endif %}
         {% endfor %}
