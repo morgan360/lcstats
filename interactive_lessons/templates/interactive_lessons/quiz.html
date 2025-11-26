@@ -7,7 +7,7 @@
         <p style="margin:0; font-weight:600;">Question {{ index }} of {{ total }}</p>
 
         {% if question.section %}
-            <h3 style="color:#004aad; font-size:1.1em; margin-top:0.4em;">{{ question.section }}</h3>
+            <h3 style="color:#004aad; font-size:1.1em; margin-top:0.4em;">{{ question.section.name }}</h3>
         {% endif %}
 
         <!-- Collapsible Hint (Question Area) -->

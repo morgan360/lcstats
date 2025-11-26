@@ -95,12 +95,27 @@ class QuestionAdmin(admin.ModelAdmin):
         "paper_type",
     )
     search_fields = ("id", "hint", "source_pdf_name", "topic__name", "section__name")
-    ordering = ("topic__name", "order")
+    ordering = ("topic__name", "section__order", "order")
     save_on_top = True
     list_per_page = 50  # Pagination for better performance
 
     # Add actions for bulk operations
     actions = ['duplicate_questions']
+
+    def formfield_for_foreignkey(self, db_field, request, **kwargs):
+        """Customize the section dropdown to show only section names"""
+        if db_field.name == "section":
+            # Get the topic from the request if editing an existing question
+            obj_id = request.resolver_match.kwargs.get('object_id')
+            if obj_id:
+                try:
+                    from .models import Question
+                    question = Question.objects.get(pk=obj_id)
+                    # Filter sections by the question's topic
+                    kwargs["queryset"] = Section.objects.filter(topic=question.topic).order_by('order')
+                except:
+                    pass
+        return super().formfield_for_foreignkey(db_field, request, **kwargs)
 
     fieldsets = (
         ("Basic Information", {
@@ -169,6 +184,14 @@ class QuestionAdmin(admin.ModelAdmin):
         # Use prefetched parts to avoid extra queries
         return obj.parts.count() if hasattr(obj, 'parts') else 0
     parts_count.short_description = "Parts"
+
+    def section_name_only(self, obj):
+        """Display only the section name without topic prefix"""
+        if obj.section:
+            return obj.section.name
+        return "-"
+    section_name_only.short_description = "Section"
+    section_name_only.admin_order_field = "section__order"
 
     # --- Custom Save + Next Navigation ----------------------------------------
 
