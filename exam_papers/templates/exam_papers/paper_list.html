@@ -1,0 +1,316 @@
+{% extends "_base.html" %}
+
+{% block title %}Exam Papers - LCAI Maths{% endblock %}
+
+{% block content %}
+<div class="exam-papers-container">
+    <h1>Leaving Certificate Exam Papers</h1>
+    <p class="intro-text">
+        Practice with real LC exam papers under exam conditions with a <strong>150-minute timer</strong>.
+        <br><strong>💡 Want to practice individual questions?</strong> Go to
+        <a href="{% url 'select_topic' %}" style="color: #0056b3; font-weight: 600;">Interactive Lessons</a>
+        and click "Exam Questions" for any topic.
+    </p>
+
+    <section class="papers-table-section">
+        <h2>Available Papers</h2>
+
+        {% if papers_by_year %}
+        <table class="papers-table">
+            <thead>
+                <tr>
+                    <th>Year</th>
+                    <th>Paper</th>
+                    <th>Questions</th>
+                    <th>Time</th>
+                    <th>Marking Scheme</th>
+                    <th>Progress</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for year, papers in papers_by_year.items %}
+                {% for paper in papers %}
+                <tr>
+                    <td><strong>{{ year }}</strong></td>
+                    <td>{{ paper.get_paper_type_display }}</td>
+                    <td>{{ paper.questions.count }} questions ({{ paper.total_marks }} marks)</td>
+                    <td>{{ paper.time_limit_minutes }} min</td>
+                    <td>
+                        {% if paper.marking_scheme_pdf %}
+                            <a href="{{ paper.marking_scheme_pdf.url }}" target="_blank" class="ms-link">
+                                📄 View MS
+                            </a>
+                        {% else %}
+                            <span style="color: #6c757d;">—</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if paper.active_attempt %}
+                            <span class="progress-badge in-progress">In Progress</span>
+                        {% elif paper.completed_attempt %}
+                            <span class="progress-badge completed">
+                                ✓ {{ paper.completed_attempt.percentage_score|floatformat:0 }}%
+                            </span>
+                        {% else %}
+                            <span class="progress-badge not-started">Not Started</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if paper.active_attempt %}
+                            <a href="{% url 'exam_papers:question_interface' paper.active_attempt.id paper.active_attempt.exam_paper.questions.first.id %}" class="btn btn-primary btn-action">
+                                Resume Exam →
+                            </a>
+                        {% else %}
+                            <form method="post" action="{% url 'exam_papers:start_paper_attempt' paper.slug %}" style="display: inline;">
+                                {% csrf_token %}
+                                <input type="hidden" name="mode" value="full_timed">
+                                <button type="submit" class="btn btn-danger btn-action">
+                                    Start Exam →
+                                </button>
+                            </form>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p class="no-papers">No exam papers available yet. Check back soon!</p>
+        {% endif %}
+    </section>
+</div>
+
+<style>
+.exam-papers-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+.intro-text {
+    background: #f0f7ff;
+    padding: 15px;
+    border-radius: 8px;
+    margin-bottom: 30px;
+}
+
+.recent-attempts {
+    margin-bottom: 40px;
+}
+
+.recent-attempts table {
+    width: 100%;
+    border-collapse: collapse;
+    background: white;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.recent-attempts th,
+.recent-attempts td {
+    padding: 12px;
+    text-align: left;
+    border-bottom: 1px solid #eee;
+}
+
+.recent-attempts th {
+    background: #f8f9fa;
+    font-weight: 600;
+}
+
+.badge {
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 0.85em;
+    font-weight: 500;
+}
+
+.badge-success {
+    background: #d4edda;
+    color: #155724;
+}
+
+.badge-warning {
+    background: #fff3cd;
+    color: #856404;
+}
+
+.year-section {
+    margin-bottom: 40px;
+}
+
+.year-section h3 {
+    color: #333;
+    border-bottom: 2px solid #007bff;
+    padding-bottom: 10px;
+    margin-bottom: 20px;
+}
+
+.papers-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+    gap: 20px;
+}
+
+.paper-card {
+    background: white;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    padding: 20px;
+    transition: box-shadow 0.3s;
+}
+
+.paper-card:hover {
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+.paper-header h4 {
+    margin: 0 0 5px 0;
+    color: #007bff;
+}
+
+.paper-meta {
+    color: #6c757d;
+    font-size: 0.9em;
+}
+
+.paper-details {
+    margin: 15px 0;
+}
+
+.instructions {
+    color: #6c757d;
+    font-style: italic;
+    font-size: 0.9em;
+}
+
+.paper-actions {
+    margin-top: 15px;
+}
+
+.btn {
+    display: inline-block;
+    padding: 8px 16px;
+    text-decoration: none;
+    border-radius: 4px;
+    font-weight: 500;
+    transition: all 0.3s;
+}
+
+.btn-sm {
+    padding: 4px 12px;
+    font-size: 0.9em;
+}
+
+.btn-primary {
+    background: #007bff;
+    color: white;
+}
+
+.btn-primary:hover {
+    background: #0056b3;
+}
+
+.btn-danger {
+    background: #dc3545;
+    color: white;
+    border: none;
+}
+
+.btn-danger:hover {
+    background: #c82333;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(220, 53, 69, 0.4);
+}
+
+.btn-large {
+    width: 100%;
+    padding: 15px;
+    font-size: 1.1em;
+    font-weight: 600;
+}
+
+.no-papers {
+    text-align: center;
+    padding: 40px;
+    color: #6c757d;
+}
+
+.papers-table-section {
+    margin-bottom: 40px;
+}
+
+.papers-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: white;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.papers-table thead {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+}
+
+.papers-table th {
+    padding: 15px;
+    text-align: left;
+    font-weight: 600;
+}
+
+.papers-table td {
+    padding: 15px;
+    border-bottom: 1px solid #eee;
+}
+
+.papers-table tbody tr:hover {
+    background: #f8f9fa;
+}
+
+.progress-badge {
+    display: inline-block;
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 0.9em;
+    font-weight: 600;
+}
+
+.progress-badge.not-started {
+    background: #e7f3ff;
+    color: #0056b3;
+}
+
+.progress-badge.in-progress {
+    background: #fff3cd;
+    color: #856404;
+}
+
+.progress-badge.completed {
+    background: #d4edda;
+    color: #155724;
+}
+
+.btn-action {
+    padding: 10px 20px;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.ms-link {
+    color: #28a745;
+    text-decoration: none;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.ms-link:hover {
+    color: #1e7e34;
+    text-decoration: underline;
+}
+</style>
+{% endblock %}

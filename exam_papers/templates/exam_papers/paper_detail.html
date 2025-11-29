@@ -1,0 +1,386 @@
+{% extends "_base.html" %}
+
+{% block title %}{{ paper.title }} - LCAI Maths{% endblock %}
+
+{% block content %}
+<div class="paper-detail-container">
+    <div class="paper-header">
+        <h1>{{ paper.title }}</h1>
+        <div class="paper-info">
+            <span class="info-item">⏱️ {{ paper.time_limit_minutes }} minutes</span>
+            <span class="info-item">📝 {{ paper.total_marks }} marks</span>
+            <span class="info-item">❓ {{ questions.count }} questions</span>
+        </div>
+        {% if paper.instructions %}
+        <div class="instructions-box">
+            <strong>Instructions:</strong> {{ paper.instructions }}
+        </div>
+        {% endif %}
+    </div>
+
+    {% if active_attempt %}
+    <div class="alert alert-info">
+        <strong>You have an active attempt!</strong>
+        <a href="{% url 'exam_papers:question_interface' active_attempt.id questions.first.id %}" class="btn btn-primary">
+            Resume Attempt
+        </a>
+    </div>
+    {% endif %}
+
+    <div class="start-exam-section">
+        <div class="exam-card">
+            <h2>⏱️ Start Full Timed Exam</h2>
+            <p>Experience full exam conditions with {{ paper.time_limit_minutes }} minute timer. Test yourself under real exam pressure!</p>
+            <ul>
+                <li>Strict {{ paper.time_limit_minutes }} minute time limit</li>
+                <li>All {{ questions.count }} questions available</li>
+                <li>Auto-submit when time expires</li>
+                <li>Solutions unlock after attempts or correct answers</li>
+            </ul>
+            <form method="post" action="{% url 'exam_papers:start_paper_attempt' paper.slug %}">
+                {% csrf_token %}
+                <input type="hidden" name="mode" value="full_timed">
+                <button type="submit" class="btn btn-danger btn-large">Start Timed Exam →</button>
+            </form>
+        </div>
+        <div class="practice-note">
+            <strong>💡 Want to practice individual questions?</strong>
+            <p>Go to <a href="{% url 'select_topic' %}">Interactive Lessons</a> and click on "Past Papers" for any topic to practice specific exam questions at your own pace.</p>
+        </div>
+    </div>
+
+    <div class="questions-overview">
+        <h2>Questions Overview</h2>
+        <div class="questions-list">
+            {% for question in questions %}
+            <div class="question-card">
+                <div class="question-header">
+                    <h4>Question {{ question.question_number }}</h4>
+                    <span class="marks-badge">{{ question.total_marks }} marks</span>
+                </div>
+                {% if question.topic %}
+                <div class="topic-badge">{{ question.topic.name }}</div>
+                {% endif %}
+                {% if question.title %}
+                <p class="question-title">{{ question.title }}</p>
+                {% endif %}
+                <div class="question-parts">
+                    <strong>Parts:</strong>
+                    {% for part in question.parts.all %}
+                        <span class="part-label">{{ part.label }}</span>
+                    {% endfor %}
+                </div>
+                {% if question.suggested_time_minutes %}
+                <p class="suggested-time">⏱️ Suggested time: {{ question.suggested_time_minutes }} min</p>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    {% if previous_attempts %}
+    <div class="previous-attempts">
+        <h2>Your Previous Attempts</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Mode</th>
+                    <th>Score</th>
+                    <th>Time Taken</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for attempt in previous_attempts %}
+                <tr>
+                    <td>{{ attempt.started_at|date:"d M Y H:i" }}</td>
+                    <td>{{ attempt.get_attempt_mode_display }}</td>
+                    <td>
+                        {{ attempt.total_marks_awarded|floatformat:1 }}/{{ attempt.total_marks_possible|floatformat:0 }}
+                        <span class="percentage">({{ attempt.percentage_score|floatformat:1 }}%)</span>
+                    </td>
+                    <td>
+                        {% if attempt.time_spent_seconds %}
+                            {{ attempt.time_spent_seconds|floatformat:0|add:"0"|divisibleby:60|yesno:""|add:attempt.time_spent_seconds|floatformat:0|add:"0"|slice:":-3" }} min
+                        {% else %}
+                            -
+                        {% endif %}
+                    </td>
+                    <td>
+                        <a href="{% url 'exam_papers:view_results' attempt.id %}" class="btn btn-sm">View Results</a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% endif %}
+
+    <div class="back-link">
+        <a href="{% url 'exam_papers:paper_list' %}">← Back to All Papers</a>
+    </div>
+</div>
+
+<style>
+.paper-detail-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+.paper-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 30px;
+    border-radius: 12px;
+    margin-bottom: 30px;
+}
+
+.paper-header h1 {
+    margin: 0 0 15px 0;
+}
+
+.paper-info {
+    display: flex;
+    gap: 20px;
+    flex-wrap: wrap;
+}
+
+.info-item {
+    font-size: 1.1em;
+}
+
+.instructions-box {
+    background: rgba(255,255,255,0.2);
+    padding: 15px;
+    border-radius: 8px;
+    margin-top: 15px;
+}
+
+.alert {
+    padding: 15px 20px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.alert-info {
+    background: #d1ecf1;
+    border: 1px solid #bee5eb;
+    color: #0c5460;
+}
+
+.start-exam-section {
+    margin-bottom: 40px;
+}
+
+.exam-card {
+    background: white;
+    border: 2px solid #dc3545;
+    border-radius: 12px;
+    padding: 30px;
+    margin-bottom: 20px;
+}
+
+.exam-card h2 {
+    margin-top: 0;
+    margin-bottom: 15px;
+    color: #dc3545;
+}
+
+.exam-card ul {
+    list-style: none;
+    padding: 0;
+    margin: 20px 0;
+}
+
+.exam-card ul li {
+    padding: 8px 0;
+    padding-left: 25px;
+    position: relative;
+}
+
+.exam-card ul li:before {
+    content: "✓";
+    position: absolute;
+    left: 0;
+    color: #dc3545;
+    font-weight: bold;
+}
+
+.practice-note {
+    background: #fff3cd;
+    border: 1px solid #ffc107;
+    border-radius: 8px;
+    padding: 20px;
+}
+
+.practice-note strong {
+    display: block;
+    margin-bottom: 10px;
+    color: #856404;
+}
+
+.practice-note p {
+    margin: 0;
+    color: #856404;
+}
+
+.practice-note a {
+    color: #0056b3;
+    font-weight: 600;
+}
+
+.btn {
+    display: inline-block;
+    padding: 10px 20px;
+    text-decoration: none;
+    border: none;
+    border-radius: 6px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.btn-large {
+    width: 100%;
+    padding: 15px;
+    font-size: 1.1em;
+}
+
+.btn-danger {
+    background: #dc3545;
+    color: white;
+}
+
+.btn-danger:hover {
+    background: #c82333;
+}
+
+.btn-success {
+    background: #28a745;
+    color: white;
+}
+
+.btn-success:hover {
+    background: #218838;
+}
+
+.btn-primary {
+    background: #007bff;
+    color: white;
+}
+
+.btn-sm {
+    padding: 6px 12px;
+    font-size: 0.9em;
+}
+
+.questions-overview {
+    margin-bottom: 40px;
+}
+
+.questions-list {
+    display: grid;
+    gap: 15px;
+}
+
+.question-card {
+    background: white;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    padding: 20px;
+}
+
+.question-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.question-header h4 {
+    margin: 0;
+}
+
+.marks-badge {
+    background: #007bff;
+    color: white;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 0.9em;
+}
+
+.topic-badge {
+    display: inline-block;
+    background: #e7f3ff;
+    color: #0056b3;
+    padding: 4px 12px;
+    border-radius: 4px;
+    font-size: 0.85em;
+    margin-bottom: 10px;
+}
+
+.question-parts {
+    margin: 10px 0;
+}
+
+.part-label {
+    display: inline-block;
+    background: #f8f9fa;
+    padding: 3px 8px;
+    margin-right: 5px;
+    border-radius: 4px;
+    font-size: 0.9em;
+}
+
+.suggested-time {
+    color: #6c757d;
+    font-size: 0.9em;
+    margin-top: 10px;
+}
+
+.previous-attempts {
+    margin-bottom: 40px;
+}
+
+.previous-attempts table {
+    width: 100%;
+    border-collapse: collapse;
+    background: white;
+}
+
+.previous-attempts th,
+.previous-attempts td {
+    padding: 12px;
+    text-align: left;
+    border-bottom: 1px solid #eee;
+}
+
+.previous-attempts th {
+    background: #f8f9fa;
+    font-weight: 600;
+}
+
+.percentage {
+    color: #6c757d;
+    font-size: 0.9em;
+}
+
+.back-link {
+    margin-top: 30px;
+}
+
+.back-link a {
+    color: #007bff;
+    text-decoration: none;
+}
+
+.back-link a:hover {
+    text-decoration: underline;
+}
+</style>
+{% endblock %}

@@ -1,0 +1,330 @@
+{% extends "_base.html" %}
+
+{% block title %}{{ topic.name }} - Exam Questions - LCAI Maths{% endblock %}
+
+{% block content %}
+<div class="topic-practice-container">
+    <div class="topic-header">
+        <h1>{{ topic.name }}</h1>
+        <p class="topic-description">Practice exam questions from past papers on this topic</p>
+    </div>
+
+    <div class="practice-intro">
+        <p>
+            <strong>Found {{ questions.count }} exam question{{ questions.count|pluralize }}</strong> from past Leaving Certificate papers.
+            Practice these questions to prepare for your exams!
+        </p>
+    </div>
+
+    {% if questions %}
+    <div class="questions-list">
+        {% for question in questions %}
+        <div class="exam-question-card">
+            <div class="question-meta">
+                <div class="paper-info">
+                    <span class="year-badge">{{ question.exam_paper.year }}</span>
+                    <span class="paper-badge">{{ question.exam_paper.get_paper_type_display }}</span>
+                </div>
+                <div class="question-info">
+                    <span class="question-number">Q{{ question.question_number }}</span>
+                    <span class="marks">{{ question.total_marks }} marks</span>
+                </div>
+            </div>
+
+            {% if question.title %}
+            <h3 class="question-title">{{ question.title }}</h3>
+            {% endif %}
+
+            {% if question.stem %}
+            <div class="question-stem">{{ question.stem|truncatewords:30|safe }}</div>
+            {% endif %}
+
+            {% if question.image %}
+            <div class="question-preview">
+                <img src="{{ question.image.url }}" alt="Question {{ question.question_number }}">
+            </div>
+            {% endif %}
+
+            <div class="question-parts-list">
+                <strong>Parts:</strong>
+                {% for part in question.parts.all %}
+                <div class="part-item">
+                    <span class="part-label">{{ part.label }}</span>
+                    <span class="part-marks">{{ part.max_marks }} marks</span>
+
+                    {% if user_attempts and part.id in user_attempts %}
+                    <div class="part-attempts">
+                        {% with attempt_info=user_attempts|get_item:part.id %}
+                        <span class="attempts-count">{{ attempt_info.count }} attempt{{ attempt_info.count|pluralize }}</span>
+                        {% if attempt_info.best_score %}
+                        <span class="best-score {% if attempt_info.best_score.is_correct %}correct{% endif %}">
+                            {% if attempt_info.best_score.is_correct %}✓{% else %}{{ attempt_info.best_score.marks_awarded }}/{{ attempt_info.best_score.max_marks }}{% endif %}
+                        </span>
+                        {% endif %}
+                        {% endwith %}
+                    </div>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </div>
+
+            <div class="question-actions">
+                <form method="post" action="{% url 'exam_papers:start_paper_attempt' question.exam_paper.slug %}" style="display: inline;">
+                    {% csrf_token %}
+                    <input type="hidden" name="mode" value="question_practice">
+                    <button type="submit" class="btn btn-practice">Practice This Question</button>
+                </form>
+                <a href="{% url 'exam_papers:paper_detail' question.exam_paper.slug %}" class="btn btn-secondary">
+                    View Full Paper
+                </a>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="no-questions">
+        <p>No exam questions available for this topic yet.</p>
+        <p>Check back soon as we add more past papers!</p>
+    </div>
+    {% endif %}
+
+    <div class="back-link">
+        <a href="{% url 'select_topic' %}">← Back to Topics</a>
+    </div>
+</div>
+
+<style>
+.topic-practice-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+.topic-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 40px;
+    border-radius: 12px;
+    margin-bottom: 30px;
+    text-align: center;
+}
+
+.topic-header h1 {
+    margin: 0 0 10px 0;
+}
+
+.topic-description {
+    margin: 0;
+    font-size: 1.1em;
+    opacity: 0.9;
+}
+
+.practice-intro {
+    background: #f0f7ff;
+    padding: 20px;
+    border-radius: 8px;
+    margin-bottom: 30px;
+}
+
+.questions-list {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.exam-question-card {
+    background: white;
+    border: 1px solid #dee2e6;
+    border-radius: 12px;
+    padding: 25px;
+    transition: box-shadow 0.3s;
+}
+
+.exam-question-card:hover {
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+.question-meta {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+}
+
+.paper-info {
+    display: flex;
+    gap: 10px;
+}
+
+.year-badge {
+    background: #007bff;
+    color: white;
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-weight: 600;
+}
+
+.paper-badge {
+    background: #e7f3ff;
+    color: #0056b3;
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-weight: 600;
+}
+
+.question-info {
+    display: flex;
+    gap: 15px;
+    align-items: center;
+}
+
+.question-number {
+    font-size: 1.2em;
+    font-weight: bold;
+}
+
+.marks {
+    background: #f8f9fa;
+    padding: 4px 10px;
+    border-radius: 4px;
+}
+
+.question-title {
+    color: #333;
+    margin: 15px 0;
+}
+
+.question-stem {
+    color: #6c757d;
+    line-height: 1.6;
+    margin: 15px 0;
+}
+
+.question-preview {
+    margin: 20px 0;
+}
+
+.question-preview img {
+    max-width: 100%;
+    max-height: 300px;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+}
+
+.question-parts-list {
+    background: #f8f9fa;
+    padding: 15px;
+    border-radius: 8px;
+    margin: 20px 0;
+}
+
+.part-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 0;
+    border-bottom: 1px solid #dee2e6;
+}
+
+.part-item:last-child {
+    border-bottom: none;
+}
+
+.part-label {
+    font-weight: 600;
+    min-width: 40px;
+}
+
+.part-marks {
+    color: #6c757d;
+    font-size: 0.9em;
+}
+
+.part-attempts {
+    margin-left: auto;
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+.attempts-count {
+    color: #6c757d;
+    font-size: 0.9em;
+}
+
+.best-score {
+    padding: 4px 10px;
+    border-radius: 4px;
+    font-weight: 600;
+    background: #f8d7da;
+    color: #721c24;
+}
+
+.best-score.correct {
+    background: #d4edda;
+    color: #155724;
+}
+
+.question-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 20px;
+}
+
+.btn {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 6px;
+    font-weight: 600;
+    cursor: pointer;
+    text-decoration: none;
+    display: inline-block;
+    transition: all 0.3s;
+}
+
+.btn-practice {
+    background: #28a745;
+    color: white;
+}
+
+.btn-practice:hover {
+    background: #218838;
+}
+
+.btn-secondary {
+    background: #6c757d;
+    color: white;
+}
+
+.btn-secondary:hover {
+    background: #545b62;
+}
+
+.no-questions {
+    text-align: center;
+    padding: 60px 20px;
+    background: white;
+    border-radius: 12px;
+    color: #6c757d;
+}
+
+.no-questions p {
+    font-size: 1.1em;
+    margin: 10px 0;
+}
+
+.back-link {
+    margin-top: 30px;
+}
+
+.back-link a {
+    color: #007bff;
+    text-decoration: none;
+    font-weight: 600;
+}
+
+.back-link a:hover {
+    text-decoration: underline;
+}
+</style>
+{% endblock %}

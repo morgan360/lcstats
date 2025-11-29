@@ -1,0 +1,556 @@
+{% extends "_base.html" %}
+
+{% block title %}Results - {{ attempt.exam_paper.title }} - LCAI Maths{% endblock %}
+
+{% block content %}
+<div class="results-container">
+    <div class="results-header">
+        <h1>📊 Exam Results</h1>
+        <h2>{{ attempt.exam_paper.title }}</h2>
+    </div>
+
+    <div class="score-summary">
+        <div class="score-card main-score">
+            <div class="score-value">{{ attempt.percentage_score|floatformat:1 }}%</div>
+            <div class="score-label">Overall Score</div>
+            <div class="score-detail">
+                {{ attempt.total_marks_awarded|floatformat:1 }} / {{ attempt.total_marks_possible|floatformat:0 }} marks
+            </div>
+        </div>
+
+        <div class="score-stats">
+            <div class="stat-item">
+                <div class="stat-label">Mode</div>
+                <div class="stat-value">{{ attempt.get_attempt_mode_display }}</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-label">Time Taken</div>
+                <div class="stat-value">
+                    {% if attempt.time_spent_seconds %}
+                        {% widthratio attempt.time_spent_seconds 60 1 %} min
+                    {% else %}
+                        -
+                    {% endif %}
+                </div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-label">Completed</div>
+                <div class="stat-value">{{ attempt.completed_at|date:"d M Y H:i" }}</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="grade-indicator">
+        {% if attempt.percentage_score >= 90 %}
+            <div class="grade grade-a">Grade: H1 🌟</div>
+        {% elif attempt.percentage_score >= 80 %}
+            <div class="grade grade-b">Grade: H2 ⭐</div>
+        {% elif attempt.percentage_score >= 70 %}
+            <div class="grade grade-c">Grade: H3 ✓</div>
+        {% elif attempt.percentage_score >= 60 %}
+            <div class="grade grade-d">Grade: H4</div>
+        {% elif attempt.percentage_score >= 50 %}
+            <div class="grade grade-e">Grade: H5</div>
+        {% elif attempt.percentage_score >= 40 %}
+            <div class="grade grade-f">Grade: H6</div>
+        {% else %}
+            <div class="grade grade-g">Keep practicing!</div>
+        {% endif %}
+    </div>
+
+    <div class="question-breakdown">
+        <h3>Question-by-Question Breakdown</h3>
+
+        {% for question_data in questions %}
+        <div class="question-result-card">
+            <div class="question-result-header">
+                <h4>Question {{ question_data.question.question_number }}</h4>
+                <div class="question-score">
+                    {% with total_marks=0 awarded_marks=0 %}
+                        {% for part_data in question_data.parts %}
+                            {% with total_marks=total_marks|add:part_data.part.max_marks %}
+                                {% if part_data.best_attempt %}
+                                    {% with awarded_marks=awarded_marks|add:part_data.best_attempt.marks_awarded %}
+                                    {% endwith %}
+                                {% endif %}
+                            {% endwith %}
+                        {% endfor %}
+                        <span class="score-fraction">
+                            {{ awarded_marks|floatformat:1 }} / {{ total_marks }} marks
+                        </span>
+                    {% endwith %}
+                </div>
+            </div>
+
+            {% if question_data.question.topic %}
+            <div class="topic-tag">{{ question_data.question.topic.name }}</div>
+            {% endif %}
+
+            <div class="parts-breakdown">
+                {% for part_data in question_data.parts %}
+                <div class="part-result">
+                    <div class="part-result-header">
+                        <strong>{{ part_data.part.label }}</strong>
+                        <span>{{ part_data.part.max_marks }} marks</span>
+                    </div>
+
+                    {% if part_data.best_attempt %}
+                    <div class="attempt-result {% if part_data.best_attempt.is_correct %}correct{% else %}incorrect{% endif %}">
+                        <div class="attempt-score">
+                            {% if part_data.best_attempt.is_correct %}✓{% else %}✗{% endif %}
+                            {{ part_data.best_attempt.marks_awarded }}/{{ part_data.best_attempt.max_marks }}
+                        </div>
+                        <div class="attempt-details">
+                            <div><strong>Your answer:</strong> {{ part_data.best_attempt.student_answer }}</div>
+                            {% if part_data.best_attempt.feedback %}
+                            <div class="feedback">{{ part_data.best_attempt.feedback }}</div>
+                            {% endif %}
+                            <div class="attempt-meta">
+                                Attempts: {{ part_data.total_attempts }}
+                                {% if part_data.best_attempt.hint_used %} | Hint used{% endif %}
+                                {% if part_data.best_attempt.solution_viewed %} | Solution viewed{% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    {% else %}
+                    <div class="no-attempt">
+                        Not attempted
+                    </div>
+                    {% endif %}
+
+                    <!-- Show correct answer and solution -->
+                    <div class="correct-answer-section">
+                        <button class="btn-expand" onclick="toggleSolution({{ part_data.part.id }})">
+                            View Solution & Marking Scheme ▼
+                        </button>
+                        <div class="solution-content" id="solution-{{ part_data.part.id }}" style="display: none;">
+                            <div class="correct-answer">
+                                <strong>Correct Answer:</strong> {{ part_data.part.answer }}
+                            </div>
+
+                            {% if part_data.part.marking_scheme %}
+                            <div class="marking-scheme-section">
+                                <h5>📋 Marking Scheme</h5>
+
+                                {% if part_data.part.marking_scheme.marking_breakdown.steps %}
+                                <div class="marking-steps">
+                                    <strong>Mark allocation:</strong>
+                                    <ul>
+                                    {% for step in part_data.part.marking_scheme.marking_breakdown.steps %}
+                                        <li>{{ step.description }} — <strong>{{ step.marks }} mark{{ step.marks|pluralize }}</strong></li>
+                                    {% endfor %}
+                                    </ul>
+                                </div>
+                                {% endif %}
+
+                                {% if part_data.part.marking_scheme.marking_breakdown.common_errors %}
+                                <div class="common-errors">
+                                    <strong>Common errors to avoid:</strong>
+                                    <ul>
+                                    {% for error in part_data.part.marking_scheme.marking_breakdown.common_errors %}
+                                        <li>{{ error }}</li>
+                                    {% endfor %}
+                                    </ul>
+                                </div>
+                                {% endif %}
+
+                                {% if part_data.part.marking_scheme.marking_breakdown.partial_credit_notes %}
+                                <div class="partial-credit">
+                                    <strong>Partial credit:</strong> {{ part_data.part.marking_scheme.marking_breakdown.partial_credit_notes }}
+                                </div>
+                                {% endif %}
+
+                                {% if part_data.part.marking_scheme.examiner_notes %}
+                                <div class="examiner-notes">
+                                    <strong>Examiner notes:</strong> {{ part_data.part.marking_scheme.examiner_notes }}
+                                </div>
+                                {% endif %}
+
+                                {% if part_data.part.marking_scheme.national_mean_score %}
+                                <div class="national-stats">
+                                    <strong>National average:</strong> {{ part_data.part.marking_scheme.national_mean_score }}%
+                                </div>
+                                {% endif %}
+                            </div>
+                            {% endif %}
+
+                            {% if part_data.part.solution %}
+                            <div class="solution">
+                                <strong>Worked Solution:</strong>
+                                <div class="solution-text">{{ part_data.part.solution|safe }}</div>
+                            </div>
+                            {% endif %}
+                            {% if part_data.part.solution_image %}
+                            <div class="solution-image">
+                                <img src="{{ part_data.part.solution_image.url }}" alt="Solution">
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <div class="action-buttons">
+        <a href="{% url 'exam_papers:paper_detail' attempt.exam_paper.slug %}" class="btn btn-primary">
+            Try Again
+        </a>
+        <a href="{% url 'exam_papers:paper_list' %}" class="btn btn-secondary">
+            Back to Papers
+        </a>
+        <a href="{% url 'dashboard' %}" class="btn btn-secondary">
+            Dashboard
+        </a>
+    </div>
+</div>
+
+<style>
+.results-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+.results-header {
+    text-align: center;
+    margin-bottom: 30px;
+}
+
+.results-header h1 {
+    margin-bottom: 10px;
+}
+
+.results-header h2 {
+    color: #6c757d;
+    font-weight: normal;
+}
+
+.score-summary {
+    display: grid;
+    grid-template-columns: 1fr 2fr;
+    gap: 20px;
+    margin-bottom: 30px;
+}
+
+.score-card {
+    background: white;
+    border-radius: 12px;
+    padding: 30px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+.main-score {
+    text-align: center;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+}
+
+.score-value {
+    font-size: 4em;
+    font-weight: bold;
+    margin-bottom: 10px;
+}
+
+.score-label {
+    font-size: 1.2em;
+    margin-bottom: 10px;
+}
+
+.score-detail {
+    font-size: 1.1em;
+    opacity: 0.9;
+}
+
+.score-stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 15px;
+}
+
+.stat-item {
+    background: white;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.stat-label {
+    color: #6c757d;
+    font-size: 0.9em;
+    margin-bottom: 5px;
+}
+
+.stat-value {
+    font-size: 1.5em;
+    font-weight: 600;
+}
+
+.grade-indicator {
+    text-align: center;
+    margin-bottom: 40px;
+}
+
+.grade {
+    display: inline-block;
+    padding: 20px 40px;
+    border-radius: 12px;
+    font-size: 1.5em;
+    font-weight: bold;
+}
+
+.grade-a { background: #d4edda; color: #155724; }
+.grade-b { background: #d1ecf1; color: #0c5460; }
+.grade-c { background: #fff3cd; color: #856404; }
+.grade-d { background: #f8d7da; color: #721c24; }
+
+.question-breakdown h3 {
+    margin-bottom: 20px;
+}
+
+.question-result-card {
+    background: white;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 20px;
+}
+
+.question-result-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+}
+
+.question-result-header h4 {
+    margin: 0;
+}
+
+.question-score {
+    font-size: 1.2em;
+    font-weight: 600;
+}
+
+.topic-tag {
+    display: inline-block;
+    background: #e7f3ff;
+    color: #0056b3;
+    padding: 4px 12px;
+    border-radius: 4px;
+    margin-bottom: 15px;
+}
+
+.parts-breakdown {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.part-result {
+    border: 1px solid #dee2e6;
+    border-radius: 6px;
+    padding: 15px;
+    background: #f8f9fa;
+}
+
+.part-result-header {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 10px;
+}
+
+.attempt-result {
+    padding: 15px;
+    border-radius: 6px;
+    margin-bottom: 10px;
+}
+
+.attempt-result.correct {
+    background: #d4edda;
+    border: 1px solid #c3e6cb;
+}
+
+.attempt-result.incorrect {
+    background: #f8d7da;
+    border: 1px solid #f5c6cb;
+}
+
+.attempt-score {
+    font-size: 1.2em;
+    font-weight: 600;
+    margin-bottom: 10px;
+}
+
+.attempt-details {
+    font-size: 0.95em;
+}
+
+.attempt-details > div {
+    margin-bottom: 8px;
+}
+
+.feedback {
+    color: #6c757d;
+    font-style: italic;
+}
+
+.attempt-meta {
+    color: #6c757d;
+    font-size: 0.85em;
+}
+
+.no-attempt {
+    color: #6c757d;
+    font-style: italic;
+    padding: 10px;
+}
+
+.correct-answer-section {
+    margin-top: 15px;
+}
+
+.btn-expand {
+    background: #007bff;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 6px;
+    cursor: pointer;
+    width: 100%;
+    font-weight: 600;
+    transition: all 0.3s;
+}
+
+.btn-expand:hover {
+    background: #0056b3;
+}
+
+.solution-content {
+    margin-top: 15px;
+    padding: 15px;
+    background: white;
+    border-radius: 6px;
+}
+
+.correct-answer {
+    padding: 10px;
+    background: #d4edda;
+    border-radius: 4px;
+    margin-bottom: 15px;
+}
+
+.solution {
+    padding: 10px;
+    background: #f8f9fa;
+    border-radius: 4px;
+    margin-bottom: 15px;
+}
+
+.solution-text {
+    margin-top: 10px;
+    line-height: 1.6;
+}
+
+.solution-image img {
+    max-width: 100%;
+    border: 1px solid #dee2e6;
+    border-radius: 6px;
+}
+
+.marking-scheme-section {
+    background: #e7f3ff;
+    padding: 15px;
+    border-radius: 6px;
+    margin-bottom: 15px;
+}
+
+.marking-scheme-section h5 {
+    margin-top: 0;
+    color: #0056b3;
+}
+
+.marking-steps ul,
+.common-errors ul {
+    margin: 10px 0;
+    padding-left: 20px;
+}
+
+.marking-steps li,
+.common-errors li {
+    margin: 5px 0;
+}
+
+.partial-credit,
+.examiner-notes,
+.national-stats {
+    background: white;
+    padding: 10px;
+    border-radius: 4px;
+    margin-top: 10px;
+}
+
+.national-stats {
+    background: #fff3cd;
+    color: #856404;
+}
+
+.action-buttons {
+    display: flex;
+    justify-content: center;
+    gap: 15px;
+    margin-top: 40px;
+}
+
+.btn {
+    padding: 12px 30px;
+    border: none;
+    border-radius: 6px;
+    font-weight: 600;
+    text-decoration: none;
+    display: inline-block;
+    transition: all 0.3s;
+}
+
+.btn-primary {
+    background: #007bff;
+    color: white;
+}
+
+.btn-primary:hover {
+    background: #0056b3;
+}
+
+.btn-secondary {
+    background: #6c757d;
+    color: white;
+}
+
+.btn-secondary:hover {
+    background: #545b62;
+}
+</style>
+
+<script>
+function toggleSolution(partId) {
+    const solutionDiv = document.getElementById('solution-' + partId);
+    if (solutionDiv.style.display === 'none') {
+        solutionDiv.style.display = 'block';
+        // Re-render KaTeX
+        if (window.renderMathInElement) {
+            renderMathInElement(solutionDiv, {
+                delimiters: [
+                    {left: "$$", right: "$$", display: true},
+                    {left: "$", right: "$", display: false}
+                ],
+                throwOnError: false
+            });
+        }
+    } else {
+        solutionDiv.style.display = 'none';
+    }
+}
+</script>
+{% endblock %}

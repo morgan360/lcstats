@@ -1,0 +1,926 @@
+{% extends "_base.html" %}
+
+{% block title %}{{ paper.title }} - Question {{ question_number }} - LCAI Maths{% endblock %}
+
+{% block content %}
+<div class="question-interface-container">
+    <!-- Overall Exam Timer (for timed mode) -->
+    {% if time_remaining is not None %}
+    <div class="timer-bar" id="timer-bar">
+        <div class="timer-content">
+            <span class="timer-label">⏱️ Exam Time Remaining:</span>
+            <span class="timer-display" id="timer-display">{{ time_remaining|floatformat:0 }}</span>
+        </div>
+        <div class="timer-progress" id="timer-progress" style="width: {{ timer_percentage }}%"></div>
+    </div>
+    {% endif %}
+
+    <!-- Question Suggested Time (for practice mode OR as additional timer in timed mode) -->
+    {% if question.suggested_time_minutes %}
+    <div class="suggested-timer-bar" id="suggested-timer-bar" style="{% if time_remaining is not None %}top: 60px;{% endif %}">
+        <div class="timer-content">
+            <span class="timer-label">⏱️ Question Suggested Time:</span>
+            <span class="timer-display" id="suggested-timer-display">{{ question.suggested_time_minutes }}:00</span>
+        </div>
+        <div class="timer-progress suggested" id="suggested-timer-progress" style="width: 100%"></div>
+    </div>
+    {% endif %}
+
+    <!-- Progress Header -->
+    <div class="progress-header {% if time_remaining is not None and question.suggested_time_minutes %}dual-timer{% endif %}">
+        <div class="breadcrumb">
+            <a href="{% url 'exam_papers:paper_list' %}">Exam Papers</a> →
+            <a href="{% url 'exam_papers:paper_detail' attempt.exam_paper.slug %}">{{ attempt.exam_paper }}</a> →
+            Question {{ question_number }}
+        </div>
+        <div class="progress-info">
+            <span>Question {{ question_number }} of {{ total_questions }}</span>
+            <span class="mode-badge mode-{{ attempt.attempt_mode }}">{{ attempt.get_attempt_mode_display }}</span>
+        </div>
+    </div>
+
+    <!-- Question Display -->
+    <div class="question-display">
+        <div class="question-header">
+            <h2>Question {{ question.question_number }}</h2>
+            <span class="marks-badge">{{ question.total_marks }} marks</span>
+        </div>
+
+        {% if question.topic %}
+        <div class="topic-tag">{{ question.topic.name }}</div>
+        {% endif %}
+
+        {% if question.stem %}
+        <div class="question-stem">{{ question.stem|safe }}</div>
+        {% endif %}
+
+        {% if question.image %}
+        <div class="question-image">
+            <img src="{{ question.image.url }}" alt="Question {{ question.question_number }}">
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Question Parts -->
+    <div class="question-parts">
+        {% for part_data in parts_with_attempts %}
+        <div class="part-container" id="part-{{ part_data.part.id }}">
+            <div class="part-header">
+                <h3>{{ part_data.part.label }}</h3>
+                <span class="part-marks">{{ part_data.part.max_marks }} marks</span>
+            </div>
+
+            <div class="part-prompt">
+                {{ part_data.part.prompt|safe }}
+            </div>
+
+            {% if part_data.part.image %}
+            <div class="part-image">
+                <img src="{{ part_data.part.image.url }}" alt="Part {{ part_data.part.label }}">
+            </div>
+            {% endif %}
+
+            {% if part_data.part.expected_format %}
+            <details style="margin-top:15px; margin-bottom:15px; background-color:#f0f7ff; border:1px solid #cfe2ff; border-radius:5px; padding:8px;">
+                <summary style="font-weight:600; color:#004aad; cursor:pointer;">💭 Expected Answer Format</summary>
+                <div style="margin-top:6px; line-height:1.5;">
+                    {{ part_data.part.expected_format|safe }}
+                </div>
+            </details>
+            {% endif %}
+
+            <!-- Answer Input -->
+            <div class="answer-section">
+                <label for="answer-{{ part_data.part.id }}">Your Answer:</label>
+                <math-field
+                    id="answer-{{ part_data.part.id }}"
+                    class="answer-input"
+                    virtual-keyboard-mode="manual"
+                    {% if part_data.latest_attempt %}value="{{ part_data.latest_attempt.student_answer }}"{% endif %}
+                ></math-field>
+
+                <div class="answer-actions">
+                    <button class="btn btn-primary" onclick="submitAnswer({{ part_data.part.id }}, {{ attempt.id }})">
+                        Check Answer
+                    </button>
+                    <button class="btn btn-solution" id="solution-btn-{{ part_data.part.id }}" onclick="toggleSolution({{ part_data.part.id }}, {{ attempt.id }}, {{ part_data.solution_unlocked|yesno:'true,false' }})">
+                        <span id="solution-btn-text-{{ part_data.part.id }}">💚 Show Solution</span>
+                        {% if not part_data.solution_unlocked %}
+                        <span id="solution-lock-text-{{ part_data.part.id }}" style="font-size: 0.85em;">(unlocks after {{ part_data.part.solution_unlock_after_attempts }} attempts)</span>
+                        {% endif %}
+                    </button>
+                </div>
+
+                <!-- Feedback Area -->
+                <div class="feedback-area" id="feedback-{{ part_data.part.id }}" style="display: none;"></div>
+
+                <!-- Solution Area -->
+                <div class="solution-area" id="solution-{{ part_data.part.id }}" style="display: none;"></div>
+            </div>
+
+            <!-- Previous Attempts (Hidden - shown in results page) -->
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- Numskull Section -->
+    <div class="infobot-section" data-question-id="{{ question.id }}" data-topic-slug="{% if question.topic %}{{ question.topic.slug }}{% endif %}">
+        <div class="infobot-header">
+            <h3>🧠 Ask Numskull</h3>
+        </div>
+        <p class="infobot-description">
+            Need help with this question? Ask a question and get instant answers from Numskull, our AI tutor.
+        </p>
+
+        <div class="infobot-input-group">
+            <input type="text"
+                   id="exam-infobot-query"
+                   placeholder="e.g., How do I solve this type of problem?"
+                   class="infobot-input">
+            <button id="exam-infobot-ask-btn" class="btn btn-primary">
+                Ask
+            </button>
+        </div>
+
+        <div id="exam-infobot-answer" class="infobot-answer" style="display: none;">
+            <!-- Answer will be inserted here -->
+        </div>
+
+        <div id="exam-infobot-loading" class="infobot-loading" style="display: none;">
+            🔄 Thinking...
+        </div>
+    </div>
+
+    <!-- Navigation -->
+    <div class="question-navigation">
+        {% if prev_question %}
+        <a href="{% url 'exam_papers:question_interface' attempt.id prev_question.id %}" class="btn btn-nav">
+            ← Previous Question
+        </a>
+        {% else %}
+        <div></div>
+        {% endif %}
+
+        {% if is_last_question %}
+        <form method="post" action="{% url 'exam_papers:complete_attempt' attempt.id %}" style="display: inline;">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-success btn-large">
+                Finish Exam
+            </button>
+        </form>
+        {% elif next_question %}
+        <a href="{% url 'exam_papers:question_interface' attempt.id next_question.id %}" class="btn btn-nav">
+            Next Question →
+        </a>
+        {% endif %}
+    </div>
+</div>
+
+<style>
+.question-interface-container {
+    max-width: 1000px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+.timer-bar,
+.suggested-timer-bar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    background: white;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    z-index: 1000;
+    height: 60px;
+}
+
+.timer-content {
+    padding: 15px 20px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 10px;
+}
+
+.timer-label {
+    font-weight: 600;
+}
+
+.timer-display {
+    font-size: 1.5em;
+    font-weight: bold;
+    color: #28a745;
+}
+
+.timer-display.warning {
+    color: #ffc107;
+}
+
+.timer-display.danger {
+    color: #dc3545;
+    animation: pulse 1s infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+}
+
+.timer-progress {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    height: 4px;
+    background: linear-gradient(90deg, #28a745 0%, #ffc107 50%, #dc3545 100%);
+    transition: width 1s linear;
+}
+
+.progress-header {
+    margin-top: 80px;
+    margin-bottom: 20px;
+}
+
+/* Adjust margin when both timers are present */
+.progress-header.dual-timer {
+    margin-top: 140px;
+}
+
+.breadcrumb {
+    color: #6c757d;
+    margin-bottom: 10px;
+}
+
+.breadcrumb a {
+    color: #007bff;
+    text-decoration: none;
+}
+
+.progress-info {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.mode-badge {
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 0.85em;
+    font-weight: 600;
+}
+
+.mode-full_timed {
+    background: #ffc107;
+    color: #000;
+}
+
+.mode-question_practice {
+    background: #e7f3ff;
+    color: #0056b3;
+}
+
+.question-display {
+    background: white;
+    border: 2px solid #007bff;
+    border-radius: 12px;
+    padding: 25px;
+    margin-bottom: 30px;
+}
+
+.question-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+}
+
+.question-header h2 {
+    margin: 0;
+}
+
+.marks-badge {
+    background: #007bff;
+    color: white;
+    padding: 6px 15px;
+    border-radius: 20px;
+}
+
+.topic-tag {
+    display: inline-block;
+    background: #e7f3ff;
+    color: #0056b3;
+    padding: 4px 12px;
+    border-radius: 4px;
+    margin-bottom: 15px;
+}
+
+.question-stem {
+    font-size: 1.1em;
+    margin: 15px 0;
+    line-height: 1.6;
+}
+
+.question-image img,
+.part-image img {
+    max-width: 100%;
+    height: auto;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    margin: 15px 0;
+}
+
+.question-parts {
+    display: flex;
+    flex-direction: column;
+    gap: 30px;
+}
+
+.part-container {
+    background: white;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    padding: 20px;
+}
+
+.part-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+}
+
+.part-header h3 {
+    margin: 0;
+    color: #333;
+}
+
+.part-marks {
+    background: #f8f9fa;
+    padding: 4px 10px;
+    border-radius: 4px;
+    font-weight: 600;
+}
+
+.part-prompt {
+    font-size: 1.05em;
+    margin: 15px 0;
+    line-height: 1.6;
+}
+
+.expected-format {
+    background: #f8f9fa;
+    padding: 10px;
+    border-radius: 4px;
+    margin: 10px 0;
+    font-size: 0.9em;
+}
+
+.answer-section {
+    margin-top: 20px;
+}
+
+.answer-section label {
+    display: block;
+    font-weight: 600;
+    margin-bottom: 10px;
+}
+
+.answer-input {
+    width: 100%;
+    font-size: 1.2em;
+    padding: 12px;
+    border: 2px solid #ced4da;
+    border-radius: 6px;
+    margin-bottom: 15px;
+}
+
+.answer-actions {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 15px;
+}
+
+.btn {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 6px;
+    font-weight: 600;
+    cursor: pointer;
+    text-decoration: none;
+    display: inline-block;
+    transition: all 0.3s;
+}
+
+.btn-primary {
+    background: #007bff;
+    color: white;
+}
+
+.btn-primary:hover {
+    background: #0056b3;
+}
+
+.btn-secondary {
+    background: #6c757d;
+    color: white;
+}
+
+.btn-secondary:hover {
+    background: #545b62;
+}
+
+.btn-solution {
+    background: #00994c;
+    color: white;
+}
+
+.btn-solution:hover {
+    background: #007a3d;
+}
+
+.btn-success {
+    background: #28a745;
+    color: white;
+}
+
+.btn-large {
+    padding: 15px 40px;
+    font-size: 1.1em;
+}
+
+.feedback-area {
+    padding: 15px;
+    border-radius: 6px;
+    margin: 15px 0;
+}
+
+.feedback-area.correct {
+    background: #d4edda;
+    border: 1px solid #c3e6cb;
+    color: #155724;
+}
+
+.feedback-area.incorrect {
+    background: #f8d7da;
+    border: 1px solid #f5c6cb;
+    color: #721c24;
+}
+
+.solution-area {
+    background: #e8f5e9;
+    border: 1px solid #a5d6a7;
+    border-radius: 5px;
+    padding: 10px;
+    margin: 10px 0;
+}
+
+.solution-area h4 {
+    margin-top: 0;
+    margin-bottom: 8px;
+    color: #2e7d32;
+    font-weight: 600;
+}
+
+.previous-attempts-section {
+    margin-top: 20px;
+    padding-top: 20px;
+    border-top: 1px solid #dee2e6;
+}
+
+.previous-attempts-section h4 {
+    margin-bottom: 15px;
+    color: #6c757d;
+}
+
+.attempts-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.attempt-item {
+    padding: 12px;
+    border-radius: 6px;
+    border: 1px solid #dee2e6;
+}
+
+.attempt-item.correct {
+    background: #d4edda;
+    border-color: #c3e6cb;
+}
+
+.attempt-item.incorrect {
+    background: #f8d7da;
+    border-color: #f5c6cb;
+}
+
+.attempt-header {
+    display: flex;
+    justify-content: space-between;
+    font-weight: 600;
+    margin-bottom: 8px;
+}
+
+.attempt-answer {
+    font-family: monospace;
+    background: white;
+    padding: 8px;
+    border-radius: 4px;
+    margin-bottom: 8px;
+}
+
+.attempt-feedback {
+    font-size: 0.9em;
+    color: #6c757d;
+}
+
+.question-navigation {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 40px;
+    padding-top: 20px;
+    border-top: 2px solid #dee2e6;
+}
+
+.btn-nav {
+    background: #6c757d;
+    color: white;
+    padding: 12px 24px;
+}
+
+.btn-nav:hover {
+    background: #545b62;
+}
+
+/* Numskull Styles */
+.infobot-section {
+    margin: 30px 0;
+    padding: 20px;
+    background-color: #f0f8ff;
+    border: 1px solid #b3d9ff;
+    border-radius: 8px;
+}
+
+.infobot-header h3 {
+    color: #004aad;
+    margin: 0 0 12px 0;
+}
+
+.infobot-description {
+    margin: 0 0 12px 0;
+    font-size: 0.9em;
+    color: #555;
+}
+
+.infobot-input-group {
+    display: flex;
+    gap: 8px;
+    align-items: flex-start;
+    margin-bottom: 15px;
+}
+
+.infobot-input {
+    flex: 1;
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 1em;
+}
+
+.infobot-answer {
+    margin-top: 15px;
+    padding: 15px;
+    background-color: white;
+    border-radius: 6px;
+    line-height: 1.6;
+}
+
+.infobot-loading {
+    margin-top: 15px;
+    color: #004aad;
+}
+</style>
+
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+// Timer functionality
+{% if time_remaining is not None %}
+let timeRemaining = {{ time_remaining }};
+const timerDisplay = document.getElementById('timer-display');
+const timerProgress = document.getElementById('timer-progress');
+const totalTime = {{ attempt.exam_paper.time_limit_minutes }} * 60;
+
+function updateTimer() {
+    if (timeRemaining <= 0) {
+        window.location.href = "{% url 'exam_papers:view_results' attempt.id %}";
+        return;
+    }
+
+    timeRemaining--;
+
+    const hours = Math.floor(timeRemaining / 3600);
+    const minutes = Math.floor((timeRemaining % 3600) / 60);
+    const seconds = timeRemaining % 60;
+
+    let displayText = '';
+    if (hours > 0) {
+        displayText = `${hours}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+    } else {
+        displayText = `${minutes}:${String(seconds).padStart(2, '0')}`;
+    }
+
+    timerDisplay.textContent = displayText;
+
+    // Update color based on time remaining
+    if (timeRemaining < 300) { // Less than 5 minutes
+        timerDisplay.className = 'timer-display danger';
+    } else if (timeRemaining < 900) { // Less than 15 minutes
+        timerDisplay.className = 'timer-display warning';
+    }
+
+    // Update progress bar
+    const percentage = (timeRemaining / totalTime) * 100;
+    timerProgress.style.width = percentage + '%';
+}
+
+setInterval(updateTimer, 1000);
+{% endif %}
+
+{% if question.suggested_time_minutes %}
+// Suggested time countdown (for practice mode)
+let suggestedTimeRemaining = {{ question.suggested_time_minutes }} * 60; // Convert to seconds
+const suggestedTimerDisplay = document.getElementById('suggested-timer-display');
+const suggestedTimerProgress = document.getElementById('suggested-timer-progress');
+const totalSuggestedTime = {{ question.suggested_time_minutes }} * 60;
+
+function updateSuggestedTimer() {
+    if (suggestedTimeRemaining <= 0) {
+        suggestedTimeRemaining = 0;
+    } else {
+        suggestedTimeRemaining--;
+    }
+
+    const minutes = Math.floor(suggestedTimeRemaining / 60);
+    const seconds = suggestedTimeRemaining % 60;
+    suggestedTimerDisplay.textContent = `${minutes}:${String(seconds).padStart(2, '0')}`;
+
+    // Update color based on time remaining
+    if (suggestedTimeRemaining <= 0) {
+        suggestedTimerDisplay.className = 'timer-display danger';
+    } else if (suggestedTimeRemaining < 120) { // Less than 2 minutes
+        suggestedTimerDisplay.className = 'timer-display warning';
+    }
+
+    // Update progress bar
+    const percentage = (suggestedTimeRemaining / totalSuggestedTime) * 100;
+    suggestedTimerProgress.style.width = percentage + '%';
+}
+
+setInterval(updateSuggestedTimer, 1000);
+{% endif %}
+
+// Submit answer function
+function submitAnswer(partId, attemptId) {
+    const answerField = document.getElementById('answer-' + partId);
+    const answer = answerField.value;
+
+    if (!answer.trim()) {
+        alert('Please enter an answer before submitting.');
+        return;
+    }
+
+    fetch("{% url 'exam_papers:submit_answer' attempt.id %}", {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': '{{ csrf_token }}'
+        },
+        body: JSON.stringify({
+            part_id: partId,
+            answer: answer,
+            time_spent: 0 // Could track per-question time if needed
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        const feedbackArea = document.getElementById('feedback-' + partId);
+        feedbackArea.style.display = 'block';
+
+        if (data.success) {
+            feedbackArea.className = 'feedback-area ' + (data.is_correct ? 'correct' : 'incorrect');
+            let html = '<strong>' + (data.is_correct ? '✓ Correct!' : '✗ Incorrect') + '</strong><br>';
+            html += 'Marks: ' + Math.round(data.marks_awarded * 10) / 10 + '/' + data.max_marks;
+
+            if (data.solution_unlocked) {
+                html += '<div style="margin-top: 10px; color: #28a745;">✓ Solution now unlocked!</div>';
+                // Unlock the solution button
+                unlockSolutionButton(partId);
+                // Update toggle function to know it's unlocked
+                const solutionBtn = document.getElementById('solution-btn-' + partId);
+                solutionBtn.setAttribute('onclick', `toggleSolution(${partId}, ${attemptId}, true)`);
+            }
+            feedbackArea.innerHTML = html;
+
+            // Clear the answer field for next attempt
+            answerField.value = '';
+        } else {
+            feedbackArea.className = 'feedback-area incorrect';
+            feedbackArea.innerHTML = '<strong>Error:</strong> ' + data.error;
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('An error occurred while submitting your answer.');
+    });
+}
+
+// Toggle solution function (show/hide)
+function toggleSolution(partId, attemptId, isUnlocked) {
+    const solutionArea = document.getElementById('solution-' + partId);
+    const btnText = document.getElementById('solution-btn-text-' + partId);
+
+    // If solution is already visible, just hide it
+    if (solutionArea.style.display === 'block') {
+        solutionArea.style.display = 'none';
+        btnText.textContent = '💚 Show Solution';
+        return;
+    }
+
+    // Check if unlocked
+    if (!isUnlocked) {
+        alert('Solution is not yet unlocked. Make more attempts first!');
+        return;
+    }
+
+    // If solution content already loaded, just show it
+    if (solutionArea.innerHTML.trim() !== '') {
+        solutionArea.style.display = 'block';
+        btnText.textContent = '💚 Hide Solution';
+        return;
+    }
+
+    // Otherwise, fetch the solution
+    fetch(`/exam-papers/attempt/${attemptId}/solution/${partId}/`)
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            solutionArea.style.display = 'block';
+            let html = '<h4>📖 Solution</h4>';
+            html += '<div>' + data.solution + '</div>';
+            if (data.solution_image_url) {
+                html += '<img src="' + data.solution_image_url + '" style="max-width: 100%; margin-top: 15px;">';
+            }
+            solutionArea.innerHTML = html;
+            btnText.textContent = '💚 Hide Solution';
+
+            // Re-render KaTeX
+            if (window.renderMathInElement) {
+                renderMathInElement(solutionArea, {
+                    delimiters: [
+                        {left: "$$", right: "$$", display: true},
+                        {left: "$", right: "$", display: false}
+                    ],
+                    throwOnError: false
+                });
+            }
+        } else {
+            alert(data.error);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('An error occurred while fetching the solution.');
+    });
+}
+
+// Helper function to unlock solution button after correct answer
+function unlockSolutionButton(partId) {
+    const lockText = document.getElementById('solution-lock-text-' + partId);
+    if (lockText) {
+        lockText.remove();
+    }
+}
+
+// ============================================================================
+// Numskull Integration for Exam Questions
+// ============================================================================
+document.addEventListener('DOMContentLoaded', function() {
+    const infobotQueryInput = document.getElementById('exam-infobot-query');
+    const infobotAskBtn = document.getElementById('exam-infobot-ask-btn');
+    const infobotAnswer = document.getElementById('exam-infobot-answer');
+    const infobotLoading = document.getElementById('exam-infobot-loading');
+
+    if (!infobotQueryInput || !infobotAskBtn || !infobotAnswer || !infobotLoading) {
+        console.log('Numskull elements not found');
+        return;
+    }
+
+    console.log('Numskull initialized for exam questions');
+
+    // Handle Ask button click
+    infobotAskBtn.addEventListener('click', async function() {
+        const query = infobotQueryInput.value.trim();
+        if (!query) {
+            alert('Please enter a question first.');
+            return;
+        }
+
+        // Show loading, hide answer
+        infobotLoading.style.display = 'block';
+        infobotAnswer.style.display = 'none';
+        infobotAnswer.innerHTML = '';
+
+        try {
+            // Extract context from data attributes
+            const infobotSection = document.querySelector('.infobot-section');
+            const topicSlug = infobotSection ? infobotSection.dataset.topicSlug : '';
+            const examQuestionId = infobotSection ? infobotSection.dataset.questionId : '';
+
+            if (!topicSlug) {
+                throw new Error('Topic slug not found');
+            }
+
+            // Try to determine which part the student is currently working on
+            let currentPartId = '';
+            const partContainers = document.querySelectorAll('.part-container');
+            if (partContainers.length > 0) {
+                // Use the first part as default
+                const firstPartId = partContainers[0].id.replace('part-', '');
+                currentPartId = firstPartId;
+
+                // Better approach: find a part with recent input
+                for (const container of partContainers) {
+                    const partId = container.id.replace('part-', '');
+                    const mathField = document.getElementById('answer-' + partId);
+                    if (mathField && mathField.value && mathField.value.trim()) {
+                        currentPartId = partId;
+                        break;
+                    }
+                }
+            }
+
+            // Build URL with context parameters
+            let url = `/interactive/info-bot/${topicSlug}/?query=${encodeURIComponent(query)}`;
+            if (examQuestionId) {
+                url += `&exam_question_id=${examQuestionId}`;
+            }
+            if (currentPartId) {
+                url += `&question_part_id=${currentPartId}`;
+            }
+
+            console.log('Numskull request URL:', url);
+
+            // Make AJAX request
+            const response = await fetch(url, {
+                method: 'GET',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            });
+
+            const data = await response.json();
+
+            // Hide loading, show answer
+            infobotLoading.style.display = 'none';
+
+            if (data.answer) {
+                infobotAnswer.innerHTML = data.answer;
+                infobotAnswer.style.display = 'block';
+
+                // Re-render KaTeX if available
+                if (window.renderMathInElement) {
+                    renderMathInElement(infobotAnswer, {
+                        delimiters: [
+                            {left: "$$", right: "$$", display: true},
+                            {left: "$", right: "$", display: false}
+                        ],
+                        throwOnError: false
+                    });
+                }
+
+                // Scroll to answer
+                infobotAnswer.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            } else {
+                infobotAnswer.innerHTML = '<div style="color:red;">Sorry, I could not find an answer to that question.</div>';
+                infobotAnswer.style.display = 'block';
+            }
+
+        } catch (error) {
+            console.error('Numskull error:', error);
+            infobotLoading.style.display = 'none';
+            infobotAnswer.innerHTML = '<div style="color:red;">An error occurred. Please try again.</div>';
+            infobotAnswer.style.display = 'block';
+        }
+    });
+
+    // Allow Enter key to submit
+    infobotQueryInput.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            infobotAskBtn.click();
+        }
+    });
+});
+</script>
+{% endblock %}
