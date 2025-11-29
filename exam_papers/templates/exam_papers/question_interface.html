@@ -9,7 +9,7 @@
     <div class="timer-bar" id="timer-bar">
         <div class="timer-content">
             <span class="timer-label">⏱️ Exam Time Remaining:</span>
-            <span class="timer-display" id="timer-display">{{ time_remaining|floatformat:0 }}</span>
+            <span class="timer-display" id="timer-display">Loading...</span>
         </div>
         <div class="timer-progress" id="timer-progress" style="width: {{ timer_percentage }}%"></div>
     </div>
@@ -80,11 +80,16 @@
             </div>
             {% endif %}
 
-            {% if part_data.part.expected_format %}
+            {% if part_data.part.get_expected_format_display %}
             <details style="margin-top:15px; margin-bottom:15px; background-color:#f0f7ff; border:1px solid #cfe2ff; border-radius:5px; padding:8px;">
                 <summary style="font-weight:600; color:#004aad; cursor:pointer;">💭 Expected Answer Format</summary>
                 <div style="margin-top:6px; line-height:1.5;">
-                    {{ part_data.part.expected_format|safe }}
+                    {{ part_data.part.get_expected_format_display|safe }}
+                    {% if part_data.part.answer_format_template.example %}
+                    <div style="margin-top:8px; padding:6px; background:#e8f4f8; border-left:3px solid #004aad; font-style:italic;">
+                        Example: {{ part_data.part.answer_format_template.example }}
+                    </div>
+                    {% endif %}
                 </div>
             </details>
             {% endif %}
@@ -618,8 +623,6 @@ function updateTimer() {
         return;
     }
 
-    timeRemaining--;
-
     const hours = Math.floor(timeRemaining / 3600);
     const minutes = Math.floor((timeRemaining % 3600) / 60);
     const seconds = timeRemaining % 60;
@@ -643,8 +646,12 @@ function updateTimer() {
     // Update progress bar
     const percentage = (timeRemaining / totalTime) * 100;
     timerProgress.style.width = percentage + '%';
+
+    timeRemaining--;
 }
 
+// Update immediately on load, then every second
+updateTimer();
 setInterval(updateTimer, 1000);
 {% endif %}
 
@@ -656,12 +663,6 @@ const suggestedTimerProgress = document.getElementById('suggested-timer-progress
 const totalSuggestedTime = {{ question.suggested_time_minutes }} * 60;
 
 function updateSuggestedTimer() {
-    if (suggestedTimeRemaining <= 0) {
-        suggestedTimeRemaining = 0;
-    } else {
-        suggestedTimeRemaining--;
-    }
-
     const minutes = Math.floor(suggestedTimeRemaining / 60);
     const seconds = suggestedTimeRemaining % 60;
     suggestedTimerDisplay.textContent = `${minutes}:${String(seconds).padStart(2, '0')}`;
@@ -676,8 +677,14 @@ function updateSuggestedTimer() {
     // Update progress bar
     const percentage = (suggestedTimeRemaining / totalSuggestedTime) * 100;
     suggestedTimerProgress.style.width = percentage + '%';
+
+    if (suggestedTimeRemaining > 0) {
+        suggestedTimeRemaining--;
+    }
 }
 
+// Update immediately on load, then every second
+updateSuggestedTimer();
 setInterval(updateSuggestedTimer, 1000);
 {% endif %}
 

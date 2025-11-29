@@ -156,7 +156,14 @@ class QuestionPart(models.Model):
         help_text="Optional image for this specific question part (e.g., diagram, graph)."
     )
     answer = models.TextField(blank=True, null=True)
-    expected_format = models.TextField(blank=True, null=True, help_text="Expected format of the answer (e.g., decimal, fraction, degrees)")
+    answer_format_template = models.ForeignKey(
+        'exam_papers.AnswerFormatTemplate',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        help_text="Select a predefined answer format template"
+    )
+    expected_format = models.TextField(blank=True, null=True, help_text="Custom format description (or leave blank to use template)")
     solution = models.TextField(blank=True, null=True)
     solution_image = models.ImageField(
         upload_to="solutions/",
@@ -185,6 +192,15 @@ class QuestionPart(models.Model):
 
     def __str__(self):
         return f"{self.question} {self.label or self.order}"
+
+    def get_expected_format_display(self):
+        """
+        Returns the format instruction to show to students.
+        Uses template if selected, otherwise returns custom text.
+        """
+        if self.answer_format_template:
+            return self.answer_format_template.description
+        return self.expected_format or ""
 
 
 class StudentInquiry(models.Model):

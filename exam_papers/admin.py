@@ -3,6 +3,7 @@ from django.contrib import admin
 from django.utils.html import format_html
 from django.urls import reverse
 from .models import (
+    AnswerFormatTemplate,
     ExamPaper,
     ExamQuestion,
     ExamQuestionPart,
@@ -11,12 +12,38 @@ from .models import (
 )
 
 
+@admin.register(AnswerFormatTemplate)
+class AnswerFormatTemplateAdmin(admin.ModelAdmin):
+    list_display = ('name', 'category', 'description_preview', 'example', 'is_active', 'order')
+    list_filter = ('category', 'is_active')
+    search_fields = ('name', 'description', 'category', 'example')
+    list_editable = ('order', 'is_active')
+
+    fieldsets = (
+        ('Template Information', {
+            'fields': ('name', 'category', 'is_active', 'order')
+        }),
+        ('Format Instructions', {
+            'fields': ('description', 'example'),
+            'description': 'The description will be shown to students. The example is optional but helpful.'
+        }),
+    )
+
+    def description_preview(self, obj):
+        """Show truncated description in list view"""
+        if len(obj.description) > 60:
+            return obj.description[:60] + '...'
+        return obj.description
+    description_preview.short_description = 'Description'
+
+
 class ExamQuestionPartInline(admin.TabularInline):
     """Inline admin for question parts"""
     model = ExamQuestionPart
     extra = 1
-    fields = ('label', 'prompt', 'answer', 'expected_type', 'max_marks', 'order')
+    fields = ('label', 'prompt', 'answer', 'answer_format_template', 'expected_type', 'max_marks', 'order')
     ordering = ['order']
+    autocomplete_fields = ['answer_format_template']
 
 
 class ExamQuestionInline(admin.TabularInline):
@@ -138,7 +165,11 @@ class ExamQuestionPartAdmin(admin.ModelAdmin):
             'fields': ('question', 'label', 'order')
         }),
         ('Question Content', {
-            'fields': ('prompt', 'image', 'expected_format')
+            'fields': ('prompt', 'image')
+        }),
+        ('Answer Format', {
+            'fields': ('answer_format_template', 'expected_format'),
+            'description': 'Select a template for common formats, or enter custom text. Template takes precedence.'
         }),
         ('Answer', {
             'fields': ('answer', 'expected_type')
@@ -150,6 +181,8 @@ class ExamQuestionPartAdmin(admin.ModelAdmin):
             'fields': ('max_marks',)
         }),
     )
+
+    autocomplete_fields = ['answer_format_template']
 
 
 class ExamQuestionAttemptInline(admin.TabularInline):

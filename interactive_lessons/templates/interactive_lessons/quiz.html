@@ -49,13 +49,18 @@
                 {% endif %}
 
                 <!-- ✨ Expected Answer Format Box -->
-                {% if part.expected_format %}
+                {% if part.get_expected_format_display %}
                     <details
                             style="margin-top:8px; background-color:#f0f7ff; border:1px solid #cfe2ff; border-radius:5px; padding:8px;">
                         <summary style="font-weight:600; color:#004aad; cursor:pointer;">💭 Expected Answer Format
                         </summary>
                         <div style="margin-top:6px; line-height:1.5;">
-                            {{ part.expected_format|safe }}
+                            {{ part.get_expected_format_display|safe }}
+                            {% if part.answer_format_template.example %}
+                            <div style="margin-top:8px; padding:6px; background:#e8f4f8; border-left:3px solid #004aad; font-style:italic;">
+                                Example: {{ part.answer_format_template.example }}
+                            </div>
+                            {% endif %}
                         </div>
                     </details>
                 {% endif %}

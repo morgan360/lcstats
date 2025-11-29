@@ -5,6 +5,47 @@ from django.utils.text import slugify
 from interactive_lessons.models import Topic
 
 
+class AnswerFormatTemplate(models.Model):
+    """
+    Reusable templates for expected answer formats.
+    Makes it easy to apply consistent formatting instructions across questions.
+    """
+    name = models.CharField(
+        max_length=100,
+        unique=True,
+        help_text="Short name for this format (e.g., 'Degrees', 'Exact Fraction')"
+    )
+    description = models.TextField(
+        help_text="The format instruction shown to students"
+    )
+    example = models.CharField(
+        max_length=200,
+        blank=True,
+        help_text="Example answer in this format (e.g., '45°' or '3/4')"
+    )
+    category = models.CharField(
+        max_length=50,
+        blank=True,
+        help_text="Category for grouping (e.g., 'Angles', 'Fractions', 'Algebra')"
+    )
+    is_active = models.BooleanField(
+        default=True,
+        help_text="Whether this template is available for selection"
+    )
+    order = models.PositiveIntegerField(
+        default=0,
+        help_text="Display order in dropdown"
+    )
+
+    class Meta:
+        ordering = ['category', 'order', 'name']
+
+    def __str__(self):
+        if self.category:
+            return f"{self.category}: {self.name}"
+        return self.name
+
+
 class ExamPaper(models.Model):
     """
     Represents a complete Leaving Certificate exam paper.
@@ -193,9 +234,16 @@ class ExamQuestionPart(models.Model):
     answer = models.TextField(
         help_text="Correct answer (or acceptable answers separated by |)"
     )
+    answer_format_template = models.ForeignKey(
+        AnswerFormatTemplate,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        help_text="Select a predefined answer format template"
+    )
     expected_format = models.TextField(
         blank=True,
-        help_text="Description of expected answer format for students"
+        help_text="Custom format description (or leave blank to use template)"
     )
     expected_type = models.CharField(
         max_length=20,
@@ -238,6 +286,15 @@ class ExamQuestionPart(models.Model):
 
     def __str__(self):
         return f"{self.question} {self.label}"
+
+    def get_expected_format_display(self):
+        """
+        Returns the format instruction to show to students.
+        Uses template if selected, otherwise returns custom text.
+        """
+        if self.answer_format_template:
+            return self.answer_format_template.description
+        return self.expected_format or ""
 
 
 
