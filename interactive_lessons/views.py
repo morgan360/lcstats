@@ -23,12 +23,62 @@ client = OpenAI()
 # InfoBot (Notes / GPT QA)
 # ----------------------------------------------------------------------
 def info_bot(request, topic_slug):
-    """Answer a student's free-text question using Notes or GPT fallback."""
+    """Answer a student's free-text question using Notes or GPT fallback with question context."""
     query = request.GET.get("query", "").strip()
     if not query:
         return JsonResponse({"answer": ""})
 
-    note, confidence, scored = match_note(query, topic=topic_slug)
+    # Extract optional question context parameters
+    practice_question_id = request.GET.get("practice_question_id")
+    exam_question_id = request.GET.get("exam_question_id")
+    question_part_id = request.GET.get("question_part_id")
+
+    # Build question context string
+    question_context_str = ""
+    question_context_parts = []
+
+    if practice_question_id:
+        try:
+            from .models import QuestionPart
+            practice_q = Question.objects.get(id=practice_question_id)
+            question_context_parts.append(f"Topic: {practice_q.topic.name}")
+            if practice_q.hint:
+                question_context_parts.append(f"Question hint: {practice_q.hint[:200]}")
+
+            # If specific part is mentioned, include it
+            if question_part_id:
+                try:
+                    part = QuestionPart.objects.get(id=question_part_id)
+                    question_context_parts.append(f"Question part ({part.label}): {part.prompt[:300]}")
+                except QuestionPart.DoesNotExist:
+                    pass
+        except Question.DoesNotExist:
+            pass
+
+    elif exam_question_id:
+        try:
+            from exam_papers.models import ExamQuestion, ExamQuestionPart
+            exam_q = ExamQuestion.objects.get(id=exam_question_id)
+            question_context_parts.append(f"Exam Question {exam_q.question_number}")
+            if exam_q.topic:
+                question_context_parts.append(f"Topic: {exam_q.topic.name}")
+            if exam_q.stem:
+                question_context_parts.append(f"Question stem: {exam_q.stem[:200]}")
+
+            # If specific part is mentioned, include it
+            if question_part_id:
+                try:
+                    part = ExamQuestionPart.objects.get(id=question_part_id)
+                    question_context_parts.append(f"Question part ({part.label}): {part.prompt[:300]}")
+                except ExamQuestionPart.DoesNotExist:
+                    pass
+        except:
+            pass
+
+    question_context_str = "\n".join(question_context_parts)
+
+    # Try matching notes with original query
+    note, confidence, scored = match_note(query, topic=topic_slug, question_context=question_context_str)
 
     if note:
         html_answer = markdown.markdown(
@@ -42,15 +92,38 @@ def info_bot(request, topic_slug):
             confidence=confidence,
             sources=note.title,
             source_type="notes",
+            practice_question_id=int(practice_question_id) if practice_question_id else None,
+            exam_question_id=int(exam_question_id) if exam_question_id else None,
+            question_part_id=int(question_part_id) if question_part_id else None,
+            question_context=question_context_str,
         )
         return JsonResponse({"answer": html_answer})
 
+    # Build enhanced prompt with question context
     context_text = "\n\n".join([n.content for _, n in scored[:3]])
-    prompt = (
-        f"You are a Leaving Cert Honours Maths tutor.\n\n"
-        f"Relevant notes:\n{context_text}\n\n"
-        f"Question:\n{query}"
-    )
+
+    prompt_parts = [
+        "You are Numskull, a Leaving Cert Honours Maths tutor.",
+        "",
+        "IMPORTANT INSTRUCTIONS:",
+        "- Answer ONLY what the student asks - do not solve their problem for them",
+        "- Keep answers brief and focused (2-3 sentences max unless asked to explain)",
+        "- DO NOT provide step-by-step solutions unless explicitly asked",
+        "- DO NOT work through examples unless asked",
+        "- Use LaTeX math notation with $ for inline math and $$ for display math",
+        "- Be concise and helpful, but don't do their homework"
+    ]
+
+    if question_context_str:
+        prompt_parts.append(f"\nStudent is working on:\n{question_context_str}")
+
+    if context_text:
+        prompt_parts.append(f"\nRelevant course notes:\n{context_text}")
+
+    prompt_parts.append(f"\nStudent's question:\n{query}")
+    prompt_parts.append("\nProvide a brief, direct answer (2-3 sentences). Do not solve the problem or provide step-by-step solutions unless specifically asked.")
+
+    prompt = "\n".join(prompt_parts)
 
     response = client.chat.completions.create(
         model="gpt-4o-mini",
@@ -71,6 +144,10 @@ def info_bot(request, topic_slug):
         confidence=confidence,
         sources=", ".join([n.title for _, n in scored]),
         source_type="ai",
+        practice_question_id=int(practice_question_id) if practice_question_id else None,
+        exam_question_id=int(exam_question_id) if exam_question_id else None,
+        question_part_id=int(question_part_id) if question_part_id else None,
+        question_context=question_context_str,
     )
 
     return JsonResponse({"answer": html_answer})
@@ -83,6 +160,7 @@ def select_topic(request):
     from notes.models import Note
     from revision.models import RevisionModule
     from cheatsheets.models import CheatSheet
+    from exam_papers.models import ExamQuestion
     topics = Topic.objects.all().order_by("name")
     # Annotate topics with note counts, question counts, cheat sheet counts, and revision module info
     topics_with_notes = []
@@ -90,6 +168,11 @@ def select_topic(request):
         note_count = Note.objects.filter(topic=topic).count()
         question_count = Question.objects.filter(topic=topic).count()
         cheatsheet_count = CheatSheet.objects.filter(topic=topic).count()
+        # Count exam questions for this topic (only from published papers)
+        exam_question_count = ExamQuestion.objects.filter(
+            topic=topic,
+            exam_paper__is_published=True
+        ).count()
         # Check if this topic has a published revision module
         revision_module = RevisionModule.objects.filter(
             topic=topic,
@@ -102,6 +185,8 @@ def select_topic(request):
             'question_count': question_count,
             'cheatsheet_count': cheatsheet_count,
             'has_cheatsheets': cheatsheet_count > 0,
+            'exam_question_count': exam_question_count,
+            'has_exam_questions': exam_question_count > 0,
             'has_revision': revision_module is not None,
             'revision_module': revision_module
         })
@@ -428,6 +513,88 @@ def question_view(request, topic_id, number):
 # ----------------------------------------------------------------------
 # Contact teacher about a question
 # ----------------------------------------------------------------------
+@login_required
+def topic_exam_questions(request, topic_slug):
+    """Display exam questions for a topic, grouped by year, with student progress"""
+    from exam_papers.models import ExamQuestion, ExamQuestionAttempt, ExamAttempt
+
+    topic = get_object_or_404(Topic, slug=topic_slug)
+
+    # Get all published exam questions for this topic, ordered by year (most recent first)
+    exam_questions = ExamQuestion.objects.filter(
+        topic=topic,
+        exam_paper__is_published=True
+    ).select_related('exam_paper').prefetch_related('parts').order_by('-exam_paper__year', 'exam_paper__paper_type', 'question_number')
+
+    # Get student's attempts for these questions
+    user_attempts = {}
+    for question in exam_questions:
+        # Get all attempts for parts of this question by this student
+        part_attempts = ExamQuestionAttempt.objects.filter(
+            exam_attempt__student=request.user,
+            question_part__question=question
+        ).select_related('question_part')
+
+        if part_attempts.exists():
+            # Calculate total marks for this question
+            total_marks_awarded = 0
+            total_marks_possible = 0
+            parts_attempted = set()
+
+            for attempt in part_attempts:
+                parts_attempted.add(attempt.question_part.id)
+                # Get best attempt for each part
+                best_for_part = ExamQuestionAttempt.objects.filter(
+                    exam_attempt__student=request.user,
+                    question_part=attempt.question_part
+                ).order_by('-marks_awarded').first()
+
+                if best_for_part:
+                    total_marks_awarded += best_for_part.marks_awarded
+                    total_marks_possible += best_for_part.max_marks
+
+            user_attempts[question.id] = {
+                'attempted': True,
+                'parts_attempted': len(parts_attempted),
+                'total_parts': question.parts.count(),
+                'marks_awarded': total_marks_awarded,
+                'marks_possible': total_marks_possible,
+                'percentage': (total_marks_awarded / total_marks_possible * 100) if total_marks_possible > 0 else 0
+            }
+        else:
+            user_attempts[question.id] = {
+                'attempted': False,
+                'parts_attempted': 0,
+                'total_parts': question.parts.count()
+            }
+
+    # Group questions by year and paper, and attach attempt data to each question
+    questions_by_paper = {}
+    for question in exam_questions:
+        paper_key = f"{question.exam_paper.year} {question.exam_paper.get_paper_type_display()}"
+        if paper_key not in questions_by_paper:
+            questions_by_paper[paper_key] = {
+                'paper': question.exam_paper,
+                'questions': []
+            }
+        # Attach attempt data directly to question object for easy template access
+        question.attempt_data = user_attempts.get(question.id, {
+            'attempted': False,
+            'parts_attempted': 0,
+            'total_parts': question.parts.count()
+        })
+        questions_by_paper[paper_key]['questions'].append(question)
+
+    context = {
+        'topic': topic,
+        'questions_by_paper': questions_by_paper,
+        'total_questions': exam_questions.count(),
+        'user_attempts': user_attempts
+    }
+
+    return render(request, 'interactive_lessons/topic_exam_questions.html', context)
+
+
 @login_required
 def question_contact(request, question_id):
     """Allow students to email the teacher about a specific question"""

@@ -14,6 +14,9 @@ urlpatterns = [
     path("<slug:topic_slug>/sections/<slug:section_slug>/question/<int:number>/",
          views.section_question_view, name="section_question_view"),
 
+    # --- Exam questions by topic ---
+    path("<slug:topic_slug>/exam-questions/", views.topic_exam_questions, name="topic_exam_questions"),
+
     # --- Topic quiz entry point (redirects to section list) ---
     path("quiz/<slug:topic_slug>/", views.topic_quiz, name="topic_quiz"),
 

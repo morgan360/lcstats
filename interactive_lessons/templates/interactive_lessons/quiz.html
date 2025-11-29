@@ -2,7 +2,7 @@
 {% block title %}{{ topic.name }} | LCAI Maths{% endblock %}
 
 {% block content %}
-    <div class="card" style="max-width:750px; margin:0 auto; padding:20px;" data-topic-slug="{{ topic.slug }}">
+    <div class="card" style="max-width:750px; margin:0 auto; padding:20px;" data-topic-slug="{{ topic.slug }}" data-question-id="{{ question.id }}">
         <h2 style="color:#004aad; margin-bottom:0.4em;">{{ topic.name }}</h2>
         <p style="margin:0; font-weight:600;">Question {{ index }} of {{ total }}</p>
 
@@ -31,7 +31,7 @@
 
         <!-- Each QuestionPart -->
         {% for part in parts %}
-            <div id="part-{{ part.id }}"
+            <div id="part-{{ part.id }}" data-part-id="{{ part.id }}"
                  style="margin-top:1.2em; border-top:1px solid #eee; padding-top:1em; background-color:#f7f7f7; border-radius:8px; padding:12px;">
 
                 <!-- Inline label + question prompt -->
@@ -128,10 +128,10 @@
         </div>
     </div>
 
-    <!-- InfoBot and Contact Section -->
+    <!-- Numskull and Contact Section -->
     <div style="max-width:750px; margin:30px auto; padding:20px; background-color:#f0f8ff; border:1px solid #b3d9ff; border-radius:8px;">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
-            <h3 style="color:#004aad; margin:0;">🤖 Ask InfoBot</h3>
+            <h3 style="color:#004aad; margin:0;">🧠 Ask Numskull</h3>
             <a href="{% url 'question_contact' question.id %}"
                class="btn"
                style="background-color:#00994c; color:white; padding:6px 12px; text-decoration:none; font-size:0.9em; border-radius:4px;">

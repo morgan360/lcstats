@@ -37,10 +37,16 @@ def expand_query(query: str) -> str:
 
     return query
 
-def match_note(query: str, topic: str = None, threshold: float = None, top_n: int = 5):
+def match_note(query: str, topic: str = None, threshold: float = None, top_n: int = 5, question_context: str = None):
     """
     Retrieve the most relevant note for a given query.
     Uses FAQ_MATCH_THRESHOLD from settings as default.
+    Args:
+        query: Student's question
+        topic: Topic slug to filter notes
+        threshold: Confidence threshold for direct answer
+        top_n: Number of top matches to return
+        question_context: Optional context about the question being worked on
     Returns:
         best_note (Note or None),
         best_confidence (float),
@@ -49,9 +55,13 @@ def match_note(query: str, topic: str = None, threshold: float = None, top_n: in
     # 1️⃣ Pick threshold from settings if not passed in
     threshold = threshold or getattr(settings, "FAQ_MATCH_THRESHOLD", 0.72)
 
-    # 2️⃣ Expand query for better matching
+    # 2️⃣ Expand query for better matching, optionally including question context
     expanded_query = expand_query(query)
-    if expanded_query != query:
+    if question_context:
+        # Include question context in the search to improve relevance
+        expanded_query = f"{expanded_query} {question_context}"
+        print(f"🔍 Query with context: '{query}' + context")
+    elif expanded_query != query:
         print(f"🔍 Query expanded: '{query}' → '{expanded_query[:80]}...'")
 
     # 3️⃣ Use your robust search_similar() util with expanded query

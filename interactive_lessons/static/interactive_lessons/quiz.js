@@ -99,7 +99,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   // --------------------------------------------------------------------
-  // ✅ Handle InfoBot queries
+  // ✅ Handle Numskull queries
   // --------------------------------------------------------------------
   // Use setTimeout to ensure DOM is fully loaded
   setTimeout(() => {
@@ -109,11 +109,11 @@ document.addEventListener("DOMContentLoaded", () => {
     const infobotLoading = document.getElementById("infobot-loading");
 
     if (infobotQueryInput && infobotAskBtn && infobotAnswer && infobotLoading) {
-      console.log("InfoBot initialized successfully");
+      console.log("Numskull initialized successfully");
 
       // Handle Ask button click
       infobotAskBtn.addEventListener("click", async () => {
-        console.log("InfoBot Ask button clicked");
+        console.log("Numskull Ask button clicked");
         const query = infobotQueryInput.value.trim();
         if (!query) {
           alert("Please enter a question first.");
@@ -135,8 +135,41 @@ document.addEventListener("DOMContentLoaded", () => {
             throw new Error("Topic slug not found");
           }
 
-          // Make AJAX request to InfoBot endpoint
-          const response = await fetch(`/interactive/info-bot/${topicSlug}/?query=${encodeURIComponent(query)}`, {
+          // Extract question context (question ID)
+          const questionId = topicElement ? topicElement.dataset.questionId : "";
+
+          // Try to determine which part the student is currently focused on
+          // This is an approximation - we'll use the first visible part or last interacted part
+          let currentPartId = "";
+          const parts = document.querySelectorAll("[data-part-id]");
+          if (parts.length > 0) {
+            // Use the first part as default context
+            currentPartId = parts[0].dataset.partId;
+
+            // Better approach: find the part with a recent answer input
+            for (const part of parts) {
+              const partId = part.dataset.partId;
+              const mathField = document.getElementById("mf-" + partId);
+              if (mathField && mathField.getValue("latex").trim()) {
+                currentPartId = partId;
+                break; // Use the first part with content
+              }
+            }
+          }
+
+          // Build URL with context parameters
+          let url = `/interactive/info-bot/${topicSlug}/?query=${encodeURIComponent(query)}`;
+          if (questionId) {
+            url += `&practice_question_id=${questionId}`;
+          }
+          if (currentPartId) {
+            url += `&question_part_id=${currentPartId}`;
+          }
+
+          console.log("Numskull URL with context:", url);
+
+          // Make AJAX request to Numskull endpoint
+          const response = await fetch(url, {
             method: "GET",
             headers: {
               "X-Requested-With": "XMLHttpRequest"
@@ -152,6 +185,17 @@ document.addEventListener("DOMContentLoaded", () => {
             infobotAnswer.innerHTML = data.answer;
             infobotAnswer.style.display = "block";
 
+            // Render KaTeX math
+            if (window.renderMathInElement) {
+              renderMathInElement(infobotAnswer, {
+                delimiters: [
+                  {left: "$$", right: "$$", display: true},
+                  {left: "$", right: "$", display: false}
+                ],
+                throwOnError: false
+              });
+            }
+
             // Scroll to answer
             infobotAnswer.scrollIntoView({ behavior: "smooth", block: "nearest" });
           } else {
@@ -160,7 +204,7 @@ document.addEventListener("DOMContentLoaded", () => {
           }
 
         } catch (error) {
-          console.error("InfoBot error:", error);
+          console.error("Numskull error:", error);
           infobotLoading.style.display = "none";
           infobotAnswer.innerHTML = "<div style='color:red;'>Error: Unable to get an answer. Please try again.</div>";
           infobotAnswer.style.display = "block";
@@ -174,7 +218,7 @@ document.addEventListener("DOMContentLoaded", () => {
         }
       });
     } else {
-      console.error("InfoBot elements not found:", {
+      console.error("Numskull elements not found:", {
         infobotQueryInput,
         infobotAskBtn,
         infobotAnswer,

@@ -152,5 +152,27 @@ class InfoBotQuery(models.Model):
         default="ai",
     )
 
+    # Question context fields (for context-aware InfoBot)
+    practice_question_id = models.IntegerField(
+        null=True,
+        blank=True,
+        help_text="ID of interactive_lessons.Question if query relates to a practice question"
+    )
+    exam_question_id = models.IntegerField(
+        null=True,
+        blank=True,
+        help_text="ID of exam_papers.ExamQuestion if query relates to an exam question"
+    )
+    question_part_id = models.IntegerField(
+        null=True,
+        blank=True,
+        help_text="ID of QuestionPart or ExamQuestionPart being worked on"
+    )
+    question_context = models.TextField(
+        blank=True,
+        null=True,
+        help_text="Stored question text for context (in case question is later modified/deleted)"
+    )
+
     def __str__(self):
         return f"{self.topic_slug}: {self.question[:60]}"

@@ -13,6 +13,7 @@ urlpatterns = [
     path('students/', include('students.urls')),
     path('revision/', include('revision.urls')),
     path('cheatsheets/', include('cheatsheets.urls')),
+    path('exam-papers/', include('exam_papers.urls')),
 
 ]
 if settings.DEBUG:

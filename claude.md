@@ -30,15 +30,23 @@ The project follows a modular Django app pattern:
    - Tracks scores, attempts per question part, and progress across topics
    - Auto-calculates `marks_awarded` based on `score_awarded` and `max_marks`
 
-3. **`notes/`** - RAG-based knowledge system
+3. **`exam_papers/`** - Full exam paper system
+   - Models: `ExamPaper`, `ExamQuestion`, `ExamQuestionPart`, `ExamAttempt`, `ExamQuestionAttempt`
+   - Supports timed exam mode (150 min) and individual question practice
+   - Questions link to Topics for practice access from Interactive Lessons
+   - Dual timer system: overall exam timer + per-question suggested time
+   - Solution images and marking scheme PDFs attached to questions/papers
+   - Management command: `extract_exam_questions` for PDF parsing
+
+4. **`notes/`** - RAG-based knowledge system
    - Models: `Note` (auto-embeds on save), `InfoBotQuery` (chat history)
    - `helpers/match_note.py`: Semantic search with threshold-based matching
    - `utils.py`: Vector search utilities using FAISS
    - Notes linked to Topics; embeddings regenerated on content/metadata changes
 
-4. **`chat/`** - Standalone chat interface for AI tutor
+5. **`chat/`** - Standalone chat interface for AI tutor
 
-5. **`home/`** - Landing pages
+6. **`home/`** - Landing pages
 
 ### Key Architectural Patterns
 
@@ -63,6 +71,21 @@ The project follows a modular Django app pattern:
 - Each `QuestionAttempt` links to both `Question` and `QuestionPart`
 - `StudentProfile.update_progress()` recalculates total score and distinct topics completed
 - Marks auto-calculated: `(score_awarded / 100) * max_marks`
+
+**Exam Papers System:**
+- **Two Access Paths**:
+  1. **Exam Papers** (`/exam-papers/`) - Full timed exam mode only (150 min timer)
+  2. **Interactive Lessons → Exam Questions** - Individual question practice (suggested time per question)
+- **Dual Timer Display**: When in timed exam mode + question has suggested time, both timers show
+- **Attempt Modes**:
+  - `full_timed` - Complete exam with 150-minute countdown, auto-submits when time expires
+  - `question_practice` - Individual questions with suggested time (no forced submission)
+- **Solution System**:
+  - Solution images uploaded to `ExamQuestionPart.solution_image` (from marking schemes)
+  - Full marking scheme PDFs uploaded to `ExamPaper.marking_scheme_pdf` (accessible anytime)
+  - Solutions unlock after: correct answer OR attempts >= threshold OR threshold = 0
+- **Shared Grading**: Exam questions use same `mark_student_answer()` from `stats_tutor.py`
+- **Topic Linking**: `ExamQuestion.topic` links to `Topic` for cross-app integration
 
 ## Common Development Commands
 
@@ -113,6 +136,8 @@ python manage.py collectstatic
 - `/admin/` - Django admin
 - `/students/` - Student dashboard, login, progress
 - `/interactive/` - Question interface, topics
+  - `/interactive/<topic-slug>/exam-questions/` - Exam questions for a topic (practice mode)
+- `/exam-papers/` - Exam papers list and timed exams
 - `/notes/` - Notes management
 - `/chat/` - AI chat interface
 - `/markdownx/` - Markdown editor endpoints
@@ -145,3 +170,12 @@ python manage.py collectstatic
 - Use `interactive_lessons/utils/katex_sanitizer.py` for sanitization
 - Questions auto-sanitize on save if containing `(\\` or `[\\`
 - Frontend renders via markdown-katex extension
+
+**When working with Exam Papers:**
+- **Two question systems exist**: `interactive_lessons.Question` (practice) and `exam_papers.ExamQuestion` (exams)
+- Both share the same grading system via `stats_tutor.mark_student_answer()`
+- Exam questions MUST link to a Topic (`ExamQuestion.topic`) to appear in Interactive Lessons
+- Avoid code duplication: use single question interface (`exam_papers/templates/.../question_interface.html`)
+- Attempt mode filtering: `ExamAttempt.objects.filter(attempt_mode='full_timed')` for timed exams only
+- Solution unlocking logic: check `has_correct_answer OR attempts >= threshold OR threshold == 0`
+- Upload solution images to question parts, marking scheme PDFs to papers (not JSON marking schemes)

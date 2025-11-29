@@ -15,7 +15,7 @@
 
     .topics-table-header {
         display: grid;
-        grid-template-columns: 2fr 1fr 1fr 1fr;
+        grid-template-columns: 2fr 1fr 1fr 1fr 1fr;
         gap: 15px;
         padding: 20px;
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -26,7 +26,7 @@
 
     .topics-table-row {
         display: grid;
-        grid-template-columns: 2fr 1fr 1fr 1fr;
+        grid-template-columns: 2fr 1fr 1fr 1fr 1fr;
         gap: 15px;
         padding: 20px;
         border-bottom: 1px solid #e0e0e0;
@@ -83,6 +83,11 @@
         color: white;
     }
 
+    .btn-exam {
+        background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+        color: white;
+    }
+
     .btn-disabled {
         background: #e0e0e0;
         color: #9e9e9e;
@@ -133,6 +138,7 @@
     <div class="topics-table-header">
         <div>Topic</div>
         <div style="text-align: center;">Interactive Quiz</div>
+        <div style="text-align: center;">Exam Questions</div>
         <div style="text-align: center;">Revision Notes</div>
         <div style="text-align: center;">Cheat Sheets</div>
     </div>
@@ -151,6 +157,25 @@
                 Quiz
                 <span class="count-badge">{{ item.question_count }}</span>
             </a>
+        </div>
+
+        <div style="display: flex; justify-content: center;">
+            {% if item.has_exam_questions %}
+            <a href="{% url 'topic_exam_questions' item.topic.slug %}" class="resource-btn btn-exam">
+                <svg class="resource-icon" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z"/>
+                </svg>
+                Exam Questions
+                <span class="count-badge">{{ item.exam_question_count }}</span>
+            </a>
+            {% else %}
+            <span class="resource-btn btn-disabled">
+                <svg class="resource-icon" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z"/>
+                </svg>
+                Not Available
+            </span>
+            {% endif %}
         </div>
 
         <div style="display: flex; justify-content: center;">
