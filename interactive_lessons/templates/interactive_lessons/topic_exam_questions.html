@@ -1,0 +1,129 @@
+{% extends "_base.html" %}
+{% block title %}{{ topic.name }} - Exam Questions{% endblock %}
+{% block content %}
+
+<div class="container" style="max-width: 1200px; margin: 0 auto; padding: 20px;">
+    <!-- Header -->
+    <div class="header" style="margin-bottom: 30px;">
+        <div class="breadcrumb" style="color: #6c757d; margin-bottom: 15px;">
+            <a href="{% url 'select_topic' %}" style="color: #007bff; text-decoration: none;">Topics</a> →
+            <span>{{ topic.name }}</span> →
+            <span>Exam Questions</span>
+        </div>
+        <h1 style="margin: 0 0 10px 0; color: #2c3e50;">{{ topic.name}} - Past Exam Questions</h1>
+        <p style="color: #6c757d; font-size: 1.1em;">
+            Practice with real Leaving Certificate exam questions ({{ total_questions }} question{{ total_questions|pluralize }})
+        </p>
+    </div>
+
+    {% if questions_by_paper %}
+        {% for paper_key, paper_data in questions_by_paper.items %}
+        <div class="paper-section" style="background: white; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); margin-bottom: 30px; overflow: hidden;">
+            <!-- Paper Header -->
+            <div class="paper-header" style="background: linear-gradient(135deg, #fa709a 0%, #fee140 100%); color: white; padding: 20px;">
+                <h2 style="margin: 0; font-size: 1.5em; display: flex; justify-content: space-between; align-items: center;">
+                    <span>{{ paper_key }}</span>
+                    <span style="font-size: 0.7em; background: rgba(255,255,255,0.3); padding: 5px 15px; border-radius: 20px;">
+                        {{ paper_data.questions|length }} question{{ paper_data.questions|length|pluralize }}
+                    </span>
+                </h2>
+            </div>
+
+            <!-- Questions List -->
+            <div class="questions-list" style="padding: 20px;">
+                {% for question in paper_data.questions %}
+                <div class="question-card" style="border: 1px solid #e0e0e0; border-radius: 8px; padding: 20px; margin-bottom: 15px;">
+                    <div class="question-header-row" style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 15px;">
+                        <div style="flex: 1;">
+                            <h3 style="margin: 0 0 10px 0; color: #2c3e50; font-size: 1.2em;">
+                                Question {{ question.question_number }}
+                                {% if question.title %}
+                                <span style="color: #6c757d; font-weight: normal; font-size: 0.9em;">- {{ question.title }}</span>
+                                {% endif %}
+                            </h3>
+                            <div style="color: #6c757d; font-size: 0.95em;">
+                                <strong>{{ question.total_marks }} marks</strong>
+                                {% if question.suggested_time_minutes %}
+                                • Suggested time: {{ question.suggested_time_minutes }} min
+                                {% endif %}
+                                • {{ question.parts.count }} part{{ question.parts.count|pluralize }}
+                            </div>
+                        </div>
+
+                        <!-- Progress Badge -->
+                        <div style="margin-left: 15px;">
+                            {% if question.attempt_data.attempted %}
+                                <div style="background: {% if question.attempt_data.percentage >= 70 %}#d4edda{% elif question.attempt_data.percentage >= 50 %}#fff3cd{% else %}#f8d7da{% endif %};
+                                            border: 1px solid {% if question.attempt_data.percentage >= 70 %}#c3e6cb{% elif question.attempt_data.percentage >= 50 %}#ffc107{% else %}#f5c6cb{% endif %};
+                                            border-radius: 8px; padding: 10px 15px; text-align: center;">
+                                    <div style="font-weight: 600; font-size: 1.1em; color: {% if question.attempt_data.percentage >= 70 %}#155724{% elif question.attempt_data.percentage >= 50 %}#856404{% else %}#721c24{% endif %};">
+                                        {{ question.attempt_data.percentage|floatformat:0 }}%
+                                    </div>
+                                    <div style="font-size: 0.85em; color: #6c757d; margin-top: 3px;">
+                                        {{ question.attempt_data.marks_awarded|floatformat:1 }}/{{ question.attempt_data.marks_possible|floatformat:0 }}
+                                    </div>
+                                    <div style="font-size: 0.75em; color: #6c757d; margin-top: 3px;">
+                                        {{ question.attempt_data.parts_attempted }}/{{ question.attempt_data.total_parts }} parts
+                                    </div>
+                                </div>
+                            {% else %}
+                                <div style="background: #e7f3ff; border: 1px solid #cfe2ff; border-radius: 8px; padding: 10px 15px; text-align: center;">
+                                    <div style="font-weight: 600; color: #0056b3;">Not Attempted</div>
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <!-- Question Parts Preview -->
+                    <div class="parts-preview" style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #e0e0e0;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                            <strong style="color: #2c3e50;">Question Parts:</strong>
+                            <form method="post" action="{% url 'exam_papers:start_paper_attempt' question.exam_paper.slug %}" style="display: inline;">
+                                {% csrf_token %}
+                                <input type="hidden" name="mode" value="question_practice">
+                                <input type="hidden" name="question_id" value="{{ question.id }}">
+                                <button type="submit"
+                                        class="practice-btn"
+                                        style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                                               color: white;
+                                               padding: 10px 20px;
+                                               border-radius: 8px;
+                                               border: none;
+                                               font-weight: 600;
+                                               font-size: 1em;
+                                               transition: all 0.3s;
+                                               cursor: pointer;">
+                                    Practice This Question →
+                                </button>
+                            </form>
+                        </div>
+                        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px;">
+                            {% for part in question.parts.all %}
+                            <div class="part-badge" style="background: #e7f3ff; border: 1px solid #cfe2ff; color: #0056b3; padding: 10px; border-radius: 8px;">
+                                <div style="font-weight: 600; margin-bottom: 5px;">{{ part.label }}</div>
+                                <div style="font-size: 0.85em;">{{ part.max_marks }} mark{{ part.max_marks|pluralize }}</div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endfor %}
+    {% else %}
+        <div class="no-questions" style="background: #fff3cd; border: 1px solid #ffc107; border-radius: 8px; padding: 30px; text-align: center;">
+            <h3 style="color: #856404; margin: 0 0 10px 0;">No Exam Questions Yet</h3>
+            <p style="color: #856404; margin: 0;">Exam questions for {{ topic.name }} will be added soon!</p>
+        </div>
+    {% endif %}
+</div>
+
+<style>
+.practice-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+}
+</style>
+
+{% endblock %}
