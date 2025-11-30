@@ -112,14 +112,14 @@ class ExamPaperAdmin(admin.ModelAdmin):
 class ExamQuestionAdmin(admin.ModelAdmin):
     list_display = ('__str__', 'question_number', 'topic', 'total_marks', 'suggested_time_minutes', 'has_image', 'exam_paper')
     list_filter = ('exam_paper__year', 'exam_paper__paper_type', 'topic')
-    search_fields = ('title', 'stem', 'question_number')
+    search_fields = ('title', 'question_number')
 
     fieldsets = (
         ('Question Identification', {
             'fields': ('exam_paper', 'question_number', 'order')
         }),
         ('Content', {
-            'fields': ('topic', 'title', 'stem', 'image', 'image_preview')
+            'fields': ('topic', 'title', 'image', 'image_preview')
         }),
         ('Marking & Timing', {
             'fields': ('total_marks', 'suggested_time_minutes')
