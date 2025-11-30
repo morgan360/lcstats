@@ -1,0 +1,95 @@
+{% extends "_base.html" %}
+{% block title %}Study Resources | LCAI Maths{% endblock %}
+
+{% block content %}
+<div class="container" style="max-width:1000px;margin:auto;padding:20px;">
+  <h1 style="color:#004aad;margin-bottom:15px;">Study Resources</h1>
+  <p style="color:#666;margin-bottom:40px;font-size:1.1em;">
+    Download comprehensive PDF guides and study notes for each topic.
+  </p>
+
+  {% if topics_with_notes %}
+    <div style="display:grid;gap:25px;">
+      {% for item in topics_with_notes %}
+        <div style="background:#fff;border:1px solid #e0e0e0;border-radius:12px;padding:25px;box-shadow:0 2px 8px rgba(0,0,0,0.05);">
+          <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:20px;">
+            <div>
+              <h2 style="color:#004aad;margin:0 0 8px 0;">{{ item.topic.name }}</h2>
+              <p style="color:#666;margin:0;font-size:0.95em;">
+                {{ item.count }} resource{{ item.count|pluralize }}
+              </p>
+            </div>
+            <a href="{% url 'notes_topic' item.topic.slug %}"
+               style="padding:10px 20px;background:#1976d2;color:white;border-radius:6px;text-decoration:none;font-weight:500;">
+              View All →
+            </a>
+          </div>
+
+          <div style="border-top:1px solid #f0f0f0;padding-top:20px;">
+            {% for note in item.notes %}
+              <div style="margin-bottom:15px;padding:15px;background:#f8f9fa;border-radius:8px;">
+                <div style="display:flex;justify-content:space-between;align-items:center;">
+                  <div style="flex:1;">
+                    <h3 style="margin:0 0 5px 0;color:#333;font-size:1.1em;">{{ note.title }}</h3>
+                    {% if note.content_type == 'exam_paper' %}
+                      <span style="display:inline-block;padding:3px 8px;background:#e3f2fd;color:#1976d2;border-radius:4px;font-size:0.85em;margin-right:8px;">
+                        Exam Paper
+                      </span>
+                    {% elif note.content_type == 'marking_scheme' %}
+                      <span style="display:inline-block;padding:3px 8px;background:#f3e5f5;color:#7b1fa2;border-radius:4px;font-size:0.85em;margin-right:8px;">
+                        Marking Scheme
+                      </span>
+                    {% endif %}
+                    {% if note.exam_year %}
+                      <span style="color:#666;font-size:0.9em;">{{ note.exam_year }}</span>
+                    {% endif %}
+                  </div>
+
+                  {% if note.image %}
+                    <div style="display:flex;gap:10px;">
+                      {% if note.image.url|slice:"-4:" == ".pdf" or note.image.url|slice:"-4:" == ".PDF" %}
+                        <a href="{% url 'notes_topic' item.topic.slug %}"
+                           style="padding:8px 16px;background:#e3f2fd;color:#1976d2;border-radius:6px;text-decoration:none;font-size:0.9em;">
+                          <svg style="width:16px;height:16px;vertical-align:middle;margin-right:5px;" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M12,9A3,3 0 0,0 9,12A3,3 0 0,0 12,15A3,3 0 0,0 15,12A3,3 0 0,0 12,9M12,17A5,5 0 0,1 7,12A5,5 0 0,1 12,7A5,5 0 0,1 17,12A5,5 0 0,1 12,17M12,4.5C7,4.5 2.73,7.61 1,12C2.73,16.39 7,19.5 12,19.5C17,19.5 21.27,16.39 23,12C21.27,7.61 17,4.5 12,4.5Z"/>
+                          </svg>
+                          View
+                        </a>
+                        <a href="{{ note.image.url }}" download
+                           style="padding:8px 16px;background:#1976d2;color:white;border-radius:6px;text-decoration:none;font-size:0.9em;">
+                          <svg style="width:16px;height:16px;vertical-align:middle;margin-right:5px;" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20M12,19L8,15H10.5V12H13.5V15H16L12,19Z"/>
+                          </svg>
+                          PDF
+                        </a>
+                      {% else %}
+                        <a href="{% url 'notes_topic' item.topic.slug %}"
+                           style="padding:8px 16px;background:#1976d2;color:white;border-radius:6px;text-decoration:none;font-size:0.9em;">
+                          View
+                        </a>
+                      {% endif %}
+                    </div>
+                  {% else %}
+                    <a href="{% url 'notes_topic' item.topic.slug %}"
+                       style="padding:8px 16px;background:#1976d2;color:white;border-radius:6px;text-decoration:none;font-size:0.9em;">
+                      View
+                    </a>
+                  {% endif %}
+                </div>
+              </div>
+            {% endfor %}
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+  {% else %}
+    <div style="text-align:center;padding:60px 20px;background:#f8f9fa;border-radius:12px;">
+      <svg style="width:80px;height:80px;margin-bottom:20px;opacity:0.3;" fill="#666" viewBox="0 0 24 24">
+        <path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z"/>
+      </svg>
+      <h2 style="color:#666;margin:0 0 10px 0;">No Study Resources Yet</h2>
+      <p style="color:#999;margin:0;">Check back soon for PDF guides and study notes!</p>
+    </div>
+  {% endif %}
+</div>
+{% endblock %}
