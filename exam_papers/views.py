@@ -168,7 +168,7 @@ def question_interface(request, attempt_id, question_id):
     if attempt.attempt_mode == 'full_timed':
         elapsed = (timezone.now() - attempt.started_at).total_seconds()
         time_limit = attempt.exam_paper.time_limit_minutes * 60
-        time_remaining = max(0, time_limit - elapsed)
+        time_remaining = int(max(0, time_limit - elapsed))
 
         # Calculate timer progress percentage
         if time_limit > 0:

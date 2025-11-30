@@ -62,8 +62,6 @@ def info_bot(request, topic_slug):
             question_context_parts.append(f"Exam Question {exam_q.question_number}")
             if exam_q.topic:
                 question_context_parts.append(f"Topic: {exam_q.topic.name}")
-            if exam_q.stem:
-                question_context_parts.append(f"Question stem: {exam_q.stem[:200]}")
 
             # If specific part is mentioned, include it
             if question_part_id:
@@ -103,7 +101,7 @@ def info_bot(request, topic_slug):
     context_text = "\n\n".join([n.content for _, n in scored[:3]])
 
     prompt_parts = [
-        "You are Numskull, a Leaving Cert Honours Maths tutor.",
+        "You are NumSkull, a Leaving Cert Honours Maths tutor.",
         "",
         "IMPORTANT INSTRUCTIONS:",
         "- Answer ONLY what the student asks - do not solve their problem for them",

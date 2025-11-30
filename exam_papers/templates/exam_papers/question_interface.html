@@ -26,6 +26,13 @@
     </div>
     {% endif %}
 
+    <!-- Exam Advice (only show for question_practice mode) -->
+    {% if attempt.attempt_mode == 'question_practice' %}
+    <div class="exam-advice-compact">
+        💡 <strong>Tip:</strong> Answer on paper first, then check your answer here. Use the solution and NumSkull for help!
+    </div>
+    {% endif %}
+
     <!-- Progress Header -->
     <div class="progress-header {% if time_remaining is not None and question.suggested_time_minutes %}dual-timer{% endif %}">
         <div class="breadcrumb">
@@ -48,10 +55,6 @@
 
         {% if question.topic %}
         <div class="topic-tag">{{ question.topic.name }}</div>
-        {% endif %}
-
-        {% if question.stem %}
-        <div class="question-stem">{{ question.stem|safe }}</div>
         {% endif %}
 
         {% if question.image %}
@@ -128,13 +131,13 @@
         {% endfor %}
     </div>
 
-    <!-- Numskull Section -->
+    <!-- NumSkull Section -->
     <div class="infobot-section" data-question-id="{{ question.id }}" data-topic-slug="{% if question.topic %}{{ question.topic.slug }}{% endif %}">
         <div class="infobot-header">
-            <h3>🧠 Ask Numskull</h3>
+            <h3>🧠 Ask NumSkull</h3>
         </div>
         <p class="infobot-description">
-            Need help with this question? Ask a question and get instant answers from Numskull, our AI tutor.
+            Need help with this question? Ask a question and get instant answers from NumSkull, our AI tutor.
         </p>
 
         <div class="infobot-input-group">
@@ -239,6 +242,17 @@
     height: 4px;
     background: linear-gradient(90deg, #28a745 0%, #ffc107 50%, #dc3545 100%);
     transition: width 1s linear;
+}
+
+.exam-advice-compact {
+    background: #fff3cd;
+    border-left: 4px solid #ffc107;
+    padding: 12px 20px;
+    margin: 20px auto;
+    max-width: 1000px;
+    border-radius: 4px;
+    color: #856404;
+    font-size: 0.95em;
 }
 
 .progress-header {
@@ -557,7 +571,7 @@
     background: #545b62;
 }
 
-/* Numskull Styles */
+/* NumSkull Styles */
 .infobot-section {
     margin: 30px 0;
     padding: 20px;
@@ -811,7 +825,7 @@ function unlockSolutionButton(partId) {
 }
 
 // ============================================================================
-// Numskull Integration for Exam Questions
+// NumSkull Integration for Exam Questions
 // ============================================================================
 document.addEventListener('DOMContentLoaded', function() {
     const infobotQueryInput = document.getElementById('exam-infobot-query');
@@ -820,11 +834,11 @@ document.addEventListener('DOMContentLoaded', function() {
     const infobotLoading = document.getElementById('exam-infobot-loading');
 
     if (!infobotQueryInput || !infobotAskBtn || !infobotAnswer || !infobotLoading) {
-        console.log('Numskull elements not found');
+        console.log('NumSkull elements not found');
         return;
     }
 
-    console.log('Numskull initialized for exam questions');
+    console.log('NumSkull initialized for exam questions');
 
     // Handle Ask button click
     infobotAskBtn.addEventListener('click', async function() {
@@ -877,7 +891,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 url += `&question_part_id=${currentPartId}`;
             }
 
-            console.log('Numskull request URL:', url);
+            console.log('NumSkull request URL:', url);
 
             // Make AJAX request
             const response = await fetch(url, {
@@ -915,7 +929,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
 
         } catch (error) {
-            console.error('Numskull error:', error);
+            console.error('NumSkull error:', error);
             infobotLoading.style.display = 'none';
             infobotAnswer.innerHTML = '<div style="color:red;">An error occurred. Please try again.</div>';
             infobotAnswer.style.display = 'block';

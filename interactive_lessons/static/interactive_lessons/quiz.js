@@ -99,7 +99,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   // --------------------------------------------------------------------
-  // ✅ Handle Numskull queries
+  // ✅ Handle NumSkull queries
   // --------------------------------------------------------------------
   // Use setTimeout to ensure DOM is fully loaded
   setTimeout(() => {
@@ -109,11 +109,11 @@ document.addEventListener("DOMContentLoaded", () => {
     const infobotLoading = document.getElementById("infobot-loading");
 
     if (infobotQueryInput && infobotAskBtn && infobotAnswer && infobotLoading) {
-      console.log("Numskull initialized successfully");
+      console.log("NumSkull initialized successfully");
 
       // Handle Ask button click
       infobotAskBtn.addEventListener("click", async () => {
-        console.log("Numskull Ask button clicked");
+        console.log("NumSkull Ask button clicked");
         const query = infobotQueryInput.value.trim();
         if (!query) {
           alert("Please enter a question first.");
@@ -166,9 +166,9 @@ document.addEventListener("DOMContentLoaded", () => {
             url += `&question_part_id=${currentPartId}`;
           }
 
-          console.log("Numskull URL with context:", url);
+          console.log("NumSkull URL with context:", url);
 
-          // Make AJAX request to Numskull endpoint
+          // Make AJAX request to NumSkull endpoint
           const response = await fetch(url, {
             method: "GET",
             headers: {
@@ -204,7 +204,7 @@ document.addEventListener("DOMContentLoaded", () => {
           }
 
         } catch (error) {
-          console.error("Numskull error:", error);
+          console.error("NumSkull error:", error);
           infobotLoading.style.display = "none";
           infobotAnswer.innerHTML = "<div style='color:red;'>Error: Unable to get an answer. Please try again.</div>";
           infobotAnswer.style.display = "block";
@@ -218,7 +218,7 @@ document.addEventListener("DOMContentLoaded", () => {
         }
       });
     } else {
-      console.error("Numskull elements not found:", {
+      console.error("NumSkull elements not found:", {
         infobotQueryInput,
         infobotAskBtn,
         infobotAnswer,

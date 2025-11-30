@@ -35,10 +35,6 @@
             <h3 class="question-title">{{ question.title }}</h3>
             {% endif %}
 
-            {% if question.stem %}
-            <div class="question-stem">{{ question.stem|truncatewords:30|safe }}</div>
-            {% endif %}
-
             {% if question.image %}
             <div class="question-preview">
                 <img src="{{ question.image.url }}" alt="Question {{ question.question_number }}">

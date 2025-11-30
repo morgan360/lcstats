@@ -157,10 +157,6 @@ class ExamQuestion(models.Model):
         blank=True,
         help_text="Optional title/description of the question"
     )
-    stem = models.TextField(
-        blank=True,
-        help_text="Question stem/introduction (shared by all parts)"
-    )
     image = models.ImageField(
         upload_to='exam_papers/questions/',
         blank=True,
