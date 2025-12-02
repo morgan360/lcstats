@@ -1,0 +1,75 @@
+from django.db import models
+from django.core.exceptions import ValidationError
+from interactive_lessons.models import Topic
+
+
+class QuickKick(models.Model):
+    """
+    Short animation video (from Manim) or GeoGebra applet linked to a topic.
+    Replaces the Revision column in interactive lessons.
+    """
+    CONTENT_TYPE_CHOICES = [
+        ('video', 'Video (MP4)'),
+        ('geogebra', 'GeoGebra Applet'),
+    ]
+
+    title = models.CharField(max_length=200, help_text="Display title for the resource")
+    description = models.TextField(blank=True, help_text="Brief description of what this resource covers")
+    topic = models.ForeignKey(Topic, on_delete=models.CASCADE, related_name="quickkicks")
+    content_type = models.CharField(
+        max_length=20,
+        choices=CONTENT_TYPE_CHOICES,
+        default='video',
+        help_text="Type of content: Video or GeoGebra applet"
+    )
+
+    # For videos
+    video = models.FileField(
+        upload_to='quickkicks/',
+        blank=True,
+        null=True,
+        help_text="Upload MP4 video file (required if content type is Video)"
+    )
+    duration_seconds = models.PositiveIntegerField(
+        default=0,
+        blank=True,
+        help_text="Video duration in seconds (optional, only for videos)"
+    )
+
+    # For GeoGebra applets
+    geogebra_code = models.CharField(
+        max_length=50,
+        blank=True,
+        help_text="GeoGebra applet code (e.g., 'pvvcyzts') - required if content type is GeoGebra"
+    )
+
+    order = models.PositiveIntegerField(default=0, help_text="Display order within topic")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ('topic', 'order', 'title')
+        verbose_name = "QuickKick"
+        verbose_name_plural = "QuickKicks"
+
+    def __str__(self):
+        content_label = "Video" if self.content_type == 'video' else "GeoGebra"
+        return f"{self.topic.name} - {self.title} ({content_label})"
+
+    def clean(self):
+        """Validate that either video or geogebra_code is provided based on content_type"""
+        if self.content_type == 'video' and not self.video:
+            raise ValidationError({'video': 'Video file is required when content type is Video.'})
+        if self.content_type == 'geogebra' and not self.geogebra_code:
+            raise ValidationError({'geogebra_code': 'GeoGebra code is required when content type is GeoGebra.'})
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        super().save(*args, **kwargs)
+
+    @property
+    def geogebra_embed_url(self):
+        """Generate the full GeoGebra embed URL from the code"""
+        if self.geogebra_code:
+            return f"https://www.geogebra.org/material/iframe/id/{self.geogebra_code}/width/1200/height/600/border/888888/sfsb/true/smb/false/stb/false/stbh/false/ai/false/asb/false/sri/false/rc/false/ld/false/sdz/false/ctl/false"
+        return ""

@@ -1,0 +1,75 @@
+{% extends '_base.html' %}
+
+{% block title %}{{ quickkick.title }} | QuickKicks{% endblock %}
+
+{% block content %}
+<div class="max-w-5xl mx-auto">
+  <!-- Header -->
+  <div class="mb-6">
+    <h1 class="text-3xl font-bold text-gray-800 mb-2">{{ quickkick.title }}</h1>
+    <p class="text-gray-600">{{ topic.name }}</p>
+  </div>
+
+  <!-- Description -->
+  {% if quickkick.description %}
+  <div class="bg-blue-50 border-l-4 border-blue-500 p-4 mb-6">
+    <p class="text-gray-700">{{ quickkick.description }}</p>
+  </div>
+  {% endif %}
+
+  <!-- Content Display -->
+  {% if quickkick.content_type == 'video' %}
+    <!-- Video Player -->
+    <div class="bg-white rounded-lg shadow-md overflow-hidden mb-6">
+      <div class="bg-black">
+        <video
+          class="w-full"
+          controls
+          autoplay
+          style="max-height: 600px;">
+          <source src="{{ quickkick.video.url }}" type="video/mp4">
+          Your browser does not support the video tag.
+        </video>
+      </div>
+    </div>
+
+    <!-- Video Info -->
+    {% if quickkick.duration_seconds %}
+    <div class="text-sm text-gray-500 mb-6">
+      <svg class="inline w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 24 24">
+        <path d="M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2M12,4A8,8 0 0,1 20,12A8,8 0 0,1 12,20A8,8 0 0,1 4,12A8,8 0 0,1 12,4M12.5,7V12.25L17,14.92L16.25,16.15L11,13V7H12.5Z"/>
+      </svg>
+      Duration: {{ quickkick.duration_seconds }} seconds
+    </div>
+    {% endif %}
+
+  {% else %}
+    <!-- GeoGebra Applet -->
+    <div class="bg-white rounded-lg shadow-md overflow-hidden mb-6">
+      <div class="aspect-w-16 aspect-h-9" style="min-height: 600px;">
+        <iframe
+          src="{{ quickkick.geogebra_embed_url }}"
+          width="100%"
+          height="600px"
+          style="border: 0;"
+          allowfullscreen>
+        </iframe>
+      </div>
+    </div>
+
+    <div class="bg-green-50 border-l-4 border-green-500 p-4 mb-6">
+      <p class="text-sm text-gray-700">
+        <strong>Tip:</strong> Interact with the GeoGebra applet to explore the mathematical concepts dynamically.
+      </p>
+    </div>
+  {% endif %}
+
+  <!-- Back Button -->
+  <div class="mt-8">
+    <a href="{% url 'quickkicks:quickkicks_list' topic.slug %}"
+       class="inline-block bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors">
+      &larr; Back to QuickKicks List
+    </a>
+  </div>
+</div>
+{% endblock %}
