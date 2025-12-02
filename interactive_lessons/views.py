@@ -159,6 +159,7 @@ def select_topic(request):
     from revision.models import RevisionModule
     from cheatsheets.models import CheatSheet
     from exam_papers.models import ExamQuestion
+    from quickkicks.models import QuickKick
     topics = Topic.objects.all().order_by("name")
     # Annotate topics with note counts, question counts, cheat sheet counts, and revision module info
     topics_with_notes = []
@@ -166,6 +167,7 @@ def select_topic(request):
         note_count = Note.objects.filter(topic=topic).count()
         question_count = Question.objects.filter(topic=topic).count()
         cheatsheet_count = CheatSheet.objects.filter(topic=topic).count()
+        quickkick_count = QuickKick.objects.filter(topic=topic).count()
         # Count exam questions for this topic (only from published papers)
         exam_question_count = ExamQuestion.objects.filter(
             topic=topic,
@@ -183,6 +185,8 @@ def select_topic(request):
             'question_count': question_count,
             'cheatsheet_count': cheatsheet_count,
             'has_cheatsheets': cheatsheet_count > 0,
+            'quickkick_count': quickkick_count,
+            'has_quickkicks': quickkick_count > 0,
             'exam_question_count': exam_question_count,
             'has_exam_questions': exam_question_count > 0,
             'has_revision': revision_module is not None,

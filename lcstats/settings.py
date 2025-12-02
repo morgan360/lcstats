@@ -61,6 +61,7 @@ INSTALLED_APPS = [
     'revision',
     'cheatsheets',
     'exam_papers',
+    'quickkicks',
 ]
 INSTALLED_APPS += ['markdownx']
 INSTALLED_APPS += ["markdownify"]

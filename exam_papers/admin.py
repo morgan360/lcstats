@@ -164,6 +164,9 @@ class ExamQuestionPartAdmin(admin.ModelAdmin):
         ('Part Identification', {
             'fields': ('question', 'label', 'order')
         }),
+        ('Solution', {
+            'fields': ('solution', 'solution_image', 'solution_unlock_after_attempts')
+        }),
         ('Question Content', {
             'fields': ('prompt', 'image')
         }),
@@ -173,9 +176,7 @@ class ExamQuestionPartAdmin(admin.ModelAdmin):
         }),
         ('Answer', {
             'fields': ('answer', 'expected_type')
-        }),
-        ('Solution', {
-            'fields': ('solution', 'solution_image', 'solution_unlock_after_attempts')
+
         }),
         ('Marking', {
             'fields': ('max_marks',)

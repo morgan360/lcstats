@@ -14,6 +14,7 @@ urlpatterns = [
     path('revision/', include('revision.urls')),
     path('cheatsheets/', include('cheatsheets.urls')),
     path('exam-papers/', include('exam_papers.urls')),
+    path('quickkicks/', include('quickkicks.urls')),
 
 ]
 if settings.DEBUG:
