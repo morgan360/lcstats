@@ -75,28 +75,34 @@ class Question(models.Model):
     solution = models.TextField(blank=True, null=True, help_text="Full worked solution for this question.")
     solution_image = models.ImageField(upload_to="solutions/", blank=True, null=True)
 
-    # ✅ Exam paper metadata
+    # ✅ Copyright and source metadata
+    is_copyrighted = models.BooleanField(
+        default=False,
+        help_text="True if this question is copyrighted (e.g., from published exam papers)"
+    )
+
+    # ✅ Exam paper metadata (DEPRECATED - exam questions now in separate app)
     is_exam_question = models.BooleanField(
         default=False,
-        help_text="True if this is from an actual LC exam paper"
+        help_text="DEPRECATED: Use exam_papers app instead. True if this is from an actual LC exam paper"
     )
     exam_year = models.IntegerField(
         null=True,
         blank=True,
-        help_text="Year of the exam (e.g., 2024, 2023)"
+        help_text="DEPRECATED: Use exam_papers app instead. Year of the exam (e.g., 2024, 2023)"
     )
     paper_type = models.CharField(
         max_length=10,
         choices=PAPER_TYPE_CHOICES,
         blank=True,
         null=True,
-        help_text="Paper 1 or Paper 2"
+        help_text="DEPRECATED: Use exam_papers app instead. Paper 1 or Paper 2"
     )
     source_pdf_name = models.CharField(
         max_length=255,
         blank=True,
         null=True,
-        help_text="Original PDF filename for reference"
+        help_text="DEPRECATED: Use exam_papers app instead. Original PDF filename for reference"
     )
 
     def __str__(self):

@@ -41,7 +41,7 @@ class ExamQuestionPartInline(admin.TabularInline):
     """Inline admin for question parts"""
     model = ExamQuestionPart
     extra = 1
-    fields = ('label', 'prompt', 'answer', 'answer_format_template', 'expected_type', 'max_marks', 'order')
+    fields = ('label', 'answer', 'answer_format_template', 'expected_type', 'max_marks', 'order')
     ordering = ['order']
     autocomplete_fields = ['answer_format_template']
 
@@ -158,7 +158,7 @@ class ExamQuestionAdmin(admin.ModelAdmin):
 class ExamQuestionPartAdmin(admin.ModelAdmin):
     list_display = ('__str__', 'label', 'question', 'expected_type', 'max_marks', 'solution_unlock_after_attempts')
     list_filter = ('expected_type', 'question__exam_paper__year', 'question__topic')
-    search_fields = ('label', 'prompt', 'question__title')
+    search_fields = ('label', 'question__title')
 
     fieldsets = (
         ('Part Identification', {
@@ -168,7 +168,7 @@ class ExamQuestionPartAdmin(admin.ModelAdmin):
             'fields': ('solution', 'solution_image', 'solution_unlock_after_attempts')
         }),
         ('Question Content', {
-            'fields': ('prompt', 'image')
+            'fields': ('image',)
         }),
         ('Answer Format', {
             'fields': ('answer_format_template', 'expected_format'),

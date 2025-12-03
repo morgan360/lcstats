@@ -80,7 +80,7 @@ class QuestionAdmin(admin.ModelAdmin):
         "topic",
         "order",
         "section",
-        "exam_badge",
+        "copyright_badge",
         "has_image_indicator",
         "has_solution_indicator",
         "parts_count",
@@ -90,9 +90,7 @@ class QuestionAdmin(admin.ModelAdmin):
     list_filter = (
         "topic",
         "section",
-        "is_exam_question",
-        "exam_year",
-        "paper_type",
+        "is_copyrighted",
     )
     search_fields = ("id", "hint", "source_pdf_name", "topic__name", "section__name")
     ordering = ("topic__name", "section__order", "order")
@@ -119,7 +117,7 @@ class QuestionAdmin(admin.ModelAdmin):
 
     fieldsets = (
         ("Basic Information", {
-            "fields": ("topic", "order", "section")
+            "fields": ("topic", "order", "section", "is_copyrighted")
         }),
         ("Question Content", {
             "fields": ("hint", "image", "image_url")
@@ -128,9 +126,10 @@ class QuestionAdmin(admin.ModelAdmin):
             "fields": ("solution", "solution_image"),
             "classes": ("collapse",)
         }),
-        ("Exam Paper Metadata", {
+        ("DEPRECATED - Exam Paper Metadata", {
             "fields": ("is_exam_question", "exam_year", "paper_type", "source_pdf_name"),
-            "classes": ("collapse",)
+            "classes": ("collapse",),
+            "description": "⚠️ These fields are deprecated. Use the exam_papers app for exam questions instead."
         }),
     )
 
@@ -141,21 +140,22 @@ class QuestionAdmin(admin.ModelAdmin):
         qs = super().get_queryset(request)
         return qs.select_related('topic', 'section').prefetch_related('parts')
 
-    # --- Exam Badge Display ---------------------------------------------------
+    # --- Copyright Badge Display ----------------------------------------------
 
-    def exam_badge(self, obj):
-        """Display exam year and paper type as a badge."""
-        if obj.is_exam_question:
-            paper = obj.get_paper_type_display() if obj.paper_type else "?"
-            year = obj.exam_year or "?"
+    def copyright_badge(self, obj):
+        """Display copyright status as a badge."""
+        if obj.is_copyrighted:
             return format_html(
-                '<span style="background:#4CAF50;color:white;padding:2px 8px;'
+                '<span style="background:#FF5722;color:white;padding:2px 8px;'
                 'border-radius:3px;font-size:11px;font-weight:bold;">'
-                '{} {}</span>',
-                year, paper
+                '©️ Copyrighted</span>'
             )
-        return "-"
-    exam_badge.short_description = "Exam"
+        return format_html(
+            '<span style="background:#4CAF50;color:white;padding:2px 8px;'
+            'border-radius:3px;font-size:11px;font-weight:bold;">'
+            '✓ Original</span>'
+        )
+    copyright_badge.short_description = "Copyright"
 
     # --- Lightweight indicators (faster than loading images) ------------------
 

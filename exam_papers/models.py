@@ -193,7 +193,7 @@ class ExamQuestion(models.Model):
 class ExamQuestionPart(models.Model):
     """
     Represents a part of an exam question (e.g., part (a), (b), (c)).
-    Contains the actual question prompt, answer, and solution.
+    Contains the answer, solution, and optional part-specific image.
     """
     ANSWER_TYPE_CHOICES = [
         ('exact', 'Exact match'),
@@ -216,9 +216,6 @@ class ExamQuestionPart(models.Model):
     )
 
     # Part content
-    prompt = models.TextField(
-        help_text="The actual question text for this part"
-    )
     image = models.ImageField(
         upload_to='exam_papers/question_parts/',
         blank=True,
