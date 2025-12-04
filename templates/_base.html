@@ -17,29 +17,84 @@
 </head>
 
 <body>
-<nav>
-    <a href="/" class="logo"><strong>LCAI Maths</strong></a>
-    <div class="nav-links">
-        <a href="{% url 'select_topic' %}">Interactive Lessons</a>
-        <a href="{% url 'exam_papers:paper_list' %}">Exam Papers</a>
-        <a href="{% url 'module_list' %}">Revision</a>
-        <a href="{% url 'notes_index' %}">Study Resources</a>
-        <a href="/about/">About</a>
-        <a href="/contact/">Contact</a>
+<nav class="navbar">
+    <div class="nav-container">
+        <a href="/" class="logo"><strong>LCAI Maths</strong></a>
 
-        {% if request.user.is_staff %}
-            <a href="/admin/" style="color:#ffea00;font-weight:bold;">Admin</a>
-        {% endif %}
+        <!-- Hamburger Menu Button (Mobile Only) -->
+        <button class="hamburger" id="hamburger" aria-label="Toggle menu">
+            <span></span>
+            <span></span>
+            <span></span>
+        </button>
 
-        {% if user.is_authenticated %}
-            <span class="username" style="margin-right:10px;">👋 {{ user.username }}</span>
-            <a href="{% url 'dashboard' %}">Dashboard</a>
-            <a href="{% url 'logout' %}">Logout</a>
-        {% else %}
-            <a href="{% url 'login' %}">Login</a>
-            <a href="{% url 'signup' %}">Sign Up</a>
-        {% endif %}
+        <!-- Desktop & Mobile Navigation -->
+        <div class="nav-menu" id="navMenu">
+            <!-- User greeting on mobile -->
+            {% if user.is_authenticated %}
+            <div class="mobile-user-greeting">
+                <span class="greeting-icon">👋</span>
+                <span class="greeting-text">Hello, <strong>{{ user.username }}</strong>!</span>
+            </div>
+            {% endif %}
+
+            <!-- Practice Section -->
+            <div class="nav-item dropdown">
+                <a href="#" class="nav-link dropdown-toggle">Practice</a>
+                <div class="dropdown-menu">
+                    <a href="{% url 'select_topic' %}" class="dropdown-item">Interactive Lessons</a>
+                    <a href="{% url 'exam_papers:paper_list' %}" class="dropdown-item">Exam Papers</a>
+                </div>
+            </div>
+
+            <!-- Study Section -->
+            <div class="nav-item dropdown">
+                <a href="#" class="nav-link dropdown-toggle">Study</a>
+                <div class="dropdown-menu">
+                    <a href="{% url 'notes_index' %}" class="dropdown-item">Study Resources</a>
+                    <a href="{% url 'quickkicks:quickkicks_index' %}" class="dropdown-item">QuickKicks</a>
+                    <a href="{% url 'cheatsheets:cheatsheets_index' %}" class="dropdown-item">Cheatsheets</a>
+                </div>
+            </div>
+
+            <!-- Review Section (Direct Link) -->
+            <div class="nav-item">
+                <a href="{% url 'module_list' %}" class="nav-link">Revision</a>
+            </div>
+
+            <!-- Account Section (Logged In) -->
+            {% if user.is_authenticated %}
+            <div class="nav-item dropdown">
+                <a href="#" class="nav-link dropdown-toggle">{{ user.username }}</a>
+                <div class="dropdown-menu dropdown-right">
+                    <a href="{% url 'dashboard' %}" class="dropdown-item">Dashboard</a>
+                    <a href="{% url 'account_email' %}" class="dropdown-item">Settings</a>
+                </div>
+            </div>
+            <div class="nav-item">
+                <a href="{% url 'account_logout' %}" class="nav-link">Logout</a>
+            </div>
+            {% else %}
+            <!-- Auth Section (Logged Out) -->
+            <div class="nav-item">
+                <a href="{% url 'account_login' %}" class="nav-link">Login</a>
+            </div>
+            <div class="nav-item">
+                <a href="{% url 'account_signup' %}" class="nav-link btn-signup">Sign Up</a>
+            </div>
+            {% endif %}
+
+            <!-- Admin (Staff Only) -->
+            {% if request.user.is_staff %}
+            <div class="nav-item">
+                <a href="/admin/" class="nav-link admin-link">Admin</a>
+            </div>
+            {% endif %}
+        </div>
     </div>
+
+    <!-- Mobile Menu Overlay -->
+    <div class="nav-overlay" id="navOverlay"></div>
 </nav>
 
 <main>
@@ -75,6 +130,84 @@
 
 <!-- ✅ MathLive script -->
 <script src="https://cdn.jsdelivr.net/npm/mathlive@0.107.1/mathlive.min.js"></script>
+
+<!-- Navigation Menu JavaScript -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const hamburger = document.getElementById('hamburger');
+    const navMenu = document.getElementById('navMenu');
+    const navOverlay = document.getElementById('navOverlay');
+    const dropdownToggles = document.querySelectorAll('.dropdown-toggle');
+
+    // Toggle mobile menu
+    function toggleMenu() {
+        hamburger.classList.toggle('active');
+        navMenu.classList.toggle('active');
+        navOverlay.classList.toggle('active');
+        document.body.style.overflow = navMenu.classList.contains('active') ? 'hidden' : '';
+    }
+
+    // Close mobile menu
+    function closeMenu() {
+        hamburger.classList.remove('active');
+        navMenu.classList.remove('active');
+        navOverlay.classList.remove('active');
+        document.body.style.overflow = '';
+
+        // Close all dropdowns
+        document.querySelectorAll('.dropdown.active').forEach(dropdown => {
+            dropdown.classList.remove('active');
+        });
+    }
+
+    // Hamburger click
+    hamburger.addEventListener('click', toggleMenu);
+
+    // Overlay click (close menu)
+    navOverlay.addEventListener('click', closeMenu);
+
+    // Dropdown toggle (mobile accordion, desktop hover)
+    dropdownToggles.forEach(toggle => {
+        toggle.addEventListener('click', function(e) {
+            // Only prevent default and toggle on mobile
+            if (window.innerWidth <= 768) {
+                e.preventDefault();
+                const dropdown = this.parentElement;
+                const wasActive = dropdown.classList.contains('active');
+
+                // Close all other dropdowns
+                document.querySelectorAll('.dropdown.active').forEach(d => {
+                    if (d !== dropdown) d.classList.remove('active');
+                });
+
+                // Toggle current dropdown
+                dropdown.classList.toggle('active');
+            }
+        });
+    });
+
+    // Close menu when clicking on nav links
+    document.querySelectorAll('.nav-link:not(.dropdown-toggle), .dropdown-item').forEach(link => {
+        link.addEventListener('click', closeMenu);
+    });
+
+    // Close menu on ESC key
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') closeMenu();
+    });
+
+    // Handle window resize
+    let resizeTimer;
+    window.addEventListener('resize', function() {
+        clearTimeout(resizeTimer);
+        resizeTimer = setTimeout(function() {
+            if (window.innerWidth > 768) {
+                closeMenu();
+            }
+        }, 250);
+    });
+});
+</script>
 
 <!-- Per-page scripts (e.g. for math input capture) -->
 {% block extra_scripts %}{% endblock %}

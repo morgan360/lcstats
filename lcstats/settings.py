@@ -52,6 +52,11 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'django.contrib.sites',  # Required for allauth
+    # allauth
+    'allauth',
+    'allauth.account',
+    'allauth.socialaccount',
     # My Apps
     'home',
     'notes',
@@ -75,6 +80,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'allauth.account.middleware.AccountMiddleware',  # Required for allauth
     'students.middleware.SessionActivityMiddleware',
 ]
 
@@ -148,9 +154,9 @@ MEDIA_ROOT = BASE_DIR / "media"
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-LOGIN_URL = '/students/login/'
-LOGIN_REDIRECT_URL = '/students/dashboard/'
-LOGOUT_REDIRECT_URL = '/students/login/'
+LOGIN_URL = '/accounts/login/'
+LOGIN_REDIRECT_URL = '/interactive/'
+LOGOUT_REDIRECT_URL = '/'
 
 # ------------------------------------------------------------
 # Email Configuration
@@ -168,3 +174,28 @@ EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD', '')
 # Default email addresses
 DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', 'noreply@lcaimaths.com')
 TEACHER_EMAIL = os.getenv('TEACHER_EMAIL', 'morganmcknight@gmail.com')
+
+# ------------------------------------------------------------
+# Django Allauth Configuration
+# ------------------------------------------------------------
+SITE_ID = 1
+
+AUTHENTICATION_BACKENDS = [
+    # Needed to login by username in Django admin, regardless of allauth
+    'django.contrib.auth.backends.ModelBackend',
+    # allauth specific authentication methods, such as login by email
+    'allauth.account.auth_backends.AuthenticationBackend',
+]
+
+# Allauth settings
+ACCOUNT_LOGIN_METHODS = {'email', 'username'}
+ACCOUNT_SIGNUP_FIELDS = ['email*', 'username*', 'password1*', 'password2*']
+ACCOUNT_EMAIL_VERIFICATION = 'optional'  # Change to 'mandatory' if you want to require email verification
+ACCOUNT_LOGOUT_ON_GET = False  # Require POST to logout for security
+ACCOUNT_LOGIN_ON_EMAIL_CONFIRMATION = True
+ACCOUNT_FORMS = {
+    'signup': 'students.forms.SignupFormWithCode',
+}
+
+# Redirect URLs for allauth
+ACCOUNT_LOGOUT_REDIRECT_URL = '/'

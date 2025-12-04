@@ -1,7 +1,21 @@
 from django.shortcuts import render, get_object_or_404
 from django.contrib.auth.decorators import login_required
+from django.db.models import Count
 from interactive_lessons.models import Topic
 from .models import QuickKick
+
+
+@login_required
+def quickkicks_index(request):
+    """
+    Display all QuickKick videos across all topics.
+    """
+    quickkicks = QuickKick.objects.select_related('topic').order_by('topic__name', 'order', 'title')
+
+    context = {
+        'quickkicks': quickkicks,
+    }
+    return render(request, 'quickkicks/index.html', context)
 
 
 @login_required

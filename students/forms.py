@@ -1,9 +1,9 @@
 from django import forms
-from django.contrib.auth.forms import UserCreationForm
+from allauth.account.forms import SignupForm
 from .models import RegistrationCode
 
 
-class SignupFormWithCode(UserCreationForm):
+class SignupFormWithCode(SignupForm):
     registration_code = forms.CharField(
         max_length=50,
         required=True,
@@ -29,3 +29,15 @@ class SignupFormWithCode(UserCreationForm):
                 raise forms.ValidationError("This registration code has reached its usage limit.")
 
         return code
+
+    def save(self, request):
+        # Call parent save to create the user
+        user = super(SignupFormWithCode, self).save(request)
+
+        # Mark the registration code as used
+        code = self.cleaned_data.get('registration_code')
+        if code:
+            reg_code = RegistrationCode.objects.get(code=code)
+            reg_code.use_code()
+
+        return user

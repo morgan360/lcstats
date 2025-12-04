@@ -2,16 +2,16 @@
 {% block title %}Home | LCAI Maths{% endblock %}
 
 {% block content %}
-<div style="max-width: 1100px; margin: 40px auto; padding: 20px;">
+<div style="max-width: 1200px; margin: 0 auto; padding: 20px;">
 
     <!-- Hero Section -->
-    <div style="text-align: center; margin-bottom: 50px;">
-        <h1 style="color: #004aad; font-size: 2.5em; margin-bottom: 15px;">
-            Welcome to LCAI Maths
+    <div style="text-align: center; margin-bottom: 60px; padding: 40px 20px;">
+        <h1 style="font-size: 4.5em; margin: 0 0 20px 0; font-weight: 700; color: #004aad; letter-spacing: -2px;">
+            LCAI Maths
         </h1>
-        <p style="font-size: 1.2em; color: #555; max-width: 700px; margin: 0 auto 30px;">
+        <p style="font-size: 1.3em; max-width: 800px; margin: 0 auto; color: #555; line-height: 1.6;">
             Master Leaving Certificate Honours Maths with AI-powered interactive practice questions,
-            instant feedback, and personalized hints.
+            instant feedback, and personalized learning.
         </p>
     </div>
 
@@ -105,144 +105,68 @@
     </script>
     {% endif %}
 
-    <!-- Two Column Layout: Features + Login -->
-    <div style="display: grid; grid-template-columns: 1.5fr 1fr; gap: 40px; margin-bottom: 40px;">
-
-        <!-- Left Column: Features -->
-        <div>
-            <h2 style="color: #004aad; margin-bottom: 20px;">What You'll Get</h2>
-
-            <div style="background-color: #f7f7f7; border-left: 4px solid #004aad; padding: 15px; margin-bottom: 15px; border-radius: 4px;">
-                <h3 style="color: #004aad; margin: 0 0 8px 0; font-size: 1.1em;">📚 {{ total_questions }} Practice Questions</h3>
-                <p style="margin: 0; line-height: 1.6;">
-                    Comprehensive coverage of all Leaving Cert Honours Maths topics including Algebra,
-                    Probability, Statistics, Calculus, and more.
-                </p>
-            </div>
-
-            <div style="background-color: #f7f7f7; border-left: 4px solid #00994c; padding: 15px; margin-bottom: 15px; border-radius: 4px;">
-                <h3 style="color: #00994c; margin: 0 0 8px 0; font-size: 1.1em;">🤖 AI-Powered Feedback</h3>
-                <p style="margin: 0; line-height: 1.6;">
-                    Get instant, intelligent feedback on your answers. The AI understands mathematical
-                    expressions and provides detailed explanations.
-                </p>
-            </div>
-
-            <div style="background-color: #f7f7f7; border-left: 4px solid #cc0000; padding: 15px; margin-bottom: 15px; border-radius: 4px;">
-                <h3 style="color: #cc0000; margin: 0 0 8px 0; font-size: 1.1em;">💡 Smart Hints & Solutions</h3>
-                <p style="margin: 0; line-height: 1.6;">
-                    Stuck on a problem? Get contextual hints and step-by-step solutions to help you
-                    learn the method, not just the answer.
-                </p>
-            </div>
-
-            <div style="background-color: #f7f7f7; border-left: 4px solid #ff9800; padding: 15px; margin-bottom: 15px; border-radius: 4px;">
-                <h3 style="color: #ff9800; margin: 0 0 8px 0; font-size: 1.1em;">📊 Track Your Progress</h3>
-                <p style="margin: 0; line-height: 1.6;">
-                    Monitor your improvement across different topics with detailed progress tracking
-                    and performance analytics.
-                </p>
-            </div>
-
-            <div style="background-color: #f7f7f7; border-left: 4px solid #9c27b0; padding: 15px; margin-bottom: 15px; border-radius: 4px;">
-                <h3 style="color: #9c27b0; margin: 0 0 8px 0; font-size: 1.1em;">📧 Direct Teacher Support</h3>
-                <p style="margin: 0; line-height: 1.6;">
-                    Need extra help? Contact your teacher directly from any question page for
-                    personalized assistance.
-                </p>
-            </div>
-
-            <div style="background-color: #f7f7f7; border-left: 4px solid #009688; padding: 15px; margin-bottom: 15px; border-radius: 4px;">
-                <h3 style="color: #009688; margin: 0 0 8px 0; font-size: 1.1em;">👥 {{ active_users_count }} Student{{ active_users_count|pluralize }} Online</h3>
-                <p style="margin: 0; line-height: 1.6;">
-                    Join your classmates who are actively learning right now. Study together and
-                    see how you compare with others on the platform.
-                </p>
-            </div>
+    <!-- Welcome Section -->
+    {% if user.is_authenticated %}
+    <div style="text-align: center; margin-bottom: 50px;">
+        <div style="background-color: #e8f5e9; border: 2px solid #00994c; border-radius: 12px; padding: 40px;">
+            <h2 style="color: #00994c; margin: 0 0 15px 0; font-size: 2em;">Welcome back, {{ user.username }}!</h2>
+            <p style="margin: 0; font-size: 1.2em; color: #333;">Ready to continue your learning journey? Use the navigation menu above to get started.</p>
         </div>
+    </div>
+    {% endif %}
 
-        <!-- Right Column: Login Form or Dashboard Link -->
-        <div>
-            {% if user.is_authenticated %}
-                <!-- User is logged in -->
-                <div style="background-color: #e8f5e9; border: 2px solid #00994c; border-radius: 8px; padding: 30px; text-align: center;">
-                    <h2 style="color: #00994c; margin: 0 0 15px 0;">Welcome back, {{ user.username }}!</h2>
-                    <p style="margin-bottom: 25px; font-size: 1.1em;">Ready to continue your learning journey?</p>
+    <!-- Features Grid -->
+    <div style="margin-bottom: 50px;">
+        <h2 style="color: #004aad; margin-bottom: 30px; text-align: center; font-size: 2em;">Why LCAI Maths?</h2>
 
-                    <a href="{% url 'dashboard' %}"
-                       class="btn"
-                       style="background-color: #00994c; color: white; padding: 12px 30px; font-size: 1.1em; display: inline-block; margin-bottom: 15px; text-decoration: none; border-radius: 4px;">
-                        Go to Dashboard
-                    </a>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 25px;">
+            <div style="background-color: white; border: 2px solid #e0e0e0; border-radius: 10px; padding: 25px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); transition: transform 0.2s;">
+                <div style="font-size: 2.5em; margin-bottom: 15px;">📚</div>
+                <h3 style="color: #004aad; margin: 0 0 10px 0; font-size: 1.3em;">{{ total_questions }} Practice Questions</h3>
+                <p style="margin: 0; line-height: 1.6; color: #555;">
+                    Comprehensive coverage of all LC Honours Maths topics with multi-part questions and exam papers.
+                </p>
+            </div>
 
-                    <br>
+            <div style="background-color: white; border: 2px solid #e0e0e0; border-radius: 10px; padding: 25px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); transition: transform 0.2s;">
+                <div style="font-size: 2.5em; margin-bottom: 15px;">🤖</div>
+                <h3 style="color: #00994c; margin: 0 0 10px 0; font-size: 1.3em;">AI-Powered Feedback</h3>
+                <p style="margin: 0; line-height: 1.6; color: #555;">
+                    Instant intelligent grading with detailed explanations for your mathematical answers.
+                </p>
+            </div>
 
-                    <a href="{% url 'select_topic' %}"
-                       class="btn"
-                       style="background-color: #004aad; color: white; padding: 12px 30px; font-size: 1.1em; display: inline-block; text-decoration: none; border-radius: 4px;">
-                        Browse Topics
-                    </a>
-                </div>
-            {% else %}
-                <!-- User is not logged in - show login form -->
-                <div style="background-color: #f0f8ff; border: 2px solid #004aad; border-radius: 8px; padding: 30px;">
-                    <h2 style="color: #004aad; margin: 0 0 20px 0; text-align: center;">Login to Start</h2>
+            <div style="background-color: white; border: 2px solid #e0e0e0; border-radius: 10px; padding: 25px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); transition: transform 0.2s;">
+                <div style="font-size: 2.5em; margin-bottom: 15px;">💡</div>
+                <h3 style="color: #cc0000; margin: 0 0 10px 0; font-size: 1.3em;">Smart Hints & Solutions</h3>
+                <p style="margin: 0; line-height: 1.6; color: #555;">
+                    Contextual hints and step-by-step solutions to help you understand the methodology.
+                </p>
+            </div>
 
-                    {% if messages %}
-                        {% for message in messages %}
-                            <div style="background-color: {% if message.tags == 'error' %}#ffebee{% else %}#e8f5e9{% endif %};
-                                        border: 1px solid {% if message.tags == 'error' %}#ef5350{% else %}#66bb6a{% endif %};
-                                        padding: 12px;
-                                        border-radius: 4px;
-                                        margin-bottom: 15px;">
-                                {{ message }}
-                            </div>
-                        {% endfor %}
-                    {% endif %}
+            <div style="background-color: white; border: 2px solid #e0e0e0; border-radius: 10px; padding: 25px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); transition: transform 0.2s;">
+                <div style="font-size: 2.5em; margin-bottom: 15px;">📊</div>
+                <h3 style="color: #ff9800; margin: 0 0 10px 0; font-size: 1.3em;">Track Your Progress</h3>
+                <p style="margin: 0; line-height: 1.6; color: #555;">
+                    Detailed analytics across topics with performance tracking and improvement insights.
+                </p>
+            </div>
 
-                    <form method="POST" action="{% url 'login' %}">
-                        {% csrf_token %}
+            <div style="background-color: white; border: 2px solid #e0e0e0; border-radius: 10px; padding: 25px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); transition: transform 0.2s;">
+                <div style="font-size: 2.5em; margin-bottom: 15px;">⏱️</div>
+                <h3 style="color: #9c27b0; margin: 0 0 10px 0; font-size: 1.3em;">Timed Exam Practice</h3>
+                <p style="margin: 0; line-height: 1.6; color: #555;">
+                    Full exam papers with authentic timing to prepare you for the real experience.
+                </p>
+            </div>
 
-                        <div style="margin-bottom: 20px;">
-                            <label for="username" style="display: block; margin-bottom: 5px; font-weight: 600; color: #333;">
-                                Username
-                            </label>
-                            <input type="text"
-                                   id="username"
-                                   name="username"
-                                   required
-                                   style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; font-size: 1em; box-sizing: border-box;">
-                        </div>
-
-                        <div style="margin-bottom: 20px;">
-                            <label for="password" style="display: block; margin-bottom: 5px; font-weight: 600; color: #333;">
-                                Password
-                            </label>
-                            <input type="password"
-                                   id="password"
-                                   name="password"
-                                   required
-                                   style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; font-size: 1em; box-sizing: border-box;">
-                        </div>
-
-                        <input type="hidden" name="next" value="{% url 'dashboard' %}">
-
-                        <button type="submit"
-                                class="btn"
-                                style="width: 100%; background-color: #004aad; color: white; padding: 12px; font-size: 1.1em; border: none; border-radius: 4px; cursor: pointer; font-weight: 600;">
-                            Login
-                        </button>
-                    </form>
-
-                    <div style="text-align: center; margin-top: 20px; padding-top: 20px; border-top: 1px solid #ddd;">
-                        <p style="margin: 0 0 10px 0; color: #666;">Don't have an account?</p>
-                        <a href="{% url 'signup' %}"
-                           style="color: #004aad; font-weight: 600; text-decoration: none;">
-                            Sign up here
-                        </a>
-                    </div>
-                </div>
-            {% endif %}
+            <div style="background-color: white; border: 2px solid #e0e0e0; border-radius: 10px; padding: 25px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); transition: transform 0.2s;">
+                <div style="font-size: 2.5em; margin-bottom: 15px;">👥</div>
+                <h3 style="color: #009688; margin: 0 0 10px 0; font-size: 1.3em;">{{ active_users_count }} Active Learners</h3>
+                <p style="margin: 0; line-height: 1.6; color: #555;">
+                    Join a community of students mastering LC Maths together.
+                </p>
+            </div>
         </div>
     </div>
 
