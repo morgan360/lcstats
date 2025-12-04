@@ -1,0 +1,44 @@
+{% extends "_base.html" %}
+
+{% block title %}Confirm Email | LCAI Maths{% endblock %}
+
+{% block content %}
+<div style="max-width: 500px; margin: 80px auto; padding: 20px;">
+    <div style="background: white; border-radius: 12px; padding: 40px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); text-align: center;">
+        {% if confirmation %}
+            <div style="font-size: 3em; margin-bottom: 20px;">✉️</div>
+            <h1 style="color: #004aad; font-size: 2em; margin-bottom: 15px;">Confirm Your Email</h1>
+            <p style="color: #666; font-size: 1.1em; margin-bottom: 30px; line-height: 1.6;">
+                Please confirm that <strong>{{ confirmation.email_address.email }}</strong> is your email address.
+            </p>
+
+            <form method="POST" action="{% url 'account_confirm_email' confirmation.key %}">
+                {% csrf_token %}
+                <button type="submit"
+                        style="background: linear-gradient(135deg, #00994c 0%, #00cc66 100%); color: white; padding: 14px 40px; font-size: 1.1em; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; transition: transform 0.2s;">
+                    Confirm Email Address
+                </button>
+            </form>
+        {% else %}
+            <div style="font-size: 4em; margin-bottom: 20px;">⚠️</div>
+            <h1 style="color: #ef5350; font-size: 2em; margin-bottom: 15px;">Invalid Confirmation Link</h1>
+            <p style="color: #666; font-size: 1.1em; margin-bottom: 30px; line-height: 1.6;">
+                This email confirmation link is invalid or has expired.
+                Please request a new confirmation email.
+            </p>
+
+            <a href="{% url 'account_email' %}"
+               style="display: inline-block; background: linear-gradient(135deg, #004aad 0%, #0066cc 100%); color: white; padding: 14px 40px; font-size: 1.1em; text-decoration: none; border-radius: 6px; font-weight: 600;">
+                Go to Account Settings
+            </a>
+        {% endif %}
+    </div>
+</div>
+
+<style>
+    button:hover, a:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    }
+</style>
+{% endblock %}

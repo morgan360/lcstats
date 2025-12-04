@@ -1,0 +1,45 @@
+{% extends "_base.html" %}
+
+{% block title %}Logout | LCAI Maths{% endblock %}
+
+{% block content %}
+<div style="max-width: 500px; margin: 100px auto; padding: 20px;">
+    <div style="background: white; border-radius: 12px; padding: 50px 40px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); text-align: center;">
+        <div style="font-size: 4em; margin-bottom: 20px;">👋</div>
+
+        <h1 style="color: #004aad; font-size: 2em; margin-bottom: 15px;">Come Back Soon!</h1>
+        <p style="color: #666; font-size: 1.1em; margin-bottom: 30px; line-height: 1.6;">
+            Are you sure you want to log out?
+        </p>
+
+        <form method="POST" action="{% url 'account_logout' %}">
+            {% csrf_token %}
+            {% if redirect_field_value %}
+                <input type="hidden" name="{{ redirect_field_name }}" value="{{ redirect_field_value }}">
+            {% endif %}
+
+            <button type="submit"
+                    style="background: linear-gradient(135deg, #cc0000 0%, #ff3333 100%); color: white; padding: 14px 40px; font-size: 1.1em; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; transition: transform 0.2s; margin-bottom: 15px;">
+                Yes, Logout
+            </button>
+        </form>
+
+        <a href="{% url 'dashboard' %}"
+           style="display: inline-block; color: #004aad; font-weight: 600; text-decoration: none; padding: 14px 40px; border: 2px solid #004aad; border-radius: 6px; transition: all 0.2s;">
+            No, Stay Logged In
+        </a>
+    </div>
+</div>
+
+<style>
+    button[type="submit"]:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(204, 0, 0, 0.3);
+    }
+
+    a[href]:hover {
+        background-color: #f0f8ff;
+        transform: translateY(-2px);
+    }
+</style>
+{% endblock %}

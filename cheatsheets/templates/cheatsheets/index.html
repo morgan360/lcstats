@@ -1,0 +1,57 @@
+{% extends "_base.html" %}
+
+{% block title %}Cheatsheets - LCAI Maths{% endblock %}
+
+{% block content %}
+<div style="max-width: 1200px; margin: 0 auto;">
+    <h1 style="color: #004aad; margin-bottom: 10px;">Cheatsheets</h1>
+    <p style="color: #666; font-size: 1.1em; margin-bottom: 40px;">
+        Quick reference guides for all LC Maths topics - perfect for revision!
+    </p>
+
+    {% if cheatsheets %}
+        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px;">
+            {% for cheatsheet in cheatsheets %}
+                <div class="card" style="transition: transform 0.2s, box-shadow 0.2s;">
+                    <div style="margin-bottom: 12px;">
+                        <span style="background-color: #004aad; color: white; padding: 4px 10px; border-radius: 4px; font-size: 0.85em; font-weight: 600;">
+                            {{ cheatsheet.topic.name }}
+                        </span>
+                    </div>
+                    <h3 style="color: #004aad; margin: 0 0 12px 0; font-size: 1.2em;">
+                        {{ cheatsheet.title }}
+                    </h3>
+                    {% if cheatsheet.description %}
+                        <p style="color: #666; margin: 0 0 15px 0; font-size: 0.95em;">
+                            {{ cheatsheet.description }}
+                        </p>
+                    {% endif %}
+                    <a href="{{ cheatsheet.pdf_file.url }}"
+                       target="_blank"
+                       style="display: inline-block; background-color: #00994c; color: white; padding: 10px 20px; text-decoration: none; border-radius: 6px; font-weight: 600; transition: all 0.2s;">
+                        📄 View PDF
+                    </a>
+                </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div style="background-color: #f0f8ff; border: 2px solid #004aad; border-radius: 8px; padding: 40px; text-align: center;">
+            <p style="font-size: 1.2em; color: #666; margin: 0;">
+                No cheatsheets available yet. Check back soon!
+            </p>
+        </div>
+    {% endif %}
+</div>
+
+<style>
+    .card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 6px 12px rgba(0,0,0,0.15);
+    }
+
+    a[href$=".pdf"]:hover {
+        background-color: #007a3d;
+        transform: translateY(-2px);
+    }
+</style>
+{% endblock %}

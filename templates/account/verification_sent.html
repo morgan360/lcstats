@@ -1,0 +1,36 @@
+{% extends "_base.html" %}
+
+{% block title %}Verification Email Sent | LCAI Maths{% endblock %}
+
+{% block content %}
+<div style="max-width: 500px; margin: 100px auto; padding: 20px;">
+    <div style="background: white; border-radius: 12px; padding: 50px 40px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); text-align: center;">
+        <div style="font-size: 4em; margin-bottom: 20px;">📧</div>
+
+        <h1 style="color: #00994c; font-size: 2em; margin-bottom: 15px;">Verification Email Sent</h1>
+        <p style="color: #666; font-size: 1.1em; margin-bottom: 30px; line-height: 1.6;">
+            We've sent you an email with a verification link.
+            Please check your inbox and click the link to verify your email address.
+        </p>
+
+        <div style="background-color: #e3f2fd; border-left: 4px solid #2196f3; padding: 15px; margin-bottom: 30px; text-align: left; border-radius: 4px;">
+            <strong style="color: #1976d2;">Note:</strong>
+            <p style="margin: 5px 0 0 0; color: #555;">
+                If you don't receive an email within a few minutes, please check your spam folder.
+            </p>
+        </div>
+
+        <a href="{% url 'dashboard' %}"
+           style="display: inline-block; background: linear-gradient(135deg, #004aad 0%, #0066cc 100%); color: white; padding: 14px 40px; font-size: 1.1em; text-decoration: none; border-radius: 6px; font-weight: 600; transition: transform 0.2s;">
+            Go to Dashboard
+        </a>
+    </div>
+</div>
+
+<style>
+    a:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 74, 173, 0.3);
+    }
+</style>
+{% endblock %}
