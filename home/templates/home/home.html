@@ -105,15 +105,31 @@
     </script>
     {% endif %}
 
-    <!-- Welcome Section -->
-    {% if user.is_authenticated %}
+    <!-- Welcome Section / CTA -->
     <div style="text-align: center; margin-bottom: 50px;">
         <div style="background-color: #e8f5e9; border: 2px solid #00994c; border-radius: 12px; padding: 40px;">
+            {% if user.is_authenticated %}
             <h2 style="color: #00994c; margin: 0 0 15px 0; font-size: 2em;">Welcome back, {{ user.username }}!</h2>
-            <p style="margin: 0; font-size: 1.2em; color: #333;">Ready to continue your learning journey? Use the navigation menu above to get started.</p>
+            <p style="margin: 0 0 25px 0; font-size: 1.2em; color: #333;">Ready to continue your learning journey?</p>
+            <a href="{% url 'select_topic' %}" style="display: inline-block; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 16px 40px; text-decoration: none; border-radius: 8px; font-size: 1.2em; font-weight: 600; transition: all 0.3s; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                Continue Learning →
+            </a>
+            {% else %}
+            <h2 style="color: #00994c; margin: 0 0 15px 0; font-size: 2em;">Ready to Master LC Maths?</h2>
+            <p style="margin: 0 0 25px 0; font-size: 1.2em; color: #333;">Join thousands of students improving their maths skills with AI-powered practice</p>
+            <a href="{% url 'select_topic' %}" style="display: inline-block; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 16px 40px; text-decoration: none; border-radius: 8px; font-size: 1.2em; font-weight: 600; transition: all 0.3s; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                Start Learning →
+            </a>
+            {% endif %}
         </div>
     </div>
-    {% endif %}
+
+    <style>
+    a[href*="select_topic"]:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 12px rgba(0,0,0,0.15);
+    }
+    </style>
 
     <!-- Features Grid -->
     <div style="margin-bottom: 50px;">
