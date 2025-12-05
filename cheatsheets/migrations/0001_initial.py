@@ -9,7 +9,7 @@ class Migration(migrations.Migration):
     initial = True
 
     dependencies = [
-        ('interactive_lessons', '0014_questionpart_solution_image'),
+        ('interactive_lessons', '0013_studentinquiry'),
     ]
 
     operations = [

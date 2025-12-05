@@ -6,7 +6,7 @@ from django.db import migrations
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('exam_papers', '0004_answerformattemplate_and_more'),
+        ('exam_papers', '0003_delete_markingscheme'),
     ]
 
     operations = [

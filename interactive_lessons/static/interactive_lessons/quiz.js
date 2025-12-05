@@ -185,11 +185,13 @@ document.addEventListener("DOMContentLoaded", () => {
             infobotAnswer.innerHTML = data.answer;
             infobotAnswer.style.display = "block";
 
-            // Render KaTeX math
+            // Render KaTeX math in the dynamically inserted content
             if (window.renderMathInElement) {
               renderMathInElement(infobotAnswer, {
                 delimiters: [
                   {left: "$$", right: "$$", display: true},
+                  {left: "\\[", right: "\\]", display: true},
+                  {left: "\\(", right: "\\)", display: false},
                   {left: "$", right: "$", display: false}
                 ],
                 throwOnError: false

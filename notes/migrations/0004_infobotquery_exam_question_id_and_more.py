@@ -6,7 +6,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('notes', '0003_alter_note_image'),
+        ('notes', '0002_note_content_type_note_exam_year_note_gdrive_file_id_and_more'),
     ]
 
     operations = [

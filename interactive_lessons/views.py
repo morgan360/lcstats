@@ -33,9 +33,10 @@ def info_bot(request, topic_slug):
     exam_question_id = request.GET.get("exam_question_id")
     question_part_id = request.GET.get("question_part_id")
 
-    # Build question context string
+    # Build question context string and collect image URLs
     question_context_str = ""
     question_context_parts = []
+    question_image_urls = []  # Collect image URLs for vision
 
     if practice_question_id:
         try:
@@ -45,11 +46,23 @@ def info_bot(request, topic_slug):
             if practice_q.hint:
                 question_context_parts.append(f"Question hint: {practice_q.hint[:200]}")
 
+            # Collect question image if available
+            question_image = practice_q.get_image()  # Using get_image() method
+            if question_image:
+                question_context_parts.append(f"This question includes a diagram (see image)")
+                image_url = request.build_absolute_uri(question_image)
+                question_image_urls.append({"url": image_url, "description": "Practice question diagram"})
+
             # If specific part is mentioned, include it
             if question_part_id:
                 try:
                     part = QuestionPart.objects.get(id=question_part_id)
                     question_context_parts.append(f"Question part ({part.label}): {part.prompt[:300]}")
+                    # Collect part image if available
+                    if part.image:
+                        question_context_parts.append(f"Part {part.label} includes a diagram (see image)")
+                        part_image_url = request.build_absolute_uri(part.image.url)
+                        question_image_urls.append({"url": part_image_url, "description": f"Part {part.label} diagram"})
                 except QuestionPart.DoesNotExist:
                     pass
         except Question.DoesNotExist:
@@ -59,15 +72,34 @@ def info_bot(request, topic_slug):
         try:
             from exam_papers.models import ExamQuestion, ExamQuestionPart
             exam_q = ExamQuestion.objects.get(id=exam_question_id)
-            question_context_parts.append(f"Exam Question {exam_q.question_number}")
+
+            # Add exam paper context
+            question_context_parts.append(f"Exam Paper: {exam_q.exam_paper.year} {exam_q.exam_paper.get_paper_type_display()}")
+            question_context_parts.append(f"Question {exam_q.question_number}")
+
+            if exam_q.title:
+                question_context_parts.append(f"Question Title: {exam_q.title}")
+
             if exam_q.topic:
                 question_context_parts.append(f"Topic: {exam_q.topic.name}")
+
+            # Collect question image if available
+            if exam_q.image:
+                question_context_parts.append(f"This question includes a diagram (see image)")
+                # Build absolute URL for the image
+                image_url = request.build_absolute_uri(exam_q.image.url)
+                question_image_urls.append({"url": image_url, "description": f"Question {exam_q.question_number} diagram"})
 
             # If specific part is mentioned, include it
             if question_part_id:
                 try:
                     part = ExamQuestionPart.objects.get(id=question_part_id)
-                    question_context_parts.append(f"Question part ({part.label}): {part.prompt[:300]}")
+                    question_context_parts.append(f"Question part {part.label}")
+                    # Collect part image if available
+                    if part.image:
+                        question_context_parts.append(f"Part {part.label} includes a diagram (see image)")
+                        part_image_url = request.build_absolute_uri(part.image.url)
+                        question_image_urls.append({"url": part_image_url, "description": f"Part {part.label} diagram"})
                 except ExamQuestionPart.DoesNotExist:
                     pass
         except:
@@ -123,9 +155,29 @@ def info_bot(request, topic_slug):
 
     prompt = "\n".join(prompt_parts)
 
+    # Build message with vision support if images are available
+    if question_image_urls:
+        # Create a multimodal message with text and images
+        message_content = [{"type": "text", "text": prompt}]
+
+        # Add each image to the message
+        for img_data in question_image_urls:
+            message_content.append({
+                "type": "image_url",
+                "image_url": {
+                    "url": img_data["url"],
+                    "detail": "low"  # Use low detail to reduce costs (still effective for most diagrams)
+                }
+            })
+
+        messages = [{"role": "user", "content": message_content}]
+    else:
+        # Text-only message
+        messages = [{"role": "user", "content": prompt}]
+
     response = client.chat.completions.create(
         model="gpt-4o-mini",
-        messages=[{"role": "user", "content": prompt}],
+        messages=messages,
         temperature=0.3,
     )
     raw_answer = response.choices[0].message.content
