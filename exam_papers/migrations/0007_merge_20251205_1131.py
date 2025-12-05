@@ -7,10 +7,6 @@ class Migration(migrations.Migration):
 
     dependencies = [
         ("exam_papers", "0004_answerformattemplate_and_more"),
-        (
-            "exam_papers",
-            "0006_answerformattemplate_remove_examquestionpart_prompt_and_more",
-        ),
         ("exam_papers", "0006_remove_examquestionpart_prompt"),
     ]
 
