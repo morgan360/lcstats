@@ -111,7 +111,7 @@
 
 <script>
     // Run KaTeX after everything is loaded
-    window.addEventListener("load", function () {
+    function renderKaTeX() {
         if (window.renderMathInElement) {
             renderMathInElement(document.body, {
                 delimiters: [
@@ -122,10 +122,21 @@
                 ],
                 throwOnError: false
             });
+            console.log("✅ KaTeX rendered successfully");
         } else {
             console.error("❌ KaTeX failed to load");
         }
-    });
+    }
+
+    // Try multiple times to ensure rendering happens
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', renderKaTeX);
+    } else {
+        renderKaTeX();
+    }
+
+    // Also try on window load as backup
+    window.addEventListener("load", renderKaTeX);
 </script>
 
 <!-- ✅ MathLive script -->
