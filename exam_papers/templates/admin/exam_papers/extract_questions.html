@@ -1,0 +1,277 @@
+{% extends "admin/base_site.html" %}
+{% load static %}
+
+{% block extrahead %}
+{{ block.super }}
+<style>
+    .extract-questions-container {
+        max-width: 1000px;
+        margin: 20px auto;
+        background: white;
+        padding: 30px;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    .pdf-preview {
+        margin: 20px 0;
+        border: 2px solid #e0e0e0;
+        border-radius: 4px;
+        overflow: hidden;
+    }
+
+    .pdf-preview iframe {
+        width: 100%;
+        height: 500px;
+        border: none;
+    }
+
+    .form-section {
+        margin: 25px 0;
+        padding: 20px;
+        background: #f8f9fa;
+        border-radius: 4px;
+    }
+
+    .form-section h3 {
+        margin-top: 0;
+        color: #417690;
+    }
+
+    .help-text {
+        color: #666;
+        font-size: 13px;
+        margin-top: 5px;
+    }
+
+    .radio-group {
+        margin: 15px 0;
+    }
+
+    .radio-group label {
+        display: block;
+        margin: 10px 0;
+        font-weight: normal;
+    }
+
+    .radio-group input[type="radio"] {
+        margin-right: 8px;
+    }
+
+    .form-field {
+        margin: 20px 0;
+    }
+
+    .form-field label {
+        display: block;
+        font-weight: 600;
+        margin-bottom: 8px;
+        color: #333;
+    }
+
+    .form-field textarea {
+        width: 100%;
+        font-family: 'Courier New', monospace;
+        font-size: 14px;
+        padding: 10px;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+    }
+
+    .form-field input[type="number"] {
+        width: 150px;
+        padding: 8px;
+        font-size: 14px;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+    }
+
+    .example-format {
+        background: #fff;
+        border: 1px solid #ddd;
+        padding: 15px;
+        margin: 10px 0;
+        border-radius: 4px;
+        font-family: 'Courier New', monospace;
+        font-size: 13px;
+    }
+
+    .example-format h4 {
+        margin-top: 0;
+        color: #555;
+        font-size: 14px;
+        font-family: Arial, sans-serif;
+    }
+
+    .submit-buttons {
+        margin-top: 30px;
+        padding-top: 20px;
+        border-top: 2px solid #e0e0e0;
+    }
+
+    .submit-buttons button,
+    .submit-buttons a {
+        padding: 10px 20px;
+        margin-right: 10px;
+        font-size: 14px;
+    }
+
+    .errorlist {
+        list-style: none;
+        padding: 10px;
+        background: #ffebee;
+        border: 1px solid #ef5350;
+        border-radius: 4px;
+        color: #c62828;
+        margin: 10px 0;
+    }
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const methodRadios = document.querySelectorAll('input[name="extraction_method"]');
+    const pageRangesField = document.getElementById('page-ranges-field');
+    const numQuestionsField = document.getElementById('num-questions-field');
+
+    function toggleFields() {
+        const selectedMethod = document.querySelector('input[name="extraction_method"]:checked').value;
+
+        if (selectedMethod === 'page_ranges') {
+            pageRangesField.style.display = 'block';
+            numQuestionsField.style.display = 'none';
+        } else {
+            pageRangesField.style.display = 'none';
+            numQuestionsField.style.display = 'block';
+        }
+    }
+
+    methodRadios.forEach(radio => {
+        radio.addEventListener('change', toggleFields);
+    });
+
+    // Initialize on load
+    toggleFields();
+});
+</script>
+{% endblock %}
+
+{% block breadcrumbs %}
+<div class="breadcrumbs">
+    <a href="{% url 'admin:index' %}">Home</a>
+    &rsaquo; <a href="{% url 'admin:exam_papers_exampaper_changelist' %}">Exam Papers</a>
+    &rsaquo; <a href="{% url 'admin:exam_papers_exampaper_change' paper.pk %}">{{ paper }}</a>
+    &rsaquo; Extract Questions
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="extract-questions-container">
+    <h1>Extract Questions from PDF</h1>
+    <p><strong>Exam Paper:</strong> {{ paper }}</p>
+
+    <div class="pdf-preview">
+        <iframe src="{{ paper.source_pdf.url }}"></iframe>
+    </div>
+
+    <form method="post">
+        {% csrf_token %}
+
+        {% if form.non_field_errors %}
+        <ul class="errorlist">
+            {% for error in form.non_field_errors %}
+            <li>{{ error }}</li>
+            {% endfor %}
+        </ul>
+        {% endif %}
+
+        <div class="form-section">
+            <h3>Extraction Method</h3>
+
+            <div class="radio-group">
+                {% for radio in form.extraction_method %}
+                {{ radio }}
+                {% endfor %}
+            </div>
+
+            {% if form.extraction_method.errors %}
+            <ul class="errorlist">
+                {% for error in form.extraction_method.errors %}
+                <li>{{ error }}</li>
+                {% endfor %}
+            </ul>
+            {% endif %}
+        </div>
+
+        <div class="form-section" id="page-ranges-field">
+            <h3>Page Ranges (Manual Method)</h3>
+
+            <div class="form-field">
+                <label for="{{ form.page_ranges.id_for_label }}">
+                    Page Ranges for Each Question
+                </label>
+                {{ form.page_ranges }}
+                <div class="help-text">{{ form.page_ranges.help_text }}</div>
+
+                {% if form.page_ranges.errors %}
+                <ul class="errorlist">
+                    {% for error in form.page_ranges.errors %}
+                    <li>{{ error }}</li>
+                    {% endfor %}
+                </ul>
+                {% endif %}
+            </div>
+
+            <div class="example-format">
+                <h4>Format Example:</h4>
+                <pre>1:4-5
+2:6-7
+3:8-9
+4:10-11
+5:12-13
+6:14-15
+7:16-19
+8:20-23
+9:24-27
+10:28-30</pre>
+                <p style="margin: 10px 0 0 0; color: #666; font-family: Arial, sans-serif; font-size: 13px;">
+                    Each line: <code>question_number:start_page-end_page</code>
+                </p>
+            </div>
+        </div>
+
+        <div class="form-section" id="num-questions-field" style="display: none;">
+            <h3>Auto Split Method</h3>
+
+            <div class="form-field">
+                <label for="{{ form.num_questions.id_for_label }}">
+                    Number of Questions
+                </label>
+                {{ form.num_questions }}
+                <div class="help-text">{{ form.num_questions.help_text }}</div>
+
+                {% if form.num_questions.errors %}
+                <ul class="errorlist">
+                    {% for error in form.num_questions.errors %}
+                    <li>{{ error }}</li>
+                    {% endfor %}
+                </ul>
+                {% endif %}
+            </div>
+
+            <p style="color: #666; margin-top: 10px;">
+                The PDF will be automatically split into equal sections for each question.
+                This works best when questions are evenly distributed across pages.
+            </p>
+        </div>
+
+        <div class="submit-buttons">
+            <button type="submit" class="button" style="background: #417690; color: white;">
+                Extract Questions
+            </button>
+            <a href="{% url 'admin:exam_papers_exampaper_change' paper.pk %}" class="button">
+                Cancel
+            </a>
+        </div>
+    </form>
+</div>
+{% endblock %}

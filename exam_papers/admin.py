@@ -1,7 +1,10 @@
 # exam_papers/admin.py
 from django.contrib import admin
 from django.utils.html import format_html
-from django.urls import reverse
+from django.urls import reverse, path
+from django.shortcuts import render, redirect, get_object_or_404
+from django.contrib import messages
+from django.core.files.base import ContentFile
 from .models import (
     AnswerFormatTemplate,
     ExamPaper,
@@ -10,6 +13,8 @@ from .models import (
     ExamAttempt,
     ExamQuestionAttempt
 )
+from .forms import ExtractQuestionsForm
+from .utils import extract_pdf_page_ranges, split_pdf_into_questions
 
 
 @admin.register(AnswerFormatTemplate)
@@ -78,6 +83,94 @@ class ExamPaperAdmin(admin.ModelAdmin):
     readonly_fields = ('pdf_preview',)
     inlines = [ExamQuestionInline]
 
+    def get_urls(self):
+        """Add custom URL for question extraction"""
+        urls = super().get_urls()
+        custom_urls = [
+            path(
+                '<path:object_id>/extract-questions/',
+                self.admin_site.admin_view(self.extract_questions_view),
+                name='exam_papers_exampaper_extract_questions',
+            ),
+        ]
+        return custom_urls + urls
+
+    def extract_questions_view(self, request, object_id):
+        """
+        Custom admin view for extracting questions from PDF with a form.
+        """
+        paper = get_object_or_404(ExamPaper, pk=object_id)
+
+        if not paper.source_pdf:
+            messages.error(request, f'Exam paper "{paper}" has no source PDF uploaded.')
+            return redirect('admin:exam_papers_exampaper_change', object_id)
+
+        if request.method == 'POST':
+            form = ExtractQuestionsForm(request.POST)
+            if form.is_valid():
+                # Extract questions based on form data
+                try:
+                    pdf_path = paper.source_pdf.path
+                    question_images = []
+
+                    if form.cleaned_data['extraction_method'] == 'page_ranges':
+                        page_ranges = form.get_page_ranges_list()
+                        question_images = extract_pdf_page_ranges(pdf_path, page_ranges)
+                    else:  # auto_split
+                        num_questions = form.cleaned_data['num_questions']
+                        question_images = split_pdf_into_questions(pdf_path, num_questions)
+
+                    # Create ExamQuestion records with images
+                    created_count = 0
+                    updated_count = 0
+
+                    for question_num, img_data in question_images:
+                        question, created = ExamQuestion.objects.get_or_create(
+                            exam_paper=paper,
+                            question_number=question_num,
+                            defaults={
+                                'title': f'Question {question_num}',
+                                'total_marks': 0,
+                                'order': question_num
+                            }
+                        )
+
+                        # Save the image
+                        image_filename = f'{paper.slug}_q{question_num}.png'
+                        question.image.save(image_filename, ContentFile(img_data), save=True)
+
+                        if created:
+                            created_count += 1
+                        else:
+                            updated_count += 1
+
+                    # Success message
+                    messages.success(
+                        request,
+                        f'Successfully extracted questions from "{paper}": '
+                        f'{created_count} created, {updated_count} updated. '
+                        f'Edit each question to add topic, marks, and question parts.'
+                    )
+                    return redirect('admin:exam_papers_exampaper_change', object_id)
+
+                except Exception as e:
+                    messages.error(request, f'Error extracting questions: {str(e)}')
+
+        else:
+            form = ExtractQuestionsForm()
+
+        context = {
+            'form': form,
+            'paper': paper,
+            'title': f'Extract Questions from {paper}',
+            'opts': self.model._meta,
+            'has_view_permission': self.has_view_permission(request, paper),
+            'site_header': admin.site.site_header,
+            'site_title': admin.site.site_title,
+        }
+
+        return render(request, 'admin/exam_papers/extract_questions.html', context)
+
     def pdf_link(self, obj):
         """Show clickable PDF link in list view"""
         if obj.source_pdf:
@@ -91,16 +184,17 @@ class ExamPaperAdmin(admin.ModelAdmin):
     def pdf_preview(self, obj):
         """Show PDF preview in change form"""
         if obj.source_pdf:
+            extract_url = reverse('admin:exam_papers_exampaper_extract_questions', args=[obj.pk])
             return format_html(
                 '<iframe src="{}" width="100%" height="600px" style="border: 1px solid #ccc;"></iframe><br>'
-                '<a href="{}" target="_blank" class="button">Open PDF in New Tab</a><br><br>'
-                '<strong>Extract Questions:</strong><br>'
+                '<a href="{}" target="_blank" class="button">Open PDF in New Tab</a>&nbsp;&nbsp;'
+                '<a href="{}" class="button" style="background: #417690; color: white;">Extract Questions from PDF</a><br><br>'
+                '<strong>CLI Alternative (deprecated):</strong><br>'
                 '<code>python manage.py extract_exam_questions {} --preview</code><br>'
-                '<code>python manage.py extract_exam_questions {} --num-questions 8</code><br>'
-                '<code>python manage.py extract_exam_questions {} --page-ranges "1:1-1,2:2-3,3:4-4"</code>',
+                '<code>python manage.py extract_exam_questions {} --page-ranges "1:4-5,2:6-7"</code>',
                 obj.source_pdf.url,
                 obj.source_pdf.url,
-                obj.id,
+                extract_url,
                 obj.id,
                 obj.id
             )
