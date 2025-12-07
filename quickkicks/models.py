@@ -1,5 +1,7 @@
 from django.db import models
 from django.core.exceptions import ValidationError
+from django.contrib.auth.models import User
+from django.utils import timezone
 from interactive_lessons.models import Topic
 
 
@@ -73,3 +75,21 @@ class QuickKick(models.Model):
         if self.geogebra_code:
             return f"https://www.geogebra.org/material/iframe/id/{self.geogebra_code}/width/1200/height/600/border/888888/sfsb/true/smb/false/stb/false/stbh/false/ai/false/asb/false/sri/false/rc/false/ld/false/sdz/false/ctl/false"
         return ""
+
+
+class QuickKickView(models.Model):
+    """
+    Tracks when students view QuickKicks (for homework completion tracking).
+    """
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='quickkick_views')
+    quickkick = models.ForeignKey(QuickKick, on_delete=models.CASCADE, related_name='views')
+    viewed_at = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        unique_together = ('user', 'quickkick')
+        ordering = ['-viewed_at']
+        verbose_name = "QuickKick View"
+        verbose_name_plural = "QuickKick Views"
+
+    def __str__(self):
+        return f"{self.user.username} viewed {self.quickkick.title}"

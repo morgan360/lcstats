@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import QuickKick
+from .models import QuickKick, QuickKickView
 
 
 @admin.register(QuickKick)
@@ -28,3 +28,15 @@ class QuickKickAdmin(admin.ModelAdmin):
 
     def get_queryset(self, request):
         return super().get_queryset(request).select_related('topic')
+
+
+@admin.register(QuickKickView)
+class QuickKickViewAdmin(admin.ModelAdmin):
+    list_display = ('user', 'quickkick', 'viewed_at')
+    list_filter = ('viewed_at', 'quickkick__topic')
+    search_fields = ('user__username', 'quickkick__title')
+    readonly_fields = ('viewed_at',)
+    ordering = ('-viewed_at',)
+
+    def get_queryset(self, request):
+        return super().get_queryset(request).select_related('user', 'quickkick', 'quickkick__topic')

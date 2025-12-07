@@ -62,6 +62,18 @@
                 <a href="{% url 'module_list' %}" class="nav-link">Revision</a>
             </div>
 
+            <!-- Homework Section (Logged In Only) -->
+            {% if user.is_authenticated %}
+            <div class="nav-item">
+                <a href="{% url 'homework:student_dashboard' %}" class="nav-link">
+                    Homework
+                    {% if homework_badge_count > 0 %}
+                        <span class="homework-badge">{{ homework_badge_count }}</span>
+                    {% endif %}
+                </a>
+            </div>
+            {% endif %}
+
             <!-- Account Section (Logged In) -->
             {% if user.is_authenticated %}
             <div class="nav-item dropdown">
@@ -219,6 +231,32 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 });
 </script>
+
+<!-- Homework Badge Styling -->
+<style>
+.homework-badge {
+    display: inline-block;
+    background: #e74c3c;
+    color: white;
+    font-size: 0.7rem;
+    font-weight: bold;
+    padding: 0.15rem 0.4rem;
+    border-radius: 10px;
+    margin-left: 0.3rem;
+    min-width: 1.2rem;
+    text-align: center;
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0%, 100% {
+        transform: scale(1);
+    }
+    50% {
+        transform: scale(1.1);
+    }
+}
+</style>
 
 <!-- Per-page scripts (e.g. for math input capture) -->
 {% block extra_scripts %}{% endblock %}

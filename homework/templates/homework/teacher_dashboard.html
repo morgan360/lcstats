@@ -1,0 +1,93 @@
+{% extends "_base.html" %}
+{% load static %}
+
+{% block title %}Teacher Dashboard - Homework{% endblock %}
+
+{% block content %}
+<div class="container" style="max-width: 1200px; margin: 2rem auto; padding: 0 1rem;">
+    <h1 style="color: #2c3e50; margin-bottom: 2rem;">👨‍🏫 Teacher Dashboard</h1>
+
+    <!-- My Classes -->
+    <section style="margin-bottom: 3rem;">
+        <h2 style="color: #34495e; font-size: 1.5rem; margin-bottom: 1rem; border-bottom: 2px solid #3498db; padding-bottom: 0.5rem;">
+            My Classes
+        </h2>
+
+        {% if classes %}
+            <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 1.5rem;">
+                {% for class in classes %}
+                <a href="{% url 'homework:class_detail' class.id %}" style="text-decoration: none;">
+                    <div style="background: white; border-radius: 8px; padding: 1.5rem; box-shadow: 0 2px 8px rgba(0,0,0,0.1); border-top: 4px solid #3498db; transition: all 0.3s;">
+                        <h3 style="margin: 0 0 0.5rem 0; color: #2c3e50;">{{ class.name }}</h3>
+                        <p style="margin: 0; color: #7f8c8d;">
+                            <strong>{{ class.student_count }}</strong> student{{ class.student_count|pluralize }}
+                        </p>
+                    </div>
+                </a>
+                {% endfor %}
+            </div>
+        {% else %}
+            <p style="color: #7f8c8d;">No classes yet. Create one in the admin panel.</p>
+        {% endif %}
+    </section>
+
+    <!-- Recent Assignments -->
+    <section>
+        <h2 style="color: #34495e; font-size: 1.5rem; margin-bottom: 1rem; border-bottom: 2px solid #2ecc71; padding-bottom: 0.5rem;">
+            Recent Assignments
+        </h2>
+
+        {% if assignments %}
+            <div style="display: grid; gap: 1rem;">
+                {% for item in assignments %}
+                <div style="background: white; border-radius: 8px; padding: 1.5rem; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                    <div style="display: flex; justify-content: space-between; align-items: start; flex-wrap: wrap; gap: 1rem;">
+                        <div>
+                            <h3 style="margin: 0 0 0.5rem 0; color: #2c3e50;">
+                                <a href="{% url 'homework:assignment_progress' item.assignment.id %}" style="color: #2c3e50; text-decoration: none;">
+                                    {{ item.assignment.title }}
+                                </a>
+                            </h3>
+                            <p style="margin: 0; color: #7f8c8d; font-size: 0.9rem;">
+                                <strong>Topic:</strong> {{ item.assignment.topic.name }} |
+                                <strong>Due:</strong> {{ item.assignment.due_date|date:"M d, Y" }}
+                            </p>
+                        </div>
+
+                        <div style="text-align: right;">
+                            <p style="margin: 0 0 0.3rem 0; font-size: 1.2rem; font-weight: bold; color: #2c3e50;">
+                                {{ item.submissions }} / {{ item.total_students }}
+                            </p>
+                            <p style="margin: 0; color: #7f8c8d; font-size: 0.85rem;">
+                                {{ item.submission_percentage }}% submitted
+                            </p>
+                        </div>
+                    </div>
+
+                    <div style="margin-top: 1rem;">
+                        <div style="background: #ecf0f1; height: 16px; border-radius: 8px; overflow: hidden;">
+                            <div style="background: #2ecc71; height: 100%; width: {{ item.submission_percentage }}%;"></div>
+                        </div>
+                    </div>
+
+                    <div style="margin-top: 1rem;">
+                        <a href="{% url 'homework:assignment_progress' item.assignment.id %}" style="color: #3498db; text-decoration: none; font-weight: bold;">
+                            View Progress →
+                        </a>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <p style="color: #7f8c8d;">No assignments yet. Create one in the admin panel.</p>
+        {% endif %}
+    </section>
+</div>
+
+<style>
+a div:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+</style>
+{% endblock %}

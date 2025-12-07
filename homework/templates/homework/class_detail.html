@@ -1,0 +1,46 @@
+{% extends "_base.html" %}
+
+{% block title %}{{ teacher_class.name }} - Class Detail{% endblock %}
+
+{% block content %}
+<div class="container" style="max-width: 1000px; margin: 2rem auto; padding: 0 1rem;">
+    <a href="{% url 'homework:teacher_dashboard' %}" style="color: #3498db; text-decoration: none;">← Back to Dashboard</a>
+
+    <h1 style="color: #2c3e50; margin: 1rem 0;">{{ teacher_class.name }}</h1>
+
+    <section style="margin-bottom: 2rem;">
+        <h2 style="color: #34495e; font-size: 1.3rem; margin-bottom: 1rem;">Students ({{ students.count }})</h2>
+        <div style="background: white; padding: 1.5rem; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+            <ul style="list-style: none; padding: 0; margin: 0;">
+                {% for student in students %}
+                <li style="padding: 0.5rem 0; border-bottom: 1px solid #eee;">
+                    {{ student.get_full_name|default:student.username }}
+                </li>
+                {% empty %}
+                <li style="color: #7f8c8d;">No students enrolled yet.</li>
+                {% endfor %}
+            </ul>
+        </div>
+    </section>
+
+    <section>
+        <h2 style="color: #34495e; font-size: 1.3rem; margin-bottom: 1rem;">Assignments</h2>
+        <div style="display: grid; gap: 1rem;">
+            {% for assignment in assignments %}
+            <div style="background: white; padding: 1.5rem; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                <h3 style="margin: 0 0 0.5rem 0;">
+                    <a href="{% url 'homework:assignment_progress' assignment.id %}" style="color: #2c3e50; text-decoration: none;">
+                        {{ assignment.title }}
+                    </a>
+                </h3>
+                <p style="margin: 0; color: #7f8c8d; font-size: 0.9rem;">
+                    Due: {{ assignment.due_date|date:"M d, Y" }}
+                </p>
+            </div>
+            {% empty %}
+            <p style="color: #7f8c8d;">No assignments for this class yet.</p>
+            {% endfor %}
+        </div>
+    </section>
+</div>
+{% endblock %}

@@ -67,6 +67,7 @@ INSTALLED_APPS = [
     'cheatsheets',
     'exam_papers',
     'quickkicks',
+    'homework',
 ]
 INSTALLED_APPS += ['markdownx']
 INSTALLED_APPS += ["markdownify"]
@@ -96,6 +97,7 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+                'homework.context_processors.homework_count',
             ],
         },
     },

@@ -3,6 +3,7 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth.views import LogoutView
 from django.db.models import Avg, Count, Q
 from django.contrib import messages
+from django.utils import timezone
 from .models import StudentProfile, RegistrationCode
 from .forms import SignupFormWithCode
 
@@ -58,12 +59,42 @@ def dashboard_view(request):
     # Update profile totals
     profile.update_progress()
 
+    # --- Homework summary and notifications ---
+    try:
+        from homework.views import get_homework_summary
+        from homework.models import HomeworkNotificationSnooze
+
+        # Get comprehensive homework summary
+        homework_summary = get_homework_summary(request.user)
+
+        # Check if notifications are snoozed
+        try:
+            snooze = HomeworkNotificationSnooze.objects.get(student=request.user)
+            show_notification_modal = homework_summary['has_homework'] and not snooze.is_active()
+        except HomeworkNotificationSnooze.DoesNotExist:
+            show_notification_modal = homework_summary['has_homework']
+
+        homework_count = homework_summary['total_count']
+        upcoming_homework = homework_summary['due_soon'][:3]
+        overdue_homework = homework_summary['overdue'][:3]
+    except Exception as e:
+        homework_count = 0
+        upcoming_homework = []
+        overdue_homework = []
+        homework_summary = {}
+        show_notification_modal = False
+
     context = {
         "profile": profile,
         "accuracy": accuracy,
         "recent_attempts": attempts[:10],
         "topic_summary": topic_summary,
         "total_attempts": total_attempts,
+        "homework_count": homework_count,
+        "upcoming_homework": upcoming_homework,
+        "overdue_homework": overdue_homework,
+        "homework_summary": homework_summary,
+        "show_notification_modal": show_notification_modal,
     }
     return render(request, "students/dashboard.html", context)
 

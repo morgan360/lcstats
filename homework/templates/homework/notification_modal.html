@@ -1,0 +1,218 @@
+<!-- Homework Notification Modal -->
+{% if show_notification_modal %}
+<div id="homeworkNotificationModal" class="homework-modal-overlay" style="display: none;">
+    <div class="homework-modal">
+        <div class="homework-modal-header">
+            <h2 style="margin: 0; color: #2c3e50;">📚 Homework Reminders</h2>
+        </div>
+
+        <div class="homework-modal-body">
+            {% if homework_summary.overdue_count > 0 %}
+            <div class="homework-alert homework-alert-danger">
+                <h3 style="margin: 0 0 0.5rem 0; color: #e74c3c; font-size: 1.1rem;">
+                    ⚠️ {{ homework_summary.overdue_count }} Overdue Assignment{{ homework_summary.overdue_count|pluralize }}
+                </h3>
+                <ul style="margin: 0.5rem 0 0 1.5rem;">
+                    {% for assignment in homework_summary.overdue %}
+                    <li style="color: #555; margin: 0.3rem 0;">
+                        <strong>{{ assignment.title }}</strong> - Due {{ assignment.due_date|date:"M d, Y" }}
+                    </li>
+                    {% endfor %}
+                </ul>
+            </div>
+            {% endif %}
+
+            {% if homework_summary.due_soon_count > 0 %}
+            <div class="homework-alert homework-alert-warning">
+                <h3 style="margin: 0 0 0.5rem 0; color: #f39c12; font-size: 1.1rem;">
+                    ⏰ {{ homework_summary.due_soon_count }} Due Soon (Next 3 Days)
+                </h3>
+                <ul style="margin: 0.5rem 0 0 1.5rem;">
+                    {% for assignment in homework_summary.due_soon %}
+                    <li style="color: #555; margin: 0.3rem 0;">
+                        <strong>{{ assignment.title }}</strong> - Due {{ assignment.due_date|date:"M d, g:i A" }}
+                    </li>
+                    {% endfor %}
+                </ul>
+            </div>
+            {% endif %}
+
+            {% if homework_summary.incomplete_count > 0 %}
+            <div class="homework-alert homework-alert-info">
+                <p style="margin: 0; color: #555;">
+                    📝 You also have <strong>{{ homework_summary.incomplete_count }}</strong> other incomplete assignment{{ homework_summary.incomplete_count|pluralize }}.
+                </p>
+            </div>
+            {% endif %}
+        </div>
+
+        <div class="homework-modal-footer">
+            <button id="snoozeButton" class="btn-snooze">
+                Snooze for 24 hours
+            </button>
+            <a href="{% url 'homework:student_dashboard' %}" class="btn-view-homework">
+                View Homework
+            </a>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const modal = document.getElementById('homeworkNotificationModal');
+    if (modal) {
+        // Show modal after a short delay
+        setTimeout(() => {
+            modal.style.display = 'flex';
+        }, 500);
+
+        // Handle snooze button
+        document.getElementById('snoozeButton').addEventListener('click', function() {
+            fetch('{% url "homework:snooze_notification" %}', {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': '{{ csrf_token }}',
+                    'Content-Type': 'application/json',
+                },
+            })
+            .then(response => response.json())
+            .then(data => {
+                modal.style.display = 'none';
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                modal.style.display = 'none';
+            });
+        });
+
+        // Close modal when clicking outside
+        modal.addEventListener('click', function(e) {
+            if (e.target === modal) {
+                modal.style.display = 'none';
+            }
+        });
+    }
+});
+</script>
+
+<style>
+.homework-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.6);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+}
+
+.homework-modal {
+    background: white;
+    border-radius: 12px;
+    max-width: 600px;
+    width: 90%;
+    max-height: 80vh;
+    overflow-y: auto;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+    animation: slideIn 0.3s ease-out;
+}
+
+@keyframes slideIn {
+    from {
+        transform: translateY(-50px);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+.homework-modal-header {
+    padding: 1.5rem;
+    border-bottom: 2px solid #e0e0e0;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border-radius: 12px 12px 0 0;
+}
+
+.homework-modal-header h2 {
+    color: white !important;
+}
+
+.homework-modal-body {
+    padding: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.homework-alert {
+    padding: 1rem;
+    border-radius: 8px;
+    border-left: 4px solid;
+}
+
+.homework-alert-danger {
+    background: #fee;
+    border-color: #e74c3c;
+}
+
+.homework-alert-warning {
+    background: #fff8e1;
+    border-color: #f39c12;
+}
+
+.homework-alert-info {
+    background: #f0f9ff;
+    border-color: #3498db;
+}
+
+.homework-alert ul {
+    list-style: none;
+    padding: 0;
+}
+
+.homework-modal-footer {
+    padding: 1.5rem;
+    border-top: 1px solid #e0e0e0;
+    display: flex;
+    gap: 1rem;
+    justify-content: flex-end;
+}
+
+.btn-snooze {
+    padding: 0.75rem 1.5rem;
+    background: #95a5a6;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: background 0.3s;
+}
+
+.btn-snooze:hover {
+    background: #7f8c8d;
+}
+
+.btn-view-homework {
+    padding: 0.75rem 1.5rem;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-weight: bold;
+    text-decoration: none;
+    cursor: pointer;
+    transition: transform 0.2s;
+}
+
+.btn-view-homework:hover {
+    transform: scale(1.05);
+}
+</style>
+{% endif %}
