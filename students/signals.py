@@ -39,7 +39,7 @@ def log_user_login(sender, request, user, **kwargs):
     """Track successful login attempts"""
     ip_address = get_client_ip(request)
     user_agent = get_user_agent(request)
-    session_key = request.session.session_key
+    session_key = request.session.session_key or ''
 
     # Create login history record
     LoginHistory.objects.create(

@@ -212,3 +212,4 @@ HIJACK_PERMISSION_CHECK = 'hijack.permissions.superusers_only'  # Only superuser
 HIJACK_LOGOUT_REDIRECT_URL = '/admin/auth/user/'  # Redirect to user list after releasing hijack
 HIJACK_ALLOW_GET_REQUESTS = True  # Allow hijacking via GET requests
 HIJACK_DISPLAY_ADMIN_BUTTON = True  # Show hijack button in admin
+HIJACK_USE_BOOTSTRAP = True  # Use Bootstrap styling for hijack button
