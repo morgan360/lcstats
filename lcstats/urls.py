@@ -6,6 +6,7 @@ from django.conf.urls.static import static
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('accounts/', include('allauth.urls')),  # Django-allauth URLs
+    path('hijack/', include('hijack.urls')),  # Django-hijack URLs
     path("", include("home.urls")),
     path("chat/", include("chat.urls")),
     path("interactive/", include("interactive_lessons.urls")),

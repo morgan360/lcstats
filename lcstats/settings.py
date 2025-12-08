@@ -68,6 +68,8 @@ INSTALLED_APPS = [
     'exam_papers',
     'quickkicks',
     'homework',
+    'hijack',
+    'hijack.contrib.admin',
 ]
 INSTALLED_APPS += ['markdownx']
 INSTALLED_APPS += ["markdownify"]
@@ -82,6 +84,7 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'allauth.account.middleware.AccountMiddleware',  # Required for allauth
+    'hijack.middleware.HijackUserMiddleware',  # Required for django-hijack
     'students.middleware.SessionActivityMiddleware',
 ]
 
@@ -201,3 +204,11 @@ ACCOUNT_FORMS = {
 
 # Redirect URLs for allauth
 ACCOUNT_LOGOUT_REDIRECT_URL = '/'
+
+# ------------------------------------------------------------
+# Django Hijack Configuration
+# ------------------------------------------------------------
+HIJACK_PERMISSION_CHECK = 'hijack.permissions.superusers_only'  # Only superusers can hijack
+HIJACK_LOGOUT_REDIRECT_URL = '/admin/auth/user/'  # Redirect to user list after releasing hijack
+HIJACK_ALLOW_GET_REQUESTS = True  # Allow hijacking via GET requests
+HIJACK_DISPLAY_ADMIN_BUTTON = True  # Show hijack button in admin
