@@ -162,6 +162,65 @@ class HomeworkAssignment(models.Model):
         individual_students = self.assigned_students.all()
         return (class_students | individual_students).distinct()
 
+    def assign_to_class(self, teacher_class):
+        """
+        Assign this homework to an entire class in one operation.
+        This will:
+        1. Add the class to assigned_classes
+        2. Create StudentHomeworkProgress records for all students in the class for all tasks
+
+        Args:
+            teacher_class: TeacherClass instance to assign homework to
+
+        Returns:
+            tuple: (number of students assigned, number of progress records created)
+        """
+        # Add the class to assigned classes
+        self.assigned_classes.add(teacher_class)
+
+        # Get all students in the class
+        students = teacher_class.students.all()
+        student_count = students.count()
+
+        # Create progress records for each student for each task
+        progress_records_created = 0
+        for student in students:
+            for task in self.tasks.all():
+                # Use get_or_create to avoid duplicates
+                _, created = StudentHomeworkProgress.objects.get_or_create(
+                    student=student,
+                    assignment=self,
+                    task=task
+                )
+                if created:
+                    progress_records_created += 1
+
+        return (student_count, progress_records_created)
+
+    def assign_to_multiple_classes(self, teacher_classes):
+        """
+        Assign this homework to multiple classes at once.
+
+        Args:
+            teacher_classes: QuerySet or list of TeacherClass instances
+
+        Returns:
+            dict: Summary with total students and progress records created
+        """
+        total_students = 0
+        total_progress_records = 0
+
+        for teacher_class in teacher_classes:
+            students, progress = self.assign_to_class(teacher_class)
+            total_students += students
+            total_progress_records += progress
+
+        return {
+            'total_students': total_students,
+            'total_progress_records': total_progress_records,
+            'classes_assigned': len(list(teacher_classes))
+        }
+
     class Meta:
         verbose_name = "Homework Assignment"
         verbose_name_plural = "Homework Assignments"
