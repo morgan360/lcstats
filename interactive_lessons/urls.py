@@ -20,6 +20,9 @@ urlpatterns = [
     # --- Topic quiz entry point (redirects to section list) ---
     path("quiz/<slug:topic_slug>/", views.topic_quiz, name="topic_quiz"),
 
+    # --- Direct topic access (redirect to sections) ---
+    path("<slug:topic_slug>/", views.topic_quiz, name="topic_landing"),
+
     # --- Main question view (legacy, for backwards compatibility) ---
     path("<int:topic_id>/question/<int:number>/", views.question_view, name="question_view"),
 
