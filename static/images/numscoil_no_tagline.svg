@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 550 200" width="550" height="200">
+  <rect width="550" height="200" fill="white"/>
+  
+  <!-- Simple icon with Phi -->
+  <g id="simple-icon-phi">
+    <!-- Large Greek letter -->
+    <text x="110" y="125" font-family="Arial, sans-serif" font-size="90" fill="#4A90E2" font-weight="bold" text-anchor="middle">φ</text>
+    
+    <!-- Circuit nodes/dots around it -->
+    <circle cx="70" cy="70" r="6" fill="#E74C3C"/>
+    <circle cx="150" cy="75" r="6" fill="#2ECC71"/>
+    <circle cx="155" cy="125" r="6" fill="#F39C12"/>
+    <circle cx="70" cy="140" r="6" fill="#9B59B6"/>
+    
+    <!-- Simple connecting lines -->
+    <line x1="70" y1="70" x2="85" y2="85" stroke="#E74C3C" stroke-width="2" opacity="0.5"/>
+    <line x1="150" y1="75" x2="135" y2="85" stroke="#2ECC71" stroke-width="2" opacity="0.5"/>
+    <line x1="155" y1="125" x2="135" y2="120" stroke="#F39C12" stroke-width="2" opacity="0.5"/>
+    <line x1="70" y1="140" x2="85" y2="125" stroke="#9B59B6" stroke-width="2" opacity="0.5"/>
+  </g>
+  
+  <!-- Text Logo -->
+  <text x="200" y="120" font-family="'Poppins', 'Arial Rounded MT Bold', Arial, sans-serif" font-size="72" font-weight="bold">
+    <tspan fill="#4A90E2">Num</tspan><tspan fill="#2ECC71">Scoil</tspan>
+  </text>
+</svg>

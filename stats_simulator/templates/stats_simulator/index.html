@@ -1,0 +1,211 @@
+{% extends '_base.html' %}
+{% load static %}
+
+{% block title %}Statistical Sampling Simulator - LCAI Maths{% endblock %}
+
+{% block content %}
+<link rel="stylesheet" href="{% static 'stats_simulator/styles.css' %}?v=2.5">
+
+<div class="simulator-container">
+    <div class="header-section">
+        <h1>Statistical Sampling Simulator</h1>
+        <p class="subtitle">Explore the Central Limit Theorem through interactive visualization</p>
+
+        <button class="help-button" id="helpButton">
+            <span class="help-icon">?</span> Help
+        </button>
+    </div>
+
+    <!-- Control Panel -->
+    <div class="control-panel">
+        <div class="control-group">
+            <div class="control-item">
+                <label for="meanInput">Population Mean (μ):</label>
+                <input type="number" id="meanInput" value="16" step="1" min="-100" max="100">
+            </div>
+
+            <div class="control-item">
+                <label for="sdInput">Standard Deviation (σ):</label>
+                <input type="number" id="sdInput" value="5" step="0.5" min="0.1" max="50">
+            </div>
+
+            <div class="control-item">
+                <label for="sampleSize">Sample Size (n):</label>
+                <select id="sampleSize">
+                    <option value="1">Single Sample (n=1)</option>
+                    <option value="5" selected>5 Samples</option>
+                    <option value="10">10 Samples</option>
+                    <option value="100">100 Samples</option>
+                    <option value="1000">1,000 Samples</option>
+                    <option value="10000">10,000 Samples</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="button-group">
+            <button class="btn btn-primary" id="generateSample">Generate Sample</button>
+            <button class="btn btn-secondary" id="clearAll">Clear All</button>
+            <button class="btn btn-success" id="playAnimation">▶ Play Animation</button>
+            <button class="btn btn-warning" id="pauseAnimation" style="display: none;">⏸ Pause</button>
+        </div>
+
+        <div class="animation-controls" id="animationControls" style="display: none;">
+            <label for="animationSpeed">Animation Speed:</label>
+            <input type="range" id="animationSpeed" min="1" max="10" value="3" step="1">
+            <span id="speedDisplay">3x</span>
+        </div>
+    </div>
+
+    <!-- Statistics Display -->
+    <div class="stats-display" id="statsDisplay">
+        <h3>Current Statistics</h3>
+        <div class="stats-grid">
+            <div class="stat-item">
+                <span class="stat-label">Samples Taken:</span>
+                <span class="stat-value" id="samplesCount">0</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-label">Sample Mean:</span>
+                <span class="stat-value" id="sampleMean">—</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-label">Sample SD:</span>
+                <span class="stat-value" id="sampleSd">—</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-label">SE of Mean:</span>
+                <span class="stat-value" id="standardError">—</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Graph 1: Parent Population -->
+    <div class="graph-section">
+        <div class="graph-header">
+            <h2>Parent Population Distribution</h2>
+            <p class="graph-description">
+                Normal distribution with mean μ = <span id="displayMean">16</span>
+                and standard deviation σ = <span id="displaySd">5</span>
+                <span class="info-tooltip" title="This is the population from which we draw samples. In a normal distribution, about 68% of values fall within 1σ of the mean, 95% within 2σ, and 99.7% within 3σ.">ℹ️</span>
+            </p>
+        </div>
+        <div id="populationPlot" class="plot-container"></div>
+    </div>
+
+    <!-- Graph 2: Sample Data -->
+    <div class="graph-section">
+        <div class="graph-header">
+            <h2>Sample Data</h2>
+            <p class="graph-description">
+                Individual values drawn from the parent population
+                <span class="info-tooltip" title="Each point represents a randomly drawn value from the population distribution. Watch how they vary around the population mean!">ℹ️</span>
+            </p>
+        </div>
+        <div id="samplePlot" class="plot-container"></div>
+    </div>
+
+    <!-- Graph 3: Distribution of Sample Means -->
+    <div class="graph-section">
+        <div class="graph-header">
+            <h2>Distribution of Sample Means</h2>
+            <p class="graph-description">
+                Histogram of means from repeated sampling (Central Limit Theorem)
+                <span class="info-tooltip" title="The Central Limit Theorem states that the distribution of sample means approaches a normal distribution as sample size increases, regardless of the population distribution. The standard error = σ/√n.">ℹ️</span>
+            </p>
+        </div>
+        <div id="samplingDistributionPlot" class="plot-container"></div>
+        <div class="clt-info" id="cltInfo" style="display: none;">
+            <h4 style="margin-top: 0; color: #27AE60;">🎯 Central Limit Theorem in Action!</h4>
+
+            <div class="clt-stats-grid">
+                <div class="clt-stat-box highlight-blue">
+                    <div class="clt-label">Population Mean (μ):</div>
+                    <div class="clt-value-large"><span id="populationMean">—</span></div>
+                </div>
+
+                <div class="clt-stat-box">
+                    <div class="clt-label">Observed Mean of Sample Means:</div>
+                    <div class="clt-value"><span id="observedMean">—</span></div>
+                </div>
+
+                <div class="clt-stat-box">
+                    <div class="clt-label">Observed SD of Sample Means:</div>
+                    <div class="clt-value"><span id="observedSD">—</span></div>
+                </div>
+
+                <div class="clt-stat-box highlight">
+                    <div class="clt-label">Standard Error Formula:</div>
+                    <div class="clt-formula">SE = σ/√n</div>
+                </div>
+
+                <div class="clt-stat-box">
+                    <div class="clt-label">SE Calculation:</div>
+                    <div class="clt-calculation"><span id="seFormula">—</span> = <span id="seCalculation">—</span></div>
+                </div>
+            </div>
+
+            <p style="margin-top: 15px; font-size: 0.95rem;">
+                <strong>Notice:</strong> As you take more samples:
+                <br>• The observed mean converges to μ (population mean)
+                <br>• The observed SD converges to SE (standard error)
+                <br>This demonstrates the Central Limit Theorem!
+            </p>
+        </div>
+    </div>
+</div>
+
+<!-- Help Modal -->
+<div id="helpModal" class="modal">
+    <div class="modal-content">
+        <span class="close">&times;</span>
+        <h2>How to Use the Statistical Sampling Simulator</h2>
+
+        <h3>📊 What This Tool Shows</h3>
+        <p>This simulator demonstrates the <strong>Central Limit Theorem (CLT)</strong>, one of the most important concepts in statistics.</p>
+
+        <h3>🎮 Controls</h3>
+        <ul>
+            <li><strong>Population Mean (μ):</strong> The average value of the entire population</li>
+            <li><strong>Standard Deviation (σ):</strong> How spread out the population values are</li>
+            <li><strong>Sample Size (n):</strong> How many values to draw in each sample</li>
+            <li><strong>Generate Sample:</strong> Take a random sample and update graphs</li>
+            <li><strong>Play Animation:</strong> Automatically take repeated samples to see the CLT in action</li>
+            <li><strong>Clear All:</strong> Reset everything and start over</li>
+        </ul>
+
+        <h3>📈 The Three Graphs</h3>
+        <ol>
+            <li><strong>Parent Population:</strong> Shows the normal distribution we're sampling from</li>
+            <li><strong>Sample Data:</strong> Shows the individual values from your most recent sample</li>
+            <li><strong>Distribution of Sample Means:</strong> Shows a histogram of the means from all samples taken. This demonstrates the CLT!</li>
+        </ol>
+
+        <h3>🔬 Central Limit Theorem</h3>
+        <p>The CLT states that when you take many samples from a population and calculate their means, those means will form a normal distribution, even if the original population isn't normal!</p>
+        <p><strong>Key Properties:</strong></p>
+        <ul>
+            <li>The mean of sample means equals the population mean (μ)</li>
+            <li>The standard deviation of sample means = σ/√n (called the Standard Error)</li>
+            <li>As sample size increases, the distribution becomes more normal and narrower</li>
+        </ul>
+
+        <h3>💡 Try This</h3>
+        <ol>
+            <li>Use the default settings (μ=16, σ=5, n=5)</li>
+            <li>Click "Play Animation" and watch Graph 3 develop</li>
+            <li>Notice how it forms a bell curve centered at 16</li>
+            <li>Now increase the sample size to 100 and click "Clear All"</li>
+            <li>Run the animation again - the distribution is much narrower!</li>
+        </ol>
+
+        <button class="btn btn-primary" id="closeHelp">Got it!</button>
+    </div>
+</div>
+
+<!-- Load Plotly.js -->
+<script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+
+<!-- Load our simulation JavaScript -->
+<script src="{% static 'stats_simulator/simulator.js' %}?v=2.4"></script>
+
+{% endblock %}
