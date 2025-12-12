@@ -352,6 +352,6 @@ class ExamQuestionAttemptAdmin(admin.ModelAdmin):
 
 
 # Customize admin site header
-admin.site.site_header = "LCAI Maths - Exam Papers Administration"
+admin.site.site_header = "NumScoil - Exam Papers Administration"
 admin.site.site_title = "Exam Papers Admin"
 admin.site.index_title = "Exam Papers Management"

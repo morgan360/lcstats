@@ -68,6 +68,7 @@ INSTALLED_APPS = [
     'exam_papers',
     'quickkicks',
     'homework',
+    'stats_simulator',
     'hijack',
     'hijack.contrib.admin',
 ]

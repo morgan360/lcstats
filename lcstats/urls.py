@@ -18,6 +18,7 @@ urlpatterns = [
     path('exam-papers/', include('exam_papers.urls')),
     path('quickkicks/', include('quickkicks.urls')),
     path('homework/', include('homework.urls')),
+    path('stats-simulator/', include('stats_simulator.urls')),
 
 ]
 if settings.DEBUG:

@@ -208,6 +208,6 @@ class RevisionSectionAdmin(admin.ModelAdmin):
 
 
 # Customize the admin site header
-admin.site.site_header = "LCAI Maths Administration"
-admin.site.site_title = "LCAI Maths Admin"
-admin.site.index_title = "Welcome to LCAI Maths Administration"
+admin.site.site_header = "NumScoil Administration"
+admin.site.site_title = "NumScoil Admin"
+admin.site.index_title = "Welcome to NumScoil Administration"

@@ -4,7 +4,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}LCAI Maths{% endblock %}</title>
+    <title>{% block title %}NumScoil{% endblock %}</title>
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/svg+xml" href="{% static 'images/numscoil_icon_only.svg' %}">
 
     <link rel="stylesheet" href="{% static 'css/style.css' %}">
 
@@ -19,7 +22,9 @@
 <body>
 <nav class="navbar">
     <div class="nav-container">
-        <a href="/" class="logo"><strong>LCAI Maths</strong></a>
+        <a href="/" class="logo">
+            <img src="{% static 'images/numscoil_icon_only.svg' %}" alt="NumScoil" style="height: 50px; width: 50px; vertical-align: middle; margin-top: 3px;">
+        </a>
 
         <!-- Hamburger Menu Button (Mobile Only) -->
         <button class="hamburger" id="hamburger" aria-label="Toggle menu">
@@ -54,6 +59,7 @@
                     <a href="{% url 'notes_index' %}" class="dropdown-item">Study Resources</a>
                     <a href="{% url 'quickkicks:quickkicks_index' %}" class="dropdown-item">QuickFlicks</a>
                     <a href="{% url 'cheatsheets:cheatsheets_index' %}" class="dropdown-item">Cheatsheets</a>
+                    <a href="{% url 'stats_simulator:index' %}" class="dropdown-item">Stats Simulator</a>
                 </div>
             </div>
 
@@ -114,7 +120,7 @@
 </main>
 
 <footer>
-    &copy; 2025/26 LCAI Maths. All rights reserved.
+    &copy; 2025/26 NumScoil. All rights reserved.
 </footer>
 
 <!-- ✅ KaTeX scripts -->

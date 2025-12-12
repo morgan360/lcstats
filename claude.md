@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-LCAI Maths is a Django-based web application providing an AI-powered interactive tutor for Leaving Certificate Honours Maths students. The system combines question-based learning with OpenAI integration for grading, hints, and contextual help.
+NumScoil is a Django-based web application providing an AI-powered interactive tutor for Leaving Certificate Honours Maths students. The system combines question-based learning with OpenAI integration for grading, hints, and contextual help.
 
 **Tech Stack:**
 - Django 5.2.7 with MySQL backend (database: `lcaim`)

@@ -1,14 +1,13 @@
 {% extends "_base.html" %}
-{% block title %}Home | LCAI Maths{% endblock %}
+{% block title %}Home | NumScoil{% endblock %}
 
 {% block content %}
 <div style="max-width: 1200px; margin: 0 auto; padding: 20px;">
 
     <!-- Hero Section -->
     <div style="text-align: center; margin-bottom: 60px; padding: 40px 20px;">
-        <h1 style="font-size: 4.5em; margin: 0 0 20px 0; font-weight: 700; color: #004aad; letter-spacing: -2px;">
-            LCAI Maths
-        </h1>
+        {% load static %}
+        <img src="{% static 'images/numscoil_final.svg' %}" alt="NumScoil" style="max-width: 500px; width: 100%; height: auto; margin-bottom: 20px;">
         <p style="font-size: 1.3em; max-width: 800px; margin: 0 auto; color: #555; line-height: 1.6;">
             Master Leaving Certificate Honours Maths with AI-powered interactive practice questions,
             instant feedback, and personalized learning.
@@ -133,7 +132,7 @@
 
     <!-- Features Grid -->
     <div style="margin-bottom: 50px;">
-        <h2 style="color: #004aad; margin-bottom: 30px; text-align: center; font-size: 2em;">Why LCAI Maths?</h2>
+        <h2 style="color: #004aad; margin-bottom: 30px; text-align: center; font-size: 2em;">Why NumScoil?</h2>
 
         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 25px;">
             <div style="background-color: white; border: 2px solid #e0e0e0; border-radius: 10px; padding: 25px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); transition: transform 0.2s;">

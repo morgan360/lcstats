@@ -15,7 +15,7 @@ body {
 
 /* Navbar Container */
 .navbar {
-  background-color: #004aad;
+  background: linear-gradient(135deg, #2ECC71 0%, #27AE60 100%);
   color: white;
   position: sticky;
   top: 0;
@@ -343,7 +343,7 @@ main {
 }
 
 footer {
-  background-color: #004aad;
+  background: linear-gradient(135deg, #27AE60 0%, #229954 100%);
   color: white;
   text-align: center;
   padding: 10px;
