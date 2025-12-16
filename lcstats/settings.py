@@ -38,31 +38,43 @@ OPENAI_ORG_ID = os.getenv("OPENAI_ORG_ID")
 # ------------------------------------------------------------
 # Core Django settings
 # ------------------------------------------------------------
-SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-(^ho@c-=9k!bieu%$g#3gz=tt5i(@6w)rw+3)410r%xk)m&o4$')
-DEBUG = os.getenv('DEBUG', 'True') == 'True'
+# CRITICAL: SECRET_KEY must be set in .env - no fallback for security
+SECRET_KEY = os.getenv('SECRET_KEY')
+if not SECRET_KEY:
+    raise ValueError("SECRET_KEY must be set in .env file")
+
+# DEBUG: Default to False for safety - must explicitly set True in development
+DEBUG = os.getenv('DEBUG', 'False') == 'True'
 
 # Parse ALLOWED_HOSTS from environment variable, remove empty strings
 allowed_hosts_str = os.getenv('ALLOWED_HOSTS', '')
 ALLOWED_HOSTS = [host.strip() for host in allowed_hosts_str.split(',') if host.strip()]
 
 # ------------------------------------------------------------
-# Security Settings for HTTPS/SSL
+# Security Settings for HTTPS/SSL (Cloudflare-aware)
 # ------------------------------------------------------------
 # Only enable these in production (when DEBUG=False)
 if not DEBUG:
-    # Force HTTPS
-    SECURE_SSL_REDIRECT = True
+    # DO NOT use SECURE_SSL_REDIRECT with Cloudflare proxy
+    # Cloudflare handles HTTPS redirect via "Always Use HTTPS" setting in Edge Certificates
+    # Using SECURE_SSL_REDIRECT can cause redirect loops because:
+    # - Cloudflare -> PythonAnywhere uses HTTP internally
+    # - Django sees HTTP and tries to redirect to HTTPS
+    # - But the user is already on HTTPS (via Cloudflare)
+    # SECURE_SSL_REDIRECT = False  # Explicitly disabled for Cloudflare
 
     # HSTS (HTTP Strict Transport Security)
+    # Cloudflare also provides HSTS, but Django-level is defense-in-depth
     SECURE_HSTS_SECONDS = 31536000  # 1 year
     SECURE_HSTS_INCLUDE_SUBDOMAINS = True
     SECURE_HSTS_PRELOAD = True
 
-    # Session and CSRF cookies
+    # Session and CSRF cookies - require HTTPS
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
 
-    # Cloudflare proxy headers
+    # CRITICAL: Trust Cloudflare proxy headers for HTTPS detection
+    # Cloudflare sends X-Forwarded-Proto: https when user connects via HTTPS
     SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
     # Additional security headers
