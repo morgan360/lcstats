@@ -45,6 +45,31 @@ DEBUG = os.getenv('DEBUG', 'True') == 'True'
 allowed_hosts_str = os.getenv('ALLOWED_HOSTS', '')
 ALLOWED_HOSTS = [host.strip() for host in allowed_hosts_str.split(',') if host.strip()]
 
+# ------------------------------------------------------------
+# Security Settings for HTTPS/SSL
+# ------------------------------------------------------------
+# Only enable these in production (when DEBUG=False)
+if not DEBUG:
+    # Force HTTPS
+    SECURE_SSL_REDIRECT = True
+
+    # HSTS (HTTP Strict Transport Security)
+    SECURE_HSTS_SECONDS = 31536000  # 1 year
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    SECURE_HSTS_PRELOAD = True
+
+    # Session and CSRF cookies
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+
+    # Cloudflare proxy headers
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+
+    # Additional security headers
+    SECURE_CONTENT_TYPE_NOSNIFF = True
+    SECURE_BROWSER_XSS_FILTER = True
+    X_FRAME_OPTIONS = 'DENY'
+
 INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',

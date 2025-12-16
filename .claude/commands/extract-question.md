@@ -23,6 +23,7 @@ Ask the user: **"Please paste the question image or provide the file path to the
    - Expected answers or solutions (if visible)
    - Marking schemes or point allocations
    - Any diagrams that need description
+   - **Copyright status**: Determine if this is from published exam papers or copyrighted materials
 
 2. **Format ALL mathematical expressions** in KaTeX syntax using DOLLAR SIGNS:
    - Inline math: `$expression$` (NOT `\(expression\)`)
@@ -36,7 +37,30 @@ Ask the user: **"Please paste the question image or provide the file path to the
      - Calculus: `$\int$`, `$\frac{dy}{dx}$`
      - Special symbols: `$\in$`, `$\mathbb{R}$`, `$\mathbb{Z}$`, `$\neq$`
 
-3. **Output Structure** - Provide clear sections mapping to Django fields:
+3. **Question Formatting Guidelines:**
+   - **Bold essential information** in the question prompt (numbers, values, significance levels, sample sizes)
+   - For **multiple choice questions**:
+     - Put each option on a separate line
+     - Use bold for option letters: **(A)**, **(B)**, **(C)**, **(D)**
+     - Include clear formatting instructions at the end
+     - Example format:
+       ```
+       Question text with **42 points** and **standard deviation of 15**...
+
+       **(A)** Reject null hypothesis - scoring has changed
+
+       **(B)** Fail to reject null hypothesis - no significant change
+
+       **(C)** Insufficient data to conclude
+
+       **(D)** Accept null hypothesis - scoring unchanged
+
+       **Format your answer as:**
+       z = [your calculated z-score]
+       Answer: [A/B/C/D]
+       ```
+
+4. **Output Structure** - Provide clear sections mapping to Django fields:
 
 ```
 ## METADATA
@@ -44,8 +68,23 @@ Ask the user: **"Please paste the question image or provide the file path to the
 **Section:** [Section name - REQUIRED]
 **Order:** [Question order number]
 **Is Exam Question:** [Yes/No]
+**Is Copyrighted:** [Yes/No - mark Yes if from published exam papers or copyrighted sources]
 **Exam Year:** [If applicable]
 **Paper Type:** [If applicable]
+
+## COPYRIGHT COMPLIANCE
+**CRITICAL:** ALWAYS reformulate ALL questions to avoid copyright issues:
+- **ALWAYS** change specific numbers, names, contexts while keeping the same mathematical concept
+- **ALWAYS** use different wording - never copy exact text from source materials
+- Example reformulations:
+  - "Connacht Rugby scored 35 points" → "A basketball team scored 42 points"
+  - "LC Maths exam mean was 68" → "National mathematics exam mean was 72"
+  - Change all proper nouns (team names, company names, person names)
+  - Change all specific numbers while maintaining difficulty level
+- **Copyright field meaning:**
+  - `is_copyrighted=True` → Original NumScoil content, copyright owned by NumScoil
+  - `is_copyrighted=False` → Questions from external sources or public domain
+- **ALWAYS set `is_copyrighted=True`** for reformulated questions to protect NumScoil's intellectual property
 
 ## QUESTION HINT (Question.hint field)
 [Provide basic theory/revision notes relevant to this question. Include:
@@ -57,9 +96,9 @@ Keep it concise (2-4 sentences) and educational for revision purposes]
 ## QUESTION PARTS
 
 ### Part (a)
-**Prompt:** [The actual question text with KaTeX formatting using $...$]
+**Prompt:** [The actual question text with KaTeX formatting using $...$. BOLD key numbers and values. For multiple choice, put options on separate lines with bold letters.]
 **Image:** [Note if this part needs a separate diagram/image - indicate what needs to be uploaded]
-**Answer:** [The correct answer in KaTeX if known]
+**Answer:** [The correct answer in KaTeX if known. For multiple choice with calculation, format as: "z = -2.385, A"]
 **Expected Format:** [QuestionPart.expected_format field - format specification like "Integer value", "Decimal to 3 places", "Fraction in simplest form", "Expression with $\sqrt{}$"]
 **Max Marks:** [Point value]
 **Answer Type:** [exact/numeric/expression/multi/manual]
@@ -82,6 +121,8 @@ Keep it concise (2-4 sentences) and educational for revision purposes]
    - Use **Step 1:**, **Step 2:**, **Step 3:** etc.
    - Each step should explain what's being done
    - Use KaTeX with $ delimiters for all math
+   - **IMPORTANT:** Solutions ALWAYS go into QuestionPart.solution field, NEVER into Question.solution
+   - Question.solution should only be used for overall solution notes that apply to all parts
 
 5. **Answer Type Guidelines:**
    - `multi`: **PREFERRED** - Multiple choice question. Use this whenever possible for text answers by providing options (A), (B), (C), (D)
@@ -114,7 +155,28 @@ Keep it concise (2-4 sentences) and educational for revision purposes]
    - **QuestionPart.solution** → Worked solution for that part (in steps)
    - **Question.solution** → Full worked solution for entire question (in steps)
 
-7. **Be helpful:**
+7. **Diagram Guidelines:**
+   - **ALWAYS use diagrams in solutions where appropriate** to help visualize the problem
+   - **ALWAYS use matplotlib** for generating diagrams (NOT GeoGebra or other tools)
+   - **ALWAYS make gridlines visible** using:
+     ```python
+     # Major grid lines
+     ax.grid(True, which='major', linestyle='-', linewidth=0.8, color='gray', alpha=0.6)
+
+     # Minor grid lines
+     ax.minorticks_on()
+     ax.grid(True, which='minor', linestyle=':', linewidth=0.5, color='gray', alpha=0.4)
+
+     # Bold axes
+     ax.axhline(y=0, color='black', linewidth=1.5)
+     ax.axvline(x=0, color='black', linewidth=1.5)
+     ```
+   - Attach diagrams to **QuestionPart.solution_image** field (NOT Question.solution_image)
+   - Use consistent styling: blue for lines, red for points, green for special points
+   - Include labels, legend, and annotations on diagrams
+   - Save diagrams to BytesIO buffer and attach using ContentFile
+
+8. **Be helpful:**
    - If image quality is poor, note what's unclear
    - Suggest marking scheme if not visible (typical LC maths allocations)
    - Flag if parts reference diagrams that need separate upload
@@ -236,6 +298,7 @@ question = Question.objects.create(
     hint=r"""[Hint text with KaTeX using $...$]""",
     solution=r"""[Full solution if available, formatted in steps]""",
     is_exam_question=[True/False],
+    is_copyrighted=[True/False],  # Mark True if reformulated from copyrighted source
     exam_year=[year or None],
     paper_type=['p1'/'p2' or None],
     source_pdf_name=[pdf_name or None]

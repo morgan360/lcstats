@@ -1,5 +1,8 @@
 # Manual Database Sync to PythonAnywhere
-- ../deployment/sync_to_production_simple.sh
+- ./deployment/sync_to_production_simple.sh
+- ./deployment/sync_media_to_production.sh
+
+
 
 - python manage.py loaddata questions_YYYYMMDD_HHMMSS.json
 
