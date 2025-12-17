@@ -1,6 +1,7 @@
 {% load static %}
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -16,302 +17,472 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/mathlive@0.107.1/mathlive-static.min.css">
 
     <!-- ✅ KaTeX styles -->
-    <link rel="stylesheet"
-          href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
 </head>
 
 <body class="flex min-h-screen flex-col bg-slate-50 font-sans text-slate-900">
-<nav class="sticky top-0 z-50 bg-gradient-to-r from-emerald-500 to-green-600 text-white shadow">
-    <div class="mx-auto flex max-w-6xl items-center justify-between px-4 py-3 lg:py-4">
-        <div class="flex items-center gap-4">
-            <a href="/" class="flex items-center gap-2 font-semibold text-white transition hover:opacity-90">
-                <img src="{% static 'images/numscoil_icon_only.svg' %}" alt="NumScoil" class="h-10 w-10">
-                <span class="hidden text-lg sm:inline">NumScoil</span>
-            </a>
+    <nav class="sticky top-0 z-50 bg-gradient-to-r from-emerald-500 to-green-600 text-white shadow">
+        <div class="mx-auto flex max-w-6xl items-center justify-between px-4 py-3 lg:py-4">
+            <div class="flex items-center gap-4">
+                <a href="/" class="flex items-center gap-2 font-semibold text-white transition hover:opacity-90">
+                    <img src="{% static 'images/numscoil_icon_only.svg' %}" alt="NumScoil" class="h-10 w-10">
+                    <span class="hidden text-lg sm:inline">NumScoil</span>
+                </a>
 
-            <!-- Desktop nav -->
+                <!-- Desktop nav -->
+                <div class="hidden items-center gap-2 text-sm font-semibold lg:flex">
+                    <div class="relative">
+                        <button type="button" id="practiceBtn"
+                            class="desktop-dropdown-toggle flex items-center gap-1 rounded-lg px-2 py-2 transition hover:bg-white/15">
+                            <span>Practice</span>
+                            <svg class="h-4 w-4 text-white/80" xmlns="http://www.w3.org/2000/svg" fill="none"
+                                viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M19 9l-7 7-7-7" />
+                            </svg>
+                        </button>
+
+                        <div id="practiceMenu"
+                            class="desktop-dropdown absolute left-0 top-full z-40 mt-2 min-w-[13rem] space-y-1 rounded-xl bg-white p-2 text-slate-900 shadow-xl opacity-0 invisible translate-y-1 pointer-events-none transition duration-150">
+                            <a href="{% url 'select_topic' %}"
+                                class="block rounded-lg px-3 py-2 text-sm font-semibold hover:bg-slate-100">
+                                Interactive Lessons
+                            </a>
+                            <a href="{% url 'exam_papers:paper_list' %}"
+                                class="block rounded-lg px-3 py-2 text-sm font-semibold hover:bg-slate-100">
+                                Exam Papers
+                            </a>
+                        </div>
+                    </div>
+
+                    <div class="relative group">
+                        <button type="button" class="desktop-dropdown-toggle flex items-center gap-1 rounded-lg px-2 py-2 transition hover:bg-white/15">
+                            <span>Study</span>
+                            <svg class="h-4 w-4 text-white/80" xmlns="http://www.w3.org/2000/svg" fill="none"
+                                viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M19 9l-7 7-7-7" />
+                            </svg>
+                        </button>
+                        <div
+                            class="desktop-dropdown absolute left-0 top-full z-40 mt-2 min-w-[13rem] space-y-1 rounded-xl bg-white p-2 text-slate-900 shadow-xl opacity-0 invisible translate-y-1 pointer-events-none transition duration-150">
+                            <a href="{% url 'notes_index' %}"
+                                class="block rounded-lg px-3 py-2 text-sm font-semibold text-slate-800 hover:bg-slate-100">Study
+                                Resources</a>
+                            <a href="{% url 'quickkicks:quickkicks_index' %}"
+                                class="block rounded-lg px-3 py-2 text-sm font-semibold text-slate-800 hover:bg-slate-100">QuickFlicks</a>
+                            <a href="{% url 'cheatsheets:cheatsheets_index' %}"
+                                class="block rounded-lg px-3 py-2 text-sm font-semibold text-slate-800 hover:bg-slate-100">Cheatsheets</a>
+                            <a href="{% url 'stats_simulator:index' %}"
+                                class="block rounded-lg px-3 py-2 text-sm font-semibold text-slate-800 hover:bg-slate-100">Stats
+                                Simulator</a>
+                        </div>
+                    </div>
+
+                    <a href="{% url 'module_list' %}"
+                        class="rounded-lg px-2 py-2 transition hover:bg-white/15">Revision</a>
+
+                    {% if user.is_authenticated %}
+                    <a href="{% url 'homework:student_dashboard' %}"
+                        class="relative rounded-lg px-2 py-2 transition hover:bg-white/15">
+                        <span>Homework</span>
+                        {% if homework_badge_count > 0 %}
+                        <span
+                            class="ml-1 inline-flex min-w-[1.3rem] items-center justify-center rounded-full bg-red-500 px-1.5 py-0.5 text-[0.7rem] font-bold text-white animate-pulse">{{
+                            homework_badge_count }}</span>
+                        {% endif %}
+                    </a>
+                    {% endif %}
+
+                    {% if request.user.is_staff %}
+                    <a href="/admin/" class="rounded-lg px-2 py-2 text-amber-200 transition hover:bg-white/15">Admin</a>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Desktop account -->
             <div class="hidden items-center gap-2 text-sm font-semibold lg:flex">
-                <div class="relative group">
-                    <button type="button" class="flex items-center gap-1 rounded-lg px-2 py-2 transition hover:bg-white/15">
+                {% if user.is_authenticated %}
+                    <div class="relative group">
+                        <button type="button" class="desktop-dropdown-toggle flex items-center gap-1 rounded-lg px-2 py-2 transition hover:bg-white/15">
+                        <span>{{ user.username }}</span>
+                        <svg class="h-4 w-4 text-white/80" xmlns="http://www.w3.org/2000/svg" fill="none"
+                            viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                        </svg>
+                    </button>
+                    <div
+                        class="desktop-dropdown absolute right-0 top-full z-40 mt-2 min-w-[12rem] space-y-1 rounded-xl bg-white p-2 text-slate-900 shadow-xl opacity-0 invisible translate-y-1 pointer-events-none transition duration-150">
+                        <a href="{% url 'dashboard' %}"
+                            class="block rounded-lg px-3 py-2 text-sm font-semibold text-slate-800 hover:bg-slate-100">Dashboard</a>
+                        <a href="{% url 'account_email' %}"
+                            class="block rounded-lg px-3 py-2 text-sm font-semibold text-slate-800 hover:bg-slate-100">Settings</a>
+                    </div>
+                </div>
+                <a href="{% url 'account_logout' %}"
+                    class="rounded-lg px-3 py-2 transition hover:bg-white/20">Logout</a>
+                {% else %}
+                <a href="{% url 'account_login' %}" class="rounded-lg px-3 py-2 transition hover:bg-white/20">Login</a>
+                <a href="{% url 'account_signup' %}"
+                    class="inline-flex items-center justify-center rounded-lg bg-white/15 px-3 py-2 text-white transition hover:bg-white/25">Sign
+                    Up</a>
+                {% endif %}
+            </div>
+
+            <!-- Mobile toggle -->
+            <div class="flex items-center gap-3 lg:hidden">
+                {% if user.is_authenticated %}
+                <span class="text-sm text-white/90">Hi, {{ user.username }}</span>
+                {% endif %}
+                <button id="hamburger" type="button" aria-label="Toggle menu"
+                    class="inline-flex h-11 w-11 items-center justify-center rounded-lg border border-white/30 bg-white/10 text-white transition hover:bg-white/20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white">
+                    <span class="sr-only">Toggle menu</span>
+                    <svg id="menuIcon" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none"
+                        viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M4 6h16M4 12h16M4 18h16" />
+                    </svg>
+                    <svg id="closeIcon" xmlns="http://www.w3.org/2000/svg" class="hidden h-6 w-6" fill="none"
+                        viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+        </div>
+
+        <!-- Mobile drawer -->
+        <div id="navMenu"
+            class="fixed inset-y-0 left-0 z-40 w-72 -translate-x-full transform bg-emerald-950 px-6 pb-10 pt-6 text-white transition duration-300 lg:hidden">
+            {% if user.is_authenticated %}
+            <div class="mb-6 flex items-center gap-3">
+                <span class="text-xl">👋</span>
+                <div>
+                    <div class="text-sm text-white/80">Welcome back</div>
+                    <div class="text-base font-semibold">{{ user.username }}</div>
+                </div>
+            </div>
+            {% endif %}
+
+            <div class="space-y-2 text-sm font-semibold">
+                <div>
+                    <button type="button"
+                        class="mobile-dropdown-toggle flex w-full items-center justify-between rounded-lg px-3 py-2 transition hover:bg-white/10">
                         <span>Practice</span>
-                        <svg class="h-4 w-4 text-white/80" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <svg class="h-4 w-4 text-white/80" xmlns="http://www.w3.org/2000/svg" fill="none"
+                            viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
                         </svg>
                     </button>
-                    <div class="pointer-events-none absolute left-0 top-full z-40 mt-2 hidden min-w-[13rem] space-y-1 rounded-xl bg-white p-2 text-slate-900 shadow-xl opacity-0 transition duration-150 group-hover:pointer-events-auto group-hover:block group-hover:translate-y-0 group-hover:opacity-100">
-                        <a href="{% url 'select_topic' %}" class="block rounded-lg px-3 py-2 text-sm font-semibold text-slate-800 hover:bg-slate-100">Interactive Lessons</a>
-                        <a href="{% url 'exam_papers:paper_list' %}" class="block rounded-lg px-3 py-2 text-sm font-semibold text-slate-800 hover:bg-slate-100">Exam Papers</a>
+                    <div class="mobile-dropdown hidden space-y-1 rounded-lg bg-emerald-800/70 p-1">
+                        <a href="{% url 'select_topic' %}"
+                            class="block rounded-lg px-3 py-2 text-sm font-semibold hover:bg-white/10">Interactive
+                            Lessons</a>
+                        <a href="{% url 'exam_papers:paper_list' %}"
+                            class="block rounded-lg px-3 py-2 text-sm font-semibold hover:bg-white/10">Exam Papers</a>
                     </div>
                 </div>
 
-                <div class="relative group">
-                    <button type="button" class="flex items-center gap-1 rounded-lg px-2 py-2 transition hover:bg-white/15">
+                <div>
+                    <button type="button"
+                        class="mobile-dropdown-toggle flex w-full items-center justify-between rounded-lg px-3 py-2 transition hover:bg-white/10">
                         <span>Study</span>
-                        <svg class="h-4 w-4 text-white/80" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <svg class="h-4 w-4 text-white/80" xmlns="http://www.w3.org/2000/svg" fill="none"
+                            viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
                         </svg>
                     </button>
-                    <div class="pointer-events-none absolute left-0 top-full z-40 mt-2 hidden min-w-[13rem] space-y-1 rounded-xl bg-white p-2 text-slate-900 shadow-xl opacity-0 transition duration-150 group-hover:pointer-events-auto group-hover:block group-hover:translate-y-0 group-hover:opacity-100">
-                        <a href="{% url 'notes_index' %}" class="block rounded-lg px-3 py-2 text-sm font-semibold text-slate-800 hover:bg-slate-100">Study Resources</a>
-                        <a href="{% url 'quickkicks:quickkicks_index' %}" class="block rounded-lg px-3 py-2 text-sm font-semibold text-slate-800 hover:bg-slate-100">QuickFlicks</a>
-                        <a href="{% url 'cheatsheets:cheatsheets_index' %}" class="block rounded-lg px-3 py-2 text-sm font-semibold text-slate-800 hover:bg-slate-100">Cheatsheets</a>
-                        <a href="{% url 'stats_simulator:index' %}" class="block rounded-lg px-3 py-2 text-sm font-semibold text-slate-800 hover:bg-slate-100">Stats Simulator</a>
+                    <div class="mobile-dropdown hidden space-y-1 rounded-lg bg-emerald-800/70 p-1">
+                        <a href="{% url 'notes_index' %}"
+                            class="block rounded-lg px-3 py-2 text-sm font-semibold hover:bg-white/10">Study
+                            Resources</a>
+                        <a href="{% url 'quickkicks:quickkicks_index' %}"
+                            class="block rounded-lg px-3 py-2 text-sm font-semibold hover:bg-white/10">QuickFlicks</a>
+                        <a href="{% url 'cheatsheets:cheatsheets_index' %}"
+                            class="block rounded-lg px-3 py-2 text-sm font-semibold hover:bg-white/10">Cheatsheets</a>
+                        <a href="{% url 'stats_simulator:index' %}"
+                            class="block rounded-lg px-3 py-2 text-sm font-semibold hover:bg-white/10">Stats
+                            Simulator</a>
                     </div>
                 </div>
 
-                <a href="{% url 'module_list' %}" class="rounded-lg px-2 py-2 transition hover:bg-white/15">Revision</a>
+                <a href="{% url 'module_list' %}"
+                    class="block rounded-lg px-3 py-2 transition hover:bg-white/10">Revision</a>
 
                 {% if user.is_authenticated %}
-                <a href="{% url 'homework:student_dashboard' %}" class="relative rounded-lg px-2 py-2 transition hover:bg-white/15">
+                <a href="{% url 'homework:student_dashboard' %}"
+                    class="relative block rounded-lg px-3 py-2 transition hover:bg-white/10">
                     <span>Homework</span>
                     {% if homework_badge_count > 0 %}
-                        <span class="ml-1 inline-flex min-w-[1.3rem] items-center justify-center rounded-full bg-red-500 px-1.5 py-0.5 text-[0.7rem] font-bold text-white animate-pulse">{{ homework_badge_count }}</span>
+                    <span
+                        class="ml-1 inline-flex min-w-[1.3rem] items-center justify-center rounded-full bg-red-500 px-1.5 py-0.5 text-[0.7rem] font-bold text-white animate-pulse">{{
+                        homework_badge_count }}</span>
                     {% endif %}
                 </a>
                 {% endif %}
 
+                {% if user.is_authenticated %}
+                <div>
+                    <button type="button"
+                        class="mobile-dropdown-toggle flex w-full items-center justify-between rounded-lg px-3 py-2 transition hover:bg-white/10">
+                        <span>{{ user.username }}</span>
+                        <svg class="h-4 w-4 text-white/80" xmlns="http://www.w3.org/2000/svg" fill="none"
+                            viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                        </svg>
+                    </button>
+                    <div class="mobile-dropdown hidden space-y-1 rounded-lg bg-emerald-800/70 p-1">
+                        <a href="{% url 'dashboard' %}"
+                            class="block rounded-lg px-3 py-2 text-sm font-semibold hover:bg-white/10">Dashboard</a>
+                        <a href="{% url 'account_email' %}"
+                            class="block rounded-lg px-3 py-2 text-sm font-semibold hover:bg-white/10">Settings</a>
+                        <a href="{% url 'account_logout' %}"
+                            class="block rounded-lg px-3 py-2 text-sm font-semibold hover:bg-white/10">Logout</a>
+                    </div>
+                </div>
+                {% else %}
+                <a href="{% url 'account_login' %}"
+                    class="block rounded-lg px-3 py-2 transition hover:bg-white/10">Login</a>
+                <a href="{% url 'account_signup' %}"
+                    class="block rounded-lg bg-white/15 px-3 py-2 text-center transition hover:bg-white/25">Sign Up</a>
+                {% endif %}
+
                 {% if request.user.is_staff %}
-                <a href="/admin/" class="rounded-lg px-2 py-2 text-amber-200 transition hover:bg-white/15">Admin</a>
+                <a href="/admin/"
+                    class="block rounded-lg px-3 py-2 text-amber-200 transition hover:bg-white/10">Admin</a>
                 {% endif %}
             </div>
         </div>
 
-        <!-- Desktop account -->
-        <div class="hidden items-center gap-2 text-sm font-semibold lg:flex">
-            {% if user.is_authenticated %}
-            <div class="relative group">
-                <button type="button" class="flex items-center gap-1 rounded-lg px-2 py-2 transition hover:bg-white/15">
-                    <span>{{ user.username }}</span>
-                    <svg class="h-4 w-4 text-white/80" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-                    </svg>
-                </button>
-                <div class="pointer-events-none absolute right-0 top-full z-40 mt-2 hidden min-w-[12rem] space-y-1 rounded-xl bg-white p-2 text-slate-900 shadow-xl opacity-0 transition duration-150 group-hover:pointer-events-auto group-hover:block group-hover:translate-y-0 group-hover:opacity-100">
-                    <a href="{% url 'dashboard' %}" class="block rounded-lg px-3 py-2 text-sm font-semibold text-slate-800 hover:bg-slate-100">Dashboard</a>
-                    <a href="{% url 'account_email' %}" class="block rounded-lg px-3 py-2 text-sm font-semibold text-slate-800 hover:bg-slate-100">Settings</a>
-                </div>
-            </div>
-            <a href="{% url 'account_logout' %}" class="rounded-lg px-3 py-2 transition hover:bg-white/20">Logout</a>
-            {% else %}
-            <a href="{% url 'account_login' %}" class="rounded-lg px-3 py-2 transition hover:bg-white/20">Login</a>
-            <a href="{% url 'account_signup' %}" class="inline-flex items-center justify-center rounded-lg bg-white/15 px-3 py-2 text-white transition hover:bg-white/25">Sign Up</a>
-            {% endif %}
-        </div>
+        <div class="nav-overlay fixed inset-0 z-30 hidden bg-black/50 lg:hidden" id="navOverlay"></div>
+    </nav>
 
-        <!-- Mobile toggle -->
-        <div class="flex items-center gap-3 lg:hidden">
-            {% if user.is_authenticated %}
-                <span class="text-sm text-white/90">Hi, {{ user.username }}</span>
-            {% endif %}
-            <button id="hamburger" type="button" aria-label="Toggle menu" class="inline-flex h-11 w-11 items-center justify-center rounded-lg border border-white/30 bg-white/10 text-white transition hover:bg-white/20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white">
-                <span class="sr-only">Toggle menu</span>
-                <svg id="menuIcon" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
-                </svg>
-                <svg id="closeIcon" xmlns="http://www.w3.org/2000/svg" class="hidden h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                </svg>
-            </button>
-        </div>
-    </div>
+    <main class="mx-auto flex w-full max-w-6xl flex-1 flex-col px-4 py-8 sm:px-6 lg:px-8 lg:py-10">
+        {% block content %}{% endblock %}
+    </main>
 
-    <!-- Mobile drawer -->
-    <div id="navMenu" class="fixed inset-y-0 left-0 z-40 w-72 -translate-x-full transform bg-emerald-950 px-6 pb-10 pt-6 text-white transition duration-300 lg:hidden">
-        {% if user.is_authenticated %}
-        <div class="mb-6 flex items-center gap-3">
-            <span class="text-xl">👋</span>
-            <div>
-                <div class="text-sm text-white/80">Welcome back</div>
-                <div class="text-base font-semibold">{{ user.username }}</div>
-            </div>
-        </div>
-        {% endif %}
+    <footer class="bg-gradient-to-r from-emerald-600 to-green-700 py-4 text-center text-sm text-white">
+        &copy; 2025/26 NumScoil. All rights reserved.
+    </footer>
 
-        <div class="space-y-2 text-sm font-semibold">
-            <div>
-                <button type="button" class="mobile-dropdown-toggle flex w-full items-center justify-between rounded-lg px-3 py-2 transition hover:bg-white/10">
-                    <span>Practice</span>
-                    <svg class="h-4 w-4 text-white/80" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-                    </svg>
-                </button>
-                <div class="mobile-dropdown hidden space-y-1 rounded-lg bg-emerald-800/70 p-1">
-                    <a href="{% url 'select_topic' %}" class="block rounded-lg px-3 py-2 text-sm font-semibold hover:bg-white/10">Interactive Lessons</a>
-                    <a href="{% url 'exam_papers:paper_list' %}" class="block rounded-lg px-3 py-2 text-sm font-semibold hover:bg-white/10">Exam Papers</a>
-                </div>
-            </div>
+    <!-- ✅ KaTeX scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
 
-            <div>
-                <button type="button" class="mobile-dropdown-toggle flex w-full items-center justify-between rounded-lg px-3 py-2 transition hover:bg-white/10">
-                    <span>Study</span>
-                    <svg class="h-4 w-4 text-white/80" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-                    </svg>
-                </button>
-                <div class="mobile-dropdown hidden space-y-1 rounded-lg bg-emerald-800/70 p-1">
-                    <a href="{% url 'notes_index' %}" class="block rounded-lg px-3 py-2 text-sm font-semibold hover:bg-white/10">Study Resources</a>
-                    <a href="{% url 'quickkicks:quickkicks_index' %}" class="block rounded-lg px-3 py-2 text-sm font-semibold hover:bg-white/10">QuickFlicks</a>
-                    <a href="{% url 'cheatsheets:cheatsheets_index' %}" class="block rounded-lg px-3 py-2 text-sm font-semibold hover:bg-white/10">Cheatsheets</a>
-                    <a href="{% url 'stats_simulator:index' %}" class="block rounded-lg px-3 py-2 text-sm font-semibold hover:bg-white/10">Stats Simulator</a>
-                </div>
-            </div>
+    <script>
+        // Run KaTeX after everything is loaded
+        function renderKaTeX() {
+            if (window.renderMathInElement) {
+                renderMathInElement(document.body, {
+                    delimiters: [
+                        { left: "$$", right: "$$", display: true },
+                        { left: "\\[", right: "\\]", display: true },
+                        { left: "\\(", right: "\\)", display: false },
+                        { left: "$", right: "$", display: false }
+                    ],
+                    throwOnError: false
+                });
+                console.log("✅ KaTeX rendered successfully");
+            } else {
+                console.error("❌ KaTeX failed to load");
+            }
+        }
 
-            <a href="{% url 'module_list' %}" class="block rounded-lg px-3 py-2 transition hover:bg-white/10">Revision</a>
+        // Try multiple times to ensure rendering happens
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', renderKaTeX);
+        } else {
+            renderKaTeX();
+        }
 
-            {% if user.is_authenticated %}
-            <a href="{% url 'homework:student_dashboard' %}" class="relative block rounded-lg px-3 py-2 transition hover:bg-white/10">
-                <span>Homework</span>
-                {% if homework_badge_count > 0 %}
-                    <span class="ml-1 inline-flex min-w-[1.3rem] items-center justify-center rounded-full bg-red-500 px-1.5 py-0.5 text-[0.7rem] font-bold text-white animate-pulse">{{ homework_badge_count }}</span>
-                {% endif %}
-            </a>
-            {% endif %}
+        // Also try on window load as backup
+        window.addEventListener("load", renderKaTeX);
+    </script>
 
-            {% if user.is_authenticated %}
-            <div>
-                <button type="button" class="mobile-dropdown-toggle flex w-full items-center justify-between rounded-lg px-3 py-2 transition hover:bg-white/10">
-                    <span>{{ user.username }}</span>
-                    <svg class="h-4 w-4 text-white/80" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-                    </svg>
-                </button>
-                <div class="mobile-dropdown hidden space-y-1 rounded-lg bg-emerald-800/70 p-1">
-                    <a href="{% url 'dashboard' %}" class="block rounded-lg px-3 py-2 text-sm font-semibold hover:bg-white/10">Dashboard</a>
-                    <a href="{% url 'account_email' %}" class="block rounded-lg px-3 py-2 text-sm font-semibold hover:bg-white/10">Settings</a>
-                    <a href="{% url 'account_logout' %}" class="block rounded-lg px-3 py-2 text-sm font-semibold hover:bg-white/10">Logout</a>
-                </div>
-            </div>
-            {% else %}
-            <a href="{% url 'account_login' %}" class="block rounded-lg px-3 py-2 transition hover:bg-white/10">Login</a>
-            <a href="{% url 'account_signup' %}" class="block rounded-lg bg-white/15 px-3 py-2 text-center transition hover:bg-white/25">Sign Up</a>
-            {% endif %}
+    <!-- ✅ MathLive script -->
+    <script src="https://cdn.jsdelivr.net/npm/mathlive@0.107.1/mathlive.min.js"></script>
 
-            {% if request.user.is_staff %}
-            <a href="/admin/" class="block rounded-lg px-3 py-2 text-amber-200 transition hover:bg-white/10">Admin</a>
-            {% endif %}
-        </div>
-    </div>
+    <!-- Navigation Menu JavaScript -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const hamburger = document.getElementById('hamburger');
+            const navMenu = document.getElementById('navMenu');
+            const navOverlay = document.getElementById('navOverlay');
+            const menuIcon = document.getElementById('menuIcon');
+            const closeIcon = document.getElementById('closeIcon');
+            const mobileDropdownToggles = document.querySelectorAll('.mobile-dropdown-toggle');
+            const desktopDropdownToggles = document.querySelectorAll('.desktop-dropdown-toggle');
+            const desktopDropdowns = document.querySelectorAll('.desktop-dropdown');
 
-    <div class="nav-overlay fixed inset-0 z-30 hidden bg-black/50 lg:hidden" id="navOverlay"></div>
-</nav>
+            function openMenu() {
+                navMenu.classList.remove('-translate-x-full');
+                navOverlay.classList.remove('hidden');
+                menuIcon.classList.add('hidden');
+                closeIcon.classList.remove('hidden');
+                document.body.classList.add('overflow-hidden');
+            }
 
-<main class="mx-auto flex w-full max-w-6xl flex-1 flex-col px-4 py-8 sm:px-6 lg:px-8 lg:py-10">
-    {% block content %}{% endblock %}
-</main>
+            function closeMenu() {
+                navMenu.classList.add('-translate-x-full');
+                navOverlay.classList.add('hidden');
+                menuIcon.classList.remove('hidden');
+                closeIcon.classList.add('hidden');
+                document.body.classList.remove('overflow-hidden');
+                document.querySelectorAll('.mobile-dropdown').forEach(menu => {
+                    menu.classList.add('hidden');
+                });
+            }
 
-<footer class="bg-gradient-to-r from-emerald-600 to-green-700 py-4 text-center text-sm text-white">
-    &copy; 2025/26 NumScoil. All rights reserved.
-</footer>
+            function toggleMenu() {
+                if (navMenu.classList.contains('-translate-x-full')) {
+                    openMenu();
+                } else {
+                    closeMenu();
+                }
+            }
 
-<!-- ✅ KaTeX scripts -->
-<script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+            function closeDesktopDropdowns() {
+                desktopDropdowns.forEach(menu => {
+                    menu.classList.add('opacity-0', 'invisible', 'translate-y-1', 'pointer-events-none');
+                    menu.classList.remove('opacity-100', 'visible', 'translate-y-0', 'pointer-events-auto');
+                });
+            }
 
-<script>
-    // Run KaTeX after everything is loaded
-    function renderKaTeX() {
-        if (window.renderMathInElement) {
-            renderMathInElement(document.body, {
-                delimiters: [
-                    {left: "$$", right: "$$", display: true},
-                    {left: "\\[", right: "\\]", display: true},
-                    {left: "\\(", right: "\\)", display: false},
-                    {left: "$", right: "$", display: false}
-                ],
-                throwOnError: false
+            function toggleDesktopDropdown(button) {
+                const menu = button.nextElementSibling;
+                if (!menu || !menu.classList.contains('desktop-dropdown')) return;
+                const isOpen = !menu.classList.contains('opacity-0');
+                closeDesktopDropdowns();
+                if (!isOpen) {
+                    menu.classList.remove('opacity-0', 'invisible', 'translate-y-1', 'pointer-events-none');
+                    menu.classList.add('opacity-100', 'visible', 'translate-y-0', 'pointer-events-auto');
+                }
+            }
+
+            hamburger.addEventListener('click', toggleMenu);
+            navOverlay.addEventListener('click', closeMenu);
+
+            mobileDropdownToggles.forEach(toggle => {
+                toggle.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    const menu = this.nextElementSibling;
+                    if (menu) {
+                        menu.classList.toggle('hidden');
+                    }
+                });
             });
-            console.log("✅ KaTeX rendered successfully");
-        } else {
-            console.error("❌ KaTeX failed to load");
-        }
-    }
 
-    // Try multiple times to ensure rendering happens
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', renderKaTeX);
-    } else {
-        renderKaTeX();
-    }
+            desktopDropdownToggles.forEach(toggle => {
+                toggle.addEventListener('click', function(e) {
+                    if (window.innerWidth >= 1024) {
+                        e.preventDefault();
+                        toggleDesktopDropdown(this);
+                    }
+                });
+            });
 
-    // Also try on window load as backup
-    window.addEventListener("load", renderKaTeX);
-</script>
+            document.addEventListener('click', function(e) {
+                if (window.innerWidth < 1024) return;
+                const isInside = e.target.closest('.desktop-dropdown') || e.target.closest('.desktop-dropdown-toggle');
+                if (!isInside) {
+                    closeDesktopDropdowns();
+                }
+            });
 
-<!-- ✅ MathLive script -->
-<script src="https://cdn.jsdelivr.net/npm/mathlive@0.107.1/mathlive.min.js"></script>
+            document.querySelectorAll('.nav-link:not(.dropdown-toggle), .dropdown-item').forEach(link => {
+                link.addEventListener('click', closeMenu);
+            });
 
-<!-- Navigation Menu JavaScript -->
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    const hamburger = document.getElementById('hamburger');
-    const navMenu = document.getElementById('navMenu');
-    const navOverlay = document.getElementById('navOverlay');
-    const menuIcon = document.getElementById('menuIcon');
-    const closeIcon = document.getElementById('closeIcon');
-    const mobileDropdownToggles = document.querySelectorAll('.mobile-dropdown-toggle');
+            document.addEventListener('keydown', function(e) {
+                if (e.key === 'Escape') {
+                    closeMenu();
+                    closeDesktopDropdowns();
+                }
+            });
 
-    function openMenu() {
-        navMenu.classList.remove('-translate-x-full');
-        navOverlay.classList.remove('hidden');
-        menuIcon.classList.add('hidden');
-        closeIcon.classList.remove('hidden');
-        document.body.classList.add('overflow-hidden');
-    }
-
-    function closeMenu() {
-        navMenu.classList.add('-translate-x-full');
-        navOverlay.classList.add('hidden');
-        menuIcon.classList.remove('hidden');
-        closeIcon.classList.add('hidden');
-        document.body.classList.remove('overflow-hidden');
-        document.querySelectorAll('.mobile-dropdown').forEach(menu => {
-            menu.classList.add('hidden');
+            let resizeTimer;
+            window.addEventListener('resize', function() {
+                clearTimeout(resizeTimer);
+                resizeTimer = setTimeout(function() {
+                    if (window.innerWidth >= 1024) {
+                        closeMenu();
+                        closeDesktopDropdowns();
+                    }
+                }, 200);
+            });
         });
-    }
+    </script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const hamburger = document.getElementById('hamburger');
+            const navMenu = document.getElementById('navMenu');
+            const navOverlay = document.getElementById('navOverlay');
+            const menuIcon = document.getElementById('menuIcon');
+            const closeIcon = document.getElementById('closeIcon');
+            const mobileDropdownToggles = document.querySelectorAll('.mobile-dropdown-toggle');
 
-    function toggleMenu() {
-        if (navMenu.classList.contains('-translate-x-full')) {
-            openMenu();
-        } else {
-            closeMenu();
-        }
-    }
-
-    hamburger.addEventListener('click', toggleMenu);
-    navOverlay.addEventListener('click', closeMenu);
-
-    mobileDropdownToggles.forEach(toggle => {
-        toggle.addEventListener('click', function(e) {
-            e.preventDefault();
-            const menu = this.nextElementSibling;
-            if (menu) {
-                menu.classList.toggle('hidden');
+            function openMenu() {
+                navMenu.classList.remove('-translate-x-full');
+                navOverlay.classList.remove('hidden');
+                menuIcon.classList.add('hidden');
+                closeIcon.classList.remove('hidden');
+                document.body.classList.add('overflow-hidden');
             }
+
+            function closeMenu() {
+                navMenu.classList.add('-translate-x-full');
+                navOverlay.classList.add('hidden');
+                menuIcon.classList.remove('hidden');
+                closeIcon.classList.add('hidden');
+                document.body.classList.remove('overflow-hidden');
+                document.querySelectorAll('.mobile-dropdown').forEach(menu => {
+                    menu.classList.add('hidden');
+                });
+            }
+
+            function toggleMenu() {
+                if (navMenu.classList.contains('-translate-x-full')) {
+                    openMenu();
+                } else {
+                    closeMenu();
+                }
+            }
+
+            hamburger.addEventListener('click', toggleMenu);
+            navOverlay.addEventListener('click', closeMenu);
+
+            mobileDropdownToggles.forEach(toggle => {
+                toggle.addEventListener('click', function (e) {
+                    e.preventDefault();
+                    const menu = this.nextElementSibling;
+                    if (menu) {
+                        menu.classList.toggle('hidden');
+                    }
+                });
+            });
+
+            document.querySelectorAll('.nav-link:not(.dropdown-toggle), .dropdown-item').forEach(link => {
+                link.addEventListener('click', closeMenu);
+            });
+
+            document.addEventListener('keydown', function (e) {
+                if (e.key === 'Escape') closeMenu();
+            });
+
+            let resizeTimer;
+            window.addEventListener('resize', function () {
+                clearTimeout(resizeTimer);
+                resizeTimer = setTimeout(function () {
+                    if (window.innerWidth >= 1024) {
+                        closeMenu();
+                    }
+                }, 200);
+            });
         });
-    });
+    </script>
 
-    document.querySelectorAll('.nav-link:not(.dropdown-toggle), .dropdown-item').forEach(link => {
-        link.addEventListener('click', closeMenu);
-    });
-
-    document.addEventListener('keydown', function(e) {
-        if (e.key === 'Escape') closeMenu();
-    });
-
-    let resizeTimer;
-    window.addEventListener('resize', function() {
-        clearTimeout(resizeTimer);
-        resizeTimer = setTimeout(function() {
-            if (window.innerWidth >= 1024) {
-                closeMenu();
-            }
-        }, 200);
-    });
-});
-</script>
-
-<!-- Per-page scripts (e.g. for math input capture) -->
-{% block extra_scripts %}{% endblock %}
+    <!-- Per-page scripts (e.g. for math input capture) -->
+    {% block extra_scripts %}{% endblock %}
 
 </body>
+
 </html>
