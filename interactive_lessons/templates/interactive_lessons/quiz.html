@@ -1,243 +1,233 @@
 {% extends "_base.html" %}
-{% block title %}{{ topic.name }} | LCAI Maths{% endblock %}
+{% block title %}{{ topic.name }} | NumScoil {% endblock %}
 
 {% block content %}
-    <div class="card" style="max-width:750px; margin:0 auto; padding:20px;" data-topic-slug="{{ topic.slug }}" data-question-id="{{ question.id }}">
-        <h2 style="color:#004aad; margin-bottom:0.4em;">{{ topic.name }}</h2>
-        <p style="margin:0; font-weight:600;">Question {{ index }} of {{ total }}</p>
+<div class="mx-auto w-full max-w-5xl space-y-10 md:space-y-12 px-6 md:px-10 py-12 text-midnight text-center" data-topic-slug="{{ topic.slug }}"
+    data-question-id="{{ question.id }}">
+    <header class="space-y-1">
+        <h2 class="text-2xl font-semibold text-mist text-center">{{ topic.name }}</h2>
+        <p class="text-md p-2 text-mist">Question {{ index }} of {{ total }}</p>
+    </header>
 
-        {% if question.section %}
-            <h3 style="color:#004aad; font-size:1.1em; margin-top:0.4em;">{{ question.section.name }}</h3>
-        {% endif %}
+    {% if question.section %}
+    <h3 class="text-lg font-semibold text-mist">{{ question.section.name }}</h3>
+    {% endif %}
 
-        <!-- Collapsible Hint (Question Area) -->
-        <div style="margin-top:10px;">
-            <details style="background-color:#fff8dc; border:1px solid #f0d98c; border-radius:6px; padding:12px;">
-                <summary style="cursor:pointer; font-weight:600; color:#004aad;">💡 Hint</summary>
-                <div style="margin-top:10px; white-space:pre-wrap; line-height:1.6;">
-                    {{ question.hint|safe }}
-                </div>
-
-                {% with img=question.get_image %}
-                    {% if img %}
-                        <div style="margin-top:10px; text-align:center;">
-                            <img src="{{ img }}" alt="Question image"
-                                 style="max-width:75%; height:auto; border-radius:6px;">
-                        </div>
-                    {% endif %}
-                {% endwith %}
-            </details>
-        </div>
-
-        <!-- Each QuestionPart -->
-        {% for part in parts %}
-            <div id="part-{{ part.id }}" data-part-id="{{ part.id }}"
-                 style="margin-top:1.2em; border-top:1px solid #eee; padding-top:1em; background-color:#f7f7f7; border-radius:8px; padding:12px;">
-
-                <!-- Inline label + question prompt -->
-                <div style="display:flex; align-items:flex-start; gap:6px;">
-                    <div style="font-weight:bold; color:#004aad; min-width:32px;">{{ part.label }}</div>
-                    <div style="flex:1;">{{ part.prompt|safe }}</div>
-                </div>
-
-                <!-- QuestionPart Image -->
-                {% if part.image %}
-                    <div style="margin-top:10px; text-align:center;">
-                        <img src="{{ part.image.url }}" alt="Question part image"
-                             style="max-width:75%; height:auto; border-radius:6px; border:1px solid #ddd;">
-                    </div>
-                {% endif %}
-
-                <!-- ✨ Expected Answer Format Box -->
-                {% if part.get_expected_format_display %}
-                    <details
-                            style="margin-top:8px; background-color:#f0f7ff; border:1px solid #cfe2ff; border-radius:5px; padding:8px;">
-                        <summary style="font-weight:600; color:#004aad; cursor:pointer;">💭 Expected Answer Format
-                        </summary>
-                        <div style="margin-top:6px; line-height:1.5;">
-                            {{ part.get_expected_format_display|safe }}
-                            {% if part.answer_format_template.example %}
-                            <div style="margin-top:8px; padding:6px; background:#e8f4f8; border-left:3px solid #004aad; font-style:italic;">
-                                Example: {{ part.answer_format_template.example }}
-                            </div>
-                            {% endif %}
-                        </div>
-                    </details>
-                {% endif %}
-
-                <!-- Math input -->
-                <math-field id="mf-{{ part.id }}"
-                            style="width:100%; font-size:1.15em; border:1px solid #ccc;
-                         border-radius:6px; padding:6px; margin-top:8px; display:block;"></math-field>
-
-                <!-- Buttons and feedback -->
-                <div style="margin-top:8px; display:flex; align-items:center; gap:10px;">
-                    <button type="button" class="btn check-btn" data-part="{{ part.id }}"
-                            style="background-color:#004aad; color:white;">
-                        Check Answer
-                    </button>
-                    <div id="feedback-{{ part.id }}" style="display:none; font-size:0.95em;"></div>
-                </div>
-
-                <!-- Part Solution -->
-                {% if part.solution or part.solution_image %}
-                    <details style="margin-top:10px; background-color:#e8f5e9; border:1px solid #a5d6a7; border-radius:5px; padding:10px;">
-                        <summary style="font-weight:600; color:#2e7d32; cursor:pointer;">📝 Solution for {{ part.label }}</summary>
-                        <div style="margin-top:8px; line-height:1.6;">
-                            {% if part.solution %}
-                                {{ part.solution|safe }}
-                            {% endif %}
-
-                            {% if part.solution_image %}
-                                <div style="margin-top:15px; text-align:center;">
-                                    <img src="{{ part.solution_image.url }}" alt="Solution for {{ part.label }}"
-                                         style="max-width:100%; height:auto; border-radius:8px; box-shadow:0 2px 8px rgba(0,0,0,0.1);">
-                                </div>
-                            {% endif %}
-                        </div>
-                    </details>
-                {% endif %}
+    <!-- Collapsible Hint (Question Area) -->
+    <div class="text-mist">
+        <details class="mx-auto max-w-2xl rounded-lg border border-violet-royal bg-violet-royal/70 px-2 py-2 text-sm shadow-sm">
+            <summary class="cursor-pointer font-semibold">💡 Hint</summary>
+            <div class="mt-3 whitespace-pre-wrap leading-relaxed">
+                {{ question.hint|safe }}
             </div>
-        {% endfor %}
 
-        <!-- Full question solution -->
-        {% if question.solution %}
-            <div id="solution-wrapper" style="margin-top:25px; border-top:1px solid #ddd; padding-top:15px;">
-                <button id="show-solution-btn" class="btn"
-                        style="background-color:#00994c; color:white; padding:6px 12px;">
-                    💚 Show Full Solution
-                </button>
-
-                <div id="solution-content"
-                     style="display:none; margin-top:15px; line-height:1.6;">
-                    {{ question.solution|safe }}
-
-                    {% if question.solution_image %}
-                        <div style="margin-top:15px; text-align:center;">
-                            <img src="{{ question.solution_image.url }}" alt="Solution image"
-                                 style="max-width:75%; height:auto; border-radius:8px;">
-                        </div>
-                    {% endif %}
-                </div>
+            {% with img=question.get_image %}
+            {% if img %}
+            <div class="mt-3 text-center">
+                <img src="{{ img }}" alt="Question image" class="mx-auto h-auto max-w-[75%] rounded-md">
             </div>
-        {% endif %}
-
-        <!-- Next button -->
-        <div id="next-btn-wrapper" style="margin-top:20px; display:none;">
-            <form method="POST">
-                {% csrf_token %}
-                <button type="submit" name="next" class="btn"
-                        style="background-color:#00994c; color:white;">Next →
-                </button>
-            </form>
-        </div>
+            {% endif %}
+            {% endwith %}
+        </details>
     </div>
 
-    <!-- Numskull and Contact Section -->
-    <div style="max-width:750px; margin:30px auto; padding:20px; background-color:#f0f8ff; border:1px solid #b3d9ff; border-radius:8px;">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
-            <h3 style="color:#004aad; margin:0;">🧠 Ask NumSkull</h3>
-            <a href="{% url 'question_contact' question.id %}"
-               class="btn"
-               style="background-color:#00994c; color:white; padding:6px 12px; text-decoration:none; font-size:0.9em; border-radius:4px;">
-                📧 Contact Teacher
-            </a>
-        </div>
-        <p style="margin:0 0 12px 0; font-size:0.9em; color:#555;">
-            Need help with this topic? Ask a question and get instant answers from our AI tutor.
-        </p>
+    <!-- Each QuestionPart -->
+    {% for part in parts %}
+    <div id="part-{{ part.id }}" data-part-id="{{ part.id }}"
+        class="text-lg mt-6 md:mt-8 rounded-lg border border-indigo-deep/10 bg-mist px-5 py-8 md:px-6 md:py-10 space-y-4 md:space-y-5 text-left leading-relaxed">
 
-        <div style="display:flex; gap:8px; align-items:flex-start;">
-            <input type="text"
-                   id="infobot-query"
-                   placeholder="e.g., What is the quadratic formula?"
-                   style="flex:1; padding:10px; border:1px solid #ccc; border-radius:4px; font-size:1em;">
-            <button id="infobot-ask-btn"
-                    class="btn"
-                    style="background-color:#004aad; color:white; padding:10px 20px; white-space:nowrap;">
-                Ask
+        <!-- Inline label + question prompt -->
+        <div class="flex items-start gap-2 text-left">
+            <div class="min-w-[32px] font-bold text-indigo-deep">{{ part.label }}</div>
+            <div class="flex-1 leading-relaxed">{{ part.prompt|safe }}</div>
+        </div>
+
+        <!-- QuestionPart Image -->
+        {% if part.image %}
+        <div class="mt-3 text-center">
+            <img src="{{ part.image.url }}" alt="Question part image"
+                class="mx-auto h-auto max-w-[75%] rounded-md border border-indigo-deep/10">
+        </div>
+        {% endif %}
+
+        <!-- ✨ Expected Answer Format Box -->
+        {% if part.get_expected_format_display %}
+        <details class="mt-3 rounded-md border border-indigo-deep/20 bg-[#f0f7ff] px-4 py-3 text-sm leading-relaxed">
+            <summary class="cursor-pointer font-semibold text-indigo-deep">💭 Expected Answer Format
+            </summary>
+            <div class="mt-2 leading-relaxed">
+                {{ part.get_expected_format_display|safe }}
+                {% if part.answer_format_template.example %}
+                <div class="mt-2 border-l-4 border-indigo-deep bg-[#e8f4f8] px-3 py-2 text-md italic">
+                    Example: {{ part.answer_format_template.example }}
+                </div>
+                {% endif %}
+            </div>
+        </details>
+        {% endif %}
+
+        <!-- Math input -->
+        <math-field id="mf-{{ part.id }}"
+            class="mt-2 block w-full rounded-md border border-indigo-deep/20 px-3 py-2 text-base shadow-sm"></math-field>
+
+        <!-- Buttons and feedback -->
+        <div class="mt-4 flex items-center gap-4">
+            <button type="button" class="check-btn inline-flex items-center rounded-md bg-indigo-deep px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-deep" data-part="{{ part.id }}">
+                Check Answer
             </button>
+            <div id="feedback-{{ part.id }}" class="hidden text-sm"></div>
         </div>
 
-        <div id="infobot-answer"
-             style="margin-top:15px; padding:15px; background-color:white; border-radius:6px; display:none; line-height:1.6;">
-            <!-- Answer will be inserted here -->
-        </div>
-
-        <div id="infobot-loading"
-             style="margin-top:15px; color:#004aad; display:none;">
-            🔄 Thinking...
-        </div>
-    </div>
-
-    <hr style="margin-top:30px; max-width:750px; margin-left:auto; margin-right:auto;">
-
-    <!-- Navigation -->
-    <div style="max-width:750px; margin:0 auto; display:flex; justify-content:space-between; align-items:center;">
-        {% if index > 1 %}
-            {% if section %}
-                <a href="{% url 'section_question_view' topic.slug section.slug index|add:'-1' %}" class="btn"
-                   style="background-color:#004aad; color:white; padding:6px 14px; border-radius:4px; text-decoration:none;">
-                    ⬅ Previous
-                </a>
-            {% else %}
-                <a href="{% url 'question_view' topic.id index|add:'-1' %}" class="btn"
-                   style="background-color:#004aad; color:white; padding:6px 14px; border-radius:4px; text-decoration:none;">
-                    ⬅ Previous
-                </a>
-            {% endif %}
-        {% else %}
-            <span></span>
-        {% endif %}
-
-        {% if index < total %}
-            {% if section %}
-                <a href="{% url 'section_question_view' topic.slug section.slug index|add:'1' %}" class="btn"
-                   style="background-color:#00994c; color:white; padding:6px 14px; border-radius:4px; text-decoration:none;">
-                    Skip ➡
-                </a>
-            {% else %}
-                <a href="{% url 'question_view' topic.id index|add:'1' %}" class="btn"
-                   style="background-color:#00994c; color:white; padding:6px 14px; border-radius:4px; text-decoration:none;">
-                    Skip ➡
-                </a>
-            {% endif %}
-        {% else %}
-            {% if section %}
-                <a href="{% url 'section_list' topic.slug %}" class="btn"
-                   style="background-color:#cc0000; color:white; padding:6px 14px; border-radius:4px; text-decoration:none;">
-                    🛑 Finish Section
-                </a>
-            {% else %}
-                <a href="{% url 'topic_complete' topic.name %}" class="btn"
-                   style="background-color:#cc0000; color:white; padding:6px 14px; border-radius:4px; text-decoration:none;">
-                    🛑 Finish
-                </a>
-            {% endif %}
-        {% endif %}
-
-    </div>
-
-    <!-- Question index -->
-    <div style="text-align:center; margin-top:20px;">
-        {% for q in questions %}
-            {% if forloop.counter == index %}
-                <span style="font-weight:bold; color:#004aad;">{{ forloop.counter }}</span>
-            {% else %}
-                {% if section %}
-                    <a href="{% url 'section_question_view' topic.slug section.slug forloop.counter %}"
-                       style="color:#333; text-decoration:none;">{{ forloop.counter }}</a>
-                {% else %}
-                    <a href="{% url 'question_view' topic.id forloop.counter %}"
-                       style="color:#333; text-decoration:none;">{{ forloop.counter }}</a>
+        <!-- Part Solution -->
+        {% if part.solution or part.solution_image %}
+        <details class="mt-4 rounded-md border border-[#a5d6a7] bg-[#e8f5e9] px-4 py-3 text-sm leading-relaxed">
+            <summary class="cursor-pointer font-semibold text-[#2e7d32]">📝 Solution for {{ part.label }}</summary>
+            <div class="mt-2 leading-relaxed">
+                {% if part.solution %}
+                {{ part.solution|safe }}
                 {% endif %}
-            {% endif %}
-            {% if not forloop.last %} | {% endif %}
-        {% endfor %}
+
+                {% if part.solution_image %}
+                <div class="mt-4 text-center">
+                    <img src="{{ part.solution_image.url }}" alt="Solution for {{ part.label }}"
+                        class="mx-auto h-auto max-w-full rounded-lg shadow-md">
+                </div>
+                {% endif %}
+            </div>
+        </details>
+        {% endif %}
     </div>
+    {% endfor %}
+
+    <!-- Full question solution -->
+    {% if question.solution %}
+    <div id="solution-wrapper" class="mt-8 border-t border-indigo-deep/15 pt-5">
+        <button id="show-solution-btn" class="inline-flex items-center rounded-md bg-lime-glow px-3 py-2 text-sm font-semibold text-midnight shadow-sm transition hover:-translate-y-0.5 hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-lime-glow">
+            💚 Show Full Solution
+        </button>
+
+        <div id="solution-content" class="mt-4 hidden leading-relaxed space-y-4">
+            {{ question.solution|safe }}
+
+            {% if question.solution_image %}
+            <div class="mt-4 text-center">
+                <img src="{{ question.solution_image.url }}" alt="Solution image"
+                    class="mx-auto h-auto max-w-[75%] rounded-lg">
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Next button -->
+    <div id="next-btn-wrapper" class="mt-5 hidden">
+        <form method="POST">
+            {% csrf_token %}
+            <button type="submit" name="next" class="inline-flex items-center rounded-md bg-lime-glow px-4 py-2 text-sm font-semibold text-midnight shadow-sm transition hover:-translate-y-0.5 hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-lime-glow">Next →
+            </button>
+        </form>
+    </div>
+</div>
+
+<!-- Numskull and Contact Section -->
+<div class="mx-auto mt-12 max-w-4xl rounded-xl border border-indigo-deep/15 bg-mist px-6 py-5 shadow-sm">
+    <div class="mb-3 flex items-center justify-between">
+        <h3 class="text-lg font-semibold text-indigo-deep">🧠 Ask NumSkull</h3>
+        <a href="{% url 'question_contact' question.id %}"
+            class="inline-flex items-center rounded-md bg-lime-glow px-3 py-2 text-sm font-semibold text-midnight shadow-lg transition hover:-translate-y-0.5 hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-lime-glow">
+            Contact Teacher
+        </a>
+    </div>
+    <p class="mb-3 text-sm text-indigo-deep/80">
+        Need help with this topic? Ask a question and get instant answers from our AI tutor.
+    </p>
+
+    <div class="flex flex-col gap-3 sm:flex-row sm:items-start text-left sm:text-left">
+        <input type="text" id="infobot-query" placeholder="e.g., What is the quadratic formula?"
+            class="w-full flex-1 rounded-md border border-indigo-deep/20 px-3 py-2 text-sm shadow-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-deep">
+        <button id="infobot-ask-btn"
+            class="inline-flex items-center justify-center rounded-md bg-indigo-deep px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-deep">
+            Ask
+        </button>
+    </div>
+
+    <div id="infobot-answer"
+        class="mt-4 hidden rounded-md bg-white px-4 py-3 text-sm leading-relaxed shadow-sm">
+        <!-- Answer will be inserted here -->
+    </div>
+
+    <div id="infobot-loading" class="mt-4 hidden text-indigo-deep">
+        🔄 Thinking...
+    </div>
+</div>
+
+<div class="mx-auto my-10 max-w-4xl border-t border-indigo-deep/15"></div>
+
+<!-- Navigation -->
+<div class="mx-auto flex max-w-4xl items-center justify-between px-4">
+    {% if index > 1 %}
+    {% if section %}
+    <a href="{% url 'section_question_view' topic.slug section.slug index|add:'-1' %}"
+        class="inline-flex items-center rounded-md bg-indigo-deep px-3 py-2 text-sm font-semibold text-mist shadow-sm transition hover:-translate-y-0.5 hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-deep">
+        ⬅ Previous
+    </a>
+    {% else %}
+    <a href="{% url 'question_view' topic.id index|add:'-1' %}"
+        class="inline-flex items-center rounded-md bg-indigo-deep px-3 py-2 text-sm font-semibold text-mist shadow-sm transition hover:-translate-y-0.5 hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-deep">
+        ⬅ Previous
+    </a>
+    {% endif %}
+    {% else %}
+    <span></span>
+    {% endif %}
+
+    {% if index < total %} {% if section %} <a
+        href="{% url 'section_question_view' topic.slug section.slug index|add:'1' %}"
+        class="inline-flex items-center rounded-md bg-lime-glow px-3 py-2 text-sm font-semibold text-midnight shadow-sm transition hover:-translate-y-0.5 hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-lime-glow">
+        Skip ➡
+        </a>
+        {% else %}
+        <a href="{% url 'question_view' topic.id index|add:'1' %}"
+            class="inline-flex items-center rounded-md bg-lime-glow px-3 py-2 text-sm font-semibold text-midnight shadow-sm transition hover:-translate-y-0.5 hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-lime-glow">
+            Skip ➡
+        </a>
+        {% endif %}
+        {% else %}
+        {% if section %}
+        <a href="{% url 'section_list' topic.slug %}"
+            class="inline-flex items-center rounded-md bg-[#cc0000] px-3 py-2 text-sm m-2 font-semibold text-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#cc0000]/70">
+            Finish Section
+        </a>
+        {% else %}
+        <a href="{% url 'topic_complete' topic.name %}"
+            class="inline-flex items-center rounded-md bg-[#cc0000] px-3 py-2 text-sm m-2 font-semibold text-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#cc0000]/70">
+            Finish
+        </a>
+        {% endif %}
+        {% endif %}
+
+</div>
+
+<!-- Question index -->
+<div class="mt-6 text-center text-sm font-semibold text-mist">
+    {% for q in questions %}
+    {% if forloop.counter == index %}
+    <span class="text-mist">{{ forloop.counter }}</span>
+    {% else %}
+    {% if section %}
+    <a href="{% url 'section_question_view' topic.slug section.slug forloop.counter %}"
+        class="text-mist hover:text-rose-pop">{{ forloop.counter }}</a>
+    {% else %}
+    <a href="{% url 'question_view' topic.id forloop.counter %}" class="text-mist hover:text-rose-pop">{{
+        forloop.counter }}</a>
+    {% endif %}
+    {% endif %}
+    {% if not forloop.last %} | {% endif %}
+    {% endfor %}
+</div>
 {% endblock %}
 
 {% block extra_scripts %}
-    {% load static %}
-    <script src="{% static 'interactive_lessons/quiz.js' %}"></script>
+{% load static %}
+<script src="{% static 'interactive_lessons/quiz.js' %}"></script>
 {% endblock %}
