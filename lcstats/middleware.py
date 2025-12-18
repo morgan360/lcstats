@@ -17,9 +17,12 @@ class WWWRedirectMiddleware:
         # Only redirect in production
         if not settings.DEBUG:
             host = request.get_host().lower()
+            # Remove port if present
+            host_without_port = host.split(':')[0]
+
             # Redirect non-www to www for numscoil.ie
-            if host == 'numscoil.ie':
-                new_url = f"https://www.{host}{request.get_full_path()}"
+            if host_without_port == 'numscoil.ie':
+                new_url = f"https://www.numscoil.ie{request.get_full_path()}"
                 return HttpResponsePermanentRedirect(new_url)
 
         return self.get_response(request)
