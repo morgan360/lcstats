@@ -115,6 +115,7 @@ MARKDOWNIFY = {"default": {"BLEACH": False}}
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'lcstats.middleware.WWWRedirectMiddleware',  # Redirect non-www to www
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
