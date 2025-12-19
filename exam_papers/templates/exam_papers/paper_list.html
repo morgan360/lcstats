@@ -3,69 +3,70 @@
 {% block title %}Exam Papers - LCAI Maths{% endblock %}
 
 {% block content %}
-<div class="exam-papers-container">
-    <h1>Leaving Certificate Exam Papers</h1>
-    <p class="intro-text">
-        Practice with real LC exam papers under exam conditions with a <strong>150-minute timer</strong>.
+<div class="mx-auto max-w-6xl px-4 py-8 text-midnight">
+    <h1 class="text-2xl font-semibold text-mist text-center">Leaving Certificate Exam Papers</h1>
+    <p class="mt-4 rounded-xl border border-indigo-deep/20 bg-mist px-5 py-4 text-sm text-indigo-deep shadow-[0_8px_24px_rgba(0,0,0,0.08)]">
+        Practice with real Leaving Certificate exam papers under exam conditions with a <strong>150-minute timer</strong>.
         <br><strong>💡 Want to practice individual questions?</strong> Go to
-        <a href="{% url 'select_topic' %}" style="color: #0056b3; font-weight: 600;">Interactive Lessons</a>
+        <a href="{% url 'select_topic' %}" class="font-semibold text-violet-royal hover:text-indigo-deep">Interactive Lessons</a>
         and click "Exam Questions" for any topic.
     </p>
 
-    <section class="papers-table-section">
-        <h2>Available Papers</h2>
+    <section class="mt-10">
+        <h2 class="mb-4 text-xl font-semibold text-mist">Available Papers</h2>
 
         {% if papers_by_year %}
-        <table class="papers-table">
-            <thead>
+        <div class="overflow-hidden rounded-xl border border-indigo-deep/15 bg-mist shadow-[0_10px_30px_rgba(0,0,0,0.08)]">
+        <table class="w-full border-collapse text-sm">
+            <thead class="bg-[linear-gradient(135deg,#667eea_0%,#764ba2_100%)] text-white">
                 <tr>
-                    <th>Year</th>
-                    <th>Paper</th>
-                    <th>Questions</th>
-                    <th>Time</th>
-                    <th>Marking Scheme</th>
-                    <th>Progress</th>
-                    <th>Action</th>
+                    <th class="px-4 py-3 text-left font-semibold">Year</th>
+                    <th class="px-4 py-3 text-left font-semibold">Paper</th>
+                    <th class="px-4 py-3 text-left font-semibold">Questions</th>
+                    <th class="px-4 py-3 text-left font-semibold">Time</th>
+                    <th class="px-4 py-3 text-left font-semibold">Marking Scheme</th>
+                    <th class="px-4 py-3 text-left font-semibold">Progress</th>
+                    <th class="px-4 py-3 text-left font-semibold">Action</th>
                 </tr>
             </thead>
             <tbody>
                 {% for year, papers in papers_by_year.items %}
                 {% for paper in papers %}
-                <tr>
-                    <td><strong>{{ year }}</strong></td>
-                    <td>{{ paper.get_paper_type_display }}</td>
-                    <td>{{ paper.questions.count }} questions ({{ paper.total_marks }} marks)</td>
-                    <td>{{ paper.time_limit_minutes }} min</td>
-                    <td>
+                <tr class="transition hover:bg-mist/80 last:[&>td]:border-b-0">
+                    <td class="border-b border-indigo-deep/10 px-4 py-3"><strong>{{ year }}</strong></td>
+                    <td class="border-b border-indigo-deep/10 px-4 py-3">{{ paper.get_paper_type_display }}</td>
+                    <td class="border-b border-indigo-deep/10 px-4 py-3">{{ paper.questions.count }} questions ({{ paper.total_marks }} marks)</td>
+                    <td class="border-b border-indigo-deep/10 px-4 py-3">{{ paper.time_limit_minutes }} min</td>
+                    <td class="border-b border-indigo-deep/10 px-4 py-3">
                         {% if paper.marking_scheme_pdf %}
-                            <a href="{{ paper.marking_scheme_pdf.url }}" target="_blank" class="ms-link">
-                                📄 View MS
+                            <a href="{{ paper.marking_scheme_pdf.url }}" target="_blank" class="inline-flex items-center rounded-lg bg-gradient-to-b from-violet-royal to-indigo-deep px-4 py-2 text-sm font-semibold text-mist shadow-[0_6px_20px_rgba(0,0,0,0.15)] transition hover:-translate-y-0.5 hover:shadow-[0_10px_26px_rgba(0,0,0,0.2)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-lime-glow">
+                                📄 View
                             </a>
                         {% else %}
-                            <span style="color: #6c757d;">—</span>
+                            <span class="text-indigo-deep/60">—</span>
                         {% endif %}
                     </td>
-                    <td>
+                    <td class="border-b border-indigo-deep/10 px-4 py-3">
                         {% if paper.active_attempt %}
-                            <span class="progress-badge in-progress">In Progress</span>
+                            <span class="inline-flex items-center rounded-full bg-rose-pop/40 px-3 py-1 text-xs font-semibold text-midnight">In Progress</span>
                         {% elif paper.completed_attempt %}
-                            <span class="progress-badge completed">
+                            <span class="inline-flex items-center rounded-full bg-lime-glow/70 px-3 py-1 text-xs font-semibold text-midnight">
                                 ✓ {{ paper.completed_attempt.percentage_score|floatformat:0 }}%
                             </span>
                         {% else %}
-                            <span class="progress-badge not-started">Not Started</span>
+                            <span class="inline-flex items-center rounded-full bg-indigo-deep/10 px-3 py-1 text-xs font-semibold text-indigo-deep">Not Started</span>
                         {% endif %}
                     </td>
-                    <td>
+                    <td class="border-b border-indigo-deep/10 px-4 py-3">
                         {% if paper.active_attempt %}
-                            <a href="{% url 'exam_papers:question_interface' paper.active_attempt.id paper.active_attempt.exam_paper.questions.first.id %}" class="btn btn-primary btn-action">
+                            <a href="{% url 'exam_papers:question_interface' paper.active_attempt.id paper.active_attempt.exam_paper.questions.first.id %}" class="inline-flex items-center rounded-lg bg-gradient-03 px-4 py-2 text-sm font-semibold text-mist shadow-[0_10px_26px_rgba(148,72,176,0.3)] transition hover:-translate-y-0.5 hover:shadow-[0_14px_32px_rgba(148,72,176,0.4)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-royal">
                                 Resume Exam →
                             </a>
                         {% else %}
-                            <form method="post" action="{% url 'exam_papers:start_paper_attempt' paper.slug %}" style="display: inline;">
+                            <form method="post" action="{% url 'exam_papers:start_paper_attempt' paper.slug %}" class="inline">
                                 {% csrf_token %}
                                 <input type="hidden" name="mode" value="full_timed">
-                                <button type="submit" class="btn btn-danger btn-action">
+                                <button type="submit" class="inline-flex items-center rounded-lg bg-gradient-04 px-4 py-2 text-sm font-semibold text-mist shadow-[0_10px_26px_rgba(0,0,0,0.2)] transition hover:-translate-y-0.5 hover:shadow-[0_14px_32px_rgba(0,0,0,0.3)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-lime-glow">
                                     Start Exam →
                                 </button>
                             </form>
@@ -76,241 +77,12 @@
                 {% endfor %}
             </tbody>
         </table>
+        </div>
         {% else %}
-        <p class="no-papers">No exam papers available yet. Check back soon!</p>
+        <p class="rounded-xl border border-indigo-deep/15 bg-mist px-6 py-10 text-center text-sm text-indigo-deep/70">
+            No exam papers available yet. Check back soon!
+        </p>
         {% endif %}
     </section>
 </div>
-
-<style>
-.exam-papers-container {
-    max-width: 1200px;
-    margin: 0 auto;
-    padding: 20px;
-}
-
-.intro-text {
-    background: #f0f7ff;
-    padding: 15px;
-    border-radius: 8px;
-    margin-bottom: 30px;
-}
-
-.recent-attempts {
-    margin-bottom: 40px;
-}
-
-.recent-attempts table {
-    width: 100%;
-    border-collapse: collapse;
-    background: white;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-}
-
-.recent-attempts th,
-.recent-attempts td {
-    padding: 12px;
-    text-align: left;
-    border-bottom: 1px solid #eee;
-}
-
-.recent-attempts th {
-    background: #f8f9fa;
-    font-weight: 600;
-}
-
-.badge {
-    padding: 4px 8px;
-    border-radius: 4px;
-    font-size: 0.85em;
-    font-weight: 500;
-}
-
-.badge-success {
-    background: #d4edda;
-    color: #155724;
-}
-
-.badge-warning {
-    background: #fff3cd;
-    color: #856404;
-}
-
-.year-section {
-    margin-bottom: 40px;
-}
-
-.year-section h3 {
-    color: #333;
-    border-bottom: 2px solid #007bff;
-    padding-bottom: 10px;
-    margin-bottom: 20px;
-}
-
-.papers-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
-    gap: 20px;
-}
-
-.paper-card {
-    background: white;
-    border: 1px solid #dee2e6;
-    border-radius: 8px;
-    padding: 20px;
-    transition: box-shadow 0.3s;
-}
-
-.paper-card:hover {
-    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-}
-
-.paper-header h4 {
-    margin: 0 0 5px 0;
-    color: #007bff;
-}
-
-.paper-meta {
-    color: #6c757d;
-    font-size: 0.9em;
-}
-
-.paper-details {
-    margin: 15px 0;
-}
-
-.instructions {
-    color: #6c757d;
-    font-style: italic;
-    font-size: 0.9em;
-}
-
-.paper-actions {
-    margin-top: 15px;
-}
-
-.btn {
-    display: inline-block;
-    padding: 8px 16px;
-    text-decoration: none;
-    border-radius: 4px;
-    font-weight: 500;
-    transition: all 0.3s;
-}
-
-.btn-sm {
-    padding: 4px 12px;
-    font-size: 0.9em;
-}
-
-.btn-primary {
-    background: #007bff;
-    color: white;
-}
-
-.btn-primary:hover {
-    background: #0056b3;
-}
-
-.btn-danger {
-    background: #dc3545;
-    color: white;
-    border: none;
-}
-
-.btn-danger:hover {
-    background: #c82333;
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(220, 53, 69, 0.4);
-}
-
-.btn-large {
-    width: 100%;
-    padding: 15px;
-    font-size: 1.1em;
-    font-weight: 600;
-}
-
-.no-papers {
-    text-align: center;
-    padding: 40px;
-    color: #6c757d;
-}
-
-.papers-table-section {
-    margin-bottom: 40px;
-}
-
-.papers-table {
-    width: 100%;
-    border-collapse: collapse;
-    background: white;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-    border-radius: 8px;
-    overflow: hidden;
-}
-
-.papers-table thead {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    color: white;
-}
-
-.papers-table th {
-    padding: 15px;
-    text-align: left;
-    font-weight: 600;
-}
-
-.papers-table td {
-    padding: 15px;
-    border-bottom: 1px solid #eee;
-}
-
-.papers-table tbody tr:hover {
-    background: #f8f9fa;
-}
-
-.progress-badge {
-    display: inline-block;
-    padding: 6px 12px;
-    border-radius: 20px;
-    font-size: 0.9em;
-    font-weight: 600;
-}
-
-.progress-badge.not-started {
-    background: #e7f3ff;
-    color: #0056b3;
-}
-
-.progress-badge.in-progress {
-    background: #fff3cd;
-    color: #856404;
-}
-
-.progress-badge.completed {
-    background: #d4edda;
-    color: #155724;
-}
-
-.btn-action {
-    padding: 10px 20px;
-    font-weight: 600;
-    white-space: nowrap;
-}
-
-.ms-link {
-    color: #28a745;
-    text-decoration: none;
-    font-weight: 600;
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-}
-
-.ms-link:hover {
-    color: #1e7e34;
-    text-decoration: underline;
-}
-</style>
 {% endblock %}

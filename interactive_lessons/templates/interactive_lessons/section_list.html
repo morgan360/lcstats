@@ -2,194 +2,46 @@
 {% block title %}{{ topic.name}} - Sections{% endblock %}
 {% block content %}
 
-<div style="margin-bottom: 20px;">
-    <a href="{% url 'select_topic' %}" style="text-decoration: none; color: #667eea; font-weight: 500;">
+<div class="mb-5">
+    <a href="{% url 'select_topic' %}" class="font-medium text-[#667eea] hover:text-[#764ba2]">
         ← Back to Topics
     </a>
 </div>
 
-<h2 style="margin-bottom: 30px;">{{ topic.name }} - Select a Section</h2>
+<h2 class="mb-8 text-center text-2xl font-semibold text-mist">{{ topic.name }} - Select a Section</h2>
 
-<style>
-    .sections-table {
-        width: 100%;
-        background: white;
-        border-radius: 10px;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-        overflow: hidden;
-    }
-
-    .sections-table-header {
-        display: grid;
-        grid-template-columns: 2fr 1fr 1fr 1fr;
-        gap: 15px;
-        padding: 20px;
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
-        font-weight: 600;
-        font-size: 0.95em;
-    }
-
-    .sections-table-row {
-        display: grid;
-        grid-template-columns: 2fr 1fr 1fr 1fr;
-        gap: 15px;
-        padding: 20px;
-        border-bottom: 1px solid #e0e0e0;
-        align-items: center;
-        transition: background-color 0.2s;
-    }
-
-    .sections-table-row:hover {
-        background-color: #f8f9fa;
-    }
-
-    .sections-table-row:last-child {
-        border-bottom: none;
-    }
-
-    .section-name {
-        font-size: 1.1em;
-        font-weight: 600;
-        color: #2c3e50;
-    }
-
-    .section-btn {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        padding: 10px 20px;
-        border-radius: 8px;
-        text-decoration: none;
-        font-weight: 500;
-        font-size: 0.9em;
-        transition: all 0.2s;
-        text-align: center;
-        width: 100%;
-        max-width: 150px;
-    }
-
-    .section-btn:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-    }
-
-    .btn-start {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
-    }
-
-    .btn-continue {
-        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
-        color: white;
-    }
-
-    .btn-completed {
-        background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
-        color: white;
-    }
-
-    .progress-bar {
-        width: 100%;
-        height: 8px;
-        background: #e0e0e0;
-        border-radius: 4px;
-        overflow: hidden;
-    }
-
-    .progress-fill {
-        height: 100%;
-        background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
-        transition: width 0.3s ease;
-    }
-
-    .progress-fill.completed {
-        background: linear-gradient(90deg, #4CAF50 0%, #45a049 100%);
-    }
-
-    .question-count {
-        color: #666;
-        font-size: 0.9em;
-    }
-
-    .completion-badge {
-        display: inline-block;
-        padding: 4px 12px;
-        border-radius: 12px;
-        font-size: 0.85em;
-        font-weight: 600;
-    }
-
-    .badge-not-started {
-        background: #f0f0f0;
-        color: #666;
-    }
-
-    .badge-in-progress {
-        background: #fff3e0;
-        color: #f57c00;
-    }
-
-    .badge-completed {
-        background: #e8f5e9;
-        color: #4caf50;
-    }
-
-    @media (max-width: 768px) {
-        .sections-table-header,
-        .sections-table-row {
-            grid-template-columns: 1fr;
-            gap: 10px;
-        }
-
-        .sections-table-header {
-            display: none;
-        }
-
-        .section-name {
-            margin-bottom: 10px;
-            padding-bottom: 10px;
-            border-bottom: 2px solid #e0e0e0;
-        }
-
-        .section-btn {
-            max-width: 100%;
-        }
-    }
-</style>
-
-<div class="sections-table">
-    <div class="sections-table-header">
+<div class="w-full overflow-hidden rounded-xl border border-indigo-deep/15 bg-mist shadow-[0_10px_30px_rgba(0,0,0,0.08)]">
+    <div class="hidden grid-cols-[2fr_1fr_1fr_1fr] gap-4 bg-[linear-gradient(135deg,#667eea_0%,#764ba2_100%)] px-5 py-4 text-sm font-semibold text-white md:grid">
         <div>Section</div>
-        <div style="text-align: center;">Progress</div>
-        <div style="text-align: center;">Questions</div>
-        <div style="text-align: center;">Start Quiz</div>
+        <div class="text-center">Progress</div>
+        <div class="text-center">Questions</div>
+        <div class="text-center">Start Quiz</div>
     </div>
 
     {% for item in section_data %}
-    <div class="sections-table-row">
-        <div class="section-name">
+    <div class="grid grid-cols-1 items-center gap-3 border-b border-indigo-deep/15 px-5 py-5 transition hover:bg-mist/80 last:border-b-0 md:grid-cols-[2fr_1fr_1fr_1fr] md:gap-4">
+        <div class="text-lg font-semibold text-midnight md:mb-0 md:border-0 mb-2 border-b border-indigo-deep/15 pb-2">
             {{ item.section.name }}
         </div>
 
-        <div style="text-align: center;">
-            <div class="progress-bar" style="margin-bottom: 5px;">
-                <div class="progress-fill {% if item.is_completed %}completed{% endif %}"
-                     style="width: {{ item.completion_percentage }}%;"></div>
+        <div class="text-center">
+            <div class="mb-2 h-2 w-full overflow-hidden rounded-full bg-[#e0e0e0]">
+                <div class="h-full {% if item.is_completed %}bg-[linear-gradient(90deg,#4CAF50_0%,#45a049_100%)]{% else %}bg-[linear-gradient(90deg,#667eea_0%,#764ba2_100%)]{% endif %}"
+                    style="width: {{ item.completion_percentage }}%;"></div>
             </div>
-            <span class="completion-badge {% if item.completion_percentage == 0 %}badge-not-started{% elif item.is_completed %}badge-completed{% else %}badge-in-progress{% endif %}">
+            <span class="inline-block rounded-full px-3 py-1 text-xs font-semibold {% if item.completion_percentage == 0 %}bg-[#f0f0f0] text-[#666]{% elif item.is_completed %}bg-[#e8f5e9] text-[#4caf50]{% else %}bg-[#fff3e0] text-[#f57c00]{% endif %}">
                 {{ item.completed_questions }}/{{ item.total_questions }}
             </span>
         </div>
 
-        <div style="text-align: center;" class="question-count">
+        <div class="text-center text-sm text-[#666]">
             {{ item.total_questions }} question{{ item.total_questions|pluralize }}
         </div>
 
-        <div style="display: flex; justify-content: center;">
+        <div class="flex justify-center">
             {% if item.total_questions > 0 %}
                 <a href="{% url 'section_quiz' topic.slug item.section.slug %}"
-                   class="section-btn {% if item.is_completed %}btn-completed{% elif item.completed_questions > 0 %}btn-continue{% else %}btn-start{% endif %}">
+                   class="inline-flex w-full max-w-[150px] items-center justify-center rounded-lg px-4 py-2 text-sm font-semibold text-white shadow-[0_12px_24px_rgba(0,0,0,0.18)] transition hover:-translate-y-0.5 hover:shadow-[0_16px_30px_rgba(0,0,0,0.24)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-royal {% if item.is_completed %}bg-[linear-gradient(135deg,#4CAF50_0%,#45a049_100%)]{% elif item.completed_questions > 0 %}bg-[linear-gradient(135deg,#f093fb_0%,#f5576c_100%)]{% else %}bg-[linear-gradient(135deg,#667eea_0%,#764ba2_100%)]{% endif %}">
                     {% if item.is_completed %}
                         ✓ Review
                     {% elif item.completed_questions > 0 %}
@@ -199,13 +51,13 @@
                     {% endif %}
                 </a>
             {% else %}
-                <span style="color: #999;">No questions</span>
+                <span class="text-[#999]">No questions</span>
             {% endif %}
         </div>
     </div>
     {% empty %}
-    <div class="sections-table-row" style="justify-content: center; text-align: center;">
-        <p style="color: #999;">No sections available for this topic yet.</p>
+    <div class="px-5 py-10 text-center">
+        <p class="text-[#999]">No sections available for this topic yet.</p>
     </div>
     {% endfor %}
 </div>

@@ -1,6 +1,6 @@
 /* style.css — simple clean defaults */
 
-body {
+/* body {
   font-family: "Segoe UI", Arial, sans-serif;
   margin: 0;
   padding: 0;
@@ -9,12 +9,12 @@ body {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-}
+} */
 
 /* ========== Navigation Styles ========== */
 
 /* Navbar Container */
-.navbar {
+/* .navbar {
   background: linear-gradient(135deg, #2ECC71 0%, #27AE60 100%);
   color: white;
   position: sticky;
@@ -31,10 +31,10 @@ body {
   justify-content: space-between;
   align-items: center;
   height: 56px;
-}
+} */
 
 /* Logo */
-.logo {
+/* .logo {
   color: white;
   text-decoration: none;
   font-size: 1.3em;
@@ -45,10 +45,10 @@ body {
 
 .logo:hover {
   opacity: 0.9;
-}
+} */
 
 /* Hamburger Menu (Mobile Only) */
-.hamburger {
+/* .hamburger {
   display: none;
   flex-direction: column;
   background: none;
@@ -77,10 +77,10 @@ body {
 
 .hamburger.active span:nth-child(3) {
   transform: rotate(-45deg) translate(7px, -7px);
-}
+} */
 
 /* Navigation Menu */
-.nav-menu {
+/* .nav-menu {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -127,10 +127,10 @@ body {
 .nav-link.admin-link {
   color: #ffea00;
   font-weight: 600;
-}
+} */
 
 /* Dropdown Menus (Desktop) */
-.dropdown-menu {
+/* .dropdown-menu {
   display: none;
   position: absolute;
   top: 100%;
@@ -153,10 +153,10 @@ body {
 .dropdown:hover .dropdown-menu {
   display: block;
   animation: fadeInDropdown 0.2s ease;
-}
+} */
 
 /* Invisible bridge to keep hover active */
-.dropdown::before {
+/* .dropdown::before {
   content: '';
   position: absolute;
   top: 100%;
@@ -179,17 +179,17 @@ body {
 .dropdown-item:hover {
   background-color: #004aad;
   color: white;
-}
+} */
 
 /* Dropdown Toggle Arrow */
-.dropdown-toggle::after {
+/* .dropdown-toggle::after {
   content: ' ▾';
   font-size: 0.75em;
   margin-left: 4px;
-}
+} */
 
 /* Mobile Overlay */
-.nav-overlay {
+/* .nav-overlay {
   display: none;
   position: fixed;
   top: 0;
@@ -205,10 +205,10 @@ body {
 .nav-overlay.active {
   display: block;
   opacity: 1;
-}
+} */
 
 /* ========== Desktop Explicit Styles ========== */
-@media (min-width: 769px) {
+/* @media (min-width: 769px) {
   .nav-menu {
     position: static !important;
     flex-direction: row !important;
@@ -222,10 +222,10 @@ body {
   .hamburger {
     display: none !important;
   }
-}
+} */
 
 /* ========== Mobile Responsive (≤768px) ========== */
-@media (max-width: 768px) {
+/* @media (max-width: 768px) {
   .hamburger {
     display: flex;
   }
@@ -285,10 +285,10 @@ body {
     margin: 10px 15px;
     border-radius: 6px;
     text-align: center;
-  }
+  } */
 
   /* Mobile Dropdown (Accordion Style) */
-  .dropdown-menu {
+  /* .dropdown-menu {
     position: static;
     display: none;
     box-shadow: none;
@@ -321,10 +321,10 @@ body {
     background-color: rgba(255, 255, 255, 0.1);
     color: white;
   }
-}
+} */
 
 /* Animations */
-@keyframes fadeInDropdown {
+/* @keyframes fadeInDropdown {
   from {
     opacity: 0;
     transform: translateY(-10px);
@@ -414,4 +414,4 @@ details[open] summary {
 
 .start-link:hover {
   text-decoration: underline;
-}
+} */

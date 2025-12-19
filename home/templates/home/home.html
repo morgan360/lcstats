@@ -2,71 +2,73 @@
 {% block title %}Home | NumScoil{% endblock %}
 
 {% block content %}
-<div style="max-width: 1200px; margin: 0 auto; padding: 20px;">
-
-    <!-- Hero Section -->
-    <div style="text-align: center; margin-bottom: 60px; padding: 40px 20px;">
+<!-- Hero Section (full width) -->
+<div class="relative left-1/2 w-screen -translate-x-1/2 overflow-hidden bg-gradient-05 text-mist">
+    <div aria-hidden="true"
+        class="pointer-events-none absolute -top-24 left-1/2 h-72 w-[42rem] -translate-x-1/2 rounded-full blur-3xl opacity-60 bg-rose-pop/40">
+    </div>
+    <div class="relative mx-auto px-6 py-20 text-center">
         {% load static %}
-        <img src="{% static 'images/numscoil_final.svg' %}" alt="NumScoil" style="max-width: 500px; width: 100%; height: auto; margin-bottom: 20px;">
-        <p style="font-size: 1.3em; max-width: 800px; margin: 0 auto; color: #555; line-height: 1.6;">
-            Master Leaving Certificate Honours Maths with AI-powered interactive practice questions,
-            instant feedback, and personalized learning.
+        <img src="{% static 'images/numscoil_final.svg' %}" alt="NumScoil"
+            class="mx-auto mb-8 h-auto w-full max-w-xl rounded-2xl shadow-[0_22px_60px_rgba(148,72,176,0.35)]" />
+        <p class="mx-auto max-w-3xl text-lg font-semibold leading-relaxed text-mist/90">
+            Master Leaving Certificate Honours Maths with AI-powered interactive practice questions, instant
+            feedback, and personalized learning.
         </p>
     </div>
+</div>
 
+<div class="mx-auto max-w-6xl px-4 py-8 text-midnight">
     <!-- News & Announcements Section -->
     {% if news_items %}
-    <div style="margin-bottom: 40px;">
-        <h2 style="color: #004aad; margin-bottom: 20px; text-align: center;">News & Announcements</h2>
+    <div
+        class="mx-auto max-w-2xl mb-10 mt-6 bg-mist/80 rounded-xl border border-indigo-deep/20 p-7 shadow-[0_12px_30px_rgba(0,0,0,0.06)]">
+        <h2 class="mb-5 text-center text-2xl font-semibold text-midnight">News & Announcements</h2>
         {% for item in news_items %}
-        <div id="news-{{ item.id }}" style="background-color: #fff; border: 2px solid #e0e0e0; border-radius: 8px; padding: 20px; margin-bottom: 20px; position: relative; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+        <div id="news-{{ item.id }}"
+            class="relative mb-5 rounded-xl border border-indigo-deep/15 bg-mist p-5 shadow-[0_10px_26px_rgba(0,0,0,0.08)]">
             <!-- Category and Pinned Badges -->
-            <div style="margin-bottom: 10px;">
+            <div class="mb-3 flex flex-wrap gap-2">
                 {% if item.is_pinned %}
-                <span style="background: linear-gradient(135deg, #ff6b6b, #ee5a52); color: white; padding: 4px 10px; border-radius: 4px; font-size: 0.85em; font-weight: 600; margin-right: 8px; display: inline-block;">
-                    📌 PINNED
-                </span>
+                <span
+                    class="inline-block rounded-md bg-gradient-05 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-mist">📌
+                    Pinned</span>
                 {% endif %}
                 {% if item.category == 'new_content' %}
-                <span style="background: #4caf50; color: white; padding: 4px 10px; border-radius: 4px; font-size: 0.85em; font-weight: 600; display: inline-block;">
-                    {{ item.get_category_display }}
-                </span>
+                <span class="inline-block rounded-md bg-lime-glow px-3 py-1 text-xs font-semibold text-midnight">
+                    {{ item.get_category_display }}</span>
                 {% elif item.category == 'tips' %}
-                <span style="background: #ff9800; color: white; padding: 4px 10px; border-radius: 4px; font-size: 0.85em; font-weight: 600; display: inline-block;">
-                    {{ item.get_category_display }}
-                </span>
+                <span class="inline-block rounded-md bg-rose-pop px-3 py-1 text-xs font-semibold text-midnight">
+                    {{ item.get_category_display }}</span>
                 {% elif item.category == 'system' %}
-                <span style="background: #9c27b0; color: white; padding: 4px 10px; border-radius: 4px; font-size: 0.85em; font-weight: 600; display: inline-block;">
-                    {{ item.get_category_display }}
-                </span>
+                <span class="inline-block rounded-md bg-indigo-deep px-3 py-1 text-xs font-semibold text-mist">
+                    {{ item.get_category_display }}</span>
                 {% elif item.category == 'event' %}
-                <span style="background: #f44336; color: white; padding: 4px 10px; border-radius: 4px; font-size: 0.85em; font-weight: 600; display: inline-block;">
-                    {{ item.get_category_display }}
-                </span>
+                <span class="inline-block rounded-md bg-violet-royal px-3 py-1 text-xs font-semibold text-mist">
+                    {{ item.get_category_display }}</span>
                 {% else %}
-                <span style="background: #2196f3; color: white; padding: 4px 10px; border-radius: 4px; font-size: 0.85em; font-weight: 600; display: inline-block;">
-                    {{ item.get_category_display }}
-                </span>
+                <span class="inline-block rounded-md bg-midnight px-3 py-1 text-xs font-semibold text-mist">
+                    {{ item.get_category_display }}</span>
                 {% endif %}
             </div>
 
             <!-- Title -->
-            <h3 style="color: #333; margin: 10px 0; font-size: 1.4em;">{{ item.title }}</h3>
+            <h3 class="mb-2 text-xl font-semibold text-midnight">{{ item.title }}</h3>
 
             <!-- Content -->
-            <div style="color: #555; line-height: 1.7; margin: 15px 0;">
+            <div class="mb-3 leading-relaxed text-indigo-deep">
                 {{ item.content_html }}
             </div>
 
             <!-- Date -->
-            <div style="color: #999; font-size: 0.9em; margin-top: 15px;">
+            <div class="mt-3 text-sm text-indigo-deep/70">
                 <em>{{ item.publish_date|date:"F j, Y" }}</em>
             </div>
 
             <!-- Dismiss Button (only for logged-in users and dismissible items) -->
             {% if user.is_authenticated and item.is_dismissible %}
             <button onclick="dismissNews({{ item.id }})"
-                    style="position: absolute; top: 15px; right: 15px; background: #e74c3c; color: white; border: none; padding: 6px 12px; cursor: pointer; border-radius: 4px; font-size: 0.85em; font-weight: 600; transition: background 0.3s;">
+                class="absolute right-4 top-4 rounded-md bg-rose-pop px-3 py-1.5 text-xs font-semibold text-midnight shadow-[0_10px_25px_rgba(228,124,184,0.35)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose-pop hover:brightness-105">
                 ✕ Dismiss
             </button>
             {% endif %}
@@ -75,128 +77,165 @@
     </div>
 
     <script>
-    function dismissNews(newsId) {
-        if (!confirm('Dismiss this news item? You won\'t see it again.')) return;
+        function dismissNews(newsId) {
+            if (!confirm('Dismiss this news item? You won\'t see it again.')) return;
 
-        fetch(`/news/dismiss/${newsId}/`, {
-            method: 'POST',
-            headers: {
-                'X-CSRFToken': '{{ csrf_token }}',
-                'Content-Type': 'application/json'
-            }
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                const newsElement = document.getElementById(`news-${newsId}`);
-                newsElement.style.transition = 'opacity 0.3s';
-                newsElement.style.opacity = '0';
-                setTimeout(() => newsElement.remove(), 300);
-            } else {
-                alert(data.error || 'Could not dismiss this item');
-            }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            alert('An error occurred');
-        });
-    }
+            fetch(`/news/dismiss/${newsId}/`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': '{{ csrf_token }}',
+                    'Content-Type': 'application/json'
+                }
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        const newsElement = document.getElementById(`news-${newsId}`);
+                        newsElement.style.transition = 'opacity 0.3s';
+                        newsElement.style.opacity = '0';
+                        setTimeout(() => newsElement.remove(), 300);
+                    } else {
+                        alert(data.error || 'Could not dismiss this item');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('An error occurred');
+                });
+        }
     </script>
     {% endif %}
 
-    <!-- Welcome Section / CTA -->
-    <div style="text-align: center; margin-bottom: 50px;">
-        <div style="background-color: #e8f5e9; border: 2px solid #00994c; border-radius: 12px; padding: 40px;">
-            {% if user.is_authenticated %}
-            <h2 style="color: #00994c; margin: 0 0 15px 0; font-size: 2em;">Welcome back, {{ user.username }}!</h2>
-            <p style="margin: 0 0 25px 0; font-size: 1.2em; color: #333;">Ready to continue your learning journey?</p>
-            <a href="{% url 'select_topic' %}" style="display: inline-block; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 16px 40px; text-decoration: none; border-radius: 8px; font-size: 1.2em; font-weight: 600; transition: all 0.3s; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
-                Continue Learning →
-            </a>
-            {% else %}
-            <h2 style="color: #00994c; margin: 0 0 15px 0; font-size: 2em;">Ready to Master LC Maths?</h2>
-            <p style="margin: 0 0 25px 0; font-size: 1.2em; color: #333;">Join thousands of students improving their maths skills with AI-powered practice</p>
-            <a href="{% url 'select_topic' %}" style="display: inline-block; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 16px 40px; text-decoration: none; border-radius: 8px; font-size: 1.2em; font-weight: 600; transition: all 0.3s; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
-                Start Learning →
-            </a>
-            {% endif %}
-        </div>
-    </div>
-
-    <style>
-    a[href*="select_topic"]:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 6px 12px rgba(0,0,0,0.15);
-    }
-    </style>
-
+    {% if not user.is_authenticated %}
     <!-- Features Grid -->
-    <div style="margin-bottom: 50px;">
-        <h2 style="color: #004aad; margin-bottom: 30px; text-align: center; font-size: 2em;">Why NumScoil?</h2>
+    <div
+        class="mb-12 rounded-2xl border border-indigo-deep/20 bg-mist px-8 py-10 shadow-[0_18px_45px_rgba(0,0,0,0.08)]">
+        <h2 class="mb-5 text-center text-2xl font-semibold text-midnight">Why NumScoil?</h2>
 
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 25px;">
-            <div style="background-color: white; border: 2px solid #e0e0e0; border-radius: 10px; padding: 25px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); transition: transform 0.2s;">
-                <div style="font-size: 2.5em; margin-bottom: 15px;">📚</div>
-                <h3 style="color: #004aad; margin: 0 0 10px 0; font-size: 1.3em;">{{ total_questions }} Practice Questions</h3>
-                <p style="margin: 0; line-height: 1.6; color: #555;">
-                    Comprehensive coverage of all LC Honours Maths topics with multi-part questions and exam papers.
-                </p>
+        <div class="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-3">
+            <div
+                class="rounded-xl border border-indigo-deep/15 bg-gradient-to-b from-mist to-mist/80 p-6 text-center shadow-[0_12px_30px_rgba(0,0,0,0.08)] transition hover:-translate-y-1 hover:shadow-[0_18px_40px_rgba(148,72,176,0.2)]">
+                <div class="mb-4 text-3xl">📚</div>
+                <h3 class="mb-2 text-lg font-semibold text-midnight">{{ total_questions }} Practice Questions</h3>
+                <p class="text-sm leading-relaxed text-indigo-deep">Comprehensive coverage of all LC Honours Maths
+                    topics with multi-part questions and exam papers.</p>
             </div>
 
-            <div style="background-color: white; border: 2px solid #e0e0e0; border-radius: 10px; padding: 25px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); transition: transform 0.2s;">
-                <div style="font-size: 2.5em; margin-bottom: 15px;">🤖</div>
-                <h3 style="color: #00994c; margin: 0 0 10px 0; font-size: 1.3em;">AI-Powered Feedback</h3>
-                <p style="margin: 0; line-height: 1.6; color: #555;">
-                    Instant intelligent grading with detailed explanations for your mathematical answers.
-                </p>
+            <div
+                class="rounded-xl border border-indigo-deep/15 bg-gradient-to-b from-mist to-mist/80 p-6 text-center shadow-[0_12px_30px_rgba(0,0,0,0.08)] transition hover:-translate-y-1 hover:shadow-[0_18px_40px_rgba(148,72,176,0.2)]">
+                <div class="mb-4 text-3xl">🤖</div>
+                <h3 class="mb-2 text-lg font-semibold text-midnight">AI-Powered Feedback</h3>
+                <p class="text-sm leading-relaxed text-indigo-deep">Instant intelligent grading with detailed
+                    explanations for your mathematical answers.</p>
             </div>
 
-            <div style="background-color: white; border: 2px solid #e0e0e0; border-radius: 10px; padding: 25px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); transition: transform 0.2s;">
-                <div style="font-size: 2.5em; margin-bottom: 15px;">💡</div>
-                <h3 style="color: #cc0000; margin: 0 0 10px 0; font-size: 1.3em;">Smart Hints & Solutions</h3>
-                <p style="margin: 0; line-height: 1.6; color: #555;">
-                    Contextual hints and step-by-step solutions to help you understand the methodology.
-                </p>
+            <div
+                class="rounded-xl border border-indigo-deep/15 bg-gradient-to-b from-mist to-mist/80 p-6 text-center shadow-[0_12px_30px_rgba(0,0,0,0.08)] transition hover:-translate-y-1 hover:shadow-[0_18px_40px_rgba(148,72,176,0.2)]">
+                <div class="mb-4 text-3xl">💡</div>
+                <h3 class="mb-2 text-lg font-semibold text-violet-royal">Smart Hints &amp; Solutions</h3>
+                <p class="text-sm leading-relaxed text-indigo-deep">Contextual hints and step-by-step solutions to
+                    help you understand the methodology.</p>
             </div>
 
-            <div style="background-color: white; border: 2px solid #e0e0e0; border-radius: 10px; padding: 25px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); transition: transform 0.2s;">
-                <div style="font-size: 2.5em; margin-bottom: 15px;">📊</div>
-                <h3 style="color: #ff9800; margin: 0 0 10px 0; font-size: 1.3em;">Track Your Progress</h3>
-                <p style="margin: 0; line-height: 1.6; color: #555;">
-                    Detailed analytics across topics with performance tracking and improvement insights.
-                </p>
+            <div
+                class="rounded-xl border border-indigo-deep/15 bg-gradient-to-b from-mist to-mist/80 p-6 text-center shadow-[0_12px_30px_rgba(0,0,0,0.08)] transition hover:-translate-y-1 hover:shadow-[0_18px_40px_rgba(148,72,176,0.2)]">
+                <div class="mb-4 text-3xl">📊</div>
+                <h3 class="mb-2 text-lg font-semibold text-indigo-deep">Track Your Progress</h3>
+                <p class="text-sm leading-relaxed text-indigo-deep">Detailed analytics across topics with
+                    performance tracking and improvement insights.</p>
             </div>
 
-            <div style="background-color: white; border: 2px solid #e0e0e0; border-radius: 10px; padding: 25px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); transition: transform 0.2s;">
-                <div style="font-size: 2.5em; margin-bottom: 15px;">⏱️</div>
-                <h3 style="color: #9c27b0; margin: 0 0 10px 0; font-size: 1.3em;">Timed Exam Practice</h3>
-                <p style="margin: 0; line-height: 1.6; color: #555;">
-                    Full exam papers with authentic timing to prepare you for the real experience.
-                </p>
+            <div
+                class="rounded-xl border border-indigo-deep/15 bg-gradient-to-b from-mist to-mist/80 p-6 text-center shadow-[0_12px_30px_rgba(0,0,0,0.08)] transition hover:-translate-y-1 hover:shadow-[0_18px_40px_rgba(148,72,176,0.2)]">
+                <div class="mb-4 text-3xl">⏱️</div>
+                <h3 class="mb-2 text-lg font-semibold text-violet-royal">Timed Exam Practice</h3>
+                <p class="text-sm leading-relaxed text-indigo-deep">Full exam papers with authentic timing to
+                    prepare you for the real experience.</p>
             </div>
 
-            <div style="background-color: white; border: 2px solid #e0e0e0; border-radius: 10px; padding: 25px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); transition: transform 0.2s;">
-                <div style="font-size: 2.5em; margin-bottom: 15px;">👥</div>
-                <h3 style="color: #009688; margin: 0 0 10px 0; font-size: 1.3em;">{{ active_users_count }} Active Learners</h3>
-                <p style="margin: 0; line-height: 1.6; color: #555;">
-                    Join a community of students mastering LC Maths together.
-                </p>
+            <div
+                class="rounded-xl border border-indigo-deep/15 bg-gradient-to-b from-mist to-mist/80 p-6 text-center shadow-[0_12px_30px_rgba(0,0,0,0.08)] transition hover:-translate-y-1 hover:shadow-[0_18px_40px_rgba(148,72,176,0.2)]">
+                <div class="mb-4 text-3xl">👥</div>
+                <h3 class="mb-2 text-lg font-semibold text-midnight">{{ active_users_count }} Active Learners
+                </h3>
+                <p class="text-sm leading-relaxed text-indigo-deep">Join a community of students mastering LC Maths
+                    together.</p>
             </div>
         </div>
     </div>
 
     <!-- Topics Preview Section -->
-    <div style="background-color: #fafafa; padding: 30px; border-radius: 8px; margin-top: 40px;">
-        <h2 style="color: #004aad; text-align: center; margin-bottom: 25px;">Available Topics</h2>
+    <div
+        class="mb-12 rounded-2xl border border-indigo-deep/20 bg-mist px-8 py-10 shadow-[0_18px_45px_rgba(0,0,0,0.08)]">
+        <h2 class="mb-6 text-center text-xl font-semibold text-midnight">Available Topics</h2>
 
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
+        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
             {% for topic in topics_with_counts %}
-                {% cycle '#004aad' '#00994c' '#cc0000' '#ff9800' '#9c27b0' '#009688' '#3f51b5' '#e91e63' as border_color silent %}
-                <div style="background-color: white; padding: 15px; border-radius: 6px; border-left: 4px solid {{ border_color }}; text-align: center;">
-                    <strong>{{ topic.name }}</strong><br>
-                    <span style="color: #666; font-size: 0.9em;">{{ topic.question_count }} question{{ topic.question_count|pluralize }}</span>
-                </div>
+            {% cycle 'border-midnight' 'border-lime-glow' 'border-rose-pop' 'border-violet-royal' 'border-indigo-deep'
+            'border-midnight' 'border-lime-glow' 'border-violet-royal' as border_color silent %}
+            <div
+                class="rounded-lg border-l-4 {{ border_color }} bg-mist p-4 text-center shadow-[0_8px_18px_rgba(0,0,0,0.08)]">
+                <strong class="block text-midnight">
+                    {{ topic.name }}</strong>
+                <span class="text-sm text-indigo-deep/80">
+                    {{ topic.question_count }} question{{ topic.question_count|pluralize }}</span>
+            </div>
             {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- CTA -->
+    <div class="mb-12 text-center">
+        <div
+            class="mx-auto max-w-4xl rounded-2xl border border-indigo-deep/20 bg-gradient-02 px-8 py-10 shadow-[0_18px_45px_rgba(148,72,176,0.12)]">
+            {% if user.is_authenticated %}
+            <h2 class="mb-3 text-3xl font-semibold text-midnight">
+                <span class="mr-2 text-2xl">👋</span>Welcome back, {{ user.username }}!
+            </h2>
+            <p class="mb-6 text-lg text-indigo-deep">Ready to continue your learning journey?</p>
+            <a href="{% url 'select_topic' %}"
+                class="inline-block rounded-lg bg-gradient-03 px-10 py-4 text-lg font-semibold text-mist shadow-[0_18px_45px_rgba(148,72,176,0.35)] transition hover:brightness-110 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-midnight">
+                Continue Practicing →
+            </a>
+            <!-- Other Quick Links -->
+            <div class="mt-6 flex flex-wrap justify-center text-center gap-4">
+                <hr class="mb-4 border-t border-indigo-deep/20 w-full" />
+                <div>
+                    <h3 class="mb-3 text-md font-semibold text-midnight">Quick Links</h3>
+                </div>
+                <div class="flex flex-wrap justify-center gap-4">
+                    <a href="{% url 'exam_papers:paper_list' %}"
+                        class="rounded-lg border border-indigo-deep/50 bg-mist px-4 py-2 text-sm font-semibold text-midnight shadow-[0_8px_20px_rgba(0,0,0,0.08)] transition hover:-translate-y-0.5 hover:border-indigo-deep/40 hover:shadow-[0_12px_26px_rgba(148,72,176,0.18)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-deep">
+                        Practice Exam Papers
+                    </a>
+                    <a href="{% url 'notes_index' %}"
+                        class="rounded-lg border border-indigo-deep/50 bg-mist px-4 py-2 text-sm font-semibold text-midnight shadow-[0_8px_20px_rgba(0,0,0,0.08)] transition hover:-translate-y-0.5 hover:border-indigo-deep/40 hover:shadow-[0_12px_26px_rgba(148,72,176,0.18)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-deep">
+                        Study Resources
+                    </a>
+                    <a href="{% url 'quickkicks:quickkicks_index' %}"
+                        class="rounded-lg border border-indigo-deep/50 bg-mist px-4 py-2 text-sm font-semibold text-midnight shadow-[0_8px_20px_rgba(0,0,0,0.08)] transition hover:-translate-y-0.5 hover:border-indigo-deep/40 hover:shadow-[0_12px_26px_rgba(148,72,176,0.18)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-deep">
+                        QuickFlicks
+                    </a>
+                    <a href="{% url 'cheatsheets:cheatsheets_index' %}"
+                        class="rounded-lg border border-indigo-deep/50 bg-mist px-4 py-2 text-sm font-semibold text-midnight shadow-[0_8px_20px_rgba(0,0,0,0.08)] transition hover:-translate-y-0.5 hover:border-indigo-deep/40 hover:shadow-[0_12px_26px_rgba(148,72,176,0.18)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-deep">
+                        Cheatsheets
+                    </a>
+                    <a href="{% url 'stats_simulator:index' %}"
+                        class="rounded-lg border border-indigo-deep/50 bg-mist px-4 py-2 text-sm font-semibold text-midnight shadow-[0_8px_20px_rgba(0,0,0,0.08)] transition hover:-translate-y-0.5 hover:border-indigo-deep/40 hover:shadow-[0_12px_26px_rgba(148,72,176,0.18)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-deep">
+                        Stats Simulator
+                    </a>
+                </div>
+            </div>
+            {% else %}
+            <h2 class="mb-3 text-3xl font-semibold text-midnight">Ready to Master LC Maths?</h2>
+            <p class="mb-6 text-lg text-indigo-deep">Join thousands of students improving their maths skills with
+                AI-powered practice.</p>
+            <a href="{% url 'select_topic' %}"
+                class="inline-block rounded-lg bg-gradient-03 px-10 py-4 text-lg font-semibold text-mist shadow-[0_18px_45px_rgba(148,72,176,0.35)] transition hover:brightness-105 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-mist">
+                Start Learning →
+            </a>
+            {% endif %}
         </div>
     </div>
 

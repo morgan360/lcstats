@@ -1,0 +1,45 @@
+{
+  "name": "lcstats",
+  "version": "1.0.0",
+  "description": "LCAI Maths is an interactive web-based tutor for Leaving Certificate Honours Maths students.   It provides topic-based questions, AI hints, solutions, and summary notes — all powered by Django and OpenAI.",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "dependencies": {
+    "baseline-browser-mapping": "^2.9.8",
+    "browserslist": "^4.28.1",
+    "caniuse-lite": "^1.0.30001760",
+    "electron-to-chromium": "^1.5.267",
+    "escalade": "^3.2.0",
+    "fraction.js": "^5.3.4",
+    "nanoid": "^3.3.11",
+    "node-releases": "^2.0.27",
+    "picocolors": "^1.1.1",
+    "postcss-value-parser": "^4.2.0",
+    "source-map-js": "^1.2.1",
+    "update-browserslist-db": "^1.2.3"
+  },
+  "devDependencies": {
+    "autoprefixer": "^10.4.19",
+    "postcss": "^8.4.47",
+    "tailwindcss": "^3.4.13"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build:css": "tailwindcss -i ./static/src/input.css -o ./static/css/tailwind.css --minify",
+    "watch:css": "tailwindcss -i ./static/src/input.css -o ./static/css/tailwind.css --watch"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/morgan360/lcstats.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/morgan360/lcstats/issues"
+  },
+  "homepage": "https://github.com/morgan360/lcstats#readme"
+}
