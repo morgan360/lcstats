@@ -7,10 +7,12 @@
     <div aria-hidden="true"
         class="pointer-events-none absolute -top-24 left-1/2 h-72 w-[42rem] -translate-x-1/2 rounded-full blur-3xl opacity-60 bg-rose-pop/40">
     </div>
-    <div class="relative mx-auto px-6 py-20 text-center">
+    <div class="relative mx-auto px-6 py-12 text-center">
         {% load static %}
-        <img src="{% static 'images/numscoil_final.svg' %}" alt="NumScoil"
-            class="mx-auto mb-8 h-auto w-full max-w-xl rounded-2xl shadow-[0_22px_60px_rgba(148,72,176,0.35)]" />
+        <div class="mx-auto flex items-center justify-center font-semibold text-mist transition p-2 bg-mist/20 rounded-2xl w-fit mb-4">
+            <img src="{% static 'images/numscoil_icon_only.svg' %}" alt="NumScoil" class="h-16 w-16 lg:h-40 lg:w-40">
+            <span class="text-3xl lg:text-7xl sm:inline mr-10">NumScoil</span>
+        </div>
         <p class="mx-auto max-w-3xl text-lg font-semibold leading-relaxed text-mist/90">
             Master Leaving Certificate Honours Maths with AI-powered interactive practice questions, instant
             feedback, and personalized learning.
