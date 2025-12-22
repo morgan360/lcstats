@@ -1,5 +1,5 @@
 {% extends "_base.html" %}
-{% block title %}About | LCAI Maths{% endblock %}
+{% block title %}About | NumScoil {% endblock %}
 
 {% block content %}
 <div style="max-width: 900px; margin: 40px auto; padding: 20px;">
@@ -7,7 +7,7 @@
     <!-- Header Section -->
     <div style="text-align: center; margin-bottom: 40px;">
         <h1 style="color: #004aad; font-size: 2.5em; margin-bottom: 15px;">
-            About LCAI Maths
+            About NumScoil
         </h1>
         <p style="font-size: 1.2em; color: #555; max-width: 700px; margin: 0 auto;">
             Empowering Leaving Certificate students with AI-powered mathematics practice and personalized learning.
@@ -18,7 +18,7 @@
     <div style="background-color: #f0f8ff; border-left: 4px solid #004aad; padding: 25px; margin-bottom: 30px; border-radius: 4px;">
         <h2 style="color: #004aad; margin: 0 0 15px 0;">Our Mission</h2>
         <p style="line-height: 1.8; margin: 0 0 10px 0;">
-            LCAI Maths was created to help Leaving Certificate students master Honours Mathematics through
+            NumScoil was created to help Leaving Certificate students master Honours Mathematics through
             interactive, AI-powered practice. We believe that every student deserves access to high-quality,
             personalized learning tools that adapt to their individual needs.
         </p>
@@ -77,7 +77,7 @@
     <div style="background-color: #fff3e0; border-left: 4px solid #ff9800; padding: 25px; margin-bottom: 30px; border-radius: 4px;">
         <h2 style="color: #ff9800; margin: 0 0 15px 0;">Powered by Advanced Technology</h2>
         <p style="line-height: 1.8; margin: 0;">
-            LCAI Maths leverages cutting-edge artificial intelligence and natural language processing to understand
+            NumScoil leverages cutting-edge artificial intelligence and natural language processing to understand
             mathematical expressions, evaluate student responses, and provide meaningful feedback. Our platform uses
             KaTeX for beautiful mathematical rendering and integrates with OpenAI's advanced models to deliver
             intelligent, context-aware assistance.
@@ -102,7 +102,7 @@
     <div style="background-color: #e8f5e9; border: 2px solid #00994c; border-radius: 8px; padding: 30px; text-align: center;">
         <h2 style="color: #00994c; margin: 0 0 15px 0;">Ready to Get Started?</h2>
         <p style="margin-bottom: 20px; font-size: 1.1em;">
-            Join LCAI Maths today and start mastering Leaving Certificate Honours Mathematics.
+            Join NumScoil today and start mastering Leaving Certificate Honours Mathematics.
         </p>
         {% if user.is_authenticated %}
             <a href="{% url 'dashboard' %}"
