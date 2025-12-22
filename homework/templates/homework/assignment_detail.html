@@ -4,128 +4,122 @@
 {% block title %}{{ assignment.title }} - LCAI Maths{% endblock %}
 
 {% block content %}
-<div class="container" style="max-width: 1000px; margin: 2rem auto; padding: 0 1rem;">
+<div class="mx-auto max-w-4xl px-4 py-8 sm:px-6 lg:px-8">
     <!-- Header -->
-    <div style="margin-bottom: 2rem;">
-        <a href="{% url 'homework:student_dashboard' %}" style="color: #3498db; text-decoration: none; font-size: 0.95rem;">
+    <div class="mb-8">
+        <a href="{% url 'homework:student_dashboard' %}"
+           class="inline-flex items-center gap-2 text-sm font-semibold text-violet-royal transition hover:text-indigo-deep focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-royal">
             ← Back to Homework
         </a>
-        <h1 style="color: #2c3e50; margin: 1rem 0;">{{ assignment.title }}</h1>
+        <h1 class="mt-4 text-3xl font-semibold text-mist">{{ assignment.title }}</h1>
 
-        <div style="display: flex; gap: 2rem; flex-wrap: wrap; margin-top: 1rem;">
+        <div class="mt-4 flex flex-wrap gap-4 text-sm text-indigo-deep/80">
             <div>
-                <span style="color: #7f8c8d; font-size: 0.9rem;">Topic:</span>
-                <strong style="color: #2c3e50;">{{ assignment.topic.name }}</strong>
+                <span class="font-semibold text-mist/80 mr-1">Topic:</span>
+                <span class="font-bold text-mist">{{ assignment.topic.name }}</span>
             </div>
             <div>
-                <span style="color: #7f8c8d; font-size: 0.9rem;">Due:</span>
-                <strong style="color: {% if is_overdue %}#e74c3c{% else %}#2c3e50{% endif %};">
+                <span class="font-semibold text-mist/80 mr-1">Due:</span>
+                <span class="{% if is_overdue %}text-rose-pop{% else %}text-mist{% endif %}">
                     {{ assignment.due_date|date:"M d, Y g:i A" }}
-                </strong>
+                </span>
                 {% if is_overdue %}
-                    <span style="color: #e74c3c; font-weight: bold; margin-left: 0.5rem;">(OVERDUE)</span>
+                <span class="ml-2 rounded-full bg-rose-pop px-2 py-1 text-xs font-semibold text-mist">OVERDUE</span>
                 {% endif %}
             </div>
         </div>
     </div>
 
     {% if assignment.description %}
-    <div style="background: #f8f9fa; padding: 1.5rem; border-radius: 8px; margin-bottom: 2rem; border-left: 4px solid #3498db;">
-        <h3 style="margin: 0 0 0.5rem 0; color: #2c3e50; font-size: 1.1rem;">Instructions</h3>
-        <p style="margin: 0; color: #555;">{{ assignment.description }}</p>
+    <div class="mb-8 rounded-2xl border border-indigo-deep/10 bg-mist px-5 py-4 shadow-sm">
+        <h3 class="mb-2 text-lg font-semibold text-midnight">Instructions</h3>
+        <p class="text-sm leading-relaxed text-indigo-deep/90">{{ assignment.description }}</p>
     </div>
     {% endif %}
 
     <!-- How to Complete -->
-    <div style="background: #e8f5e9; padding: 1rem; border-radius: 8px; margin-bottom: 2rem; border-left: 4px solid #2ecc71;">
-        <p style="margin: 0; color: #2c3e50; font-size: 0.9rem;">
-            <strong>💡 How to complete:</strong> Click the links below to work on each task. Tasks will be automatically marked as complete when you:
+    <div class="mb-8 rounded-2xl border-l-4 border-lime-glow bg-lime-glow/15 px-5 py-4 shadow-sm">
+        <p class="text-md font-semibold text-mist">
+            💡 How to complete:
+            <span class="font-normal text-mist/90">Click the links below to work on each task. Tasks will be automatically marked as complete when you:</span>
         </p>
-        <ul style="margin: 0.5rem 0 0 1.5rem; color: #555; font-size: 0.9rem;">
+        <ul class="mt-2 list-disc space-y-1 pl-5 text-sm text-mist/90">
             <li>Attempt questions in a Section</li>
             <li>Attempt an Exam Question</li>
             <li>Watch a QuickKick video</li>
         </ul>
-        <p style="margin: 0.5rem 0 0 0; color: #2c3e50; font-size: 0.9rem;">
+        <p class="mt-2 text-sm text-mist/90">
             Return to this page to see updated completion. You can also manually check off tasks. When all tasks are complete, submit your homework.
         </p>
     </div>
 
     <!-- Progress Summary -->
-    <div style="background: white; padding: 1.5rem; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); margin-bottom: 2rem;">
-        <h3 style="margin: 0 0 1rem 0; color: #2c3e50;">Your Progress</h3>
+    <div class="mb-8 rounded-2xl border border-indigo-deep/10 bg-white/90 p-5 shadow-[0_12px_28px_rgba(0,0,0,0.08)]">
+        <h3 class="mb-4 text-lg font-semibold text-midnight">Your Progress</h3>
 
-        <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
-            <span style="font-size: 0.95rem; color: #7f8c8d;">Completed Tasks</span>
-            <span style="font-weight: bold; color: #2c3e50; font-size: 1.1rem;">
+        <div class="mb-2 flex items-center justify-between text-sm text-indigo-deep/80">
+            <span>Completed Tasks</span>
+            <span class="text-base font-semibold text-midnight">
                 {{ completed_tasks }} / {{ total_tasks }}
             </span>
         </div>
 
-        <div style="background: #ecf0f1; height: 24px; border-radius: 12px; overflow: hidden; margin-bottom: 0.5rem;">
-            <div style="background: linear-gradient(90deg, #3498db, #2ecc71); height: 100%; width: {{ completion_percentage }}%; transition: width 0.5s ease;"></div>
+        <div class="h-5 w-full overflow-hidden rounded-full bg-indigo-deep/10">
+            <div class="h-full rounded-full bg-gradient-to-r from-violet-royal to-lime-glow transition-all" style="width: {{ completion_percentage }}%;"></div>
         </div>
-
-        <p style="margin: 0; text-align: right; font-size: 0.9rem; color: #7f8c8d;">
+        <p class="mt-1 text-right text-xs font-semibold text-indigo-deep/70">
             {{ completion_percentage }}% complete
         </p>
     </div>
 
     <!-- Task List -->
-    <div style="background: white; padding: 1.5rem; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); margin-bottom: 2rem;">
-        <h3 style="margin: 0 0 1.5rem 0; color: #2c3e50;">Tasks</h3>
+    <div class="mb-10 rounded-2xl border border-indigo-deep/10 bg-white/90 p-5 shadow-[0_12px_28px_rgba(0,0,0,0.08)]">
+        <h3 class="mb-4 text-lg font-semibold text-midnight">Tasks</h3>
 
-        <div style="display: grid; gap: 1rem;">
+        <div class="space-y-3">
             {% for item in tasks_with_progress %}
-            <div class="task-item" style="border: 1px solid #ddd; border-radius: 8px; padding: 1rem; {% if item.progress.is_completed %}background: #f0f9ff;{% endif %}">
-                <div style="display: flex; align-items: start; gap: 1rem;">
+            <div class="rounded-xl border border-indigo-deep/10 bg-mist/60 p-4 shadow-sm {% if item.progress.is_completed %}ring-2 ring-lime-glow/60{% endif %}">
+                <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                     <!-- Checkbox -->
-                    <div style="flex-shrink: 0; padding-top: 0.2rem;">
+                    <div class="flex items-start gap-3">
                         <input type="checkbox"
-                               class="task-checkbox"
+                               class="task-checkbox h-6 w-6 cursor-pointer rounded border-indigo-deep/30 text-violet-royal focus:ring-violet-royal"
                                data-progress-id="{{ item.progress.id }}"
-                               {% if item.progress.is_completed %}checked{% endif %}
-                               style="width: 24px; height: 24px; cursor: pointer;">
-                    </div>
+                               {% if item.progress.is_completed %}checked{% endif %}>
 
-                    <!-- Task Content -->
-                    <div style="flex-grow: 1;">
-                        <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 0.5rem;">
-                            <div>
-                                <h4 style="margin: 0 0 0.3rem 0; color: #2c3e50; {% if item.progress.is_completed %}text-decoration: line-through; color: #7f8c8d;{% endif %}">
+                        <!-- Task Content -->
+                        <div>
+                            <div class="flex flex-wrap items-center gap-3">
+                                <h4 class="text-base font-semibold {% if item.progress.is_completed %}text-indigo-deep/50 line-through{% else %}text-midnight{% endif %}">
                                     {{ item.task.get_content_display }}
                                 </h4>
                                 {% if not item.task.is_required %}
-                                    <span style="background: #f39c12; color: white; padding: 0.2rem 0.5rem; border-radius: 3px; font-size: 0.75rem; font-weight: bold;">
-                                        OPTIONAL
-                                    </span>
+                                <span class="rounded-full bg-amber-400 px-2 py-1 text-[11px] font-bold text-midnight">OPTIONAL</span>
+                                {% endif %}
+                                {% if item.progress.is_completed %}
+                                <span class="text-xs font-semibold text-lime-glow/80">
+                                    ✓ Completed {{ item.progress.completed_at|date:"M d" }}
+                                </span>
                                 {% endif %}
                             </div>
 
-                            {% if item.progress.is_completed %}
-                                <span style="color: #2ecc71; font-size: 0.85rem;">
-                                    ✓ Completed {{ item.progress.completed_at|date:"M d" }}
-                                </span>
+                            {% if item.task.instructions %}
+                            <p class="mt-2 text-sm italic text-indigo-deep/80">
+                                {{ item.task.instructions }}
+                            </p>
                             {% endif %}
-                        </div>
 
-                        {% if item.task.instructions %}
-                        <p style="margin: 0.5rem 0; color: #7f8c8d; font-size: 0.9rem; font-style: italic;">
-                            {{ item.task.instructions }}
-                        </p>
-                        {% endif %}
-
-                        <a href="{{ item.content_url }}"
-                           class="task-link"
-                           style="display: inline-block; margin-top: 0.5rem; background: #3498db; color: white; padding: 0.5rem 1rem; border-radius: 5px; text-decoration: none; font-size: 0.9rem; font-weight: bold;">
-                            {% if item.task.task_type == 'section' %}
+                            <a href="{{ item.content_url }}"
+                               class="mt-3 inline-flex items-center gap-2 rounded-lg bg-gradient-03 px-4 py-2 text-sm font-semibold text-mist shadow-[0_12px_24px_rgba(148,72,176,0.28)] transition hover:-translate-y-0.5 hover:shadow-[0_16px_30px_rgba(148,72,176,0.34)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-royal">
+                                {% if item.task.task_type == 'section' %}
                                 Start Section →
-                            {% elif item.task.task_type == 'exam_question' %}
+                                {% elif item.task.task_type == 'exam_question' %}
                                 Practice Question →
-                            {% elif item.task.task_type == 'quickkick' %}
+                                {% elif item.task.task_type == 'quickkick' %}
                                 Watch Video →
-                            {% endif %}
-                        </a>
+                                {% endif %}
+                            </a>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -135,30 +129,30 @@
 
     <!-- Submit Button -->
     {% if can_submit %}
-    <div style="background: #d1f2eb; padding: 1.5rem; border-radius: 8px; border: 2px solid #2ecc71; text-align: center;">
-        <p style="margin: 0 0 1rem 0; color: #2c3e50; font-size: 1.1rem; font-weight: bold;">
+    <div class="rounded-2xl border border-lime-glow/50 bg-lime-glow/20 px-6 py-5 text-center shadow-[0_12px_28px_rgba(0,0,0,0.08)]">
+        <p class="mb-4 text-lg font-semibold text-mist">
             🎉 All tasks completed! Ready to submit?
         </p>
         <form method="post" action="{% url 'homework:submit_homework' assignment.id %}">
             {% csrf_token %}
             <button type="submit"
-                    style="background: #2ecc71; color: white; border: none; padding: 0.8rem 2rem; border-radius: 5px; font-size: 1rem; font-weight: bold; cursor: pointer;">
+                    class="inline-flex items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-lime-glow to-violet-royal px-6 py-3 text-sm font-semibold text-midnight shadow-[0_12px_24px_rgba(148,72,176,0.28)] transition hover:-translate-y-0.5 hover:shadow-[0_16px_30px_rgba(148,72,176,0.34)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-royal">
                 Submit Homework
             </button>
         </form>
     </div>
     {% elif submission %}
-    <div style="background: #d4edda; padding: 1.5rem; border-radius: 8px; border: 2px solid #2ecc71; text-align: center;">
-        <p style="margin: 0; color: #155724; font-size: 1.1rem; font-weight: bold;">
+    <div class="rounded-2xl border border-lime-glow/50 bg-mist px-6 py-5 shadow-[0_12px_28px_rgba(0,0,0,0.08)]">
+        <p class="text-lg font-semibold text-midnight">
             ✓ Homework submitted on {{ submission.submitted_at|date:"M d, Y g:i A" }}
             {% if submission.is_late %}
-                <span style="color: #e74c3c;">(Late)</span>
+            <span class="text-rose-pop">(Late)</span>
             {% endif %}
         </p>
         {% if submission.teacher_comment %}
-        <div style="margin-top: 1rem; padding: 1rem; background: white; border-radius: 5px; text-align: left;">
-            <strong style="color: #2c3e50;">Teacher Feedback:</strong>
-            <p style="margin: 0.5rem 0 0 0; color: #555;">{{ submission.teacher_comment }}</p>
+        <div class="mt-4 rounded-xl border border-indigo-deep/10 bg-white/90 px-4 py-3 text-left shadow-sm">
+            <strong class="text-midnight">Teacher Feedback:</strong>
+            <p class="mt-1 text-sm text-indigo-deep/90">{{ submission.teacher_comment }}</p>
         </div>
         {% endif %}
     </div>
@@ -166,49 +160,34 @@
 </div>
 
 <script>
-// Handle checkbox toggling
-document.querySelectorAll('.task-checkbox').forEach(checkbox => {
-    checkbox.addEventListener('change', function() {
-        const progressId = this.dataset.progressId;
-        const isChecked = this.checked;
+    // Handle checkbox toggling
+    document.querySelectorAll('.task-checkbox').forEach(checkbox => {
+        checkbox.addEventListener('change', function () {
+            const progressId = this.dataset.progressId;
+            const isChecked = this.checked;
 
-        fetch(`/homework/toggle-task/${progressId}/`, {
-            method: 'POST',
-            headers: {
-                'X-CSRFToken': '{{ csrf_token }}',
-                'Content-Type': 'application/json',
-            },
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.status === 'complete') {
-                console.log('Task marked as complete');
-                // Reload page to update progress
-                location.reload();
-            } else {
-                console.log('Task marked as incomplete');
-                location.reload();
-            }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            // Revert checkbox on error
-            this.checked = !isChecked;
-            alert('Failed to update task. Please try again.');
+            fetch(`/homework/toggle-task/${progressId}/`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': '{{ csrf_token }}',
+                    'Content-Type': 'application/json',
+                },
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'complete') {
+                        location.reload();
+                    } else {
+                        location.reload();
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    // Revert checkbox on error
+                    this.checked = !isChecked;
+                    alert('Failed to update task. Please try again.');
+                });
         });
     });
-});
-
-.task-link:hover {
-    background: #2980b9 !important;
-}
-
-.task-item {
-    transition: all 0.3s ease;
-}
-
-.task-item:hover {
-    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
-}
 </script>
 {% endblock %}
