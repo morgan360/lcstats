@@ -4,34 +4,40 @@
 {% block title %}Statistical Sampling Simulator - LCAI Maths{% endblock %}
 
 {% block content %}
-<link rel="stylesheet" href="{% static 'stats_simulator/styles.css' %}?v=2.5">
-
-<div class="simulator-container">
-    <div class="header-section">
-        <h1>Statistical Sampling Simulator</h1>
-        <p class="subtitle">Explore the Central Limit Theorem through interactive visualization</p>
-
-        <button class="help-button" id="helpButton">
-            <span class="help-icon">?</span> Help
+<div class="max-w-8xl px-4 py-8 sm:px-6 lg:px-8">
+    <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between mb-4">
+        <div>
+            <h1 class="text-3xl font-semibold text-mist items-center">Statistical Sampling Simulator</h1>
+            <p class="mt-2 text-lg text-mist/80">Explore the Central Limit Theorem through interactive visualization.
+            </p>
+        </div>
+        <button id="helpButton"
+            class="inline-flex items-center gap-2 self-start rounded-lg bg-gradient-to-r from-rose-pop to-violet-royal px-4 py-2 text-sm font-semibold text-mist shadow-[0_12px_24px_rgba(148,72,176,0.28)] transition hover:-translate-y-0.5 hover:shadow-[0_16px_30px_rgba(148,72,176,0.34)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-royal">
+            <span
+                class="flex h-6 w-6 items-center justify-center rounded-full bg-white text-violet-royal font-semibold">?</span>
+            Help
         </button>
     </div>
 
     <!-- Control Panel -->
-    <div class="control-panel">
-        <div class="control-group">
-            <div class="control-item">
-                <label for="meanInput">Population Mean (μ):</label>
-                <input type="number" id="meanInput" value="16" step="1" min="-100" max="100">
+    <div class="mt-6 rounded-2xl border border-indigo-deep/10 bg-white/90 p-6 shadow-[0_12px_28px_rgba(0,0,0,0.08)]">
+        <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <div class="flex flex-col gap-2">
+                <label for="meanInput" class="text-sm font-semibold text-midnight">Population Mean (μ)</label>
+                <input type="number" id="meanInput" value="16" step="1" min="-100" max="100"
+                    class="w-full rounded-lg border border-indigo-deep/15 bg-white px-3 py-2 text-midnight shadow-inner focus:border-indigo-deep/50 focus:outline-none focus:ring-2 focus:ring-indigo-deep/20">
             </div>
 
-            <div class="control-item">
-                <label for="sdInput">Standard Deviation (σ):</label>
-                <input type="number" id="sdInput" value="5" step="0.5" min="0.1" max="50">
+            <div class="flex flex-col gap-2">
+                <label for="sdInput" class="text-sm font-semibold text-midnight">Standard Deviation (σ)</label>
+                <input type="number" id="sdInput" value="5" step="0.5" min="0.1" max="50"
+                    class="w-full rounded-lg border border-indigo-deep/15 bg-white px-3 py-2 text-midnight shadow-inner focus:border-indigo-deep/50 focus:outline-none focus:ring-2 focus:ring-indigo-deep/20">
             </div>
 
-            <div class="control-item">
-                <label for="sampleSize">Sample Size (n):</label>
-                <select id="sampleSize">
+            <div class="flex flex-col gap-2">
+                <label for="sampleSize" class="text-sm font-semibold text-midnight">Sample Size (n)</label>
+                <select id="sampleSize"
+                    class="w-full rounded-lg border border-indigo-deep/15 bg-white px-3 py-2 text-midnight shadow-inner focus:border-indigo-deep/50 focus:outline-none focus:ring-2 focus:ring-indigo-deep/20">
                     <option value="1">Single Sample (n=1)</option>
                     <option value="5" selected>5 Samples</option>
                     <option value="10">10 Samples</option>
@@ -42,110 +48,142 @@
             </div>
         </div>
 
-        <div class="button-group">
-            <button class="btn btn-primary" id="generateSample">Generate Sample</button>
-            <button class="btn btn-secondary" id="clearAll">Clear All</button>
-            <button class="btn btn-success" id="playAnimation">▶ Play Animation</button>
-            <button class="btn btn-warning" id="pauseAnimation" style="display: none;">⏸ Pause</button>
+        <div class="mt-5 flex flex-wrap gap-3">
+            <button
+                class="inline-flex items-center justify-center gap-2 rounded-lg bg-gradient-01 px-4 py-2 text-sm font-semibold text-midnight shadow-[0_12px_24px_rgba(148,72,176,0.28)] transition hover:-translate-y-0.5 hover:shadow-[0_16px_30px_rgba(148,72,176,0.34)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-royal"
+                id="generateSample">
+                Generate Sample
+            </button>
+            <button
+                class="inline-flex items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-rose-pop to-violet-royal px-4 py-2 text-sm font-semibold text-mist shadow-[0_12px_24px_rgba(148,72,176,0.28)] transition hover:-translate-y-0.5 hover:shadow-[0_16px_30px_rgba(148,72,176,0.34)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-royal"
+                id="clearAll">
+                Clear All
+            </button>
+            <button
+                class="inline-flex items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-indigo-deep to-midnight px-4 py-2 text-sm font-semibold text-mist shadow-[0_12px_24px_rgba(0,0,0,0.2)] transition hover:-translate-y-0.5 hover:shadow-[0_16px_30px_rgba(0,0,0,0.26)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-deep"
+                id="playAnimation">
+                ▶ Play Animation
+            </button>
+            <button
+                class="hidden inline-flex items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-midnight to-indigo-deep px-4 py-2 text-sm font-semibold text-mist shadow-[0_12px_24px_rgba(0,0,0,0.2)] transition hover:-translate-y-0.5 hover:shadow-[0_16px_30px_rgba(0,0,0,0.26)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-deep"
+                id="pauseAnimation">
+                ⏸ Pause
+            </button>
         </div>
 
-        <div class="animation-controls" id="animationControls" style="display: none;">
-            <label for="animationSpeed">Animation Speed:</label>
-            <input type="range" id="animationSpeed" min="1" max="10" value="3" step="1">
-            <span id="speedDisplay">3x</span>
+        <div id="animationControls"
+            class="mt-4 hidden items-center gap-3 rounded-xl border border-indigo-deep/10 bg-mist px-4 py-3 text-sm text-midnight">
+            <label for="animationSpeed" class="font-semibold text-midnight">Animation Speed:</label>
+            <input type="range" id="animationSpeed" min="1" max="10" value="3" step="1"
+                class="h-2 w-full max-w-xs cursor-pointer accent-violet-royal">
+            <span id="speedDisplay" class="font-semibold text-indigo-deep">3x</span>
         </div>
     </div>
 
     <!-- Statistics Display -->
-    <div class="stats-display" id="statsDisplay">
-        <h3>Current Statistics</h3>
-        <div class="stats-grid">
-            <div class="stat-item">
-                <span class="stat-label">Samples Taken:</span>
-                <span class="stat-value" id="samplesCount">0</span>
+    <div class="mt-6 rounded-2xl border border-indigo-deep/10 bg-white/90 p-6 shadow-[0_12px_28px_rgba(0,0,0,0.08)]"
+        id="statsDisplay">
+        <h3 class="mb-4 text-xl font-semibold text-midnight">Current Statistics</h3>
+        <div class="grid gap-10 sm:grid-cols-2 lg:grid-cols-4">
+            <div
+                class="flex items-center justify-between rounded-lg border-l-4 border-indigo-deep/60 bg-mist/70 px-4 py-3">
+                <span class="text-sm font-semibold text-indigo-deep/80">Samples Taken</span>
+                <span class="text-xl font-bold text-midnight" id="samplesCount">0</span>
             </div>
-            <div class="stat-item">
-                <span class="stat-label">Sample Mean:</span>
-                <span class="stat-value" id="sampleMean">—</span>
+            <div
+                class="flex items-center justify-between rounded-lg border-l-4 border-indigo-deep/60 bg-mist/70 px-4 py-3">
+                <span class="text-sm font-semibold text-indigo-deep/80">Sample Mean</span>
+                <span class="text-xl font-bold text-midnight" id="sampleMean">—</span>
             </div>
-            <div class="stat-item">
-                <span class="stat-label">Sample SD:</span>
-                <span class="stat-value" id="sampleSd">—</span>
+            <div
+                class="flex items-center justify-between rounded-lg border-l-4 border-indigo-deep/60 bg-mist/70 px-4 py-3">
+                <span class="text-sm font-semibold text-indigo-deep/80">Sample SD</span>
+                <span class="text-xl font-bold text-midnight" id="sampleSd">—</span>
             </div>
-            <div class="stat-item">
-                <span class="stat-label">SE of Mean:</span>
-                <span class="stat-value" id="standardError">—</span>
+            <div
+                class="flex items-center justify-between rounded-lg border-l-4 border-indigo-deep/60 bg-mist/70 px-4 py-3">
+                <span class="text-sm font-semibold text-indigo-deep/80">SE of Mean</span>
+                <span class="text-xl font-bold text-midnight" id="standardError">—</span>
             </div>
         </div>
     </div>
 
     <!-- Graph 1: Parent Population -->
-    <div class="graph-section">
-        <div class="graph-header">
-            <h2>Parent Population Distribution</h2>
-            <p class="graph-description">
-                Normal distribution with mean μ = <span id="displayMean">16</span>
-                and standard deviation σ = <span id="displaySd">5</span>
-                <span class="info-tooltip" title="This is the population from which we draw samples. In a normal distribution, about 68% of values fall within 1σ of the mean, 95% within 2σ, and 99.7% within 3σ.">ℹ️</span>
+    <div class="mt-6 rounded-2xl border border-indigo-deep/10 bg-white/90 p-6 shadow-[0_12px_28px_rgba(0,0,0,0.08)]">
+        <div class="mb-4 flex flex-col gap-2">
+            <h2 class="text-xl font-semibold text-midnight">Parent Population Distribution</h2>
+            <p class="text-sm text-indigo-deep/80">
+                Normal distribution with mean μ = <span id="displayMean" class="font-semibold text-midnight">16</span>
+                and standard deviation σ = <span id="displaySd" class="font-semibold text-midnight">5</span>
+                <span class="ml-2 text-indigo-deep"
+                    title="This is the population from which we draw samples. In a normal distribution, about 68% of values fall within 1σ of the mean, 95% within 2σ, and 99.7% within 3σ.">ℹ️</span>
             </p>
         </div>
-        <div id="populationPlot" class="plot-container"></div>
+        <div id="populationPlot" class="h-[340px] w-full rounded-xl bg-mist"></div>
     </div>
 
     <!-- Graph 2: Sample Data -->
-    <div class="graph-section">
-        <div class="graph-header">
-            <h2>Sample Data</h2>
-            <p class="graph-description">
+    <div class="mt-6 rounded-2xl border border-indigo-deep/10 bg-white/90 p-6 shadow-[0_12px_28px_rgba(0,0,0,0.08)]">
+        <div class="mb-4 flex flex-col gap-2">
+            <h2 class="text-xl font-semibold text-midnight">Sample Data</h2>
+            <p class="text-sm text-indigo-deep/80">
                 Individual values drawn from the parent population
-                <span class="info-tooltip" title="Each point represents a randomly drawn value from the population distribution. Watch how they vary around the population mean!">ℹ️</span>
+                <span class="ml-2 text-indigo-deep"
+                    title="Each point represents a randomly drawn value from the population distribution. Watch how they vary around the population mean!">ℹ️</span>
             </p>
         </div>
-        <div id="samplePlot" class="plot-container"></div>
+        <div id="samplePlot" class="h-[340px] w-full rounded-xl bg-mist"></div>
     </div>
 
     <!-- Graph 3: Distribution of Sample Means -->
-    <div class="graph-section">
-        <div class="graph-header">
-            <h2>Distribution of Sample Means</h2>
-            <p class="graph-description">
+    <div class="mt-6 rounded-2xl border border-indigo-deep/10 bg-white/90 p-6 shadow-[0_12px_28px_rgba(0,0,0,0.08)]">
+        <div class="mb-4 flex flex-col gap-2">
+            <h2 class="text-xl font-semibold text-midnight">Distribution of Sample Means</h2>
+            <p class="text-sm text-indigo-deep/80">
                 Histogram of means from repeated sampling (Central Limit Theorem)
-                <span class="info-tooltip" title="The Central Limit Theorem states that the distribution of sample means approaches a normal distribution as sample size increases, regardless of the population distribution. The standard error = σ/√n.">ℹ️</span>
+                <span class="ml-2 text-indigo-deep"
+                    title="The Central Limit Theorem states that the distribution of sample means approaches a normal distribution as sample size increases, regardless of the population distribution. The standard error = σ/√n.">ℹ️</span>
             </p>
         </div>
-        <div id="samplingDistributionPlot" class="plot-container"></div>
-        <div class="clt-info" id="cltInfo" style="display: none;">
-            <h4 style="margin-top: 0; color: #27AE60;">🎯 Central Limit Theorem in Action!</h4>
+        <div id="samplingDistributionPlot" class="h-[340px] w-full rounded-xl bg-mist"></div>
 
-            <div class="clt-stats-grid">
-                <div class="clt-stat-box highlight-blue">
-                    <div class="clt-label">Population Mean (μ):</div>
-                    <div class="clt-value-large"><span id="populationMean">—</span></div>
+        <div id="cltInfo" class="mt-5 hidden rounded-xl border-l-4 border-lime-glow bg-lime-glow/20 px-5 py-4">
+            <h4 class="mb-4 text-lg font-semibold text-midnight">🎯 Central Limit Theorem in Action!</h4>
+
+            <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                <div class="rounded-lg border border-indigo-deep/10 bg-white px-4 py-3 shadow-sm">
+                    <div class="text-xs font-semibold uppercase tracking-wide text-indigo-deep/70">Population Mean (μ)
+                    </div>
+                    <div class="text-2xl font-bold text-indigo-deep" id="populationMean">—</div>
                 </div>
 
-                <div class="clt-stat-box">
-                    <div class="clt-label">Observed Mean of Sample Means:</div>
-                    <div class="clt-value"><span id="observedMean">—</span></div>
+                <div class="rounded-lg border border-indigo-deep/10 bg-white px-4 py-3 shadow-sm">
+                    <div class="text-xs font-semibold uppercase tracking-wide text-indigo-deep/70">Observed Mean of
+                        Sample Means</div>
+                    <div class="text-xl font-bold text-midnight" id="observedMean">—</div>
                 </div>
 
-                <div class="clt-stat-box">
-                    <div class="clt-label">Observed SD of Sample Means:</div>
-                    <div class="clt-value"><span id="observedSD">—</span></div>
+                <div class="rounded-lg border border-indigo-deep/10 bg-white px-4 py-3 shadow-sm">
+                    <div class="text-xs font-semibold uppercase tracking-wide text-indigo-deep/70">Observed SD of Sample
+                        Means</div>
+                    <div class="text-xl font-bold text-midnight" id="observedSD">—</div>
                 </div>
 
-                <div class="clt-stat-box highlight">
-                    <div class="clt-label">Standard Error Formula:</div>
-                    <div class="clt-formula">SE = σ/√n</div>
+                <div class="rounded-lg border border-rose-pop/30 bg-rose-pop/10 px-4 py-3 shadow-sm">
+                    <div class="text-xs font-semibold uppercase tracking-wide text-indigo-deep/70">Standard Error
+                        Formula</div>
+                    <div class="text-2xl font-bold text-rose-pop">SE = σ/√n</div>
                 </div>
 
-                <div class="clt-stat-box">
-                    <div class="clt-label">SE Calculation:</div>
-                    <div class="clt-calculation"><span id="seFormula">—</span> = <span id="seCalculation">—</span></div>
+                <div class="rounded-lg border border-indigo-deep/10 bg-white px-4 py-3 shadow-sm">
+                    <div class="text-xs font-semibold uppercase tracking-wide text-indigo-deep/70">SE Calculation</div>
+                    <div class="font-mono text-lg font-semibold text-midnight"><span id="seFormula">—</span> = <span
+                            id="seCalculation">—</span></div>
                 </div>
             </div>
 
-            <p style="margin-top: 15px; font-size: 0.95rem;">
-                <strong>Notice:</strong> As you take more samples:
+            <p class="mt-3 text-sm leading-relaxed text-indigo-deep/90">
+                <strong class="text-midnight">Notice:</strong> As you take more samples:
                 <br>• The observed mean converges to μ (population mean)
                 <br>• The observed SD converges to SE (standard error)
                 <br>This demonstrates the Central Limit Theorem!
@@ -155,16 +193,20 @@
 </div>
 
 <!-- Help Modal -->
-<div id="helpModal" class="modal">
-    <div class="modal-content">
-        <span class="close">&times;</span>
-        <h2>How to Use the Statistical Sampling Simulator</h2>
+<div id="helpModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/60 p-4">
+    <div
+        class="modal-content relative w-full max-w-3xl rounded-2xl bg-white px-6 py-6 shadow-[0_18px_45px_rgba(0,0,0,0.2)]">
+        <button
+            class="close absolute right-4 top-3 text-2xl font-bold text-indigo-deep/70 transition hover:text-midnight"
+            aria-label="Close help">&times;</button>
+        <h2 class="mb-4 text-2xl font-semibold text-midnight">How to Use the Statistical Sampling Simulator</h2>
 
-        <h3>📊 What This Tool Shows</h3>
-        <p>This simulator demonstrates the <strong>Central Limit Theorem (CLT)</strong>, one of the most important concepts in statistics.</p>
+        <h3 class="mt-4 text-lg font-semibold text-indigo-deep">📊 What This Tool Shows</h3>
+        <p class="text-sm leading-relaxed text-midnight">This simulator demonstrates the <strong>Central Limit Theorem
+                (CLT)</strong>, one of the most important concepts in statistics.</p>
 
-        <h3>🎮 Controls</h3>
-        <ul>
+        <h3 class="mt-4 text-lg font-semibold text-indigo-deep">🎮 Controls</h3>
+        <ul class="list-disc space-y-1 pl-5 text-sm leading-relaxed text-midnight">
             <li><strong>Population Mean (μ):</strong> The average value of the entire population</li>
             <li><strong>Standard Deviation (σ):</strong> How spread out the population values are</li>
             <li><strong>Sample Size (n):</strong> How many values to draw in each sample</li>
@@ -173,24 +215,27 @@
             <li><strong>Clear All:</strong> Reset everything and start over</li>
         </ul>
 
-        <h3>📈 The Three Graphs</h3>
-        <ol>
+        <h3 class="mt-4 text-lg font-semibold text-indigo-deep">📈 The Three Graphs</h3>
+        <ol class="list-decimal space-y-1 pl-5 text-sm leading-relaxed text-midnight">
             <li><strong>Parent Population:</strong> Shows the normal distribution we're sampling from</li>
             <li><strong>Sample Data:</strong> Shows the individual values from your most recent sample</li>
-            <li><strong>Distribution of Sample Means:</strong> Shows a histogram of the means from all samples taken. This demonstrates the CLT!</li>
+            <li><strong>Distribution of Sample Means:</strong> Shows a histogram of the means from all samples taken.
+                This demonstrates the CLT!</li>
         </ol>
 
-        <h3>🔬 Central Limit Theorem</h3>
-        <p>The CLT states that when you take many samples from a population and calculate their means, those means will form a normal distribution, even if the original population isn't normal!</p>
-        <p><strong>Key Properties:</strong></p>
-        <ul>
+        <h3 class="mt-4 text-lg font-semibold text-indigo-deep">🔬 Central Limit Theorem</h3>
+        <p class="text-sm leading-relaxed text-midnight">The CLT states that when you take many samples from a
+            population and calculate their means, those means will form a normal distribution, even if the original
+            population isn't normal!</p>
+        <p class="text-sm leading-relaxed text-midnight"><strong>Key Properties:</strong></p>
+        <ul class="list-disc space-y-1 pl-5 text-sm leading-relaxed text-midnight">
             <li>The mean of sample means equals the population mean (μ)</li>
             <li>The standard deviation of sample means = σ/√n (called the Standard Error)</li>
             <li>As sample size increases, the distribution becomes more normal and narrower</li>
         </ul>
 
-        <h3>💡 Try This</h3>
-        <ol>
+        <h3 class="mt-4 text-lg font-semibold text-indigo-deep">💡 Try This</h3>
+        <ol class="list-decimal space-y-1 pl-5 text-sm leading-relaxed text-midnight">
             <li>Use the default settings (μ=16, σ=5, n=5)</li>
             <li>Click "Play Animation" and watch Graph 3 develop</li>
             <li>Notice how it forms a bell curve centered at 16</li>
@@ -198,7 +243,11 @@
             <li>Run the animation again - the distribution is much narrower!</li>
         </ol>
 
-        <button class="btn btn-primary" id="closeHelp">Got it!</button>
+        <button
+            class="mt-6 inline-flex w-full items-center justify-center rounded-lg bg-gradient-to-r from-lime-glow to-violet-royal px-4 py-3 text-sm font-semibold text-midnight shadow-[0_12px_24px_rgba(148,72,176,0.28)] transition hover:-translate-y-0.5 hover:shadow-[0_16px_30px_rgba(148,72,176,0.34)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-royal"
+            id="closeHelp">
+            Got it!
+        </button>
     </div>
 </div>
 
