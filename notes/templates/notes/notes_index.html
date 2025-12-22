@@ -2,76 +2,78 @@
 {% block title %}Study Resources | LCAI Maths{% endblock %}
 
 {% block content %}
-<div class="container" style="max-width:1000px;margin:auto;padding:20px;">
-  <h1 style="color:#004aad;margin-bottom:15px;">Study Resources</h1>
-  <p style="color:#666;margin-bottom:40px;font-size:1.1em;">
+<div class="mx-auto max-w-5xl px-4 py-8 sm:px-6 lg:px-8">
+  <h1 class="mb-8 mt-6 text-2xl font-semibold text-mist text-center">Study Resources</h1>
+  <p class="mb-10 text-lg text-mist/80">
     Download comprehensive PDF guides and study notes for each topic.
   </p>
 
   {% if topics_with_notes %}
-    <div style="display:grid;gap:25px;">
+    <div class="space-y-6">
       {% for item in topics_with_notes %}
-        <div style="background:#fff;border:1px solid #e0e0e0;border-radius:12px;padding:25px;box-shadow:0 2px 8px rgba(0,0,0,0.05);">
-          <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:20px;">
+        <div class="rounded-2xl border border-indigo-deep/10 bg-white/90 p-6 shadow-[0_12px_28px_rgba(0,0,0,0.08)] backdrop-blur">
+          <div class="mb-5 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
             <div>
-              <h2 style="color:#004aad;margin:0 0 8px 0;">{{ item.topic.name }}</h2>
-              <p style="color:#666;margin:0;font-size:0.95em;">
+              <h2 class="text-xl font-semibold text-midnight">{{ item.topic.name }}</h2>
+              <p class="text-sm text-indigo-deep/70">
                 {{ item.count }} resource{{ item.count|pluralize }}
               </p>
             </div>
             <a href="{% url 'notes_topic' item.topic.slug %}"
-               style="padding:10px 20px;background:#1976d2;color:white;border-radius:6px;text-decoration:none;font-weight:500;">
+               class="inline-flex items-center justify-center gap-2 rounded-lg bg-gradient-05 px-4 py-2 text-sm font-semibold text-mist shadow-[0_12px_24px_rgba(148,72,176,0.24)] transition hover:-translate-y-0.5 hover:shadow-[0_16px_30px_rgba(148,72,176,0.3)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-royal">
               View All →
             </a>
           </div>
 
-          <div style="border-top:1px solid #f0f0f0;padding-top:20px;">
+          <div class="space-y-3 border-t border-indigo-deep/10 pt-4">
             {% for note in item.notes %}
-              <div style="margin-bottom:15px;padding:15px;background:#f8f9fa;border-radius:8px;">
-                <div style="display:flex;justify-content:space-between;align-items:center;">
-                  <div style="flex:1;">
-                    <h3 style="margin:0 0 5px 0;color:#333;font-size:1.1em;">{{ note.title }}</h3>
-                    {% if note.content_type == 'exam_paper' %}
-                      <span style="display:inline-block;padding:3px 8px;background:#e3f2fd;color:#1976d2;border-radius:4px;font-size:0.85em;margin-right:8px;">
-                        Exam Paper
-                      </span>
-                    {% elif note.content_type == 'marking_scheme' %}
-                      <span style="display:inline-block;padding:3px 8px;background:#f3e5f5;color:#7b1fa2;border-radius:4px;font-size:0.85em;margin-right:8px;">
-                        Marking Scheme
-                      </span>
-                    {% endif %}
-                    {% if note.exam_year %}
-                      <span style="color:#666;font-size:0.9em;">{{ note.exam_year }}</span>
-                    {% endif %}
+              <div class="rounded-xl bg-mist/80 px-4 py-3 shadow-[0_6px_14px_rgba(0,0,0,0.05)]">
+                <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div class="flex-1">
+                    <h3 class="text-lg font-semibold text-midnight">{{ note.title }}</h3>
+                    <div class="mt-1 flex flex-wrap items-center gap-2 text-sm">
+                      {% if note.content_type == 'exam_paper' %}
+                        <span class="inline-flex items-center rounded-full bg-indigo-deep/10 px-3 py-1 text-xs font-semibold text-indigo-deep">
+                          Exam Paper
+                        </span>
+                      {% elif note.content_type == 'marking_scheme' %}
+                        <span class="inline-flex items-center rounded-full bg-rose-pop/15 px-3 py-1 text-xs font-semibold text-violet-royal">
+                          Marking Scheme
+                        </span>
+                      {% endif %}
+                      {% if note.exam_year %}
+                        <span class="text-indigo-deep/70">{{ note.exam_year }}</span>
+                      {% endif %}
+                    </div>
                   </div>
 
                   {% if note.image %}
-                    <div style="display:flex;gap:10px;">
+                    <div class="flex flex-wrap items-center justify-start gap-3 sm:justify-end">
                       {% if note.image.url|slice:"-4:" == ".pdf" or note.image.url|slice:"-4:" == ".PDF" %}
                         <a href="{% url 'notes_topic' item.topic.slug %}"
-                           style="padding:8px 16px;background:#e3f2fd;color:#1976d2;border-radius:6px;text-decoration:none;font-size:0.9em;">
-                          <svg style="width:16px;height:16px;vertical-align:middle;margin-right:5px;" fill="currentColor" viewBox="0 0 24 24">
+                           class="inline-flex items-center gap-2 rounded-lg border border-indigo-deep/20 bg-white px-4 py-2 text-sm font-semibold text-indigo-deep shadow-[0_8px_20px_rgba(0,0,0,0.06)] transition hover:-translate-y-0.5 hover:border-indigo-deep/30 hover:shadow-[0_12px_26px_rgba(148,72,176,0.18)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-deep">
+                          <svg class="h-4 w-4" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                             <path d="M12,9A3,3 0 0,0 9,12A3,3 0 0,0 12,15A3,3 0 0,0 15,12A3,3 0 0,0 12,9M12,17A5,5 0 0,1 7,12A5,5 0 0,1 12,7A5,5 0 0,1 17,12A5,5 0 0,1 12,17M12,4.5C7,4.5 2.73,7.61 1,12C2.73,16.39 7,19.5 12,19.5C17,19.5 21.27,16.39 23,12C21.27,7.61 17,4.5 12,4.5Z"/>
                           </svg>
                           View
                         </a>
                         <a href="{{ note.image.url }}" download
-                           style="padding:8px 16px;background:#1976d2;color:white;border-radius:6px;text-decoration:none;font-size:0.9em;">
-                          <svg style="width:16px;height:16px;vertical-align:middle;margin-right:5px;" fill="currentColor" viewBox="0 0 24 24">
-                            <path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20M12,19L8,15H10.5V12H13.5V15H16L12,19Z"/>
+                           class="inline-flex items-center gap-2 rounded-lg bg-gradient-03 px-4 py-2 text-sm font-semibold text-mist shadow-[0_12px_24px_rgba(148,72,176,0.24)] transition hover:-translate-y-0.5 hover:shadow-[0_16px_30px_rgba(148,72,176,0.3)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-royal">
+                          <svg class="h-4 w-4" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                            <path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20M10,19L12,15H9V10H15V15L13,19H10Z"/>
                           </svg>
                           PDF
                         </a>
                       {% else %}
                         <a href="{% url 'notes_topic' item.topic.slug %}"
-                           style="padding:8px 16px;background:#1976d2;color:white;border-radius:6px;text-decoration:none;font-size:0.9em;">
+                           class="inline-flex items-center gap-2 rounded-lg bg-gradient-03 px-4 py-2 text-sm font-semibold text-mist shadow-[0_12px_24px_rgba(148,72,176,0.24)] transition hover:-translate-y-0.5 hover:shadow-[0_16px_30px_rgba(148,72,176,0.3)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-royal">
                           View
                         </a>
                       {% endif %}
                     </div>
                   {% else %}
                     <a href="{% url 'notes_topic' item.topic.slug %}"
-                       style="padding:8px 16px;background:#1976d2;color:white;border-radius:6px;text-decoration:none;font-size:0.9em;">
+                       class="inline-flex items-center gap-2 rounded-lg bg-gradient-03 px-4 py-2 text-sm font-semibold text-mist shadow-[0_12px_24px_rgba(148,72,176,0.24)] transition hover:-translate-y-0.5 hover:shadow-[0_16px_30px_rgba(148,72,176,0.3)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-royal">
                       View
                     </a>
                   {% endif %}
@@ -83,12 +85,12 @@
       {% endfor %}
     </div>
   {% else %}
-    <div style="text-align:center;padding:60px 20px;background:#f8f9fa;border-radius:12px;">
-      <svg style="width:80px;height:80px;margin-bottom:20px;opacity:0.3;" fill="#666" viewBox="0 0 24 24">
+    <div class="mx-auto max-w-xl rounded-2xl bg-mist px-6 py-10 text-center shadow-[0_12px_28px_rgba(0,0,0,0.08)]">
+      <svg class="mx-auto mb-4 h-20 w-20 text-indigo-deep/30" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
         <path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z"/>
       </svg>
-      <h2 style="color:#666;margin:0 0 10px 0;">No Study Resources Yet</h2>
-      <p style="color:#999;margin:0;">Check back soon for PDF guides and study notes!</p>
+      <h2 class="mb-2 text-xl font-semibold text-midnight">No Study Resources Yet</h2>
+      <p class="text-indigo-deep/70">Check back soon for PDF guides and study notes!</p>
     </div>
   {% endif %}
 </div>
