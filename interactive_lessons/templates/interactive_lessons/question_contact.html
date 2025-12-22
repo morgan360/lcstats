@@ -2,70 +2,81 @@
 {% block title %}Contact Teacher | NumScoil{% endblock %}
 
 {% block content %}
-<div class="card" style="max-width:600px; margin:0 auto; padding:30px;">
-    <h2 style="color:#004aad; margin-bottom:0.5em;">📧 Contact Teacher</h2>
-
-    <p style="margin:0 0 1em 0; color:#555;">
-        <strong>About Question:</strong> {{ question.topic.name }} - Q{{ question.order }}
-        {% if question.section %}<br><strong>Section:</strong> {{ question.section }}{% endif %}
-    </p>
-
-    {% if messages %}
-        {% for message in messages %}
-            <div style="padding:12px; margin-bottom:15px; border-radius:6px;
-                        {% if message.tags == 'success' %}background-color:#d4edda; border:1px solid #c3e6cb; color:#155724;{% endif %}
-                        {% if message.tags == 'error' %}background-color:#f8d7da; border:1px solid #f5c6cb; color:#721c24;{% endif %}">
-                {{ message }}
-            </div>
-        {% endfor %}
-    {% endif %}
-
-    <form method="post" style="margin-top:20px;">
-        {% csrf_token %}
-
-        <div style="margin-bottom:20px;">
-            <label for="id_subject" style="display:block; font-weight:600; margin-bottom:6px; color:#004aad;">
-                Subject
-            </label>
-            {{ form.subject }}
-            {% if form.subject.errors %}
-                <div style="color:#dc3545; font-size:0.9em; margin-top:4px;">
-                    {{ form.subject.errors }}
-                </div>
-            {% endif %}
-        </div>
-
-        <div style="margin-bottom:20px;">
-            <label for="id_message" style="display:block; font-weight:600; margin-bottom:6px; color:#004aad;">
-                Your Message
-            </label>
-            {{ form.message }}
-            {% if form.message.errors %}
-                <div style="color:#dc3545; font-size:0.9em; margin-top:4px;">
-                    {{ form.message.errors }}
-                </div>
-            {% endif %}
-            <small style="color:#666; font-size:0.85em; display:block; margin-top:4px;">
-                Please describe your question or what you need help with.
-            </small>
-        </div>
-
-        <div style="display:flex; gap:10px;">
-            <button type="submit" class="btn" style="background-color:#004aad; color:white; padding:10px 20px;">
-                📤 Send Message
-            </button>
-            <a href="{% url 'question_view' question.topic.id question.order %}"
-               class="btn"
-               style="background-color:#6c757d; color:white; padding:10px 20px; text-decoration:none;">
-                Cancel
-            </a>
-        </div>
-    </form>
-
-    <div style="margin-top:25px; padding-top:20px; border-top:1px solid #ddd; font-size:0.9em; color:#666;">
-        <p style="margin:0;">
-            <strong>Note:</strong> Your email address ({{ request.user.email }}) will be included so the teacher can reply directly to you.
+<div class="mx-auto max-w-xl px-4 py-10 sm:px-6 lg:px-8">
+    <div class="rounded-2xl border border-indigo-deep/10 bg-mist/80 p-6 shadow-[0_12px_28px_rgba(0,0,0,0.08)]">
+        <h1 class="mb-2 text-2xl font-semibold text-indigo-deep text-center"><span class="mr-1">📧</span> Contact Teacher</h1>
+        <p class="mb-4 text-sm text-indigo-deep/80">
+            <strong>About Question:</strong> {{ question.topic.name }} - Q{{ question.order }}
+            {% if question.section %}<br><strong>Section:</strong> {{ question.section }}{% endif %}
         </p>
+
+        {% if messages %}
+            {% for message in messages %}
+                <div class="mb-4 rounded-lg border px-4 py-3 text-sm font-semibold {% if message.tags == 'success' %}border-lime-glow/50 bg-lime-glow/15 text-midnight{% elif message.tags == 'error' %}border-rose-pop/50 bg-rose-pop/10 text-rose-pop{% endif %}">
+                    {{ message }}
+                </div>
+            {% endfor %}
+        {% endif %}
+
+        <form method="post" class="space-y-5 mt-4">
+            {% csrf_token %}
+            {% if form.non_field_errors %}
+                <div class="rounded-lg border border-rose-pop/50 bg-rose-pop/10 px-4 py-3 text-sm text-rose-pop">
+                    {{ form.non_field_errors }}
+                </div>
+            {% endif %}
+
+            <div>
+                <label for="id_subject" class="mb-2 block text-sm font-semibold text-midnight">
+                    Subject
+                </label>
+                <input type="text"
+                        name="{{ form.subject.name }}"
+                        id="{{ form.subject.id_for_label }}"
+                        value="{{ form.subject.value|default_if_none:'' }}"
+                        class="w-full rounded-lg border border-indigo-deep/20 bg-white px-3 py-2 text-midnight shadow-inner focus:border-indigo-deep/50 focus:outline-none focus:ring-2 focus:ring-indigo-deep/20">
+                {% if form.subject.errors %}
+                    <div class="mt-1 text-sm text-rose-pop">
+                        {{ form.subject.errors }}
+                    </div>
+                {% endif %}
+            </div>
+
+            <div>
+                <label for="id_message" class="mb-2 block text-sm font-semibold text-midnight">
+                    Your Message
+                </label>
+                <textarea name="{{ form.message.name }}"
+                            id="{{ form.message.id_for_label }}"
+                            rows="5"
+                            class="w-full rounded-lg border border-indigo-deep/20 bg-white px-3 py-3 text-midnight shadow-inner focus:border-indigo-deep/50 focus:outline-none focus:ring-2 focus:ring-indigo-deep/20">{{ form.message.value|default_if_none:'' }}</textarea>
+                {% if form.message.errors %}
+                    <div class="mt-1 text-sm text-rose-pop">
+                        {{ form.message.errors }}
+                    </div>
+                {% endif %}
+                <small class="mt-1 block text-xs text-indigo-deep/70">
+                    Please describe your question or what you need help with.
+                </small>
+            </div>
+
+            <div class="flex flex-wrap gap-3">
+                <button type="submit"
+                        class="inline-flex items-center gap-2 rounded-lg bg-gradient-03 px-4 py-2 text-sm font-semibold text-mist shadow-[0_12px_24px_rgba(148,72,176,0.28)] transition hover:-translate-y-0.5 hover:shadow-[0_16px_30px_rgba(148,72,176,0.34)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-royal">
+                        Send Message
+                </button>
+                <a href="{% url 'question_view' question.topic.id question.order %}"
+                    class="inline-flex items-center gap-2 rounded-lg bg-indigo-deep/15 px-4 py-2 text-sm font-semibold text-indigo-deep shadow-[0_8px_18px_rgba(0,0,0,0.06)] transition hover:-translate-y-0.5 hover:shadow-[0_12px_24px_rgba(0,0,0,0.1)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-deep">
+                    Cancel
+                </a>
+            </div>
+        </form>
+
+        <div class="mt-6 border-t border-indigo-deep/10 pt-4 text-sm text-indigo-deep/80">
+            <p class="m-0">
+                <strong>Note:</strong> Your email address ({{ request.user.email }}) will be included so the teacher can reply directly to you.
+            </p>
+        </div>
     </div>
 </div>
 {% endblock %}
