@@ -234,12 +234,20 @@ AUTHENTICATION_BACKENDS = [
 # Allauth settings
 ACCOUNT_LOGIN_METHODS = {'email', 'username'}
 ACCOUNT_SIGNUP_FIELDS = ['email*', 'username*', 'password1*', 'password2*']
-ACCOUNT_EMAIL_VERIFICATION = 'optional'  # Change to 'mandatory' if you want to require email verification
+ACCOUNT_EMAIL_VERIFICATION = 'optional'  # 'optional' or 'mandatory' - users can verify later
 ACCOUNT_LOGOUT_ON_GET = False  # Require POST to logout for security
 ACCOUNT_LOGIN_ON_EMAIL_CONFIRMATION = True
 ACCOUNT_FORMS = {
     'signup': 'students.forms.SignupFormWithCode',
 }
+
+# Email confirmation and verification
+ACCOUNT_EMAIL_REQUIRED = True  # Email is required during signup
+ACCOUNT_EMAIL_CONFIRMATION_EXPIRE_DAYS = 3  # Confirmation link expires in 3 days
+ACCOUNT_EMAIL_SUBJECT_PREFIX = '[NumScoil] '  # Prefix for all emails
+
+# Password reset settings
+ACCOUNT_EMAIL_CONFIRMATION_AUTHENTICATED_REDIRECT_URL = '/students/dashboard/'
 
 # Redirect URLs for allauth
 ACCOUNT_LOGOUT_REDIRECT_URL = '/'

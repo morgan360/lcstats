@@ -1,0 +1,18 @@
+Hello {{ user.username }},
+
+Thank you for signing up for NumScoil!
+
+Please click the link below to verify your email address and activate your account:
+
+{{ activate_url }}
+
+This link will expire in 3 days.
+
+If you did not create an account, please ignore this email.
+
+Best regards,
+The NumScoil Team
+
+---
+NumScoil - AI-Powered Leaving Certificate Maths Tutor
+{{ current_site.domain }}
