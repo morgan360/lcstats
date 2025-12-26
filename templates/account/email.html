@@ -1,144 +1,130 @@
 {% extends "_base.html" %}
 {% load account %}
 
-{% block title %}Email Addresses | LCAI Maths{% endblock %}
+{% block title %}Email Addresses | NumSocil{% endblock %}
 
 {% block content %}
-<div style="max-width: 700px; margin: 60px auto; padding: 20px;">
-    <div style="background: white; border-radius: 12px; padding: 40px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
-        <div style="margin-bottom: 30px;">
-            <h1 style="color: #004aad; font-size: 2em; margin-bottom: 10px;">Account Settings</h1>
-            <p style="color: #666; font-size: 1.1em;">Manage your email addresses</p>
-        </div>
+<div class="min-h-screen py-12">
+    <div class="mx-auto w-full max-w-5xl px-4 py-8 sm:max-w-6xl sm:px-8 lg:max-w-7xl lg:px-12">
+        <div class="rounded-2xl border border-indigo-deep/10 bg-white/90 p-6 shadow-[0_12px_28px_rgba(0,0,0,0.08)]">
+            <div class="mb-6">
+                <h1 class="text-2xl font-semibold text-midnight">Account Settings</h1>
+                <p class="text-sm text-indigo-deep/80">Manage your email addresses</p>
+            </div>
 
-        {% if messages %}
-            {% for message in messages %}
-                <div style="background-color: {% if message.tags == 'error' or message.tags == 'danger' %}#ffebee{% else %}#e8f5e9{% endif %};
-                            border: 1px solid {% if message.tags == 'error' or message.tags == 'danger' %}#ef5350{% else %}#66bb6a{% endif %};
-                            padding: 12px;
-                            border-radius: 6px;
-                            margin-bottom: 20px;
-                            text-align: center;">
-                    {{ message }}
-                </div>
-            {% endfor %}
-        {% endif %}
+            {% if messages %}
+                {% for message in messages %}
+                    <div class="mb-4 rounded-lg border px-4 py-3 text-center text-sm font-semibold {% if message.tags == 'error' or message.tags == 'danger' %}border-rose-pop/50 bg-rose-pop/10 text-rose-pop{% else %}border-lime-glow/50 bg-lime-glow/15 text-midnight{% endif %}">
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            {% endif %}
 
-        {% if user.emailaddress_set.all %}
-            <div style="margin-bottom: 30px;">
-                <h2 style="color: #333; font-size: 1.3em; margin-bottom: 15px;">Your Email Addresses</h2>
+            {% if user.emailaddress_set.all %}
+                <div>
+                    <h2 class="mb-4 text-lg font-semibold text-midnight">Your Email Addresses</h2>
 
-                <form method="POST" action="{% url 'account_email' %}">
-                    {% csrf_token %}
+                    <form method="POST" action="{% url 'account_email' %}">
+                        {% csrf_token %}
 
-                    <div style="background-color: #f9f9f9; border-radius: 8px; padding: 20px;">
-                        {% for emailaddress in user.emailaddress_set.all %}
-                            <div style="background: white; border: 2px solid #e0e0e0; border-radius: 6px; padding: 15px; margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center;">
-                                <div style="flex: 1;">
-                                    <label style="display: flex; align-items: center; cursor: pointer;">
+                        <div class="space-y-3 rounded-xl bg-mist/70 p-4">
+                            {% for emailaddress in user.emailaddress_set.all %}
+                                <div class="flex items-center justify-between gap-3 rounded-xl border-2 border-indigo-deep/10 bg-white px-4 py-3">
+                                    <label class="flex flex-1 cursor-pointer items-start gap-3">
                                         <input type="radio"
-                                               name="email"
-                                               value="{{ emailaddress.email }}"
-                                               {% if emailaddress.primary %}checked{% endif %}
-                                               style="margin-right: 12px; width: 20px; height: 20px; cursor: pointer;">
+                                            name="email"
+                                            value="{{ emailaddress.email }}"
+                                            {% if emailaddress.primary %}checked{% endif %}
+                                            class="h-5 w-5 cursor-pointer text-violet-royal focus:ring-violet-royal">
                                         <div>
-                                            <strong style="color: #333; font-size: 1.1em;">{{ emailaddress.email }}</strong>
-                                            <div style="margin-top: 5px;">
+                                            <strong class="text-midnight">{{ emailaddress.email }}</strong>
+                                            <div class="mt-2 flex flex-wrap gap-2 text-xs font-semibold">
                                                 {% if emailaddress.verified %}
-                                                    <span style="background: #4caf50; color: white; padding: 3px 8px; border-radius: 4px; font-size: 0.8em; font-weight: 600;">✓ Verified</span>
+                                                    <span class="rounded-full bg-lime-glow/70 px-2 py-1 text-midnight">✓ Verified</span>
                                                 {% else %}
-                                                    <span style="background: #ff9800; color: white; padding: 3px 8px; border-radius: 4px; font-size: 0.8em; font-weight: 600;">⚠ Unverified</span>
+                                                    <span class="rounded-full bg-amber-400 px-2 py-1 text-midnight">⚠ Unverified</span>
                                                 {% endif %}
                                                 {% if emailaddress.primary %}
-                                                    <span style="background: #004aad; color: white; padding: 3px 8px; border-radius: 4px; font-size: 0.8em; font-weight: 600; margin-left: 5px;">Primary</span>
+                                                    <span class="rounded-full bg-violet-royal px-2 py-1 text-mist">Primary</span>
                                                 {% endif %}
                                             </div>
                                         </div>
                                     </label>
+
+                                    {% if not emailaddress.primary %}
+                                        <button type="submit"
+                                                name="action_remove"
+                                                value="{{ emailaddress.email }}"
+                                                onclick="return confirm('Are you sure you want to remove this email address?');"
+                                                class="rounded-lg bg-rose-pop px-1.5 py-1 md:px-3 md:py-2 text-xs font-semibold text-mist shadow-sm transition hover:brightness-95 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose-pop">
+                                            Remove
+                                        </button>
+                                    {% endif %}
                                 </div>
+                            {% endfor %}
+                        </div>
 
-                                {% if not emailaddress.primary %}
-                                    <button type="submit"
-                                            name="action_remove"
-                                            value="{{ emailaddress.email }}"
-                                            onclick="return confirm('Are you sure you want to remove this email address?');"
-                                            style="background: #ef5350; color: white; padding: 8px 16px; border: none; border-radius: 4px; cursor: pointer; font-weight: 600; font-size: 0.9em;">
-                                        Remove
-                                    </button>
-                                {% endif %}
-                            </div>
-                        {% endfor %}
+                        <div class="mt-4 flex items-center justify-center gap-3 mb-6">
+                            <button type="submit"
+                                    name="action_primary"
+                                    class="inline-flex items-center gap-2 rounded-lg bg-gradient-03 px-4 py-2 text-sm font-semibold text-mist shadow-[0_12px_24px_rgba(148,72,176,0.28)] transition hover:-translate-y-0.5 hover:shadow-[0_16px_30px_rgba(148,72,176,0.34)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-royal">
+                                Make Primary
+                            </button>
+
+                            <button type="submit"
+                                    name="action_send"
+                                    class="inline-flex items-center gap-2 rounded-lg bg-gradient-05 px-4 py-2 text-sm font-semibold text-mist shadow-[0_12px_24px_rgba(148,72,176,0.28)] transition hover:-translate-y-0.5 hover:shadow-[0_16px_30px_rgba(148,72,176,0.34)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-royal">
+                                Re-send Verification
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            {% else %}
+                <div class="mb-8 rounded-xl border border-amber-400/60 bg-amber-100 px-4 py-3 text-sm text-midnight">
+                    <strong>⚠ Warning:</strong> You currently do not have any email addresses set up. Add an email address to enable password recovery.
+                </div>
+            {% endif %}
+
+            <div class="border-t border-indigo-deep/10 pt-6">
+                <h2 class="mb-3 text-lg font-semibold text-midnight">Add Email Address</h2>
+
+                <form method="POST" action="{% url 'account_email' %}" class="space-y-4">
+                    {% csrf_token %}
+
+                    <div class="flex flex-col gap-3 sm:flex-row sm:items-end">
+                        <div class="flex-1">
+                            <label for="id_email" class="mb-2 block text-sm font-semibold text-midnight">
+                                New Email Address
+                            </label>
+                            <input type="email"
+                                    name="email"
+                                    id="id_email"
+                                    placeholder="new.email@example.com"
+                                    required
+                                    class="w-full rounded-lg border border-indigo-deep/20 bg-white px-3 py-2 text-midnight shadow-inner focus:border-indigo-deep/50 focus:outline-none focus:ring-2 focus:ring-indigo-deep/20">
+                        </div>
+                        <button type="submit"
+                            name="action_add"
+                            class="self-end sm:self-auto inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-rose-pop to-violet-royal px-4 py-2 text-sm font-semibold text-mist shadow-[0_12px_24px_rgba(148,72,176,0.28)] transition hover:-translate-y-0.5 hover:shadow-[0_16px_30px_rgba(148,72,176,0.34)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-royal">
+                            Add Email
+                        </button>
                     </div>
 
-                    <div style="display: flex; gap: 10px; margin-top: 20px; flex-wrap: wrap;">
-                        <button type="submit"
-                                name="action_primary"
-                                style="background: linear-gradient(135deg, #004aad 0%, #0066cc 100%); color: white; padding: 12px 24px; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 1em;">
-                            Make Primary
-                        </button>
-
-                        <button type="submit"
-                                name="action_send"
-                                style="background: linear-gradient(135deg, #00994c 0%, #00cc66 100%); color: white; padding: 12px 24px; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 1em;">
-                            Re-send Verification
-                        </button>
-                    </div>
                 </form>
             </div>
-        {% else %}
-            <div style="background-color: #fff3cd; border: 1px solid #ffc107; padding: 15px; border-radius: 6px; margin-bottom: 20px;">
-                <strong>⚠ Warning:</strong> You currently do not have any email addresses set up. Add an email address to enable password recovery.
-            </div>
-        {% endif %}
 
-        <div style="border-top: 2px solid #f0f0f0; padding-top: 30px; margin-top: 30px;">
-            <h2 style="color: #333; font-size: 1.3em; margin-bottom: 15px;">Add Email Address</h2>
-
-            <form method="POST" action="{% url 'account_email' %}">
-                {% csrf_token %}
-
-                <div style="margin-bottom: 20px;">
-                    <label for="id_email" style="display: block; margin-bottom: 8px; font-weight: 600; color: #333;">
-                        Email Address
-                    </label>
-                    <input type="email"
-                           name="email"
-                           id="id_email"
-                           placeholder="new.email@example.com"
-                           required
-                           style="width: 100%; padding: 12px; border: 2px solid #e0e0e0; border-radius: 6px; font-size: 1em; box-sizing: border-box;">
+            <div class="mt-8 border-t border-indigo-deep/10 pt-6 text-center">
+                <div class="mb-4">
+                    <a href="{% url 'account_change_password' %}"
+                    class="inline-flex items-center gap-2 rounded-lg bg-violet-royal px-4 py-2 text-sm font-semibold text-mist shadow-[0_12px_24px_rgba(148,72,176,0.28)] transition hover:-translate-y-0.5 hover:shadow-[0_16px_30px_rgba(148,72,176,0.34)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-royal">
+                        🔒 Change Password
+                    </a>
                 </div>
-
-                <button type="submit"
-                        name="action_add"
-                        style="background: linear-gradient(135deg, #00994c 0%, #00cc66 100%); color: white; padding: 12px 24px; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 1em;">
-                    Add Email
-                </button>
-            </form>
-        </div>
-
-        <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 2px solid #f0f0f0;">
-            <div style="margin-bottom: 15px;">
-                <a href="{% url 'account_change_password' %}" style="display: inline-block; background: #004aad; color: white; padding: 12px 24px; border-radius: 6px; text-decoration: none; font-weight: 600; transition: transform 0.2s;">
-                    🔒 Change Password
+                <a href="{% url 'dashboard' %}" class="text-sm font-semibold text-violet-royal transition hover:text-indigo-deep">
+                    ← Back to Dashboard
                 </a>
             </div>
-            <a href="{% url 'dashboard' %}" style="color: #004aad; font-weight: 600; text-decoration: none;">
-                ← Back to Dashboard
-            </a>
         </div>
     </div>
 </div>
-
-<style>
-    input[type="email"]:focus {
-        outline: none;
-        border-color: #00994c;
-    }
-
-    button:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-    }
-</style>
 {% endblock %}

@@ -1,45 +1,35 @@
 {% extends "_base.html" %}
 
-{% block title %}Logout | LCAI Maths{% endblock %}
+{% block title %}Logout | NumSocil{% endblock %}
 
 {% block content %}
-<div style="max-width: 500px; margin: 100px auto; padding: 20px;">
-    <div style="background: white; border-radius: 12px; padding: 50px 40px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); text-align: center;">
-        <div style="font-size: 4em; margin-bottom: 20px;">👋</div>
+<div class="min-h-screen py-16">
+    <div class="mx-auto w-full max-w-lg px-4 sm:px-6 lg:px-8">
+        <div
+            class="rounded-2xl border border-indigo-deep/10 bg-white/90 p-8 text-center shadow-[0_12px_28px_rgba(0,0,0,0.08)]">
+            <div class="mb-4 text-5xl">👋</div>
+            <h1 class="mb-3 text-2xl font-semibold text-midnight">Come Back Soon!</h1>
+            <p class="mb-6 text-sm leading-relaxed text-indigo-deep/80">
+                Are you sure you want to log out?
+            </p>
 
-        <h1 style="color: #004aad; font-size: 2em; margin-bottom: 15px;">Come Back Soon!</h1>
-        <p style="color: #666; font-size: 1.1em; margin-bottom: 30px; line-height: 1.6;">
-            Are you sure you want to log out?
-        </p>
-
-        <form method="POST" action="{% url 'account_logout' %}">
-            {% csrf_token %}
-            {% if redirect_field_value %}
+            <form method="POST" action="{% url 'account_logout' %}" class="space-y-3">
+                {% csrf_token %}
+                {% if redirect_field_value %}
                 <input type="hidden" name="{{ redirect_field_name }}" value="{{ redirect_field_value }}">
-            {% endif %}
+                {% endif %}
 
-            <button type="submit"
-                    style="background: linear-gradient(135deg, #cc0000 0%, #ff3333 100%); color: white; padding: 14px 40px; font-size: 1.1em; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; transition: transform 0.2s; margin-bottom: 15px;">
-                Yes, Logout
-            </button>
-        </form>
+                <button type="submit"
+                    class="w-full inline-flex items-center justify-center rounded-lg bg-gradient-to-r from-rose-pop to-violet-royal px-4 py-3 text-sm font-semibold text-mist shadow-[0_12px_24px_rgba(148,72,176,0.28)] transition hover:-translate-y-0.5 hover:shadow-[0_16px_30px_rgba(148,72,176,0.34)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-royal">
+                    Yes, Logout
+                </button>
+            </form>
 
-        <a href="{% url 'dashboard' %}"
-           style="display: inline-block; color: #004aad; font-weight: 600; text-decoration: none; padding: 14px 40px; border: 2px solid #004aad; border-radius: 6px; transition: all 0.2s;">
-            No, Stay Logged In
-        </a>
+            <a href="{% url 'dashboard' %}"
+                class="mt-3 inline-flex w-full items-center justify-center rounded-lg border border-indigo-deep/30 bg-mist px-4 py-3 text-sm font-semibold text-midnight shadow-[0_8px_18px_rgba(0,0,0,0.06)] transition hover:-translate-y-0.5 hover:shadow-[0_12px_24px_rgba(0,0,0,0.1)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-deep">
+                No, Stay Logged In
+            </a>
+        </div>
     </div>
 </div>
-
-<style>
-    button[type="submit"]:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 4px 12px rgba(204, 0, 0, 0.3);
-    }
-
-    a[href]:hover {
-        background-color: #f0f8ff;
-        transform: translateY(-2px);
-    }
-</style>
 {% endblock %}

@@ -1,110 +1,116 @@
 {% extends "_base.html" %}
 {% load static %}
 
-{% block title %}My Homework - LCAI Maths{% endblock %}
+{% block title %}My Homework - NumScoil{% endblock %}
 
 {% block content %}
-<div class="container" style="max-width: 1200px; margin: 2rem auto; padding: 0 1rem;">
-    <h1 style="color: #2c3e50; margin-bottom: 2rem;">📚 My Homework</h1>
+<div class="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
+    <h1 class="mb-8 text-3xl font-semibold text-mist">📚 My Homework</h1>
 
     <!-- Active Assignments -->
-    <section style="margin-bottom: 3rem;">
-        <h2 style="color: #34495e; font-size: 1.5rem; margin-bottom: 1rem; border-bottom: 2px solid #3498db; padding-bottom: 0.5rem;">
-            Active Assignments
-        </h2>
+    <section class="mb-12">
+        <div class="mb-6 flex items-center justify-between">
+            <h2 class="text-2xl font-semibold text-mist">Active Assignments</h2>
+        </div>
+
+        <div class="h-1 w-full rounded-full bg-gradient-to-r from-violet-royal to-lime-glow mb-8"></div>
 
         {% if active_assignments %}
-            <div style="display: grid; gap: 1.5rem;">
-                {% for item in active_assignments %}
-                <div class="homework-card" style="background: white; border-radius: 8px; padding: 1.5rem; box-shadow: 0 2px 8px rgba(0,0,0,0.1); border-left: 4px solid {% if item.is_overdue %}#e74c3c{% elif item.days_until_due <= 2 %}#f39c12{% else %}#3498db{% endif %};">
-                    <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 1rem;">
-                        <div>
-                            <h3 style="margin: 0 0 0.5rem 0; color: #2c3e50;">
-                                <a href="{% url 'homework:assignment_detail' item.assignment.id %}" style="color: #2c3e50; text-decoration: none;">
-                                    {{ item.assignment.title }}
-                                </a>
-                            </h3>
-                            <p style="margin: 0; color: #7f8c8d; font-size: 0.9rem;">
-                                <strong>Topic:</strong> {{ item.assignment.topic.name }}
-                            </p>
-                        </div>
-
-                        <div style="text-align: right;">
-                            {% if item.is_overdue %}
-                                <span style="background: #e74c3c; color: white; padding: 0.3rem 0.8rem; border-radius: 20px; font-size: 0.85rem; font-weight: bold;">
-                                    OVERDUE
-                                </span>
-                            {% elif item.days_until_due <= 2 %}
-                                <span style="background: #f39c12; color: white; padding: 0.3rem 0.8rem; border-radius: 20px; font-size: 0.85rem; font-weight: bold;">
-                                    DUE SOON
-                                </span>
-                            {% endif %}
-                            <p style="margin: 0.5rem 0 0 0; color: #7f8c8d; font-size: 0.9rem;">
-                                Due: <strong style="color: {% if item.is_overdue %}#e74c3c{% else %}#2c3e50{% endif %};">
-                                    {{ item.assignment.due_date|date:"M d, Y" }}
-                                </strong>
-                            </p>
-                        </div>
-                    </div>
-
-                    <!-- Progress Bar -->
-                    <div style="margin-bottom: 1rem;">
-                        <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
-                            <span style="font-size: 0.9rem; color: #7f8c8d;">Progress</span>
-                            <span style="font-size: 0.9rem; font-weight: bold; color: #2c3e50;">
-                                {{ item.completed_tasks }} / {{ item.total_tasks }} tasks
-                            </span>
-                        </div>
-                        <div style="background: #ecf0f1; height: 20px; border-radius: 10px; overflow: hidden;">
-                            <div style="background: linear-gradient(90deg, #3498db, #2ecc71); height: 100%; width: {{ item.completion_percentage }}%; transition: width 0.3s ease;"></div>
-                        </div>
-                        <p style="margin: 0.5rem 0 0 0; text-align: right; font-size: 0.85rem; color: #7f8c8d;">
-                            {{ item.completion_percentage }}% complete
+        <div class="grid gap-4">
+            {% for item in active_assignments %}
+            <div
+                class="group rounded-2xl border border-indigo-deep/10 bg-white/90 p-5 shadow-[0_12px_28px_rgba(0,0,0,0.08)] transition hover:-translate-y-0.5 hover:shadow-[0_18px_38px_rgba(0,0,0,0.12)]">
+                <div class="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                    <div>
+                        <h3 class="text-xl font-semibold text-midnight">
+                            <a href="{% url 'homework:assignment_detail' item.assignment.id %}"
+                                class="text-midnight transition hover:text-violet-royal focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-royal">
+                                {{ item.assignment.title }}
+                            </a>
+                        </h3>
+                        <p class="text-sm text-indigo-deep/70">
+                            <strong>Topic:</strong> {{ item.assignment.topic.name }}
                         </p>
                     </div>
 
-                    {% if item.assignment.description %}
-                    <p style="margin: 1rem 0; color: #555; font-size: 0.95rem; font-style: italic;">
-                        {{ item.assignment.description|truncatewords:30 }}
-                    </p>
-                    {% endif %}
-
-                    <a href="{% url 'homework:assignment_detail' item.assignment.id %}"
-                       style="display: inline-block; background: #3498db; color: white; padding: 0.6rem 1.5rem; border-radius: 5px; text-decoration: none; font-weight: bold; transition: background 0.3s;">
-                        View Assignment →
-                    </a>
+                    <div class="text-right">
+                        {% if item.is_overdue %}
+                        <span
+                            class="inline-flex items-center rounded-full bg-rose-pop px-3 py-1 text-xs font-semibold text-mist">
+                            OVERDUE
+                        </span>
+                        {% elif item.days_until_due <= 2 %} <span
+                            class="inline-flex items-center rounded-full bg-amber-400 px-3 py-1 text-xs font-semibold text-midnight">
+                            DUE SOON
+                            </span>
+                            {% endif %}
+                            <p class="mt-2 text-sm text-indigo-deep/70">
+                                Due:
+                                <strong class="{% if item.is_overdue %}text-rose-pop{% else %}text-midnight{% endif %}">
+                                    {{ item.assignment.due_date|date:"M d, Y" }}
+                                </strong>
+                            </p>
+                    </div>
                 </div>
-                {% endfor %}
-            </div>
-        {% else %}
-            <div style="background: #ecf0f1; padding: 2rem; border-radius: 8px; text-align: center;">
-                <p style="margin: 0; color: #7f8c8d; font-size: 1.1rem;">
-                    🎉 No active homework assignments. You're all caught up!
+
+                <!-- Progress Bar -->
+                <div class="mb-4">
+                    <div class="mb-2 flex items-center justify-between text-sm text-indigo-deep/80">
+                        <span>Progress</span>
+                        <span class="font-semibold text-midnight">
+                            {{ item.completed_tasks }} / {{ item.total_tasks }} tasks
+                        </span>
+                    </div>
+                    <div class="h-4 w-full overflow-hidden rounded-full bg-indigo-deep/10">
+                        <div class="h-full rounded-full bg-gradient-to-r from-violet-royal to-lime-glow transition-all"
+                            style="width: {{ item.completion_percentage }}%;"></div>
+                    </div>
+                    <p class="mt-1 text-right text-xs font-semibold text-indigo-deep/70">
+                        {{ item.completion_percentage }}% complete
+                    </p>
+                </div>
+
+                {% if item.assignment.description %}
+                <p class="mb-4 text-sm italic leading-relaxed text-indigo-deep/80">
+                    {{ item.assignment.description|truncatewords:30 }}
                 </p>
+                {% endif %}
+
+                <a href="{% url 'homework:assignment_detail' item.assignment.id %}"
+                    class="inline-flex items-center gap-2 rounded-lg bg-gradient-03 px-4 py-2 text-sm font-semibold text-mist shadow-[0_12px_24px_rgba(148,72,176,0.28)] transition hover:-translate-y-0.5 hover:shadow-[0_16px_30px_rgba(148,72,176,0.34)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-royal">
+                    View Assignment →
+                </a>
             </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div
+            class="rounded-2xl border border-indigo-deep/20 bg-mist/70 px-6 py-10 text-center shadow-[0_12px_28px_rgba(0,0,0,0.08)]">
+            <p class="text-lg font-semibold text-midnight">🎉 No active homework assignments. You're all caught up!</p>
+        </div>
         {% endif %}
     </section>
 
     <!-- Completed Assignments -->
     {% if completed_assignments %}
     <section>
-        <h2 style="color: #34495e; font-size: 1.5rem; margin-bottom: 1rem; border-bottom: 2px solid #2ecc71; padding-bottom: 0.5rem;">
-            Completed Assignments
-        </h2>
+        <div class="mb-6 flex items-center justify-between">
+            <h2 class="text-2xl font-semibold text-midnight">Completed Assignments</h2>
+            <div class="h-1 w-24 rounded-full bg-gradient-to-r from-lime-glow to-violet-royal"></div>
+        </div>
 
-        <div style="display: grid; gap: 1rem;">
+        <div class="grid gap-4">
             {% for item in completed_assignments %}
-            <div style="background: #f8f9fa; border-radius: 8px; padding: 1rem; border-left: 4px solid #2ecc71;">
-                <div style="display: flex; justify-content: space-between; align-items: center;">
+            <div class="rounded-2xl border border-indigo-deep/10 bg-mist px-4 py-3 shadow-sm">
+                <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <div>
-                        <h4 style="margin: 0 0 0.3rem 0; color: #2c3e50;">
-                            {{ item.assignment.title }}
-                        </h4>
-                        <p style="margin: 0; color: #7f8c8d; font-size: 0.85rem;">
+                        <h4 class="text-lg font-semibold text-midnight">{{ item.assignment.title }}</h4>
+                        <p class="text-xs font-semibold uppercase tracking-wide text-indigo-deep/60">
                             Submitted {{ item.assignment.submissions.first.submitted_at|date:"M d, Y" }}
                         </p>
                     </div>
-                    <span style="background: #2ecc71; color: white; padding: 0.3rem 0.8rem; border-radius: 20px; font-size: 0.85rem; font-weight: bold;">
+                    <span
+                        class="inline-flex items-center rounded-full bg-lime-glow px-3 py-1 text-xs font-semibold text-midnight shadow-[0_8px_18px_rgba(0,0,0,0.08)]">
                         ✓ SUBMITTED
                     </span>
                 </div>
@@ -114,16 +120,4 @@
     </section>
     {% endif %}
 </div>
-
-<style>
-.homework-card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-    transition: all 0.3s ease;
-}
-
-a[href*="assignment_detail"]:hover {
-    background: #2980b9 !important;
-}
-</style>
 {% endblock %}
