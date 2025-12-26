@@ -80,7 +80,9 @@ if not DEBUG:
     # Additional security headers
     SECURE_CONTENT_TYPE_NOSNIFF = True
     SECURE_BROWSER_XSS_FILTER = True
-    X_FRAME_OPTIONS = 'DENY'
+    # Use SAMEORIGIN instead of DENY to allow video controls to work properly
+    # DENY can interfere with video player functionality in some browsers
+    X_FRAME_OPTIONS = 'SAMEORIGIN'
 
 INSTALLED_APPS = [
     'django.contrib.admin',
