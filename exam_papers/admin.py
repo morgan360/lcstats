@@ -5,6 +5,7 @@ from django.urls import reverse, path
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
 from django.core.files.base import ContentFile
+from django import forms
 from .models import (
     AnswerFormatTemplate,
     ExamPaper,
@@ -42,9 +43,29 @@ class AnswerFormatTemplateAdmin(admin.ModelAdmin):
     description_preview.short_description = 'Description'
 
 
+class ExamQuestionPartInlineForm(forms.ModelForm):
+    """Custom form for exam question parts with smaller answer field"""
+
+    class Meta:
+        model = ExamQuestionPart
+        fields = '__all__'
+        widgets = {
+            'answer': forms.Textarea(attrs={
+                'rows': 3,
+                'cols': 80,
+                'placeholder': 'Enter answer(s). Use | to separate multiple acceptable answers. LaTeX: $x^2$ for inline, $$x^2$$ for display',
+                'style': 'font-family: monospace;'
+            }),
+        }
+        help_texts = {
+            'answer': 'Supports LaTeX: $...$ for inline math, $$...$$ for display. Separate multiple answers with |',
+        }
+
+
 class ExamQuestionPartInline(admin.StackedInline):
     """Inline admin for question parts"""
     model = ExamQuestionPart
+    form = ExamQuestionPartInlineForm
     extra = 1
     fields = ('label', 'answer', 'answer_format_template', 'expected_type', 'max_marks', 'order')
     ordering = ['order']
