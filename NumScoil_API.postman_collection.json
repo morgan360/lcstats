@@ -1,0 +1,1192 @@
+{
+	"info": {
+		"_postman_id": "numscaoil-api-collection",
+		"name": "NumScoil API",
+		"description": "Complete API collection for NumScoil - Django-based LC Maths AI Tutor Platform\n\n## Setup Instructions\n1. Import this collection into Postman\n2. Set the `base_url` variable (default: http://localhost:8000)\n3. Use the Login request to get a session cookie\n4. Session cookies are automatically stored and used in subsequent requests\n\n## Authentication\nThis API uses Django's session-based authentication. After logging in, the session cookie (sessionid) is automatically stored by Postman and included in subsequent requests.",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://localhost:8000",
+			"type": "string"
+		},
+		{
+			"key": "csrf_token",
+			"value": "",
+			"type": "string"
+		}
+	],
+	"item": [
+		{
+			"name": "Authentication",
+			"description": "User authentication endpoints (signup, login, logout)",
+			"item": [
+				{
+					"name": "Signup",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/x-www-form-urlencoded"
+							},
+							{
+								"key": "X-CSRFToken",
+								"value": "{{csrf_token}}"
+							}
+						],
+						"body": {
+							"mode": "urlencoded",
+							"urlencoded": [
+								{
+									"key": "username",
+									"value": "testuser",
+									"type": "text"
+								},
+								{
+									"key": "password1",
+									"value": "testpass123",
+									"type": "text"
+								},
+								{
+									"key": "password2",
+									"value": "testpass123",
+									"type": "text"
+								},
+								{
+									"key": "registration_code",
+									"value": "YOUR_CODE",
+									"type": "text",
+									"description": "Required registration code"
+								}
+							]
+						},
+						"url": {
+							"raw": "{{base_url}}/students/signup/",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"students",
+								"signup",
+								""
+							]
+						},
+						"description": "Register a new student account with a valid registration code"
+					}
+				},
+				{
+					"name": "Login",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"// Extract CSRF token from cookies if available",
+									"const csrfCookie = pm.cookies.get('csrftoken');",
+									"if (csrfCookie) {",
+									"    pm.collectionVariables.set('csrf_token', csrfCookie);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/x-www-form-urlencoded"
+							},
+							{
+								"key": "X-CSRFToken",
+								"value": "{{csrf_token}}"
+							}
+						],
+						"body": {
+							"mode": "urlencoded",
+							"urlencoded": [
+								{
+									"key": "username",
+									"value": "testuser",
+									"type": "text"
+								},
+								{
+									"key": "password",
+									"value": "testpass123",
+									"type": "text"
+								}
+							]
+						},
+						"url": {
+							"raw": "{{base_url}}/students/login/",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"students",
+								"login",
+								""
+							]
+						},
+						"description": "Login with username and password. Session cookie is automatically stored."
+					}
+				},
+				{
+					"name": "Get CSRF Token",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"const csrfCookie = pm.cookies.get('csrftoken');",
+									"if (csrfCookie) {",
+									"    pm.collectionVariables.set('csrf_token', csrfCookie);",
+									"    console.log('CSRF token set:', csrfCookie);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/students/login/",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"students",
+								"login",
+								""
+							]
+						},
+						"description": "Get CSRF token by visiting the login page. Run this before POST requests."
+					}
+				},
+				{
+					"name": "Logout",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/students/logout/",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"students",
+								"logout",
+								""
+							]
+						},
+						"description": "Logout the current user (accepts GET requests)"
+					}
+				}
+			]
+		},
+		{
+			"name": "Students",
+			"description": "Student profile and dashboard endpoints",
+			"item": [
+				{
+					"name": "Dashboard",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/students/dashboard/",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"students",
+								"dashboard",
+								""
+							]
+						},
+						"description": "Get student dashboard with progress, attempts, and topic summary. Requires authentication."
+					}
+				}
+			]
+		},
+		{
+			"name": "Interactive Lessons",
+			"description": "Question-based learning with multi-part questions",
+			"item": [
+				{
+					"name": "Select Topic",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/interactive/",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"interactive",
+								""
+							]
+						},
+						"description": "Get list of all available topics"
+					}
+				},
+				{
+					"name": "Section List",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/interactive/:topic_slug/sections/",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"interactive",
+								":topic_slug",
+								"sections",
+								""
+							],
+							"variable": [
+								{
+									"key": "topic_slug",
+									"value": "complex-numbers",
+									"description": "Topic slug (e.g., 'complex-numbers', 'differentiation')"
+								}
+							]
+						},
+						"description": "Get all sections for a specific topic"
+					}
+				},
+				{
+					"name": "Section Quiz",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/interactive/:topic_slug/sections/:section_slug/",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"interactive",
+								":topic_slug",
+								"sections",
+								":section_slug",
+								""
+							],
+							"variable": [
+								{
+									"key": "topic_slug",
+									"value": "complex-numbers"
+								},
+								{
+									"key": "section_slug",
+									"value": "basic-operations"
+								}
+							]
+						},
+						"description": "Get quiz interface for a specific section"
+					}
+				},
+				{
+					"name": "Submit Answer",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/x-www-form-urlencoded"
+							},
+							{
+								"key": "X-CSRFToken",
+								"value": "{{csrf_token}}"
+							}
+						],
+						"body": {
+							"mode": "urlencoded",
+							"urlencoded": [
+								{
+									"key": "answer",
+									"value": "3.14",
+									"type": "text"
+								},
+								{
+									"key": "question_part_id",
+									"value": "1",
+									"type": "text"
+								},
+								{
+									"key": "action",
+									"value": "submit",
+									"type": "text"
+								}
+							]
+						},
+						"url": {
+							"raw": "{{base_url}}/interactive/:topic_slug/sections/:section_slug/question/:number/",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"interactive",
+								":topic_slug",
+								"sections",
+								":section_slug",
+								"question",
+								":number",
+								""
+							],
+							"variable": [
+								{
+									"key": "topic_slug",
+									"value": "complex-numbers"
+								},
+								{
+									"key": "section_slug",
+									"value": "basic-operations"
+								},
+								{
+									"key": "number",
+									"value": "1"
+								}
+							]
+						},
+						"description": "Submit an answer for a question part. Returns grading results."
+					}
+				},
+				{
+					"name": "Get Hint",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/x-www-form-urlencoded"
+							},
+							{
+								"key": "X-CSRFToken",
+								"value": "{{csrf_token}}"
+							}
+						],
+						"body": {
+							"mode": "urlencoded",
+							"urlencoded": [
+								{
+									"key": "action",
+									"value": "hint",
+									"type": "text"
+								},
+								{
+									"key": "question_part_id",
+									"value": "1",
+									"type": "text"
+								}
+							]
+						},
+						"url": {
+							"raw": "{{base_url}}/interactive/:topic_slug/sections/:section_slug/question/:number/",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"interactive",
+								":topic_slug",
+								"sections",
+								":section_slug",
+								"question",
+								":number",
+								""
+							],
+							"variable": [
+								{
+									"key": "topic_slug",
+									"value": "complex-numbers"
+								},
+								{
+									"key": "section_slug",
+									"value": "basic-operations"
+								},
+								{
+									"key": "number",
+									"value": "1"
+								}
+							]
+						},
+						"description": "Get a hint for the current question (-20% penalty)"
+					}
+				},
+				{
+					"name": "Get Solution",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/x-www-form-urlencoded"
+							},
+							{
+								"key": "X-CSRFToken",
+								"value": "{{csrf_token}}"
+							}
+						],
+						"body": {
+							"mode": "urlencoded",
+							"urlencoded": [
+								{
+									"key": "action",
+									"value": "solution",
+									"type": "text"
+								},
+								{
+									"key": "question_part_id",
+									"value": "1",
+									"type": "text"
+								}
+							]
+						},
+						"url": {
+							"raw": "{{base_url}}/interactive/:topic_slug/sections/:section_slug/question/:number/",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"interactive",
+								":topic_slug",
+								"sections",
+								":section_slug",
+								"question",
+								":number",
+								""
+							],
+							"variable": [
+								{
+									"key": "topic_slug",
+									"value": "complex-numbers"
+								},
+								{
+									"key": "section_slug",
+									"value": "basic-operations"
+								},
+								{
+									"key": "number",
+									"value": "1"
+								}
+							]
+						},
+						"description": "Get full solution for the question (-50% penalty)"
+					}
+				},
+				{
+					"name": "Info Bot (AI Help)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/x-www-form-urlencoded"
+							},
+							{
+								"key": "X-CSRFToken",
+								"value": "{{csrf_token}}"
+							}
+						],
+						"body": {
+							"mode": "urlencoded",
+							"urlencoded": [
+								{
+									"key": "question",
+									"value": "What is the definition of a complex number?",
+									"type": "text"
+								}
+							]
+						},
+						"url": {
+							"raw": "{{base_url}}/interactive/info-bot/:topic_slug/",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"interactive",
+								"info-bot",
+								":topic_slug",
+								""
+							],
+							"variable": [
+								{
+									"key": "topic_slug",
+									"value": "complex-numbers"
+								}
+							]
+						},
+						"description": "Ask the AI tutor a question (uses RAG with notes and GPT-4o-mini)"
+					}
+				},
+				{
+					"name": "Topic Exam Questions",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/interactive/:topic_slug/exam-questions/",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"interactive",
+								":topic_slug",
+								"exam-questions",
+								""
+							],
+							"variable": [
+								{
+									"key": "topic_slug",
+									"value": "complex-numbers"
+								}
+							]
+						},
+						"description": "Get all exam questions for a specific topic (practice mode)"
+					}
+				},
+				{
+					"name": "Contact Teacher",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/x-www-form-urlencoded"
+							},
+							{
+								"key": "X-CSRFToken",
+								"value": "{{csrf_token}}"
+							}
+						],
+						"body": {
+							"mode": "urlencoded",
+							"urlencoded": [
+								{
+									"key": "inquiry_text",
+									"value": "I don't understand part (b) of this question",
+									"type": "text"
+								}
+							]
+						},
+						"url": {
+							"raw": "{{base_url}}/interactive/question/:question_id/contact/",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"interactive",
+								"question",
+								":question_id",
+								"contact",
+								""
+							],
+							"variable": [
+								{
+									"key": "question_id",
+									"value": "1"
+								}
+							]
+						},
+						"description": "Send a question to the teacher about a specific question"
+					}
+				}
+			]
+		},
+		{
+			"name": "Exam Papers",
+			"description": "Full timed exam papers with dual timer system",
+			"item": [
+				{
+					"name": "List Papers",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/exam-papers/",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"exam-papers",
+								""
+							]
+						},
+						"description": "Get list of all available exam papers"
+					}
+				},
+				{
+					"name": "Paper Detail",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/exam-papers/:slug/",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"exam-papers",
+								":slug",
+								""
+							],
+							"variable": [
+								{
+									"key": "slug",
+									"value": "lc-2023-paper1",
+									"description": "Exam paper slug"
+								}
+							]
+						},
+						"description": "Get details for a specific exam paper"
+					}
+				},
+				{
+					"name": "Start Paper Attempt",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/x-www-form-urlencoded"
+							},
+							{
+								"key": "X-CSRFToken",
+								"value": "{{csrf_token}}"
+							}
+						],
+						"body": {
+							"mode": "urlencoded",
+							"urlencoded": [
+								{
+									"key": "attempt_mode",
+									"value": "full_timed",
+									"type": "text",
+									"description": "full_timed or question_practice"
+								}
+							]
+						},
+						"url": {
+							"raw": "{{base_url}}/exam-papers/:slug/start/",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"exam-papers",
+								":slug",
+								"start",
+								""
+							],
+							"variable": [
+								{
+									"key": "slug",
+									"value": "lc-2023-paper1"
+								}
+							]
+						},
+						"description": "Start a new exam attempt (timed or practice mode)"
+					}
+				},
+				{
+					"name": "Question Interface",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/exam-papers/attempt/:attempt_id/question/:question_id/",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"exam-papers",
+								"attempt",
+								":attempt_id",
+								"question",
+								":question_id",
+								""
+							],
+							"variable": [
+								{
+									"key": "attempt_id",
+									"value": "1"
+								},
+								{
+									"key": "question_id",
+									"value": "1"
+								}
+							]
+						},
+						"description": "Get question interface for an exam attempt"
+					}
+				},
+				{
+					"name": "Submit Answer",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "X-CSRFToken",
+								"value": "{{csrf_token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"part_id\": 1,\n    \"answer\": \"3.14\",\n    \"action\": \"submit\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/exam-papers/attempt/:attempt_id/submit/",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"exam-papers",
+								"attempt",
+								":attempt_id",
+								"submit",
+								""
+							],
+							"variable": [
+								{
+									"key": "attempt_id",
+									"value": "1"
+								}
+							]
+						},
+						"description": "Submit an answer for an exam question part"
+					}
+				},
+				{
+					"name": "Get Solution",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/exam-papers/attempt/:attempt_id/solution/:part_id/",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"exam-papers",
+								"attempt",
+								":attempt_id",
+								"solution",
+								":part_id",
+								""
+							],
+							"variable": [
+								{
+									"key": "attempt_id",
+									"value": "1"
+								},
+								{
+									"key": "part_id",
+									"value": "1"
+								}
+							]
+						},
+						"description": "Get solution for a question part (with unlock validation)"
+					}
+				},
+				{
+					"name": "Complete Attempt",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "X-CSRFToken",
+								"value": "{{csrf_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/exam-papers/attempt/:attempt_id/complete/",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"exam-papers",
+								"attempt",
+								":attempt_id",
+								"complete",
+								""
+							],
+							"variable": [
+								{
+									"key": "attempt_id",
+									"value": "1"
+								}
+							]
+						},
+						"description": "Mark exam attempt as complete"
+					}
+				},
+				{
+					"name": "View Results",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/exam-papers/attempt/:attempt_id/results/",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"exam-papers",
+								"attempt",
+								":attempt_id",
+								"results",
+								""
+							],
+							"variable": [
+								{
+									"key": "attempt_id",
+									"value": "1"
+								}
+							]
+						},
+						"description": "View results for a completed exam attempt"
+					}
+				}
+			]
+		},
+		{
+			"name": "Notes & Knowledge Base",
+			"description": "RAG-based notes system with vector embeddings",
+			"item": [
+				{
+					"name": "Notes Index",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/notes/",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"notes",
+								""
+							]
+						},
+						"description": "Get all notes index"
+					}
+				},
+				{
+					"name": "Topic Notes",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/notes/:topic_name/",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"notes",
+								":topic_name",
+								""
+							],
+							"variable": [
+								{
+									"key": "topic_name",
+									"value": "Complex Numbers"
+								}
+							]
+						},
+						"description": "Get notes for a specific topic"
+					}
+				},
+				{
+					"name": "Save Info (Search)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/x-www-form-urlencoded"
+							},
+							{
+								"key": "X-CSRFToken",
+								"value": "{{csrf_token}}"
+							}
+						],
+						"body": {
+							"mode": "urlencoded",
+							"urlencoded": [
+								{
+									"key": "query",
+									"value": "What is the modulus of a complex number?",
+									"type": "text"
+								}
+							]
+						},
+						"url": {
+							"raw": "{{base_url}}/notes/save-info/",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"notes",
+								"save-info",
+								""
+							]
+						},
+						"description": "Search notes using RAG (semantic search with FAISS)"
+					}
+				}
+			]
+		},
+		{
+			"name": "Chat",
+			"description": "AI tutor chat interface",
+			"item": [
+				{
+					"name": "Chat Interface",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/chat/",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"chat",
+								""
+							]
+						},
+						"description": "Get AI tutor chat interface"
+					}
+				}
+			]
+		},
+		{
+			"name": "Homework",
+			"description": "Homework assignment system for teachers and students",
+			"item": [
+				{
+					"name": "Student Dashboard",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/homework/",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"homework",
+								""
+							]
+						},
+						"description": "Get student homework dashboard with assignments"
+					}
+				},
+				{
+					"name": "Assignment Detail",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/homework/assignment/:assignment_id/",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"homework",
+								"assignment",
+								":assignment_id",
+								""
+							],
+							"variable": [
+								{
+									"key": "assignment_id",
+									"value": "1"
+								}
+							]
+						},
+						"description": "Get detailed view of a specific assignment"
+					}
+				},
+				{
+					"name": "Toggle Task Completion",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "X-CSRFToken",
+								"value": "{{csrf_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/homework/toggle-task/:progress_id/",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"homework",
+								"toggle-task",
+								":progress_id",
+								""
+							],
+							"variable": [
+								{
+									"key": "progress_id",
+									"value": "1"
+								}
+							]
+						},
+						"description": "Toggle completion status of a homework task"
+					}
+				},
+				{
+					"name": "Submit Homework",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "X-CSRFToken",
+								"value": "{{csrf_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/homework/submit/:assignment_id/",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"homework",
+								"submit",
+								":assignment_id",
+								""
+							],
+							"variable": [
+								{
+									"key": "assignment_id",
+									"value": "1"
+								}
+							]
+						},
+						"description": "Submit completed homework"
+					}
+				},
+				{
+					"name": "Snooze Notification",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/x-www-form-urlencoded"
+							},
+							{
+								"key": "X-CSRFToken",
+								"value": "{{csrf_token}}"
+							}
+						],
+						"body": {
+							"mode": "urlencoded",
+							"urlencoded": [
+								{
+									"key": "snooze_duration",
+									"value": "24",
+									"type": "text",
+									"description": "Duration in hours"
+								}
+							]
+						},
+						"url": {
+							"raw": "{{base_url}}/homework/snooze-notification/",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"homework",
+								"snooze-notification",
+								""
+							]
+						},
+						"description": "Snooze homework notifications"
+					}
+				},
+				{
+					"name": "Teacher Dashboard",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/homework/teacher/",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"homework",
+								"teacher",
+								""
+							]
+						},
+						"description": "Get teacher dashboard (requires teacher permissions)"
+					}
+				}
+			]
+		},
+		{
+			"name": "Admin",
+			"description": "Django admin panel",
+			"item": [
+				{
+					"name": "Admin Panel",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/admin/",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"admin",
+								""
+							]
+						},
+						"description": "Access Django admin panel (requires superuser)"
+					}
+				}
+			]
+		}
+	],
+	"auth": {
+		"type": "inherit"
+	},
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		}
+	]
+}

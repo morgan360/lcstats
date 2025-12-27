@@ -1,0 +1,338 @@
+{% extends '_base.html' %}
+{% load static %}
+
+{% block title %}Study: {{ flashcard_set.title }} - {{ topic.name }}{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8 max-w-4xl">
+    <!-- Header -->
+    <div class="mb-6">
+        <div class="text-sm text-gray-600 mb-2">
+            <a href="{% url 'select_topic' %}" class="hover:underline">Topics</a> /
+            <a href="{% url 'flashcards:flashcard_sets_list' topic.slug %}" class="hover:underline">{{ topic.name }}</a> /
+            {{ flashcard_set.title }}
+        </div>
+        <h1 class="text-3xl font-bold text-gray-900">{{ flashcard_set.title }}</h1>
+        <p class="text-gray-600 mt-2">{{ flashcard_set.description }}</p>
+    </div>
+
+    <!-- Progress Indicator -->
+    <div class="bg-white rounded-lg shadow p-4 mb-6">
+        <div class="flex justify-between items-center mb-2">
+            <span class="text-sm font-medium text-gray-700">Card <span id="current-card-num">1</span> of {{ total_cards }}</span>
+            <span class="text-sm font-medium px-3 py-1 rounded-full" id="mastery-badge">New</span>
+        </div>
+        <div class="w-full bg-gray-200 rounded-full h-2">
+            <div class="bg-blue-600 h-2 rounded-full transition-all duration-300" id="progress-bar" style="width: 0%"></div>
+        </div>
+    </div>
+
+    <!-- Flashcard Display -->
+    <div class="bg-white rounded-lg shadow-lg p-8 mb-6" id="card-container">
+        <!-- Front of Card -->
+        <div id="card-front">
+            <div class="text-center mb-6">
+                <span class="text-sm uppercase tracking-wide text-gray-500">Question</span>
+            </div>
+            <div class="prose max-w-none mb-6" id="front-content"></div>
+            <div id="front-image-container" class="mb-6 text-center hidden">
+                <img id="front-image" class="max-w-full h-auto rounded-lg inline-block" style="max-height: 400px;">
+            </div>
+
+            <!-- Multiple Choice Options -->
+            <div class="space-y-3" id="options-container"></div>
+        </div>
+
+        <!-- Back of Card (hidden initially) -->
+        <div id="card-back" class="hidden">
+            <div class="text-center mb-6">
+                <div id="result-indicator" class="text-4xl mb-2"></div>
+                <div id="result-text" class="text-lg font-bold mb-2"></div>
+            </div>
+            <div class="mb-2 text-center">
+                <span class="text-sm font-semibold uppercase tracking-wide text-gray-600">The Correct Answer Is:</span>
+            </div>
+            <div class="prose max-w-none mb-6 p-4 bg-green-50 rounded-lg" id="back-content"></div>
+            <div id="back-image-container" class="mb-6 text-center hidden">
+                <img id="back-image" class="max-w-full h-auto rounded-lg inline-block" style="max-height: 400px;">
+            </div>
+            <div id="explanation-container" class="hidden mt-6 p-4 bg-blue-50 rounded-lg">
+                <div class="font-semibold text-blue-900 mb-2">Explanation:</div>
+                <div class="prose max-w-none" id="explanation-content"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Navigation Buttons -->
+    <div class="flex justify-between items-center">
+        <button id="prev-btn" class="px-6 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+            Previous
+        </button>
+        <a href="{% url 'flashcards:set_progress' topic.slug flashcard_set.id %}" class="px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700">
+            View Progress
+        </a>
+        <button id="next-btn" class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+            Next Card
+        </button>
+    </div>
+
+    <!-- Completion Modal (hidden initially) -->
+    <div id="completion-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+        <div class="bg-white rounded-lg p-8 max-w-md mx-4">
+            <h2 class="text-2xl font-bold mb-4">Set Complete! 🎉</h2>
+            <p class="text-gray-700 mb-6">You've finished all <span id="total-cards-completed"></span> cards in this set!</p>
+            <div class="flex gap-3">
+                <button onclick="window.location.reload()" class="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+                    Study Again
+                </button>
+                <a href="{% url 'flashcards:set_progress' topic.slug flashcard_set.id %}" class="flex-1 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 text-center">
+                    View Progress
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Card data from Django
+const cards = {{ cards_data|safe }};
+let currentIndex = 0;
+let showingAnswer = false;
+
+// CSRF token for AJAX
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+const csrftoken = getCookie('csrftoken');
+
+// Display current card
+function displayCard() {
+    const card = cards[currentIndex];
+    showingAnswer = false;
+
+    // Update progress
+    document.getElementById('current-card-num').textContent = currentIndex + 1;
+    const progressPct = ((currentIndex + 1) / cards.length) * 100;
+    document.getElementById('progress-bar').style.width = progressPct + '%';
+
+    // Update mastery badge
+    updateMasteryBadge(card.attempt.mastery_level);
+
+    // Show front, hide back
+    document.getElementById('card-front').classList.remove('hidden');
+    document.getElementById('card-back').classList.add('hidden');
+
+    // Set front content
+    document.getElementById('front-content').innerHTML = card.front_text;
+
+    // Handle front image
+    if (card.front_image) {
+        document.getElementById('front-image').src = card.front_image;
+        document.getElementById('front-image-container').classList.remove('hidden');
+    } else {
+        document.getElementById('front-image-container').classList.add('hidden');
+    }
+
+    // Render options
+    const optionsContainer = document.getElementById('options-container');
+    optionsContainer.innerHTML = '';
+
+    card.options.forEach((option, index) => {
+        const button = document.createElement('button');
+        button.className = 'w-full text-left p-4 border-2 border-gray-300 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition-colors';
+        button.innerHTML = option.text;
+        button.dataset.optionId = option.id;
+        button.dataset.isCorrect = option.is_correct;
+        button.onclick = () => selectOption(option.id, option.is_correct);
+        optionsContainer.appendChild(button);
+    });
+
+    // Update navigation
+    document.getElementById('prev-btn').disabled = currentIndex === 0;
+    document.getElementById('next-btn').disabled = true;
+
+    // Render KaTeX in the front content and options
+    if (window.renderMathInElement) {
+        renderMathInElement(document.getElementById('card-front'), {
+            delimiters: [
+                { left: "$$", right: "$$", display: true },
+                { left: "\\[", right: "\\]", display: true },
+                { left: "\\(", right: "\\)", display: false },
+                { left: "$", right: "$", display: false }
+            ],
+            throwOnError: false
+        });
+    }
+}
+
+// Handle option selection
+function selectOption(optionId, isCorrect) {
+    if (showingAnswer) return; // Prevent multiple selections
+    showingAnswer = true;
+
+    const card = cards[currentIndex];
+
+    // Highlight selected option
+    const buttons = document.querySelectorAll('#options-container button');
+    buttons.forEach(btn => {
+        btn.disabled = true;
+        if (btn.dataset.optionId === optionId) {
+            if (isCorrect) {
+                btn.classList.add('bg-green-100', 'border-green-500');
+            } else {
+                btn.classList.add('bg-red-100', 'border-red-500');
+            }
+        }
+        // Highlight correct answer
+        if (btn.dataset.isCorrect === 'true') {
+            btn.classList.add('bg-green-100', 'border-green-500');
+        }
+    });
+
+    // AJAX call to record answer
+    fetch('{% url "flashcards:record_answer" %}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrftoken
+        },
+        body: JSON.stringify({
+            card_id: card.id,
+            selected_option_id: optionId
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Update local card data
+            card.attempt.mastery_level = data.new_mastery_level;
+            card.attempt.correct_count = data.correct_count;
+            card.attempt.incorrect_count = data.incorrect_count;
+
+            // Show result and back of card
+            showCardBack(data.is_correct);
+        }
+    })
+    .catch(error => console.error('Error:', error));
+}
+
+// Show back of card with result
+function showCardBack(isCorrect) {
+    const card = cards[currentIndex];
+
+    // Hide front, show back
+    document.getElementById('card-front').classList.add('hidden');
+    document.getElementById('card-back').classList.remove('hidden');
+
+    // Show result indicator
+    const resultIndicator = document.getElementById('result-indicator');
+    const resultText = document.getElementById('result-text');
+    if (isCorrect) {
+        resultIndicator.textContent = '✓';
+        resultIndicator.className = 'text-4xl mb-2 text-green-600';
+        resultText.textContent = 'Correct!';
+        resultText.className = 'text-lg font-bold mb-2 text-green-600';
+    } else {
+        resultIndicator.textContent = '✗';
+        resultIndicator.className = 'text-4xl mb-2 text-red-600';
+        resultText.textContent = 'Incorrect!';
+        resultText.className = 'text-lg font-bold mb-2 text-red-600';
+    }
+
+    // Set back content
+    document.getElementById('back-content').innerHTML = card.back_text;
+
+    // Handle back image
+    if (card.back_image) {
+        document.getElementById('back-image').src = card.back_image;
+        document.getElementById('back-image-container').classList.remove('hidden');
+    } else {
+        document.getElementById('back-image-container').classList.add('hidden');
+    }
+
+    // Show explanation if exists
+    if (card.explanation) {
+        document.getElementById('explanation-content').innerHTML = card.explanation;
+        document.getElementById('explanation-container').classList.remove('hidden');
+    } else {
+        document.getElementById('explanation-container').classList.add('hidden');
+    }
+
+    // Update mastery badge
+    updateMasteryBadge(card.attempt.mastery_level);
+
+    // Enable next button
+    document.getElementById('next-btn').disabled = false;
+
+    // Render KaTeX in the back content and explanation
+    if (window.renderMathInElement) {
+        renderMathInElement(document.getElementById('card-back'), {
+            delimiters: [
+                { left: "$$", right: "$$", display: true },
+                { left: "\\[", right: "\\]", display: true },
+                { left: "\\(", right: "\\)", display: false },
+                { left: "$", right: "$", display: false }
+            ],
+            throwOnError: false
+        });
+    }
+}
+
+// Update mastery badge
+function updateMasteryBadge(level) {
+    const badge = document.getElementById('mastery-badge');
+    const colors = {
+        'new': 'bg-gray-200 text-gray-700',
+        'learning': 'bg-yellow-200 text-yellow-800',
+        'know': 'bg-green-200 text-green-800',
+        'dont_know': 'bg-red-200 text-red-800'
+    };
+    const labels = {
+        'new': 'New',
+        'learning': 'Learning',
+        'know': 'Know',
+        'dont_know': "Don't Know"
+    };
+    badge.className = 'text-sm font-medium px-3 py-1 rounded-full ' + (colors[level] || colors['new']);
+    badge.textContent = labels[level] || 'New';
+}
+
+// Navigation
+document.getElementById('next-btn').onclick = function() {
+    currentIndex++;
+    if (currentIndex >= cards.length) {
+        showCompletionModal();
+    } else {
+        displayCard();
+    }
+};
+
+document.getElementById('prev-btn').onclick = function() {
+    if (currentIndex > 0) {
+        currentIndex--;
+        displayCard();
+    }
+};
+
+// Show completion modal
+function showCompletionModal() {
+    document.getElementById('total-cards-completed').textContent = cards.length;
+    document.getElementById('completion-modal').classList.remove('hidden');
+    document.getElementById('completion-modal').classList.add('flex');
+}
+
+// Initialize
+displayCard();
+</script>
+{% endblock %}
