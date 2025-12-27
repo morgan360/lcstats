@@ -106,6 +106,7 @@ INSTALLED_APPS = [
     'cheatsheets',
     'exam_papers',
     'quickkicks',
+    'flashcards',
     'homework',
     'stats_simulator',
     'hijack',

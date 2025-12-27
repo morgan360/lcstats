@@ -17,6 +17,7 @@ urlpatterns = [
     path('cheatsheets/', include('cheatsheets.urls')),
     path('exam-papers/', include('exam_papers.urls')),
     path('quickkicks/', include('quickkicks.urls')),
+    path('flashcards/', include('flashcards.urls')),
     path('homework/', include('homework.urls')),
     path('stats-simulator/', include('stats_simulator.urls')),
 

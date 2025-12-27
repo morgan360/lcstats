@@ -8,10 +8,27 @@ def populate_sections(apps, schema_editor):
     """
     Create Section records from existing Question.section (CharField) data.
     Groups questions by topic and section name, creating ordered sections.
+
+    NOTE: Skipped for fresh installations as the 'section' column was removed
+    in a later migration. This only runs when migrating existing databases.
     """
-    # We can't use the Question model here because it will try to access section_id
-    # which doesn't exist yet. Use raw SQL instead.
     from django.db import connection
+
+    # Check if the section column exists before trying to query it
+    with connection.cursor() as cursor:
+        cursor.execute("""
+            SELECT COUNT(*)
+            FROM information_schema.COLUMNS
+            WHERE TABLE_SCHEMA = DATABASE()
+            AND TABLE_NAME = 'interactive_lessons_question'
+            AND COLUMN_NAME = 'section'
+        """)
+        column_exists = cursor.fetchone()[0] > 0
+
+    if not column_exists:
+        # Fresh installation - skip this migration
+        print("Skipping section population (fresh installation)")
+        return
 
     Section = apps.get_model('interactive_lessons', 'Section')
     Topic = apps.get_model('interactive_lessons', 'Topic')

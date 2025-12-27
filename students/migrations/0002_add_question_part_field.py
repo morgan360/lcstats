@@ -3,24 +3,54 @@
 from django.db import migrations, models
 
 
+def add_question_part_field_if_not_exists(apps, schema_editor):
+    """
+    Add question_part field only if it doesn't already exist.
+    This is necessary because the field was added to 0001_initial after this migration was created.
+    """
+    from django.db import connection
+
+    with connection.cursor() as cursor:
+        cursor.execute("""
+            SELECT COUNT(*)
+            FROM information_schema.COLUMNS
+            WHERE TABLE_SCHEMA = DATABASE()
+            AND TABLE_NAME = 'students_questionattempt'
+            AND COLUMN_NAME = 'question_part_id'
+        """)
+        field_exists = cursor.fetchone()[0] > 0
+
+    if field_exists:
+        print("Skipping question_part field addition (already exists)")
+        return
+
+    # Field doesn't exist, add it
+    with connection.cursor() as cursor:
+        cursor.execute("""
+            ALTER TABLE students_questionattempt
+            ADD COLUMN question_part_id bigint NULL
+        """)
+        cursor.execute("""
+            ALTER TABLE students_questionattempt
+            ADD CONSTRAINT students_questionattempt_question_part_id_fk
+            FOREIGN KEY (question_part_id) REFERENCES interactive_lessons_questionpart(id)
+            ON DELETE SET NULL
+        """)
+    print("Added question_part field")
+
+
+def reverse_add_field(apps, schema_editor):
+    """Remove the question_part field if it was added by this migration."""
+    pass  # Skip reverse as we don't want to break existing data
+
 
 class Migration(migrations.Migration):
 
     dependencies = [
         ('students', '0001_initial'),
+        ('interactive_lessons', '0001_initial'),
     ]
 
-    operations = [migrations.AddField(
-    model_name='questionattempt',
-    name='question_part',
-    field=models.ForeignKey(
-        to='interactive_lessons.questionpart',
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name='attempts',
-        help_text='Linked part of the question (if applicable)',
-    ),
-),
-
+    operations = [
+        migrations.RunPython(add_question_part_field_if_not_exists, reverse_add_field),
     ]
