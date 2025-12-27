@@ -42,13 +42,15 @@ class AnswerFormatTemplateAdmin(admin.ModelAdmin):
     description_preview.short_description = 'Description'
 
 
-class ExamQuestionPartInline(admin.TabularInline):
+class ExamQuestionPartInline(admin.StackedInline):
     """Inline admin for question parts"""
     model = ExamQuestionPart
     extra = 1
     fields = ('label', 'answer', 'answer_format_template', 'expected_type', 'max_marks', 'order')
     ordering = ['order']
     autocomplete_fields = ['answer_format_template']
+
+    classes = ['collapse']  # Makes inlines collapsible to save space
 
 
 class ExamQuestionInline(admin.TabularInline):
