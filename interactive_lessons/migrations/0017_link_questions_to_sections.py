@@ -7,8 +7,27 @@ def link_questions_to_sections(apps, schema_editor):
     """
     Link each Question to its Section based on the section (CharField) value.
     Uses raw SQL to avoid model conflicts during migration.
+
+    NOTE: Skipped for fresh installations as the 'section' column was removed
+    in a later migration. This only runs when migrating existing databases.
     """
     from django.db import connection
+
+    # Check if the section column exists before trying to query it
+    with connection.cursor() as cursor:
+        cursor.execute("""
+            SELECT COUNT(*)
+            FROM information_schema.COLUMNS
+            WHERE TABLE_SCHEMA = DATABASE()
+            AND TABLE_NAME = 'interactive_lessons_question'
+            AND COLUMN_NAME = 'section'
+        """)
+        column_exists = cursor.fetchone()[0] > 0
+
+    if not column_exists:
+        # Fresh installation - skip this migration
+        print("Skipping question-section linking (fresh installation)")
+        return
 
     Section = apps.get_model('interactive_lessons', 'Section')
 
