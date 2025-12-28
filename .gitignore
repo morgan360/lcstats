@@ -66,3 +66,4 @@ htmlcov/
 node_modules/
 dist/
 build/
+docs/Postman.json
