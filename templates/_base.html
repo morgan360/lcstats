@@ -21,7 +21,7 @@
 </head>
 
 <body class="flex min-h-screen flex-col bg-midnight font-sans text-mist overflow-x-hidden">
-    <nav class="sticky top-0 z-50 bg-midnight/70 text-mist shadow-lg relative backdrop-blur-md">
+    <nav class="sticky top-0 z-50 bg-midnight/70 text-mist shadow-lg relative backdrop-blur-md" style="z-index: 1000;">
         <div aria-hidden="true" class="absolute inset-x-0 top-0 h-0.5 bg-gradient-04 opacity-80"></div>
         <div class="mx-auto flex items-center justify-between px-4 py-3 lg:py-4">
             <div class="flex items-center gap-4">
@@ -152,111 +152,113 @@
             </div>
         </div>
 
-        <!-- Mobile drawer -->
-        <div id="navMenu"
-            class="fixed inset-y-0 left-0 z-40 w-72 -translate-x-full transform bg-gradient-05 px-6 pb-10 pt-6 text-mist transition duration-300 lg:hidden">
-            {% if user.is_authenticated %}
-            <div class="mb-6 flex items-center gap-3 bg-mist/10 px-4 py-3 rounded-lg">
-                <span class="text-xl">👋</span>
-                <div>
-                    <div class="text-sm text-mist/80">Welcome back</div>
-                    <div class="text-base font-semibold">{{ user.username }}</div>
-                </div>
-            </div>
-            {% endif %}
+    </nav>
 
-            <div class="space-y-2 text-sm font-semibold">
-                <div>
-                    <button type="button"
-                        class="mobile-dropdown-toggle flex w-full items-center justify-between rounded-lg px-3 py-2 transition hover:bg-mist/10">
-                        <span>Practice</span>
-                        <svg class="h-4 w-4 text-mist/80" xmlns="http://www.w3.org/2000/svg" fill="none"
-                            viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-                        </svg>
-                    </button>
-                    <div class="mobile-dropdown hidden space-y-1 rounded-lg bg-indigo-deep/80 p-1">
-                        <a href="{% url 'select_topic' %}"
-                            class="block rounded-lg px-3 py-2 text-sm font-semibold hover:bg-mist/10">Interactive
-                            Lessons</a>
-                        <a href="{% url 'exam_papers:paper_list' %}"
-                            class="block rounded-lg px-3 py-2 text-sm font-semibold hover:bg-mist/10">Exam Papers</a>
-                    </div>
-                </div>
-
-                <div>
-                    <button type="button"
-                        class="mobile-dropdown-toggle flex w-full items-center justify-between rounded-lg px-3 py-2 transition hover:bg-mist/10">
-                        <span>Study</span>
-                        <svg class="h-4 w-4 text-mist/80" xmlns="http://www.w3.org/2000/svg" fill="none"
-                            viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-                        </svg>
-                    </button>
-                    <div class="mobile-dropdown hidden space-y-1 rounded-lg bg-indigo-deep/80 p-1">
-                        <a href="{% url 'notes_index' %}"
-                            class="block rounded-lg px-3 py-2 text-sm font-semibold hover:bg-mist/10">Study
-                            Resources</a>
-                        <a href="{% url 'quickkicks:quickkicks_index' %}"
-                            class="block rounded-lg px-3 py-2 text-sm font-semibold hover:bg-mist/10">QuickFlicks</a>
-                        <a href="{% url 'cheatsheets:cheatsheets_index' %}"
-                            class="block rounded-lg px-3 py-2 text-sm font-semibold hover:bg-mist/10">Cheatsheets</a>
-                        <a href="{% url 'stats_simulator:index' %}"
-                            class="block rounded-lg px-3 py-2 text-sm font-semibold hover:bg-mist/10">Stats
-                            Simulator</a>
-                    </div>
-                </div>
-
-                <a href="{% url 'module_list' %}"
-                    class="block rounded-lg px-3 py-2 transition hover:bg-mist/10">Revision</a>
-
-                {% if user.is_authenticated %}
-                <a href="{% url 'homework:student_dashboard' %}"
-                    class="relative block rounded-lg px-3 py-2 transition hover:bg-mist/10">
-                    <span>Homework</span>
-                    {% if homework_badge_count > 0 %}
-                    <span
-                        class="ml-1 inline-flex min-w-[1.3rem] items-center justify-center rounded-full bg-rose-pop px-1.5 py-0.5 text-[0.7rem] font-bold text-midnight animate-pulse">{{
-                        homework_badge_count }}</span>
-                    {% endif %}
-                </a>
-                {% endif %}
-
-                {% if user.is_authenticated %}
-                <div>
-                    <button type="button"
-                        class="mobile-dropdown-toggle flex w-full items-center justify-between rounded-lg px-3 py-2 transition hover:bg-mist/10">
-                        <span>{{ user.username }}</span>
-                        <svg class="h-4 w-4 text-mist/80" xmlns="http://www.w3.org/2000/svg" fill="none"
-                            viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-                        </svg>
-                    </button>
-                    <div class="mobile-dropdown hidden space-y-1 rounded-lg bg-indigo-deep/80 p-1">
-                        <a href="{% url 'dashboard' %}"
-                            class="block rounded-lg px-3 py-2 text-sm font-semibold hover:bg-mist/10">Dashboard</a>
-                        <a href="{% url 'account_email' %}"
-                            class="block rounded-lg px-3 py-2 text-sm font-semibold hover:bg-mist/10">Settings</a>
-                        <a href="{% url 'account_logout' %}"
-                            class="block rounded-lg px-3 py-2 text-sm font-semibold hover:bg-mist/10">Logout</a>
-                    </div>
-                </div>
-                {% else %}
-                <a href="{% url 'account_login' %}"
-                    class="block rounded-lg px-3 py-2 transition hover:bg-mist/10">Login</a>
-                <a href="{% url 'account_signup' %}"
-                    class="block rounded-lg bg-gradient-03 px-3 py-2 text-center text-mist shadow-[0_10px_30px_rgba(148,72,176,0.3)] transition hover:brightness-105 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-mist">Sign Up</a>
-                {% endif %}
-
-                {% if request.user.is_staff %}
-                <a href="/admin/"
-                    class="block rounded-lg px-3 py-2 text-rose-pop transition hover:bg-mist/10">Admin</a>
-                {% endif %}
+    <!-- Mobile drawer (outside nav to avoid stacking issues) -->
+    <div id="navMenu"
+        class="fixed inset-y-0 left-0 z-50 w-72 -translate-x-full transform bg-gradient-05 px-6 pb-10 pt-6 text-mist transition duration-300 lg:hidden"
+        style="z-index: 1200; max-height: 100vh; overflow-y: auto;">
+        {% if user.is_authenticated %}
+        <div class="mb-6 flex items-center gap-3 bg-mist/10 px-4 py-3 rounded-lg">
+            <span class="text-xl">👋</span>
+            <div>
+                <div class="text-sm text-mist/80">Welcome back</div>
+                <div class="text-base font-semibold">{{ user.username }}</div>
             </div>
         </div>
+        {% endif %}
 
-        <div class="nav-overlay fixed inset-0 z-30 hidden bg-black/50 lg:hidden" id="navOverlay"></div>
-    </nav>
+        <div class="space-y-2 text-sm font-semibold">
+            <div>
+                <button type="button"
+                    class="mobile-dropdown-toggle flex w-full items-center justify-between rounded-lg px-3 py-2 transition hover:bg-mist/10">
+                    <span>Practice</span>
+                    <svg class="h-4 w-4 text-mist/80" xmlns="http://www.w3.org/2000/svg" fill="none"
+                        viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                    </svg>
+                </button>
+                <div class="mobile-dropdown hidden space-y-1 rounded-lg bg-indigo-deep/80 p-1">
+                    <a href="{% url 'select_topic' %}"
+                        class="block rounded-lg px-3 py-2 text-sm font-semibold hover:bg-mist/10">Interactive
+                        Lessons</a>
+                    <a href="{% url 'exam_papers:paper_list' %}"
+                        class="block rounded-lg px-3 py-2 text-sm font-semibold hover:bg-mist/10">Exam Papers</a>
+                </div>
+            </div>
+
+            <div>
+                <button type="button"
+                    class="mobile-dropdown-toggle flex w-full items-center justify-between rounded-lg px-3 py-2 transition hover:bg-mist/10">
+                    <span>Study</span>
+                    <svg class="h-4 w-4 text-mist/80" xmlns="http://www.w3.org/2000/svg" fill="none"
+                        viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                    </svg>
+                </button>
+                <div class="mobile-dropdown hidden space-y-1 rounded-lg bg-indigo-deep/80 p-1">
+                    <a href="{% url 'notes_index' %}"
+                        class="block rounded-lg px-3 py-2 text-sm font-semibold hover:bg-mist/10">Study
+                        Resources</a>
+                    <a href="{% url 'quickkicks:quickkicks_index' %}"
+                        class="block rounded-lg px-3 py-2 text-sm font-semibold hover:bg-mist/10">QuickFlicks</a>
+                    <a href="{% url 'cheatsheets:cheatsheets_index' %}"
+                        class="block rounded-lg px-3 py-2 text-sm font-semibold hover:bg-mist/10">Cheatsheets</a>
+                    <a href="{% url 'stats_simulator:index' %}"
+                        class="block rounded-lg px-3 py-2 text-sm font-semibold hover:bg-mist/10">Stats
+                        Simulator</a>
+                </div>
+            </div>
+
+            <a href="{% url 'module_list' %}"
+                class="block rounded-lg px-3 py-2 transition hover:bg-mist/10">Revision</a>
+
+            {% if user.is_authenticated %}
+            <a href="{% url 'homework:student_dashboard' %}"
+                class="relative block rounded-lg px-3 py-2 transition hover:bg-mist/10">
+                <span>Homework</span>
+                {% if homework_badge_count > 0 %}
+                <span
+                    class="ml-1 inline-flex min-w-[1.3rem] items-center justify-center rounded-full bg-rose-pop px-1.5 py-0.5 text-[0.7rem] font-bold text-midnight animate-pulse">{{
+                    homework_badge_count }}</span>
+                {% endif %}
+            </a>
+            {% endif %}
+
+            {% if user.is_authenticated %}
+            <div>
+                <button type="button"
+                    class="mobile-dropdown-toggle flex w-full items-center justify-between rounded-lg px-3 py-2 transition hover:bg-mist/10">
+                    <span>{{ user.username }}</span>
+                    <svg class="h-4 w-4 text-mist/80" xmlns="http://www.w3.org/2000/svg" fill="none"
+                        viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                    </svg>
+                </button>
+                <div class="mobile-dropdown hidden space-y-1 rounded-lg bg-indigo-deep/80 p-1">
+                    <a href="{% url 'dashboard' %}"
+                        class="block rounded-lg px-3 py-2 text-sm font-semibold hover:bg-mist/10">Dashboard</a>
+                    <a href="{% url 'account_email' %}"
+                        class="block rounded-lg px-3 py-2 text-sm font-semibold hover:bg-mist/10">Settings</a>
+                    <a href="{% url 'account_logout' %}"
+                        class="block rounded-lg px-3 py-2 text-sm font-semibold hover:bg-mist/10">Logout</a>
+                </div>
+            </div>
+            {% else %}
+            <a href="{% url 'account_login' %}"
+                class="block rounded-lg px-3 py-2 transition hover:bg-mist/10">Login</a>
+            <a href="{% url 'account_signup' %}"
+                class="block rounded-lg bg-gradient-03 px-3 py-2 text-center text-mist shadow-[0_10px_30px_rgba(148,72,176,0.3)] transition hover:brightness-105 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-mist">Sign Up</a>
+            {% endif %}
+
+            {% if request.user.is_staff %}
+            <a href="/admin/"
+                class="block rounded-lg px-3 py-2 text-rose-pop transition hover:bg-mist/10">Admin</a>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="nav-overlay fixed inset-0 z-40 hidden bg-black/50 lg:hidden" id="navOverlay" style="z-index: 1190;"></div>
 
     <main class="mx-auto flex w-full max-w-6xl flex-1 flex-col px-4 py-8 sm:px-6 lg:px-8 text-midnight">
         {% block content %}{% endblock %}
