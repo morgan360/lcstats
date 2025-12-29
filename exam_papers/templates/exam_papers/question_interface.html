@@ -716,6 +716,14 @@ function submitAnswer(partId, attemptId) {
             let html = '<strong>' + (data.is_correct ? '✓ Correct!' : '✗ Incorrect') + '</strong><br>';
             html += 'Marks: ' + Math.round(data.marks_awarded * 10) / 10 + '/' + data.max_marks;
 
+            // Display detailed feedback from GPT-4 Vision
+            if (data.feedback) {
+                html += '<div style="margin-top: 12px; padding: 10px; background: rgba(255,255,255,0.5); border-radius: 4px; line-height: 1.6;">';
+                html += '<strong>📝 Feedback:</strong><br>';
+                html += data.feedback;
+                html += '</div>';
+            }
+
             if (data.solution_unlocked) {
                 html += '<div style="margin-top: 10px; color: #28a745;">✓ Solution now unlocked!</div>';
                 // Unlock the solution button
