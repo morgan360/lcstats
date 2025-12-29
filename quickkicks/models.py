@@ -2,7 +2,7 @@ from django.db import models
 from django.core.exceptions import ValidationError
 from django.contrib.auth.models import User
 from django.utils import timezone
-from interactive_lessons.models import Topic
+from interactive_lessons.models import Topic, QuestionPart
 
 
 class QuickKick(models.Model):
@@ -45,6 +45,16 @@ class QuickKick(models.Model):
         help_text="GeoGebra applet code (e.g., 'pvvcyzts') - required if content type is GeoGebra"
     )
 
+    # Optional test question after video
+    question_part = models.ForeignKey(
+        QuestionPart,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='quickkicks',
+        help_text='Optional question to test comprehension after watching (links to existing QuestionPart)'
+    )
+
     order = models.PositiveIntegerField(default=0, help_text="Display order within topic")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -79,11 +89,36 @@ class QuickKick(models.Model):
 
 class QuickKickView(models.Model):
     """
-    Tracks when students view QuickKicks (for homework completion tracking).
+    Tracks when students view QuickKicks and their answers to test questions.
     """
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='quickkick_views')
     quickkick = models.ForeignKey(QuickKick, on_delete=models.CASCADE, related_name='views')
     viewed_at = models.DateTimeField(default=timezone.now)
+
+    # Test question answer tracking
+    answer_submitted = models.BooleanField(
+        default=False,
+        help_text='Whether student has submitted an answer to the test question'
+    )
+    answer_correct = models.BooleanField(
+        default=False,
+        help_text='Whether the submitted answer was correct'
+    )
+    score_awarded = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        default=0,
+        help_text='Score awarded (0-100) for the test question'
+    )
+    attempts = models.PositiveIntegerField(
+        default=0,
+        help_text='Number of attempts at the test question'
+    )
+    last_attempt_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text='When the last answer attempt was made'
+    )
 
     class Meta:
         unique_together = ('user', 'quickkick')
