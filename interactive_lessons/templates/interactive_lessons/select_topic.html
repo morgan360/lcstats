@@ -5,7 +5,7 @@
 <h1 class="mb-8 mt-6 text-2xl font-semibold text-mist text-center">Choose a Topic</h1>
 
 <div class="w-full overflow-hidden rounded-xl border border-indigo-deep/15 bg-mist/90 shadow-[0_10px_30px_rgba(0,0,0,0.08)] text-center">
-    <div class="hidden grid-cols-[2fr_1.5fr_1.5fr_1.5fr_1.5fr] gap-4 bg-[linear-gradient(135deg,#667eea_0%,#764ba2_100%)] px-5 py-4 text-sm font-semibold text-white md:grid">
+    <div class="hidden gap-4 bg-[linear-gradient(135deg,#667eea_0%,#764ba2_100%)] px-5 py-4 text-sm font-semibold text-white md:grid md:grid-cols-5">
         <div>Topic</div>
         <div class="text-center">Interactive Quiz</div>
         <div class="text-center">Exam Questions</div>
@@ -14,9 +14,10 @@
     </div>
 
     {% for item in topics_with_notes %}
-    <div class="grid grid-cols-1 items-center gap-3 border-b border-indigo-deep/15 px-5 py-5 transition hover:bg-mist/80 last:border-b-0 md:grid-cols-[2fr_1.5fr_1.5fr_1.5fr_1.5fr] md:gap-4">
-        <div class="text-lg text-center font-semibold text-midnight md:mb-0 md:border-0 mb-2 lg:ml-6 lg:text-left border-b border-indigo-deep/15 pb-2">
-            {{ item.topic.name }}
+    <div class="grid grid-cols-1 items-center gap-3 border-b border-indigo-deep/15 px-5 py-5 transition hover:bg-mist/80 last:border-b-0 md:grid md:grid-cols-5 md:gap-4">
+        <div class="text-center font-semibold text-midnight md:mb-0 md:border-0 mb-2 lg:ml-6 lg:text-left border-b border-indigo-deep/15 pb-2">
+            <div class="md:hidden mb-1 text-xs font-semibold uppercase tracking-wide text-indigo-deep/70">Topic</div>
+            <div class="text-lg">{{ item.topic.name }}</div>
         </div>
 
         <div class="flex justify-center">
