@@ -4,7 +4,7 @@ This extracts: correct answers, mark allocations, solution steps, and common err
 """
 from django.core.management.base import BaseCommand
 from django.conf import settings
-from exam_papers.models import ExamPaper, ExamQuestion, ExamQuestionPart, MarkingScheme
+from exam_papers.models import ExamPaper, ExamQuestion, ExamQuestionPart
 import openai
 import base64
 import json

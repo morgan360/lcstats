@@ -73,28 +73,10 @@
                 <span class="part-marks">{{ part_data.part.max_marks }} marks</span>
             </div>
 
-            <div class="part-prompt">
-                {{ part_data.part.prompt|safe }}
-            </div>
-
             {% if part_data.part.image %}
             <div class="part-image">
                 <img src="{{ part_data.part.image.url }}" alt="Part {{ part_data.part.label }}">
             </div>
-            {% endif %}
-
-            {% if part_data.part.get_expected_format_display %}
-            <details style="margin-top:15px; margin-bottom:15px; background-color:#f0f7ff; border:1px solid #cfe2ff; border-radius:5px; padding:8px;">
-                <summary style="font-weight:600; color:#004aad; cursor:pointer;">💭 Expected Answer Format</summary>
-                <div style="margin-top:6px; line-height:1.5;">
-                    {{ part_data.part.get_expected_format_display|safe }}
-                    {% if part_data.part.answer_format_template.example %}
-                    <div style="margin-top:8px; padding:6px; background:#e8f4f8; border-left:3px solid #004aad; font-style:italic;">
-                        Example: {{ part_data.part.answer_format_template.example }}
-                    </div>
-                    {% endif %}
-                </div>
-            </details>
             {% endif %}
 
             <!-- Answer Input -->
@@ -788,24 +770,14 @@ function toggleSolution(partId, attemptId, isUnlocked) {
     .then(data => {
         if (data.success) {
             solutionArea.style.display = 'block';
-            let html = '<h4>📖 Solution</h4>';
-            html += '<div>' + data.solution + '</div>';
+            let html = '<h4>📖 Marking Scheme</h4>';
             if (data.solution_image_url) {
-                html += '<img src="' + data.solution_image_url + '" style="max-width: 100%; margin-top: 15px;">';
+                html += '<img src="' + data.solution_image_url + '" style="max-width: 100%; margin-top: 15px; border: 1px solid #ddd; border-radius: 4px;">';
+            } else {
+                html += '<p style="color: #999;">No marking scheme image available.</p>';
             }
             solutionArea.innerHTML = html;
             btnText.textContent = '💚 Hide Solution';
-
-            // Re-render KaTeX
-            if (window.renderMathInElement) {
-                renderMathInElement(solutionArea, {
-                    delimiters: [
-                        {left: "$$", right: "$$", display: true},
-                        {left: "$", right: "$", display: false}
-                    ],
-                    throwOnError: false
-                });
-            }
         } else {
             alert(data.error);
         }

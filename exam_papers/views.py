@@ -11,7 +11,7 @@ from .models import (
     ExamAttempt, ExamQuestionAttempt
 )
 from interactive_lessons.models import Topic
-from interactive_lessons.stats_tutor import mark_student_answer
+from .services.vision_grading import grade_with_vision_marking_scheme
 
 
 @login_required
@@ -230,21 +230,20 @@ def submit_answer(request, attempt_id):
             question_part=part
         ).count()
 
-        # Grade the answer using the existing grading system
-        grading_result = mark_student_answer(
-            question_text=part.prompt,
+        # Grade the answer using GPT-4 Vision with marking scheme image
+        grading_result = grade_with_vision_marking_scheme(
             student_answer=student_answer,
-            correct_answer=part.answer,
+            marking_scheme_image=part.solution_image,
+            question_part_label=part.label,
+            max_marks=part.max_marks,
+            question_image=part.image,
             hint_used=False,
             solution_used=False
         )
 
-        # Calculate marks based on score (0-100)
-        score_percentage = grading_result['score'] / 100.0
-        marks_awarded = part.max_marks * score_percentage
-        is_correct = score_percentage >= 0.95  # Consider 95%+ as correct
-
-        # Use feedback from grading
+        # Extract results from grading
+        marks_awarded = grading_result['marks_awarded']
+        is_correct = grading_result['is_correct']
         feedback = grading_result.get('feedback', '')
 
         # Create attempt record
@@ -331,7 +330,6 @@ def get_solution(request, attempt_id, part_id):
 
     return JsonResponse({
         'success': True,
-        'solution': part.solution,
         'solution_image_url': part.solution_image.url if part.solution_image else None,
     })
 

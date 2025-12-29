@@ -168,14 +168,7 @@ class QuestionPart(models.Model):
         help_text="Optional image for this specific question part (e.g., diagram, graph)."
     )
     answer = models.TextField(blank=True, null=True)
-    answer_format_template = models.ForeignKey(
-        'exam_papers.AnswerFormatTemplate',
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        help_text="Select a predefined answer format template"
-    )
-    expected_format = models.TextField(blank=True, null=True, help_text="Custom format description (or leave blank to use template)")
+    expected_format = models.TextField(blank=True, null=True, help_text="Custom format description")
     solution = models.TextField(blank=True, null=True)
     solution_image = models.ImageField(
         upload_to="solutions/",

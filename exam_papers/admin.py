@@ -7,7 +7,6 @@ from django.contrib import messages
 from django.core.files.base import ContentFile
 from django import forms
 from .models import (
-    AnswerFormatTemplate,
     ExamPaper,
     ExamQuestion,
     ExamQuestionPart,
@@ -18,58 +17,12 @@ from .forms import ExtractQuestionsForm
 from .utils import extract_pdf_page_ranges, split_pdf_into_questions
 
 
-@admin.register(AnswerFormatTemplate)
-class AnswerFormatTemplateAdmin(admin.ModelAdmin):
-    list_display = ('name', 'category', 'description_preview', 'example', 'is_active', 'order')
-    list_filter = ('category', 'is_active')
-    search_fields = ('name', 'description', 'category', 'example')
-    list_editable = ('order', 'is_active')
-
-    fieldsets = (
-        ('Template Information', {
-            'fields': ('name', 'category', 'is_active', 'order')
-        }),
-        ('Format Instructions', {
-            'fields': ('description', 'example'),
-            'description': 'The description will be shown to students. The example is optional but helpful.'
-        }),
-    )
-
-    def description_preview(self, obj):
-        """Show truncated description in list view"""
-        if len(obj.description) > 60:
-            return obj.description[:60] + '...'
-        return obj.description
-    description_preview.short_description = 'Description'
-
-
-class ExamQuestionPartInlineForm(forms.ModelForm):
-    """Custom form for exam question parts with smaller answer field"""
-
-    class Meta:
-        model = ExamQuestionPart
-        fields = '__all__'
-        widgets = {
-            'answer': forms.Textarea(attrs={
-                'rows': 3,
-                'cols': 80,
-                'placeholder': 'Enter answer(s). Use | to separate multiple acceptable answers. LaTeX: $x^2$ for inline, $$x^2$$ for display',
-                'style': 'font-family: monospace;'
-            }),
-        }
-        help_texts = {
-            'answer': 'Supports LaTeX: $...$ for inline math, $$...$$ for display. Separate multiple answers with |',
-        }
-
-
 class ExamQuestionPartInline(admin.StackedInline):
     """Inline admin for question parts"""
     model = ExamQuestionPart
-    form = ExamQuestionPartInlineForm
     extra = 1
-    fields = ('label', 'answer', 'answer_format_template', 'expected_type', 'max_marks', 'order')
+    fields = ('label', 'image', 'solution_image', 'solution_unlock_after_attempts', 'max_marks', 'order')
     ordering = ['order']
-    autocomplete_fields = ['answer_format_template']
 
     classes = ['collapse']  # Makes inlines collapsible to save space
 
@@ -273,34 +226,30 @@ class ExamQuestionAdmin(admin.ModelAdmin):
 
 @admin.register(ExamQuestionPart)
 class ExamQuestionPartAdmin(admin.ModelAdmin):
-    list_display = ('__str__', 'label', 'question', 'expected_type', 'max_marks', 'solution_unlock_after_attempts')
-    list_filter = ('expected_type', 'question__exam_paper__year', 'question__topic')
+    list_display = ('__str__', 'label', 'question', 'max_marks', 'has_marking_scheme', 'solution_unlock_after_attempts')
+    list_filter = ('question__exam_paper__year', 'question__topic')
     search_fields = ('label', 'question__title')
 
     fieldsets = (
         ('Part Identification', {
             'fields': ('question', 'label', 'order')
         }),
-        ('Solution', {
-            'fields': ('solution', 'solution_image', 'solution_unlock_after_attempts')
-        }),
         ('Question Content', {
             'fields': ('image',)
         }),
-        ('Answer Format', {
-            'fields': ('answer_format_template', 'expected_format'),
-            'description': 'Select a template for common formats, or enter custom text. Template takes precedence.'
-        }),
-        ('Answer', {
-            'fields': ('answer', 'expected_type')
-
+        ('Marking Scheme', {
+            'fields': ('solution_image', 'solution_unlock_after_attempts'),
+            'description': 'Upload the marking scheme image for this part. GPT-4 Vision will use this to grade student answers.'
         }),
         ('Marking', {
             'fields': ('max_marks',)
         }),
     )
 
-    autocomplete_fields = ['answer_format_template']
+    def has_marking_scheme(self, obj):
+        """Show if marking scheme image exists"""
+        return '✓' if obj.solution_image else '✗'
+    has_marking_scheme.short_description = 'Marking Scheme'
 
 
 class ExamQuestionAttemptInline(admin.TabularInline):
@@ -347,7 +296,7 @@ class ExamAttemptAdmin(admin.ModelAdmin):
 @admin.register(ExamQuestionAttempt)
 class ExamQuestionAttemptAdmin(admin.ModelAdmin):
     list_display = ('student_username', 'question_part', 'marks_awarded', 'max_marks', 'attempt_number', 'submitted_at')
-    list_filter = ('is_correct', 'hint_used', 'solution_viewed', 'question_part__expected_type')
+    list_filter = ('is_correct', 'hint_used', 'solution_viewed')
     search_fields = ('exam_attempt__student__username', 'question_part__label', 'student_answer')
     date_hierarchy = 'submitted_at'
 
