@@ -7,7 +7,7 @@ class Migration(migrations.Migration):
 
     dependencies = [
         ('exam_papers', '0009_fix_utf8mb4_encoding'),
-        ('interactive_lessons', '0020_question_is_quickkick_suitable'),
+        ('interactive_lessons', '0021_remove_answer_format_template'),
     ]
 
     operations = [
