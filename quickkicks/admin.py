@@ -24,6 +24,11 @@ class QuickKickAdmin(admin.ModelAdmin):
             'fields': ('geogebra_code',),
             'description': 'For GeoGebra applets - enter just the code (e.g., "pvvcyzts")'
         }),
+        ('Test Question (Optional)', {
+            'fields': ('question_part',),
+            'description': 'Add a comprehension test question that appears after the video/applet',
+            'classes': ('collapse',)
+        }),
     )
 
     def get_queryset(self, request):
@@ -32,11 +37,21 @@ class QuickKickAdmin(admin.ModelAdmin):
 
 @admin.register(QuickKickView)
 class QuickKickViewAdmin(admin.ModelAdmin):
-    list_display = ('user', 'quickkick', 'viewed_at')
-    list_filter = ('viewed_at', 'quickkick__topic')
+    list_display = ('user', 'quickkick', 'viewed_at', 'answer_submitted', 'answer_correct', 'score_awarded')
+    list_filter = ('viewed_at', 'quickkick__topic', 'answer_submitted', 'answer_correct')
     search_fields = ('user__username', 'quickkick__title')
-    readonly_fields = ('viewed_at',)
+    readonly_fields = ('viewed_at', 'last_attempt_at')
     ordering = ('-viewed_at',)
+
+    fieldsets = (
+        ('View Information', {
+            'fields': ('user', 'quickkick', 'viewed_at')
+        }),
+        ('Test Question Results', {
+            'fields': ('answer_submitted', 'answer_correct', 'score_awarded', 'attempts', 'last_attempt_at'),
+            'description': 'Results for the optional test question (if one is attached)'
+        }),
+    )
 
     def get_queryset(self, request):
         return super().get_queryset(request).select_related('user', 'quickkick', 'quickkick__topic')
