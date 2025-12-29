@@ -190,6 +190,12 @@ class QuestionPart(models.Model):
         ],
         default="exact"
     )
+
+    # QuickKick integration
+    is_quickkick_suitable = models.BooleanField(
+        default=False,
+        help_text="Mark this question as suitable for QuickKick videos (shows in dropdown when adding test questions)"
+    )
     scale = models.CharField(max_length=10, blank=True, null=True)
     max_marks = models.PositiveIntegerField(default=0)
 

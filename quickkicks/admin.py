@@ -9,6 +9,13 @@ class QuickKickAdmin(admin.ModelAdmin):
     search_fields = ('title', 'description', 'topic__name')
     ordering = ('topic', 'order', 'title')
 
+    def formfield_for_foreignkey(self, db_field, request, **kwargs):
+        """Filter question_part dropdown to only show questions marked as QuickKick suitable"""
+        if db_field.name == "question_part":
+            from interactive_lessons.models import QuestionPart
+            kwargs["queryset"] = QuestionPart.objects.filter(is_quickkick_suitable=True).select_related('question', 'question__topic')
+        return super().formfield_for_foreignkey(db_field, request, **kwargs)
+
     fieldsets = (
         ('Basic Information', {
             'fields': ('title', 'description', 'topic', 'order')

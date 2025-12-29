@@ -63,6 +63,7 @@ class QuestionPartInline(admin.StackedInline):
         "expected_type",
         "scale",
         "max_marks",
+        "is_quickkick_suitable",
     )
 
     # ✅ Make text boxes smaller for compact editing
