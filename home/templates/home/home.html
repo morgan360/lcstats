@@ -173,8 +173,7 @@
 
         <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
             {% for topic in topics_with_counts %}
-            {% cycle 'border-midnight' 'border-lime-glow' 'border-rose-pop' 'border-violet-royal' 'border-indigo-deep'
-            'border-midnight' 'border-lime-glow' 'border-violet-royal' as border_color silent %}
+                {% cycle 'border-midnight' 'border-lime-glow' 'border-rose-pop' 'border-violet-royal' 'border-indigo-deep' 'border-midnight' 'border-lime-glow' 'border-violet-royal' as border_color silent %}
             <div
                 class="rounded-lg border-l-4 {{ border_color }} bg-mist p-4 text-center shadow-[0_8px_18px_rgba(0,0,0,0.08)]">
                 <strong class="block text-midnight">
