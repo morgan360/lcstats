@@ -14,6 +14,7 @@
     {% endif %}
 
     <!-- Collapsible Hint (Question Area) -->
+    {% if question.hint %}
     <div class="text-mist">
         <details class="mx-auto max-w-2xl rounded-lg border border-violet-royal bg-violet-royal/70 px-2 py-2 text-sm shadow-sm">
             <summary class="cursor-pointer font-semibold">💡 Hint</summary>
@@ -30,6 +31,7 @@
             {% endwith %}
         </details>
     </div>
+    {% endif %}
 
     <!-- Each QuestionPart -->
     {% for part in parts %}
