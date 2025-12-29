@@ -113,11 +113,15 @@ def grade_with_vision_marking_scheme(
 
 **Important:** Return ONLY a JSON object with these exact fields:
 - "marks_awarded": number between 0 and {max_marks} (use decimals for partial credit, e.g., 3.5)
-- "feedback": string explaining why marks were awarded/deducted (be concise and constructive)
+- "feedback": string with detailed explanation including:
+  * What the student got correct (if anything)
+  * What was incorrect or missing
+  * Specific reference to marking scheme criteria
+  * Constructive guidance for improvement
 - "is_correct": boolean (true if marks_awarded >= {max_marks * 0.95}, false otherwise)
 
 Example response:
-{{"marks_awarded": 8.5, "feedback": "Correct method and final answer. Minor sign error in step 2 (-0.5 marks).", "is_correct": true}}"""
+{{"marks_awarded": 7, "feedback": "You correctly identified that m = ±6. However, the marking scheme awards 10 marks for showing all three steps: using b²-4ac=0, substituting values, and solving for m. You showed the final answer but not the full working. Award 7/10 for correct final answer without complete method.", "is_correct": false}}"""
             },
             {
                 "type": "image_url",
