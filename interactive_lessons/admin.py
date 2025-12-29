@@ -63,7 +63,6 @@ class QuestionPartInline(admin.StackedInline):
         "expected_type",
         "scale",
         "max_marks",
-        "is_quickkick_suitable",
     )
 
     # ✅ Make text boxes smaller for compact editing
@@ -118,7 +117,7 @@ class QuestionAdmin(admin.ModelAdmin):
 
     fieldsets = (
         ("Basic Information", {
-            "fields": ("topic", "order", "section", "is_copyrighted")
+            "fields": ("topic", "order", "section", "is_copyrighted", "is_quickkick_suitable")
         }),
         ("Question Content", {
             "fields": ("hint", "image", "image_url")

@@ -105,6 +105,12 @@ class Question(models.Model):
         help_text="DEPRECATED: Use exam_papers app instead. Original PDF filename for reference"
     )
 
+    # QuickKick integration
+    is_quickkick_suitable = models.BooleanField(
+        default=False,
+        help_text="Mark this question as suitable for QuickKick videos (shows in dropdown when adding test questions)"
+    )
+
     def __str__(self):
         return f"{self.topic.name} - Q{self.order}"
 

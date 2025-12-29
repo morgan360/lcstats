@@ -10,10 +10,10 @@ class QuickKickAdmin(admin.ModelAdmin):
     ordering = ('topic', 'order', 'title')
 
     def formfield_for_foreignkey(self, db_field, request, **kwargs):
-        """Filter question_part dropdown to only show questions marked as QuickKick suitable"""
-        if db_field.name == "question_part":
-            from interactive_lessons.models import QuestionPart
-            kwargs["queryset"] = QuestionPart.objects.filter(is_quickkick_suitable=True).select_related('question', 'question__topic')
+        """Filter question dropdown to only show questions marked as QuickKick suitable"""
+        if db_field.name == "question":
+            from interactive_lessons.models import Question
+            kwargs["queryset"] = Question.objects.filter(is_quickkick_suitable=True).select_related('topic')
         return super().formfield_for_foreignkey(db_field, request, **kwargs)
 
     fieldsets = (
@@ -32,7 +32,7 @@ class QuickKickAdmin(admin.ModelAdmin):
             'description': 'For GeoGebra applets - enter just the code (e.g., "pvvcyzts")'
         }),
         ('Test Question (Optional)', {
-            'fields': ('question_part',),
+            'fields': ('question',),
             'description': 'Add a comprehension test question that appears after the video/applet',
             'classes': ('collapse',)
         }),

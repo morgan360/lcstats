@@ -2,7 +2,7 @@ from django.db import models
 from django.core.exceptions import ValidationError
 from django.contrib.auth.models import User
 from django.utils import timezone
-from interactive_lessons.models import Topic, QuestionPart
+from interactive_lessons.models import Topic, Question
 
 
 class QuickKick(models.Model):
@@ -46,13 +46,13 @@ class QuickKick(models.Model):
     )
 
     # Optional test question after video
-    question_part = models.ForeignKey(
-        QuestionPart,
+    question = models.ForeignKey(
+        Question,
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
         related_name='quickkicks',
-        help_text='Optional question to test comprehension after watching (links to existing QuestionPart)'
+        help_text='Optional question to test comprehension after watching (links to existing Question)'
     )
 
     order = models.PositiveIntegerField(default=0, help_text="Display order within topic")

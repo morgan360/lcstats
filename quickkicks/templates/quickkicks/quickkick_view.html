@@ -48,6 +48,173 @@
     {% endif %}
   </div>
 
+  <!-- Test Question (if attached) -->
+  {% if question_part %}
+  <div id="test-question-container" class="mt-8 rounded-2xl border border-indigo-deep/10 bg-white/95 shadow-[0_14px_32px_rgba(0,0,0,0.12)] overflow-hidden" {% if quickkick.content_type == 'video' %}style="display: none;"{% endif %}>
+    <div class="bg-gradient-to-r from-rose-pop to-violet-royal p-4">
+      <h2 class="text-xl font-semibold text-mist">Test Your Understanding</h2>
+      <p class="text-sm text-mist/90">Answer this question to check your comprehension</p>
+    </div>
+
+    <div class="p-6">
+      <!-- Full Question Context -->
+      <div class="mb-6">
+        <!-- Parent Question Hint/Image (if exists) -->
+        {% if question_part.question.hint or question_part.question.image or question_part.question.image_url %}
+        <div class="mb-4 rounded-lg bg-indigo-deep/5 p-4">
+          {% if question_part.question.hint %}
+          <div class="prose max-w-none mb-3">
+            <p class="text-midnight/90">{{ question_part.question.hint|safe }}</p>
+          </div>
+          {% endif %}
+          {% if question_part.question.image %}
+          <img src="{{ question_part.question.image.url }}" alt="Question context" class="max-w-full rounded-lg shadow-md">
+          {% elif question_part.question.image_url %}
+          <img src="{{ question_part.question.image_url }}" alt="Question context" class="max-w-full rounded-lg shadow-md">
+          {% endif %}
+        </div>
+        {% endif %}
+
+        <!-- Question Part -->
+        {% if question_part.label %}
+        <div class="mb-2 inline-flex items-center rounded-full bg-violet-royal/10 px-3 py-1 text-sm font-semibold text-violet-royal">
+          Part {{ question_part.label }}
+        </div>
+        {% endif %}
+        <div class="prose max-w-none">
+          {{ question_part.prompt|safe }}
+        </div>
+        {% if question_part.image %}
+        <img src="{{ question_part.image.url }}" alt="Question part diagram" class="mt-4 max-w-full rounded-lg shadow-md">
+        {% endif %}
+      </div>
+
+      <!-- Previous Answer Result (if exists) -->
+      {% if view_record.answer_submitted %}
+      <div class="mb-6 rounded-lg p-4 {% if view_record.answer_correct %}bg-green-50 border border-green-200{% else %}bg-amber-50 border border-amber-200{% endif %}">
+        <div class="flex items-center gap-2 mb-2">
+          <span class="text-2xl">{% if view_record.answer_correct %}✓{% else %}⚠{% endif %}</span>
+          <h3 class="font-semibold {% if view_record.answer_correct %}text-green-800{% else %}text-amber-800{% endif %}">
+            Previous Score: {{ view_record.score_awarded }}%
+          </h3>
+        </div>
+        <p class="text-sm {% if view_record.answer_correct %}text-green-700{% else %}text-amber-700{% endif %}">
+          Attempts: {{ view_record.attempts }} | {% if view_record.answer_correct %}Great job!{% else %}Try again to improve your score{% endif %}
+        </p>
+      </div>
+      {% endif %}
+
+      <!-- Answer Form -->
+      <form id="answer-form" method="POST" class="space-y-4">
+        {% csrf_token %}
+        <div>
+          <label for="student_answer" class="mb-2 block text-sm font-semibold text-midnight">Your Answer</label>
+          <input
+            type="text"
+            id="student_answer"
+            name="student_answer"
+            class="w-full rounded-lg border border-indigo-deep/20 bg-white px-4 py-3 text-midnight placeholder-indigo-deep/40 shadow-sm transition focus:border-violet-royal focus:outline-none focus:ring-2 focus:ring-violet-royal/30"
+            placeholder="Enter your answer..."
+            required
+          >
+          {% if question_part.expected_format %}
+          <p class="mt-2 text-sm text-indigo-deep/70">Format: {{ question_part.expected_format }}</p>
+          {% endif %}
+        </div>
+
+        <button
+          type="submit"
+          class="inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-rose-pop to-violet-royal px-6 py-3 text-sm font-semibold text-mist shadow-[0_12px_26px_rgba(148,72,176,0.28)] transition hover:-translate-y-0.5 hover:shadow-[0_16px_32px_rgba(148,72,176,0.34)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-royal"
+        >
+          Submit Answer
+        </button>
+      </form>
+
+      <!-- Answer Feedback (dynamic, shown after submission) -->
+      <div id="feedback-container" class="mt-6 hidden"></div>
+    </div>
+  </div>
+
+  <!-- JavaScript for video end detection and AJAX submission -->
+  {% if quickkick.content_type == 'video' %}
+  <script>
+    // Show test question when video ends
+    const video = document.querySelector('video');
+    const questionContainer = document.getElementById('test-question-container');
+
+    if (video && questionContainer) {
+      video.addEventListener('ended', function() {
+        questionContainer.style.display = 'block';
+        questionContainer.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
+    }
+  </script>
+  {% endif %}
+
+  <script>
+    // Handle form submission via AJAX
+    const answerForm = document.getElementById('answer-form');
+    const feedbackContainer = document.getElementById('feedback-container');
+
+    answerForm.addEventListener('submit', function(e) {
+      e.preventDefault();
+
+      const formData = new FormData(answerForm);
+      const submitBtn = answerForm.querySelector('button[type="submit"]');
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Grading...';
+
+      fetch(window.location.href, {
+        method: 'POST',
+        body: formData,
+        headers: {
+          'X-Requested-With': 'XMLHttpRequest',
+        }
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          // Show feedback
+          const isCorrect = data.is_correct;
+          feedbackContainer.className = `mt-6 rounded-lg p-5 ${isCorrect ? 'bg-green-50 border border-green-200' : 'bg-amber-50 border border-amber-200'}`;
+          feedbackContainer.innerHTML = `
+            <div class="flex items-start gap-3">
+              <span class="text-3xl">${isCorrect ? '✓' : '⚠'}</span>
+              <div class="flex-1">
+                <h3 class="mb-2 text-lg font-semibold ${isCorrect ? 'text-green-800' : 'text-amber-800'}">
+                  Score: ${data.score}%
+                </h3>
+                <p class="mb-2 ${isCorrect ? 'text-green-700' : 'text-amber-700'}">${data.feedback}</p>
+                ${data.hint ? `<p class="text-sm ${isCorrect ? 'text-green-600' : 'text-amber-600'}"><strong>Tip:</strong> ${data.hint}</p>` : ''}
+                <p class="mt-3 text-sm ${isCorrect ? 'text-green-600' : 'text-amber-600'}">Attempts: ${data.attempts}</p>
+              </div>
+            </div>
+          `;
+          feedbackContainer.classList.remove('hidden');
+
+          // Reset form if incorrect to allow retry
+          if (!isCorrect) {
+            answerForm.querySelector('#student_answer').value = '';
+          }
+        }
+
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Submit Answer';
+      })
+      .catch(error => {
+        console.error('Error:', error);
+        feedbackContainer.className = 'mt-6 rounded-lg bg-red-50 border border-red-200 p-5';
+        feedbackContainer.innerHTML = `
+          <p class="text-red-800">An error occurred while grading your answer. Please try again.</p>
+        `;
+        feedbackContainer.classList.remove('hidden');
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Submit Answer';
+      });
+    });
+  </script>
+  {% endif %}
+
   <!-- Actions -->
   <div class="mt-8 flex flex-wrap gap-3">
     <a href="{% url 'quickkicks:quickkicks_list' topic.slug %}"
