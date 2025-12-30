@@ -224,28 +224,6 @@ class ExamQuestionAdmin(admin.ModelAdmin):
     image_preview.short_description = 'Question Image Reference'
 
 
-@admin.register(ExamQuestionPart)
-class ExamQuestionPartAdmin(admin.ModelAdmin):
-    list_display = ('__str__', 'label', 'question', 'has_marking_scheme', 'solution_unlock_after_attempts')
-    list_filter = ('question__exam_paper__year', 'question__topic')
-    search_fields = ('label', 'question__title')
-
-    fieldsets = (
-        ('Part Identification', {
-            'fields': ('question', 'label', 'order')
-        }),
-        ('Marking Scheme', {
-            'fields': ('solution_image', 'solution_unlock_after_attempts'),
-            'description': 'Upload the marking scheme image for this part. GPT-4 Vision will use this to grade student answers and extract max marks.'
-        }),
-    )
-
-    def has_marking_scheme(self, obj):
-        """Show if marking scheme image exists"""
-        return '✓' if obj.solution_image else '✗'
-    has_marking_scheme.short_description = 'Marking Scheme'
-
-
 class ExamQuestionAttemptInline(admin.TabularInline):
     """Inline admin for individual question attempts within an exam attempt"""
     model = ExamQuestionAttempt
