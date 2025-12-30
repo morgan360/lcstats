@@ -5,6 +5,7 @@ from django.utils import timezone
 from django.db.models import Q, Count, Sum, Prefetch
 from django.views.decorators.http import require_POST
 import json
+import logging
 
 from .models import (
     ExamPaper, ExamQuestion, ExamQuestionPart,
@@ -12,6 +13,8 @@ from .models import (
 )
 from interactive_lessons.models import Topic
 from .services.vision_grading import grade_with_vision_marking_scheme
+
+logger = logging.getLogger(__name__)
 
 
 @login_required
@@ -235,8 +238,8 @@ def submit_answer(request, attempt_id):
             student_answer=student_answer,
             marking_scheme_image=part.solution_image,
             question_part_label=part.label,
-            max_marks=part.max_marks,
-            question_image=part.image,
+            max_marks=part.max_marks,  # Pass existing max_marks (or None)
+            question_image=None,  # No part.image anymore
             hint_used=False,
             solution_used=False
         )
@@ -245,6 +248,13 @@ def submit_answer(request, attempt_id):
         marks_awarded = grading_result['marks_awarded']
         is_correct = grading_result['is_correct']
         feedback = grading_result.get('feedback', '')
+        extracted_max_marks = grading_result.get('max_marks', part.max_marks)
+
+        # Save extracted max_marks to database if it was auto-extracted
+        if part.max_marks is None and extracted_max_marks:
+            part.max_marks = extracted_max_marks
+            part.save(update_fields=['max_marks'])
+            logger.info(f"Saved auto-extracted max_marks={extracted_max_marks} for {part}")
 
         # Create attempt record
         question_attempt = ExamQuestionAttempt.objects.create(

@@ -21,7 +21,7 @@ class ExamQuestionPartInline(admin.StackedInline):
     """Inline admin for question parts"""
     model = ExamQuestionPart
     extra = 1
-    fields = ('label', 'image', 'solution_image', 'solution_unlock_after_attempts', 'max_marks', 'order')
+    fields = ('label', 'solution_image', 'max_marks', 'solution_unlock_after_attempts', 'order')
     ordering = ['order']
 
     classes = ['collapse']  # Makes inlines collapsible to save space
@@ -226,7 +226,7 @@ class ExamQuestionAdmin(admin.ModelAdmin):
 
 @admin.register(ExamQuestionPart)
 class ExamQuestionPartAdmin(admin.ModelAdmin):
-    list_display = ('__str__', 'label', 'question', 'max_marks', 'has_marking_scheme', 'solution_unlock_after_attempts')
+    list_display = ('__str__', 'label', 'question', 'has_marking_scheme', 'solution_unlock_after_attempts')
     list_filter = ('question__exam_paper__year', 'question__topic')
     search_fields = ('label', 'question__title')
 
@@ -234,15 +234,9 @@ class ExamQuestionPartAdmin(admin.ModelAdmin):
         ('Part Identification', {
             'fields': ('question', 'label', 'order')
         }),
-        ('Question Content', {
-            'fields': ('image',)
-        }),
         ('Marking Scheme', {
             'fields': ('solution_image', 'solution_unlock_after_attempts'),
-            'description': 'Upload the marking scheme image for this part. GPT-4 Vision will use this to grade student answers.'
-        }),
-        ('Marking', {
-            'fields': ('max_marks',)
+            'description': 'Upload the marking scheme image for this part. GPT-4 Vision will use this to grade student answers and extract max marks.'
         }),
     )
 

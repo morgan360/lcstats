@@ -35,11 +35,86 @@ def encode_image_from_file(image_field):
         return None
 
 
+def extract_max_marks_from_scheme(marking_scheme_image, question_part_label):
+    """
+    Extract maximum marks from a marking scheme image using GPT-4 Vision.
+
+    Args:
+        marking_scheme_image (ImageField): The marking scheme image
+        question_part_label (str): Part label (e.g., "(a)", "(b)")
+
+    Returns:
+        int: Extracted max marks, or None if extraction fails
+    """
+    if not marking_scheme_image:
+        return None
+
+    try:
+        scheme_b64 = encode_image_from_file(marking_scheme_image)
+        if not scheme_b64:
+            return None
+
+        response = client.chat.completions.create(
+            model=getattr(settings, 'OPENAI_VISION_MODEL', 'gpt-4o'),
+            messages=[
+                {
+                    "role": "user",
+                    "content": [
+                        {
+                            "type": "text",
+                            "text": f"""You are analyzing a Leaving Certificate marking scheme image.
+
+**Task:** Extract the maximum marks available for part {question_part_label}.
+
+**Instructions:**
+1. Look carefully at the marking scheme image
+2. Find the marks allocation for part {question_part_label}
+3. Return ONLY a JSON object with one field: "max_marks" (integer)
+
+Example response: {{"max_marks": 10}}
+
+If you cannot find the marks, return: {{"max_marks": 0}}"""
+                        },
+                        {
+                            "type": "image_url",
+                            "image_url": {
+                                "url": f"data:image/jpeg;base64,{scheme_b64}",
+                                "detail": "high"
+                            }
+                        }
+                    ]
+                }
+            ],
+            max_tokens=100,
+            temperature=0.1,
+        )
+
+        raw_response = response.choices[0].message.content.strip()
+
+        # Extract JSON
+        import json
+        import re
+        json_match = re.search(r'\{[^}]+\}', raw_response, re.DOTALL)
+        if json_match:
+            result = json.loads(json_match.group(0))
+            max_marks = int(result.get('max_marks', 0))
+            if max_marks > 0:
+                logger.info(f"Extracted max_marks={max_marks} for {question_part_label}")
+                return max_marks
+
+        logger.warning(f"Could not extract max_marks for {question_part_label}")
+        return None
+
+    except Exception as e:
+        logger.error(f"Error extracting max_marks for {question_part_label}: {e}")
+        return None
+
+
 def grade_with_vision_marking_scheme(
     student_answer,
     marking_scheme_image,
     question_part_label,
-    max_marks,
+    max_marks=None,
     question_image=None,
     hint_used=False,
     solution_used=False
@@ -51,7 +126,7 @@ def grade_with_vision_marking_scheme(
         student_answer (str): The student's submitted answer
         marking_scheme_image (ImageField): The marking scheme image for this question part
         question_part_label (str): Part label (e.g., "(a)", "(b)")
-        max_marks (int): Maximum marks available for this part
+        max_marks (int, optional): Maximum marks available for this part (auto-extracted if None)
         question_image (ImageField, optional): Image of the question itself
         hint_used (bool): Whether student used a hint
         solution_used (bool): Whether student viewed the solution
@@ -61,7 +136,8 @@ def grade_with_vision_marking_scheme(
             'score': int (0-100 percentage),
             'marks_awarded': float (actual marks out of max_marks),
             'feedback': str (explanation of grading),
-            'is_correct': bool
+            'is_correct': bool,
+            'max_marks': int (extracted or provided max marks)
         }
     """
 
@@ -71,7 +147,8 @@ def grade_with_vision_marking_scheme(
             'score': 0,
             'marks_awarded': 0.0,
             'feedback': 'No answer provided.',
-            'is_correct': False
+            'is_correct': False,
+            'max_marks': max_marks or 0
         }
 
     if not marking_scheme_image:
@@ -80,8 +157,24 @@ def grade_with_vision_marking_scheme(
             'score': 0,
             'marks_awarded': 0.0,
             'feedback': 'Error: Marking scheme not available. Please contact your teacher.',
-            'is_correct': False
+            'is_correct': False,
+            'max_marks': max_marks or 0
         }
+
+    # Auto-extract max_marks if not provided
+    if max_marks is None:
+        logger.info(f"Extracting max_marks for {question_part_label} from marking scheme...")
+        max_marks = extract_max_marks_from_scheme(marking_scheme_image, question_part_label)
+
+        if max_marks is None or max_marks == 0:
+            logger.error(f"Failed to extract max_marks for {question_part_label}")
+            return {
+                'score': 0,
+                'marks_awarded': 0.0,
+                'feedback': 'Error: Could not determine maximum marks from marking scheme. Please contact your teacher.',
+                'is_correct': False,
+                'max_marks': 0
+            }
 
     try:
         # Encode the marking scheme image
@@ -205,7 +298,8 @@ Example response:
             'score': int(score_percentage),
             'marks_awarded': round(marks_awarded, 2),
             'feedback': feedback,
-            'is_correct': is_correct and not (hint_used or solution_used)  # Not correct if used help
+            'is_correct': is_correct and not (hint_used or solution_used),  # Not correct if used help
+            'max_marks': max_marks
         }
 
     except Exception as e:
@@ -214,5 +308,6 @@ Example response:
             'score': 0,
             'marks_awarded': 0.0,
             'feedback': f'Grading error: {str(e)}. Please try again or contact support.',
-            'is_correct': False
+            'is_correct': False,
+            'max_marks': max_marks or 0
         }

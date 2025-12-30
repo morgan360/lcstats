@@ -166,31 +166,25 @@ class ExamQuestionPart(models.Model):
         help_text="Part label (e.g., '(a)', '(b)', '(i)', '(ii)')"
     )
 
-    # Part content
-    image = models.ImageField(
-        upload_to='exam_papers/question_parts/',
-        blank=True,
-        null=True,
-        help_text="Diagram or image specific to this part"
-    )
-
     # Marking Scheme (replaces answer/solution fields)
     solution_image = models.ImageField(
         upload_to='exam_papers/marking_schemes/',
         blank=True,
         null=True,
-        help_text="Marking scheme image - used by GPT-4 Vision for grading"
+        help_text="Marking scheme image - used by GPT-4 Vision for grading and extracting max marks"
+    )
+
+    # Marking (optional - auto-extracted from marking scheme if not set)
+    max_marks = models.IntegerField(
+        null=True,
+        blank=True,
+        help_text="Maximum marks for this part (leave blank to auto-extract from marking scheme image)"
     )
 
     # Solution access control
     solution_unlock_after_attempts = models.PositiveIntegerField(
         default=2,
         help_text="Number of attempts before marking scheme becomes visible (0 = always visible)"
-    )
-
-    # Marking
-    max_marks = models.IntegerField(
-        help_text="Marks available for this part"
     )
 
     # Display order
