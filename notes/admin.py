@@ -58,6 +58,22 @@ class InfoBotQueryAdmin(admin.ModelAdmin):
     ordering = ("-created_at",)
     readonly_fields = ("created_at", "question", "answer", "confidence", "sources", "source_type", "topic_slug")
 
+    def has_module_permission(self, request):
+        """Only superusers can access InfoBot queries"""
+        return request.user.is_superuser
+
+    def has_view_permission(self, request, obj=None):
+        """Only superusers can view InfoBot queries"""
+        return request.user.is_superuser
+
+    def has_change_permission(self, request, obj=None):
+        """Only superusers can change InfoBot queries"""
+        return request.user.is_superuser
+
+    def has_delete_permission(self, request, obj=None):
+        """Only superusers can delete InfoBot queries"""
+        return request.user.is_superuser
+
     def short_question(self, obj):
         return (obj.question[:80] + "…") if len(obj.question) > 80 else obj.question
     short_question.short_description = "Question"
