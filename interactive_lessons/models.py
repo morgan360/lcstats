@@ -207,10 +207,7 @@ class QuestionPart(models.Model):
     def get_expected_format_display(self):
         """
         Returns the format instruction to show to students.
-        Uses template if selected, otherwise returns custom text.
         """
-        if self.answer_format_template:
-            return self.answer_format_template.description
         return self.expected_format or ""
 
 
