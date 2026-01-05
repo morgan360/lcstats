@@ -67,3 +67,5 @@ node_modules/
 dist/
 build/
 docs/Postman.json
+media/flashcards/
+*.json
