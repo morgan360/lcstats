@@ -8,14 +8,14 @@
     /* 3D Card Flip Animation */
     .flashcard-container {
         perspective: 1000px;
-        min-height: 500px;
+        height: 600px;
+        margin-bottom: 1rem;
     }
 
     .flashcard {
         position: relative;
         width: 100%;
-        height: auto;
-        min-height: 500px;
+        height: 600px;
         transition: transform 0.6s;
         transform-style: preserve-3d;
     }
@@ -26,7 +26,8 @@
 
     .card-face {
         width: 100%;
-        min-height: 500px;
+        height: 600px;
+        overflow-y: auto;
         backface-visibility: hidden;
         border-radius: 16px;
         padding: 2rem;
@@ -38,6 +39,7 @@
         position: absolute;
         top: 0;
         left: 0;
+        right: 0;
     }
 
     .card-front {
@@ -91,6 +93,19 @@
         border-color: rgb(16, 185, 129);
         border-width: 3px;
     }
+
+    /* Ensure navigation buttons are always visible and below card */
+    .nav-buttons {
+        margin-top: 2rem;
+        padding: 1rem 0;
+        clear: both;
+    }
+
+    /* Make disabled next button more visible */
+    #next-btn:disabled {
+        opacity: 0.6 !important;
+        background-color: #94a3b8 !important;
+    }
 </style>
 
 <div class="container mx-auto px-4 py-8 max-w-4xl">
@@ -108,7 +123,12 @@
     <!-- Progress Indicator -->
     <div class="bg-white rounded-lg shadow p-4 mb-6">
         <div class="flex justify-between items-center mb-2">
-            <span class="text-sm font-medium text-gray-700">Card <span id="current-card-num">1</span> of {{ total_cards }}</span>
+            <div class="flex items-center gap-3">
+                <span class="text-sm font-medium text-gray-700">Card <span id="current-card-num">1</span> of {{ total_cards }}</span>
+                <select id="card-selector" class="text-sm border border-gray-300 rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <!-- Options populated by JavaScript -->
+                </select>
+            </div>
             <span class="text-sm font-medium px-3 py-1 rounded-full" id="mastery-badge">New</span>
         </div>
         <div class="w-full bg-gray-200 rounded-full h-2">
@@ -143,8 +163,8 @@
                     <span class="text-sm font-semibold uppercase tracking-wide opacity-90">The Correct Answer Is:</span>
                 </div>
                 <div class="prose prose-invert max-w-none mb-6 p-6 bg-white/20 rounded-lg backdrop-blur-sm" id="back-content"></div>
-                <div id="back-image-container" class="mb-6 text-center hidden">
-                    <img id="back-image" class="max-w-full h-auto rounded-lg inline-block shadow-lg" style="max-height: 300px;">
+                <div id="back-image-container" class="mb-4 text-center hidden">
+                    <img id="back-image" class="max-w-full h-auto rounded-lg inline-block shadow-lg" style="max-height: 250px; max-width: 90%;">
                 </div>
                 <div id="explanation-container" class="hidden mt-6 p-6 bg-white/20 rounded-lg backdrop-blur-sm">
                     <div class="font-semibold text-lg mb-3 opacity-90">Explanation:</div>
@@ -155,7 +175,7 @@
     </div>
 
     <!-- Navigation Buttons -->
-    <div class="flex justify-between items-center">
+    <div class="flex justify-between items-center nav-buttons">
         <button id="prev-btn" class="px-6 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed" disabled>
             Previous
         </button>
@@ -190,6 +210,32 @@ const cards = {{ cards_data|safe }};
 let currentIndex = 0;
 let showingAnswer = false;
 
+// Populate card selector dropdown
+function populateCardSelector() {
+    const selector = document.getElementById('card-selector');
+    selector.innerHTML = '';
+    cards.forEach((card, index) => {
+        const option = document.createElement('option');
+        option.value = index;
+        option.textContent = `Card ${index + 1}`;
+        selector.appendChild(option);
+    });
+    selector.value = currentIndex;
+}
+
+// Handle card selector change
+document.addEventListener('DOMContentLoaded', function() {
+    populateCardSelector();
+
+    document.getElementById('card-selector').addEventListener('change', function(e) {
+        const newIndex = parseInt(e.target.value);
+        if (newIndex !== currentIndex) {
+            currentIndex = newIndex;
+            displayCard();
+        }
+    });
+});
+
 // CSRF token for AJAX
 function getCookie(name) {
     let cookieValue = null;
@@ -217,6 +263,9 @@ function displayCard() {
     const progressPct = ((currentIndex + 1) / cards.length) * 100;
     document.getElementById('progress-bar').style.width = progressPct + '%';
 
+    // Update card selector dropdown
+    document.getElementById('card-selector').value = currentIndex;
+
     // Update mastery badge
     updateMasteryBadge(card.attempt.mastery_level);
 
@@ -238,6 +287,7 @@ function displayCard() {
     // Render options
     const optionsContainer = document.getElementById('options-container');
     optionsContainer.innerHTML = '';
+    optionsContainer.style.display = 'block'; // Make sure options are visible
 
     card.options.forEach((option, index) => {
         const button = document.createElement('button');
@@ -321,6 +371,9 @@ function selectOption(optionId, isCorrect) {
 // Show back of card with result
 function showCardBack(isCorrect) {
     const card = cards[currentIndex];
+
+    // Hide options on front to prevent backwards text showing through
+    document.getElementById('options-container').style.display = 'none';
 
     // Trigger flip animation
     const flashcard = document.getElementById('flashcard');

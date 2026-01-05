@@ -1,0 +1,112 @@
+{
+  "version": "1.0",
+  "export_metadata": {
+    "include_images": true
+  },
+  "sets": [
+    {
+      "topic": {
+        "name": "Descriptive Statistics",
+        "slug": "descriptive-statistics"
+      },
+      "set": {
+        "title": "Probability Fundamentals",
+        "description": "Master the key concepts and formulas in probability theory",
+        "order": 1,
+        "is_published": true
+      },
+      "cards": [
+        {
+          "order": 1,
+          "front_text": "What is the probability of an **impossible** event?",
+          "back_text": "0 (zero)",
+          "distractor_1": "1",
+          "distractor_2": "0.5",
+          "distractor_3": "Cannot be determined",
+          "explanation": "An impossible event has a probability of 0 because it cannot occur. For example, the probability of rolling a 7 on a standard six-sided die is 0."
+        },
+        {
+          "order": 2,
+          "front_text": "What is the probability of a **certain** event?",
+          "back_text": "1",
+          "distractor_1": "0",
+          "distractor_2": "100",
+          "distractor_3": "Infinity",
+          "explanation": "A certain event has a probability of 1 because it will definitely occur. For example, the probability of rolling a number between 1 and 6 on a standard die is 1."
+        },
+        {
+          "order": 3,
+          "front_text": "What is the formula for calculating the probability of event A?",
+          "back_text": "$P(A) = \\frac{\\text{Number of favorable outcomes}}{\\text{Total number of possible outcomes}}$",
+          "distractor_1": "$P(A) = \\text{favorable} \\times \\text{total}$",
+          "distractor_2": "$P(A) = \\text{total} - \\text{favorable}$",
+          "distractor_3": "$P(A) = \\frac{\\text{Total}}{\\text{Favorable}}$",
+          "explanation": "This is the fundamental probability formula. For example, the probability of rolling a 3 on a die is $\\frac{1}{6}$ (1 favorable outcome out of 6 possible outcomes)."
+        },
+        {
+          "order": 4,
+          "front_text": "What does $P(A')$ or $P(\\overline{A})$ represent?",
+          "back_text": "The probability of event A NOT occurring (complement of A)",
+          "distractor_1": "The probability of event A occurring twice",
+          "distractor_2": "The probability of event A divided by 2",
+          "distractor_3": "The inverse of the probability of A",
+          "explanation": "$P(A') = 1 - P(A)$. This is called the complement rule. If the probability of rain is 0.3, then the probability of no rain is $1 - 0.3 = 0.7$."
+        },
+        {
+          "order": 5,
+          "front_text": "What is the range of all probability values?",
+          "back_text": "$0 \\leq P(A) \\leq 1$",
+          "distractor_1": "$-1 \\leq P(A) \\leq 1$",
+          "distractor_2": "$0 \\leq P(A) \\leq 100$",
+          "distractor_3": "$P(A) > 0$",
+          "explanation": "All probabilities must be between 0 and 1 inclusive. 0 represents impossibility, 1 represents certainty, and values in between represent varying degrees of likelihood."
+        },
+        {
+          "order": 6,
+          "front_text": "Two events are **mutually exclusive** if:",
+          "back_text": "They cannot both occur at the same time",
+          "distractor_1": "They always occur together",
+          "distractor_2": "One event affects the probability of the other",
+          "distractor_3": "They have equal probabilities",
+          "explanation": "Mutually exclusive events have no overlap. For example, rolling a 2 and rolling a 5 on a single die roll are mutually exclusive events - you cannot roll both at the same time."
+        },
+        {
+          "order": 7,
+          "front_text": "What is the Addition Rule for mutually exclusive events A and B?",
+          "back_text": "$P(A \\text{ or } B) = P(A) + P(B)$",
+          "distractor_1": "$P(A \\text{ or } B) = P(A) \\times P(B)$",
+          "distractor_2": "$P(A \\text{ or } B) = P(A) + P(B) - P(A \\cap B)$",
+          "distractor_3": "$P(A \\text{ or } B) = \\frac{P(A)}{P(B)}$",
+          "explanation": "For mutually exclusive events, we simply add the probabilities. Example: The probability of rolling a 2 OR a 5 is $\\frac{1}{6} + \\frac{1}{6} = \\frac{2}{6} = \\frac{1}{3}$."
+        },
+        {
+          "order": 8,
+          "front_text": "What is the Multiplication Rule for **independent** events A and B?",
+          "back_text": "$P(A \\text{ and } B) = P(A) \\times P(B)$",
+          "distractor_1": "$P(A \\text{ and } B) = P(A) + P(B)$",
+          "distractor_2": "$P(A \\text{ and } B) = P(A) - P(B)$",
+          "distractor_3": "$P(A \\text{ and } B) = \\frac{P(A)}{P(B)}$",
+          "explanation": "For independent events, we multiply the probabilities. Example: The probability of flipping heads AND rolling a 6 is $\\frac{1}{2} \\times \\frac{1}{6} = \\frac{1}{12}$."
+        },
+        {
+          "order": 9,
+          "front_text": "Two events A and B are **independent** if:",
+          "back_text": "The occurrence of one does not affect the probability of the other",
+          "distractor_1": "They cannot occur at the same time",
+          "distractor_2": "They always occur together",
+          "distractor_3": "$P(A) = P(B)$",
+          "explanation": "Independent events do not influence each other. Example: Flipping a coin and rolling a die are independent - the coin result does not change the die probabilities."
+        },
+        {
+          "order": 10,
+          "front_text": "What does $P(A|B)$ represent?",
+          "back_text": "The conditional probability of A given that B has occurred",
+          "distractor_1": "The probability of A or B",
+          "distractor_2": "The probability of A and B",
+          "distractor_3": "The probability of A divided by the probability of B",
+          "explanation": "This is read as \"probability of A given B\". It represents the probability of A occurring when we know B has already occurred. Formula: $P(A|B) = \\frac{P(A \\cap B)}{P(B)}$"
+        }
+      ]
+    }
+  ]
+}

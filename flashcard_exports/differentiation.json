@@ -1,0 +1,112 @@
+{
+  "version": "1.0",
+  "export_metadata": {
+    "include_images": true
+  },
+  "sets": [
+    {
+      "topic": {
+        "name": "Differentiation",
+        "slug": "differentiation"
+      },
+      "set": {
+        "title": "Differentiation Rules",
+        "description": "Essential differentiation rules and formulas for calculus",
+        "order": 1,
+        "is_published": true
+      },
+      "cards": [
+        {
+          "order": 1,
+          "front_text": "What is the derivative of a **constant** $c$?",
+          "back_text": "$\\frac{d}{dx}(c) = 0$",
+          "distractor_1": "$\\frac{d}{dx}(c) = 1$",
+          "distractor_2": "$\\frac{d}{dx}(c) = c$",
+          "distractor_3": "$\\frac{d}{dx}(c) = x$",
+          "explanation": "The derivative of any constant is always 0 because constants do not change. For example, $\\frac{d}{dx}(5) = 0$ and $\\frac{d}{dx}(\\pi) = 0$."
+        },
+        {
+          "order": 2,
+          "front_text": "What is the **Power Rule** for differentiation?",
+          "back_text": "$\\frac{d}{dx}(x^n) = nx^{n-1}$",
+          "distractor_1": "$\\frac{d}{dx}(x^n) = x^{n+1}$",
+          "distractor_2": "$\\frac{d}{dx}(x^n) = nx^{n}$",
+          "distractor_3": "$\\frac{d}{dx}(x^n) = (n-1)x^{n-1}$",
+          "explanation": "The power rule states: bring down the exponent as a coefficient and reduce the exponent by 1. Example: $\\frac{d}{dx}(x^3) = 3x^{2}$"
+        },
+        {
+          "order": 3,
+          "front_text": "What is the derivative of $\\sin(x)$?",
+          "back_text": "$\\frac{d}{dx}(\\sin x) = \\cos x$",
+          "distractor_1": "$\\frac{d}{dx}(\\sin x) = -\\cos x$",
+          "distractor_2": "$\\frac{d}{dx}(\\sin x) = \\sin x$",
+          "distractor_3": "$\\frac{d}{dx}(\\sin x) = -\\sin x$",
+          "explanation": "The derivative of sine is cosine. This is one of the fundamental trigonometric derivatives you need to memorize."
+        },
+        {
+          "order": 4,
+          "front_text": "What is the derivative of $\\cos(x)$?",
+          "back_text": "$\\frac{d}{dx}(\\cos x) = -\\sin x$",
+          "distractor_1": "$\\frac{d}{dx}(\\cos x) = \\sin x$",
+          "distractor_2": "$\\frac{d}{dx}(\\cos x) = \\cos x$",
+          "distractor_3": "$\\frac{d}{dx}(\\cos x) = -\\cos x$",
+          "explanation": "The derivative of cosine is negative sine. Note the negative sign! This is important to remember."
+        },
+        {
+          "order": 5,
+          "front_text": "What is the derivative of $e^x$?",
+          "back_text": "$\\frac{d}{dx}(e^x) = e^x$",
+          "distractor_1": "$\\frac{d}{dx}(e^x) = xe^{x-1}$",
+          "distractor_2": "$\\frac{d}{dx}(e^x) = 0$",
+          "distractor_3": "$\\frac{d}{dx}(e^x) = e$",
+          "explanation": "The exponential function $e^x$ is special - it is its own derivative! This makes it very useful in calculus."
+        },
+        {
+          "order": 6,
+          "front_text": "What is the derivative of $\\ln(x)$?",
+          "back_text": "$\\frac{d}{dx}(\\ln x) = \\frac{1}{x}$",
+          "distractor_1": "$\\frac{d}{dx}(\\ln x) = x$",
+          "distractor_2": "$\\frac{d}{dx}(\\ln x) = \\frac{1}{x^2}$",
+          "distractor_3": "$\\frac{d}{dx}(\\ln x) = e^x$",
+          "explanation": "The derivative of the natural logarithm is $\\frac{1}{x}$. This is valid for $x > 0$."
+        },
+        {
+          "order": 7,
+          "front_text": "What is the **Chain Rule**?",
+          "back_text": "$\\frac{d}{dx}[f(g(x))] = f'(g(x)) \\cdot g'(x)$",
+          "distractor_1": "$\\frac{d}{dx}[f(g(x))] = f'(x) \\cdot g'(x)$",
+          "distractor_2": "$\\frac{d}{dx}[f(g(x))] = f(x) \\cdot g(x)$",
+          "distractor_3": "$\\frac{d}{dx}[f(g(x))] = f'(x) + g'(x)$",
+          "explanation": "The chain rule is used for composite functions. Differentiate the outer function, multiply by the derivative of the inner function. Example: $\\frac{d}{dx}(\\sin(x^2)) = \\cos(x^2) \\cdot 2x$"
+        },
+        {
+          "order": 8,
+          "front_text": "What is the **Product Rule**?",
+          "back_text": "$\\frac{d}{dx}[f(x)g(x)] = f'(x)g(x) + f(x)g'(x)$",
+          "distractor_1": "$\\frac{d}{dx}[f(x)g(x)] = f'(x) \\cdot g'(x)$",
+          "distractor_2": "$\\frac{d}{dx}[f(x)g(x)] = f'(x)g(x)$",
+          "distractor_3": "$\\frac{d}{dx}[f(x)g(x)] = f(x) + g(x)$",
+          "explanation": "When differentiating a product, use: (derivative of first × second) + (first × derivative of second). Example: $\\frac{d}{dx}(x \\sin x) = \\sin x + x \\cos x$"
+        },
+        {
+          "order": 9,
+          "front_text": "What is the **Quotient Rule**?",
+          "back_text": "$\\frac{d}{dx}\\left[\\frac{f(x)}{g(x)}\\right] = \\frac{f'(x)g(x) - f(x)g'(x)}{[g(x)]^2}$",
+          "distractor_1": "$\\frac{d}{dx}\\left[\\frac{f(x)}{g(x)}\\right] = \\frac{f'(x)}{g'(x)}$",
+          "distractor_2": "$\\frac{d}{dx}\\left[\\frac{f(x)}{g(x)}\\right] = \\frac{f'(x)g(x) + f(x)g'(x)}{[g(x)]^2}$",
+          "distractor_3": "$\\frac{d}{dx}\\left[\\frac{f(x)}{g(x)}\\right] = \\frac{f(x) - g(x)}{g(x)}$",
+          "explanation": "The quotient rule: (bottom × derivative of top - top × derivative of bottom) all over (bottom squared). Remember: \"lo d-hi minus hi d-lo over lo-lo\""
+        },
+        {
+          "order": 10,
+          "front_text": "If $y = x^3 + 2x$, what is $\\frac{dy}{dx}$?",
+          "back_text": "$\\frac{dy}{dx} = 3x^2 + 2$",
+          "distractor_1": "$\\frac{dy}{dx} = 3x^2 + 2x$",
+          "distractor_2": "$\\frac{dy}{dx} = x^2 + 2$",
+          "distractor_3": "$\\frac{dy}{dx} = 3x^3 + 2x$",
+          "explanation": "Apply the power rule to each term: $\\frac{d}{dx}(x^3) = 3x^2$ and $\\frac{d}{dx}(2x) = 2$. Add them together to get $3x^2 + 2$."
+        }
+      ]
+    }
+  ]
+}
