@@ -4,105 +4,16 @@
 {% block title %}Study: {{ flashcard_set.title }} - {{ topic.name }}{% endblock %}
 
 {% block content %}
-<style>
-    /* 3D Card Flip Animation */
-    .flashcard-container {
-        perspective: 1000px;
-        min-height: 500px;
-    }
-
-    .flashcard {
-        position: relative;
-        width: 100%;
-        height: auto;
-        min-height: 500px;
-        transition: transform 0.6s;
-        transform-style: preserve-3d;
-    }
-
-    .flashcard.flipped {
-        transform: rotateY(180deg);
-    }
-
-    .card-face {
-        width: 100%;
-        min-height: 500px;
-        backface-visibility: hidden;
-        border-radius: 16px;
-        padding: 2rem;
-        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-        position: relative;
-    }
-
-    .card-back {
-        position: absolute;
-        top: 0;
-        left: 0;
-    }
-
-    .card-front {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
-    }
-
-    .card-back {
-        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
-        color: white;
-        transform: rotateY(180deg);
-    }
-
-    .card-back.correct {
-        background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
-    }
-
-    .card-back.incorrect {
-        background: linear-gradient(135deg, #ee0979 0%, #ff6a00 100%);
-    }
-
-    /* Make options look like buttons on the card */
-    .option-btn {
-        background: rgba(255, 255, 255, 0.2);
-        border: 2px solid rgba(255, 255, 255, 0.3);
-        color: white;
-        backdrop-filter: blur(10px);
-        transition: all 0.3s ease;
-    }
-
-    .option-btn:hover:not(:disabled) {
-        background: rgba(255, 255, 255, 0.3);
-        border-color: rgba(255, 255, 255, 0.6);
-        transform: translateX(8px);
-    }
-
-    .option-btn.selected-correct {
-        background: rgba(16, 185, 129, 0.3);
-        border-color: rgb(16, 185, 129);
-        border-width: 3px;
-    }
-
-    .option-btn.selected-incorrect {
-        background: rgba(239, 68, 68, 0.3);
-        border-color: rgb(239, 68, 68);
-        border-width: 3px;
-    }
-
-    .option-btn.show-correct {
-        background: rgba(16, 185, 129, 0.3);
-        border-color: rgb(16, 185, 129);
-        border-width: 3px;
-    }
-</style>
-
 <div class="container mx-auto px-4 py-8 max-w-4xl">
     <!-- Header -->
     <div class="mb-6">
-        <div class="text-sm text-gray-600 mb-2">
+        <div class="text-sm text-mist/80 mb-2">
             <a href="{% url 'select_topic' %}" class="hover:underline">Topics</a> /
             <a href="{% url 'flashcards:flashcard_sets_list' topic.slug %}" class="hover:underline">{{ topic.name }}</a> /
             {{ flashcard_set.title }}
         </div>
-        <h1 class="text-3xl font-bold text-gray-900">{{ flashcard_set.title }}</h1>
-        <p class="text-gray-600 mt-2">{{ flashcard_set.description }}</p>
+        <h1 class="text-3xl font-bold text-mist">{{ flashcard_set.title }}</h1>
+        <p class="text-mist/80 mt-2">{{ flashcard_set.description }}</p>
     </div>
 
     <!-- Progress Indicator -->
@@ -112,21 +23,21 @@
             <span class="text-sm font-medium px-3 py-1 rounded-full" id="mastery-badge">New</span>
         </div>
         <div class="w-full bg-gray-200 rounded-full h-2">
-            <div class="bg-blue-600 h-2 rounded-full transition-all duration-300" id="progress-bar" style="width: 0%"></div>
+            <div class="bg-blue-600 h-2 rounded-full transition-all duration-300" id="progress-bar"></div>
         </div>
     </div>
 
     <!-- Flashcard Display with 3D Flip -->
-    <div class="flashcard-container mb-6">
-        <div class="flashcard" id="flashcard">
+    <div class="relative mb-6 [perspective:1000px] min-h-[500px]">
+        <div class="relative w-full min-h-[500px] transition-transform duration-700 [transform-style:preserve-3d]" id="flashcard">
             <!-- Front of Card -->
-            <div class="card-face card-front" id="card-front">
+            <div class="w-full min-h-[500px] rounded-2xl p-8 shadow-2xl bg-gradient-to-br from-indigo-500 to-purple-600 text-white [backface-visibility:hidden]" id="card-front">
                 <div class="text-center mb-6">
                     <span class="text-sm uppercase tracking-wide font-semibold opacity-90">Question</span>
                 </div>
                 <div class="prose prose-invert max-w-none mb-6 text-white" id="front-content"></div>
                 <div id="front-image-container" class="mb-6 text-center hidden">
-                    <img id="front-image" class="max-w-full h-auto rounded-lg inline-block shadow-lg" style="max-height: 300px;">
+                    <img id="front-image" class="max-w-full h-auto rounded-lg inline-block shadow-lg max-h-[300px]">
                 </div>
 
                 <!-- Multiple Choice Options -->
@@ -134,7 +45,7 @@
             </div>
 
             <!-- Back of Card -->
-            <div class="card-face card-back" id="card-back-face">
+            <div class="absolute inset-0 w-full h-full min-h-[500px] rounded-2xl p-8 shadow-2xl bg-gradient-to-br from-fuchsia-400 to-rose-500 text-white [backface-visibility:hidden] [transform:rotateY(180deg)]" id="card-back-face">
                 <div class="text-center mb-6">
                     <div id="result-indicator" class="text-6xl mb-4"></div>
                     <div id="result-text" class="text-2xl font-bold mb-4"></div>
@@ -144,7 +55,7 @@
                 </div>
                 <div class="prose prose-invert max-w-none mb-6 p-6 bg-white/20 rounded-lg backdrop-blur-sm" id="back-content"></div>
                 <div id="back-image-container" class="mb-6 text-center hidden">
-                    <img id="back-image" class="max-w-full h-auto rounded-lg inline-block shadow-lg" style="max-height: 300px;">
+                    <img id="back-image" class="max-w-full h-auto rounded-lg inline-block shadow-lg max-h-[300px]">
                 </div>
                 <div id="explanation-container" class="hidden mt-6 p-6 bg-white/20 rounded-lg backdrop-blur-sm">
                     <div class="font-semibold text-lg mb-3 opacity-90">Explanation:</div>
@@ -189,6 +100,12 @@
 const cards = {{ cards_data|safe }};
 let currentIndex = 0;
 let showingAnswer = false;
+const flipClass = '[transform:rotateY(180deg)]';
+
+const cardBackFace = document.getElementById('card-back-face');
+const defaultBackGradient = ['from-fuchsia-400', 'to-rose-500'];
+const correctBackGradient = ['from-emerald-500', 'to-green-400'];
+const incorrectBackGradient = ['from-rose-600', 'to-orange-500'];
 
 // CSRF token for AJAX
 function getCookie(name) {
@@ -222,7 +139,9 @@ function displayCard() {
 
     // Flip card back to front
     const flashcard = document.getElementById('flashcard');
-    flashcard.classList.remove('flipped');
+    flashcard.classList.remove(flipClass);
+    cardBackFace.classList.remove(...correctBackGradient, ...incorrectBackGradient);
+    cardBackFace.classList.add(...defaultBackGradient);
 
     // Set front content
     document.getElementById('front-content').innerHTML = card.front_text;
@@ -241,7 +160,7 @@ function displayCard() {
 
     card.options.forEach((option, index) => {
         const button = document.createElement('button');
-        button.className = 'option-btn w-full text-left p-4 rounded-lg font-medium';
+        button.className = 'w-full text-left p-4 rounded-lg font-medium bg-white/20 border-2 border-white/30 text-white backdrop-blur transition duration-300 ease-in-out hover:bg-white/30 hover:border-white/60 hover:translate-x-2 disabled:opacity-70 disabled:cursor-not-allowed';
         button.innerHTML = option.text;
         button.dataset.optionId = option.id;
         button.dataset.isCorrect = option.is_correct;
@@ -280,14 +199,14 @@ function selectOption(optionId, isCorrect) {
         btn.disabled = true;
         if (btn.dataset.optionId === optionId) {
             if (isCorrect) {
-                btn.classList.add('selected-correct');
+                btn.classList.add('bg-emerald-500/30', 'border-emerald-500', 'border-[3px]');
             } else {
-                btn.classList.add('selected-incorrect');
+                btn.classList.add('bg-rose-500/30', 'border-rose-500', 'border-[3px]');
             }
         }
         // Highlight correct answer
         if (btn.dataset.isCorrect === 'true') {
-            btn.classList.add('show-correct');
+            btn.classList.add('bg-emerald-500/30', 'border-emerald-500', 'border-[3px]');
         }
     });
 
@@ -324,20 +243,18 @@ function showCardBack(isCorrect) {
 
     // Trigger flip animation
     const flashcard = document.getElementById('flashcard');
-    const cardBackFace = document.getElementById('card-back-face');
 
     // Set card back color based on result
+    cardBackFace.classList.remove(...defaultBackGradient, ...correctBackGradient, ...incorrectBackGradient);
     if (isCorrect) {
-        cardBackFace.classList.remove('incorrect');
-        cardBackFace.classList.add('correct');
+        cardBackFace.classList.add(...correctBackGradient);
     } else {
-        cardBackFace.classList.remove('correct');
-        cardBackFace.classList.add('incorrect');
+        cardBackFace.classList.add(...incorrectBackGradient);
     }
 
     // Flip the card after a short delay to show feedback
     setTimeout(() => {
-        flashcard.classList.add('flipped');
+        flashcard.classList.add(flipClass);
     }, 800);
 
     // Show result indicator
