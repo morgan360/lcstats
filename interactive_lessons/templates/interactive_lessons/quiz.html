@@ -101,26 +101,6 @@
     </div>
     {% endfor %}
 
-    <!-- Full question solution -->
-    {% if question.solution %}
-    <div id="solution-wrapper" class="mt-8 border-t border-indigo-deep/15 pt-5">
-        <button id="show-solution-btn" class="inline-flex items-center rounded-md bg-lime-glow px-3 py-2 text-sm font-semibold text-midnight shadow-sm transition hover:-translate-y-0.5 hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-lime-glow">
-            💚 Show Full Solution
-        </button>
-
-        <div id="solution-content" class="mt-4 hidden leading-relaxed space-y-4">
-            {{ question.solution|safe }}
-
-            {% if question.solution_image %}
-            <div class="mt-4 text-center">
-                <img src="{{ question.solution_image.url }}" alt="Solution image"
-                    class="mx-auto h-auto max-w-[75%] rounded-lg">
-            </div>
-            {% endif %}
-        </div>
-    </div>
-    {% endif %}
-
     <!-- Next button -->
     <div id="next-btn-wrapper" class="mt-5 hidden">
         <form method="POST">
