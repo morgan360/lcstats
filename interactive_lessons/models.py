@@ -71,9 +71,18 @@ class Question(models.Model):
     )
     image_url = models.URLField(blank=True, null=True)
 
-    # ✅ New full-question solution fields
-    solution = models.TextField(blank=True, null=True, help_text="Full worked solution for this question.")
-    solution_image = models.ImageField(upload_to="solutions/", blank=True, null=True)
+    # ⚠️ DEPRECATED: Solution fields - use QuestionPart.solution instead
+    solution = models.TextField(
+        blank=True,
+        null=True,
+        help_text="DEPRECATED: Use QuestionPart.solution instead. Full worked solution for this question."
+    )
+    solution_image = models.ImageField(
+        upload_to="solutions/",
+        blank=True,
+        null=True,
+        help_text="DEPRECATED: Use QuestionPart.solution_image instead."
+    )
 
     # ✅ Copyright and source metadata
     is_copyrighted = models.BooleanField(

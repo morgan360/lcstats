@@ -122,9 +122,10 @@ class QuestionAdmin(admin.ModelAdmin):
         ("Question Content", {
             "fields": ("hint", "image", "image_url")
         }),
-        ("Solution", {
+        ("⚠️ DEPRECATED - Question-Level Solution", {
             "fields": ("solution", "solution_image"),
-            "classes": ("collapse",)
+            "classes": ("collapse",),
+            "description": "⚠️ These fields are deprecated. Use QuestionPart solution fields instead (in the inline editor below)."
         }),
         ("DEPRECATED - Exam Paper Metadata", {
             "fields": ("is_exam_question", "exam_year", "paper_type", "source_pdf_name"),
