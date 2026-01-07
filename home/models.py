@@ -10,6 +10,14 @@ class NewsItem(models.Model):
     title = models.CharField(max_length=200, help_text="Headline for the news item")
     content = MarkdownxField(help_text="Content with markdown and LaTeX support")
 
+    # Audience targeting
+    target_classes = models.ManyToManyField(
+        'homework.TeacherClass',
+        blank=True,
+        related_name='news_items',
+        help_text="Leave empty for general announcement to all students. Select classes for targeted announcements."
+    )
+
     # Publishing
     publish_date = models.DateTimeField(
         default=timezone.now,
@@ -85,9 +93,25 @@ class NewsItem(models.Model):
         """Check if a specific user has dismissed this item"""
         return self.dismissed_by.filter(id=user.id).exists()
 
+    def is_general(self):
+        """Check if this is a general announcement (not class-specific)"""
+        return self.target_classes.count() == 0
+
+    def get_target_class_names(self):
+        """Get comma-separated list of target class names"""
+        classes = self.target_classes.all()
+        if not classes:
+            return "All Students"
+        return ", ".join([c.name for c in classes])
+
     @classmethod
     def get_active_for_user(cls, user):
-        """Get all active news items that haven't been dismissed by the user"""
+        """Get all active news items that haven't been dismissed by the user
+
+        Returns:
+        - General announcements (no target_classes)
+        - Class-specific announcements if user is enrolled in those classes
+        """
         now = timezone.now()
         items = cls.objects.filter(
             publish_date__lte=now
@@ -95,11 +119,21 @@ class NewsItem(models.Model):
             models.Q(expiry_date__isnull=True) | models.Q(expiry_date__gt=now)
         )
 
-        # Exclude dismissed items (only if dismissible and user is authenticated)
+        # Filter by class membership if user is authenticated
         if user and user.is_authenticated:
+            # Show general announcements (no target classes) OR announcements for user's classes
+            items = items.filter(
+                models.Q(target_classes__isnull=True) |  # General announcements
+                models.Q(target_classes__students=user)   # User is in target class
+            ).distinct()
+
+            # Exclude dismissed items (only if dismissible)
             items = items.exclude(
                 is_dismissible=True,
                 dismissed_by=user
             )
+        else:
+            # Anonymous users only see general announcements
+            items = items.filter(target_classes__isnull=True)
 
         return items

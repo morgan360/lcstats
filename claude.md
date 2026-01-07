@@ -46,7 +46,13 @@ The project follows a modular Django app pattern:
 
 5. **`chat/`** - Standalone chat interface for AI tutor
 
-6. **`home/`** - Landing pages
+6. **`home/`** - Landing pages and news system
+   - Models: `NewsItem` (announcements and updates)
+   - **Class-specific and general announcements**:
+     - General announcements: No `target_classes` set, visible to all students
+     - Class-specific: Link to one or more `TeacherClass`, only visible to enrolled students
+   - Supports markdown with LaTeX, pinning, expiry dates, and dismissal tracking
+   - Categories: general, new content, study tips, system updates, events
 
 7. **`homework/`** - Teacher-student homework assignment system
    - Models: `TeacherProfile`, `TeacherClass`, `HomeworkAssignment`, `HomeworkTask`, `StudentHomeworkProgress`
@@ -98,6 +104,21 @@ The project follows a modular Django app pattern:
   - Solutions unlock after: correct answer OR attempts >= threshold OR threshold = 0
 - **Shared Grading**: Exam questions use same `mark_student_answer()` from `stats_tutor.py`
 - **Topic Linking**: `ExamQuestion.topic` links to `Topic` for cross-app integration
+
+**News & Announcements System** (`home/models.py:NewsItem`):
+- **Audience Targeting**:
+  - **General announcements**: Leave `target_classes` empty → visible to all students
+  - **Class-specific**: Link to `TeacherClass` → only visible to enrolled students
+  - Users only see announcements for their enrolled classes + general announcements
+- **Publishing Controls**:
+  - `publish_date`: When announcement becomes visible
+  - `expiry_date`: Optional automatic expiration
+  - `is_pinned`: Pinned items appear at top
+  - `is_dismissible`: If False, students cannot dismiss (for critical announcements)
+- **Categories**: general, new_content, tips, system, event
+- **Tracking**: `dismissed_by` tracks which students have dismissed each announcement
+- **Content**: Supports Markdown with LaTeX via MarkdownX
+- **Method**: `NewsItem.get_active_for_user(user)` returns filtered, active announcements
 
 ## Common Development Commands
 
