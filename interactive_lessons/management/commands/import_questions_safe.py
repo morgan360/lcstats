@@ -81,7 +81,6 @@ class Command(BaseCommand):
                     prompt=fields['prompt'],
                     answer=fields['answer'] or '',
                     expected_format=fields.get('expected_format') or '',
-                    hint=fields.get('hint') or '',
                     solution=fields.get('solution') or '',
                     solution_image=fields.get('solution_image') or '',
                     expected_type=fields['expected_type'],
