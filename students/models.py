@@ -88,17 +88,37 @@ class QuestionAttempt(models.Model):
 # REGISTRATION CODE
 # -------------------------------------------------------------------------
 class RegistrationCode(models.Model):
+    CODE_TYPE_CHOICES = [
+        ('student', 'Student'),
+        ('teacher', 'Teacher'),
+    ]
+
     code = models.CharField(max_length=50, unique=True, help_text="Registration code for new signups")
+    code_type = models.CharField(
+        max_length=10,
+        choices=CODE_TYPE_CHOICES,
+        default='student',
+        help_text="Type of account this code creates (student or teacher)"
+    )
+    teacher_class = models.ForeignKey(
+        'homework.TeacherClass',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='registration_codes',
+        help_text="If code_type='student', optionally link to a specific class for auto-enrollment"
+    )
     is_active = models.BooleanField(default=True, help_text="Whether this code can be used")
     max_uses = models.PositiveIntegerField(default=1, help_text="Maximum number of times this code can be used (0 = unlimited)")
     times_used = models.PositiveIntegerField(default=0, help_text="How many times this code has been used")
     created_at = models.DateTimeField(auto_now_add=True)
     created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name="created_codes")
-    description = models.CharField(max_length=200, blank=True, help_text="Optional description (e.g., 'Class of 2025')")
+    description = models.CharField(max_length=200, blank=True, help_text="Optional description (e.g., 'Class of 2025', 'Teacher Access 2025')")
 
     def __str__(self):
         status = "Active" if self.is_active and not self.is_exhausted() else "Inactive"
-        return f"{self.code} ({status}) - Used {self.times_used}/{self.max_uses if self.max_uses > 0 else '∞'}"
+        code_type_display = self.get_code_type_display()
+        return f"{self.code} ({code_type_display}, {status}) - Used {self.times_used}/{self.max_uses if self.max_uses > 0 else '∞'}"
 
     def is_exhausted(self):
         """Check if code has reached its usage limit"""
@@ -116,9 +136,10 @@ class RegistrationCode(models.Model):
         self.save()
 
     @staticmethod
-    def generate_code(length=8):
-        """Generate a random registration code"""
-        return secrets.token_urlsafe(length)[:length].upper()
+    def generate_code(length=8, prefix=''):
+        """Generate a random registration code with optional prefix"""
+        random_part = secrets.token_urlsafe(length)[:length].upper()
+        return f"{prefix}{random_part}" if prefix else random_part
 
     class Meta:
         ordering = ['-created_at']

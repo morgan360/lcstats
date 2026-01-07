@@ -12,19 +12,21 @@ def signup_view(request):
     if request.method == 'POST':
         form = SignupFormWithCode(request.POST)
         if form.is_valid():
-            # Save the user
-            user = form.save()
+            # Save the user (form.save() handles staff status and class enrollment)
+            user = form.save(request)
 
-            # Mark the registration code as used
+            # Get registration code to provide appropriate success message
             code = form.cleaned_data.get('registration_code')
             try:
                 reg_code = RegistrationCode.objects.get(code=code)
-                reg_code.use_code()
+                if reg_code.code_type == 'teacher':
+                    messages.success(request, 'Teacher account created successfully! You can now log in and access the teacher dashboard.')
+                else:
+                    messages.success(request, 'Student account created successfully! You can now log in and start learning.')
             except RegistrationCode.DoesNotExist:
-                pass  # Already validated in form
+                messages.success(request, 'Account created successfully! You can now log in.')
 
-            messages.success(request, 'Account created successfully! You can now log in.')
-            return redirect('login')
+            return redirect('account_login')
     else:
         form = SignupFormWithCode()
     return render(request, 'students/signup.html', {'form': form})

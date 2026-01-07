@@ -205,20 +205,30 @@ if not column_exists:
 
 ### Student Registration & Authentication
 1. **Registration requires valid code**: `students/models.py:RegistrationCode`
-   - Codes created by admin with configurable max_uses
+   - **Two code types**: `student` and `teacher`
+   - **Student codes**:
+     - Creates regular user accounts (not staff)
+     - Can be linked to a `TeacherClass` for auto-enrollment
+     - When student registers, they're automatically added to the linked class
+   - **Teacher codes**:
+     - Creates staff user accounts (`is_staff=True`)
+     - Automatically creates `TeacherProfile` for homework management
+     - Grants access to teacher dashboard and class management
+   - Codes created by admin with configurable `max_uses` (0 = unlimited)
    - Signup form validates code via `students/forms.py:SignupFormWithCode`
    - On success: increments `times_used`, creates User + StudentProfile (via signal)
+   - **Admin actions**:
+     - "Generate 5 Student Codes" - Creates codes with `STU-` prefix
+     - "Generate 1 Teacher Code" - Creates code with `TCH-` prefix
 
 2. **Login tracking**:
    - Every login/logout/failed attempt logged in `LoginHistory`
    - Active sessions tracked in `UserSession` (linked to Django's Session)
    - IP address, user agent, and timestamps captured
 
-3. **Student workflow**:
-   ```
-   Signup → Login → Dashboard → Select Topic → Select Section →
-   → Answer Questions → Get Hints/Solutions → View Progress
-   ```
+3. **User workflows**:
+   - **Student**: `Signup → Login → Dashboard → Select Topic → Select Section → Answer Questions → Get Hints/Solutions → View Progress`
+   - **Teacher**: `Signup → Login → Teacher Dashboard → Create Classes → Create Homework Assignments → Monitor Student Progress`
 
 ### Question Attempt Flow
 ```
