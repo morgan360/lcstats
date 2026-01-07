@@ -2,17 +2,87 @@
 
 Quick reference for all data import and export commands in the NumScoil project.
 
-## Database Sync (Questions & Notes)
+## ⚠️ IMPORTANT: Choose the Right Sync Method
+
+### Use Safe Import/Export (Recommended)
+**When:** Adding questions to existing topics/sections that already exist in production
+**Why:** Avoids ID conflicts and "Duplicate entry" errors
+**How:** See "Questions (Safe Import/Export)" section below
+
+### Use Standard Import/Export
+**When:** Creating brand new topics/sections, or setting up fresh production database
+**Why:** Simpler for completely new data
+**How:** See "Database Sync (Questions & Notes)" section below
+
+---
+
+## Questions (Safe Import/Export) - RECOMMENDED
+
+**Use this method when adding questions to existing topics/sections in production.**
+
+This method uses natural keys (topic/section names) instead of database IDs, preventing conflicts.
+
+### Interactive Script (Easiest)
+```bash
+# LOCAL: Run interactive export script
+./deployment/sync_questions_safe.sh
+
+# Follow prompts to export by:
+# - Specific question IDs, OR
+# - Entire section name
+
+# Then follow on-screen instructions for PythonAnywhere import
+```
+
+### Manual Export (Advanced)
+```bash
+# Export specific question IDs
+python manage.py export_questions_safe --ids 123 124 125 --output new_questions.json
+
+# OR export entire section
+python manage.py export_questions_safe --section "Hypothesis Testing - Mean" --output section_export.json
+```
+
+### Import to Production
+```bash
+# On PythonAnywhere
+cd ~/lcstats
+source venv/bin/activate
+
+# Pull latest code (important - keeps import command updated)
+git pull origin main
+
+# Import questions
+python manage.py import_questions_safe questions_safe_YYYYMMDD_HHMMSS.json
+
+# Reload web app
+touch /var/www/morgan360_pythonanywhere_com_wsgi.py
+
+# Verify import
+python manage.py shell -c "from interactive_lessons.models import Section; s = Section.objects.get(name='Your Section'); print(f'{s.name}: {s.questions.count()} questions')"
+```
+
+**Key Benefits:**
+- ✅ No ID conflicts
+- ✅ Uses topic/section names instead of PKs
+- ✅ Won't fail with "Duplicate entry 'differentiation'" errors
+- ✅ Can be run multiple times safely
+
+---
+
+## Database Sync (Questions & Notes) - For New Topics Only
+
+**⚠️ Use this ONLY when creating brand new topics/sections that don't exist in production yet.**
 
 ### Export from Local
 ```bash
-# Export questions, sections, and topics
+# Export questions, sections, and topics (use ONLY for new topics)
 python manage.py dumpdata interactive_lessons.Topic interactive_lessons.Section interactive_lessons.Question interactive_lessons.QuestionPart --indent 2 > questions_$(date +%Y%m%d_%H%M%S).json
 
-# Export notes
+# Export notes (safe to use anytime)
 python manage.py dumpdata notes.Note --indent 2 > notes_$(date +%Y%m%d_%H%M%S).json
 
-# Or use the automated script
+# Or use the automated script (for new topics + notes)
 ./deployment/sync_to_production_simple.sh
 ```
 
@@ -22,11 +92,19 @@ python manage.py dumpdata notes.Note --indent 2 > notes_$(date +%Y%m%d_%H%M%S).j
 cd ~/lcstats
 source venv/bin/activate
 
+# ⚠️ WARNING: loaddata will FAIL if topics already exist
 python manage.py loaddata questions_YYYYMMDD_HHMMSS.json
+
+# Notes are safe to import anytime
 python manage.py loaddata notes_YYYYMMDD_HHMMSS.json
 
-touch /var/www/morganmck_eu_pythonanywhere_com_wsgi.py
+touch /var/www/morgan360_pythonanywhere_com_wsgi.py
 ```
+
+**Limitations:**
+- ❌ Fails with "Duplicate entry" if topics/sections exist
+- ❌ Requires matching database IDs
+- ⚠️ Not recommended for routine question updates
 
 ---
 
@@ -42,22 +120,6 @@ python manage.py import_flashcards /path/to/flashcards_export.json --clear
 ```
 
 **Note:** Flashcard exports include base64-encoded images. No separate image upload needed.
-
----
-
-## Questions (Safe Import/Export)
-
-### Export Questions
-```bash
-# Export questions safely (preserves images)
-python manage.py export_questions_safe
-```
-
-### Import Questions
-```bash
-# Import questions from safe export
-python manage.py import_questions_safe /path/to/export.json
-```
 
 ---
 
@@ -172,9 +234,23 @@ touch /var/www/morganmck_eu_pythonanywhere_com_wsgi.py
 
 ## Troubleshooting
 
-### Import Fails with IntegrityError
-**Cause:** Data already exists
-**Fix:** Data is already imported, safe to ignore
+### Import Fails with "Duplicate entry 'differentiation'" Error
+**Cause:** Using `loaddata` on existing topics/sections
+**Symptom:** `IntegrityError: (1062, "Duplicate entry 'differentiation' for key 'interactive_lessons_topic.slug'")`
+**Fix:** Use `import_questions_safe` instead of `loaddata` (see "Questions (Safe Import/Export)" section above)
+
+### Import Fails with "QuestionPart() got unexpected keyword arguments: 'hint'"
+**Cause:** `import_questions_safe` command is outdated
+**Fix:**
+```bash
+# On PythonAnywhere
+git pull origin main  # Get latest import command
+python manage.py import_questions_safe your_file.json
+```
+
+### Import Fails with IntegrityError (Other)
+**Cause:** Data already exists or constraint violation
+**Fix:** Check error message for specific field causing conflict
 
 ### Import Fails with Schema Error
 **Cause:** Migrations not run
@@ -182,11 +258,15 @@ touch /var/www/morganmck_eu_pythonanywhere_com_wsgi.py
 
 ### Changes Not Visible
 **Cause:** Web app not reloaded
-**Fix:** `touch /var/www/morganmck_eu_pythonanywhere_com_wsgi.py`
+**Fix:** `touch /var/www/morgan360_pythonanywhere_com_wsgi.py`
 
 ### Large Import Times Out
 **Cause:** Normal for large datasets
 **Fix:** Be patient, imports can take 30-60 seconds
+
+### --exclude Flag Doesn't Work with loaddata
+**Cause:** Foreign key references are resolved before exclusion
+**Fix:** Use `import_questions_safe` instead, which properly handles existing relationships
 
 ---
 
