@@ -69,3 +69,58 @@ build/
 docs/Postman.json
 media/flashcards/
 *.json
+
+# =========================
+# Deployment Scripts
+# =========================
+deployment/*.exp
+deployment/*.sh
+deployment/*.py
+deployment/pythonanywhere_wsgi.py
+
+# =========================
+# Media Files (User Uploads)
+# =========================
+media/question_images/
+media/question_part_images/
+media/solutions/
+media/cheatsheets/
+media/exam_papers/
+media/Tex/
+media/texts/
+media/videos/
+media/quickkicks/
+
+# =========================
+# Temporary & Generated Files
+# =========================
+temp_diagram_*.py
+manim.cfg
+
+# =========================
+# Documentation & Planning
+# =========================
+DEBUGGING_INSTRUCTIONS.md
+MONETIZATION_STRATEGY_BRIEFING*.md
+MONETIZATION_STRATEGY_BRIEFING*.pdf
+email_draft.md
+
+# =========================
+# Migration Files (if generated locally)
+# =========================
+notes/management/commands/add_pdf_resource.py
+notes/management/commands/add_probability_summary.py
+notes/management/commands/import_markdown_docs.py
+notes/migrations/0005_alter_note_image.py
+students/migrations/0006_rename_students_lo_timesta_a1e2cd_idx_students_lo_timesta_653944_idx_and_more.py
+
+# =========================
+# Email Templates (Account)
+# =========================
+templates/account/email/unknown_account_message.txt
+templates/account/email/unknown_account_subject.txt
+
+# =========================
+# Scripts
+# =========================
+scripts/intersection_diagrams.py
