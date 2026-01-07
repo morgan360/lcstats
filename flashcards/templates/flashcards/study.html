@@ -33,8 +33,8 @@
     </div>
 
     <!-- Flashcard Display with 3D Flip -->
-    <div class="[perspective:1000px] h-[600px] mb-6">
-        <div class="relative w-full h-[600px] transition-transform duration-700 [transform-style:preserve-3d]" id="flashcard">
+    <div class="[perspective:1000px] min-h-[600px] mb-6">
+        <div class="relative w-full min-h-[600px] transition-transform duration-700 [transform-style:preserve-3d]" id="flashcard">
             <!-- Front of Card -->
             <div class="w-full h-[600px] overflow-y-auto [backface-visibility:hidden] rounded-2xl p-8 shadow-2xl relative bg-gradient-to-br from-indigo-500 to-purple-600 text-white" id="card-front">
                 <div class="text-center mb-6">
@@ -42,7 +42,7 @@
                 </div>
                 <div class="prose prose-invert max-w-none mb-6 text-white" id="front-content"></div>
                 <div id="front-image-container" class="mb-4 text-center hidden">
-                    <img id="front-image" style="max-height: 200px; max-width: 100%; height: auto; width: auto;" class="rounded-lg inline-block shadow-lg object-contain">
+                    <img id="front-image" style="max-height: 200px; max-width: 100%; height: auto; width: auto; display: block; margin: 0 auto;" class="rounded-lg shadow-lg object-contain">
                 </div>
 
                 <!-- Multiple Choice Options -->
@@ -50,7 +50,7 @@
             </div>
 
             <!-- Back of Card -->
-            <div class="absolute inset-0 w-full h-[600px] overflow-y-auto [backface-visibility:hidden] [transform:rotateY(180deg)] rounded-2xl p-8 shadow-2xl bg-gradient-to-br from-fuchsia-400 to-rose-500 text-white" id="card-back-face">
+            <div class="absolute top-0 left-0 right-0 w-full min-h-[600px] [backface-visibility:hidden] [transform:rotateY(180deg)] rounded-2xl p-8 shadow-2xl bg-gradient-to-br from-fuchsia-400 to-rose-500 text-white" id="card-back-face">
                 <div class="text-center mb-6">
                     <div id="result-indicator" class="text-6xl mb-4"></div>
                     <div id="result-text" class="text-2xl font-bold mb-4"></div>
@@ -60,7 +60,7 @@
                 </div>
                 <div class="prose prose-invert max-w-none mb-6 p-6 bg-white/20 rounded-lg backdrop-blur-sm" id="back-content"></div>
                 <div id="back-image-container" class="mb-4 text-center hidden">
-                    <img id="back-image" style="max-height: 200px; max-width: 100%; height: auto; width: auto;" class="rounded-lg inline-block shadow-lg object-contain">
+                    <img id="back-image" style="max-height: 200px; max-width: 100%; height: auto; width: auto; display: block; margin: 0 auto;" class="rounded-lg shadow-lg object-contain">
                 </div>
                 <div id="explanation-container" class="hidden mt-6 p-6 bg-white/20 rounded-lg backdrop-blur-sm">
                     <div class="font-semibold text-lg mb-3 opacity-90">Explanation:</div>
@@ -171,6 +171,10 @@ function displayCard() {
     const cardBackFace = document.getElementById('card-back-face');
     flashcard.classList.remove(flipClass);
 
+    // Reset container height to default
+    const flashcardContainer = flashcard.parentElement;
+    flashcardContainer.style.height = '';
+
     // Reset back card gradients
     cardBackFace.classList.remove('from-emerald-500', 'to-green-400', 'from-rose-600', 'to-orange-500');
     cardBackFace.classList.add('from-fuchsia-400', 'to-rose-500');
@@ -274,9 +278,6 @@ function selectOption(optionId, isCorrect) {
 function showCardBack(isCorrect) {
     const card = cards[currentIndex];
 
-    // Hide options on front
-    document.getElementById('options-container').style.display = 'none';
-
     // Trigger flip animation
     const flashcard = document.getElementById('flashcard');
     const cardBackFace = document.getElementById('card-back-face');
@@ -292,6 +293,15 @@ function showCardBack(isCorrect) {
     // Flip the card after a short delay
     setTimeout(() => {
         flashcard.classList.add(flipClass);
+        // Hide options during flip to prevent shrinking before flip
+        document.getElementById('options-container').style.display = 'none';
+
+        // Adjust container height to match back card during flip
+        setTimeout(() => {
+            const backCardHeight = cardBackFace.scrollHeight;
+            const flashcardContainer = flashcard.parentElement;
+            flashcardContainer.style.height = backCardHeight + 'px';
+        }, 200); // Adjust early during flip animation
     }, 800);
 
     // Show result indicator
