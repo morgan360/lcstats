@@ -407,3 +407,70 @@ def snooze_homework_notification(request):
         return JsonResponse({'status': 'success', 'message': 'Notifications snoozed for 24 hours'})
 
     return JsonResponse({'status': 'error', 'message': 'POST required'}, status=400)
+
+
+@login_required
+def class_homework_report(request, class_id):
+    """
+    Simple homework completion report by class.
+    Shows homework assignments as rows and students as columns.
+    """
+    teacher_class = get_object_or_404(TeacherClass, id=class_id)
+
+    # Verify teacher owns this class
+    if not request.user.is_superuser:
+        try:
+            if teacher_class.teacher != request.user.teacher_profile:
+                return redirect('homework:teacher_dashboard')
+        except:
+            return redirect('homework:student_dashboard')
+
+    # Get all students in the class
+    students = teacher_class.students.all().order_by('last_name', 'first_name', 'username')
+
+    # Get all assignments for this class
+    assignments = teacher_class.assignments.filter(is_published=True).order_by('-due_date')
+
+    # Build completion matrix
+    report_data = []
+    for assignment in assignments:
+        tasks = assignment.tasks.all()
+        total_tasks = tasks.count()
+
+        student_statuses = []
+        for student in students:
+            # Count completed tasks for this student
+            completed_tasks = StudentHomeworkProgress.objects.filter(
+                student=student,
+                assignment=assignment,
+                is_completed=True
+            ).count()
+
+            # Determine status: ✓ (all done), ✗ (partially done), empty (not started)
+            if completed_tasks == 0:
+                status = ''
+            elif completed_tasks == total_tasks:
+                status = '✓'
+            else:
+                status = '✗'
+
+            student_statuses.append({
+                'student': student,
+                'status': status,
+                'completed_tasks': completed_tasks,
+                'total_tasks': total_tasks,
+            })
+
+        report_data.append({
+            'assignment': assignment,
+            'total_tasks': total_tasks,
+            'student_statuses': student_statuses,
+        })
+
+    context = {
+        'teacher_class': teacher_class,
+        'students': students,
+        'report_data': report_data,
+    }
+
+    return render(request, 'homework/class_homework_report.html', context)

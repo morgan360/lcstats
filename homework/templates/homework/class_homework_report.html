@@ -1,0 +1,97 @@
+{% extends "_base.html" %}
+
+{% block title %}{{ teacher_class.name }} - Homework Report{% endblock %}
+
+{% block content %}
+<div class="container" style="max-width: 1400px; margin: 2rem auto; padding: 0 1rem;">
+    <a href="{% url 'homework:class_detail' teacher_class.id %}" style="color: #3498db; text-decoration: none;">← Back to Class</a>
+
+    <h1 style="color: #2c3e50; margin: 1rem 0;">Homework Completion Report</h1>
+    <h2 style="color: #7f8c8d; font-size: 1.2rem; font-weight: normal; margin-bottom: 2rem;">{{ teacher_class.name }}</h2>
+
+    {% if report_data %}
+    <div style="background: white; padding: 1.5rem; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); overflow-x: auto;">
+        <table style="width: 100%; border-collapse: collapse; font-size: 0.9rem;">
+            <thead>
+                <tr style="background: #ecf0f1;">
+                    <th style="padding: 0.75rem; text-align: left; border: 1px solid #bdc3c7; position: sticky; left: 0; background: #ecf0f1; z-index: 10;">
+                        Homework Assignment
+                    </th>
+                    <th style="padding: 0.75rem; text-align: center; border: 1px solid #bdc3c7; background: #ecf0f1; min-width: 80px;">
+                        Due Date
+                    </th>
+                    {% for student in students %}
+                    <th style="padding: 0.75rem; text-align: center; border: 1px solid #bdc3c7; min-width: 80px; max-width: 120px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                        {{ student.get_full_name|default:student.username }}
+                    </th>
+                    {% endfor %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in report_data %}
+                <tr {% if forloop.counter|divisibleby:2 %}style="background: #f8f9fa;"{% endif %}>
+                    <td style="padding: 0.75rem; border: 1px solid #bdc3c7; position: sticky; left: 0; background: {% if forloop.counter|divisibleby:2 %}#f8f9fa{% else %}white{% endif %}; z-index: 9;">
+                        <a href="{% url 'homework:assignment_progress' row.assignment.id %}" style="color: #2c3e50; text-decoration: none;">
+                            {{ row.assignment.title }}
+                        </a>
+                        <br>
+                        <small style="color: #7f8c8d;">({{ row.total_tasks }} task{{ row.total_tasks|pluralize }})</small>
+                    </td>
+                    <td style="padding: 0.75rem; text-align: center; border: 1px solid #bdc3c7; white-space: nowrap;">
+                        {{ row.assignment.due_date|date:"M d" }}
+                    </td>
+                    {% for student_status in row.student_statuses %}
+                    <td style="padding: 0.75rem; text-align: center; border: 1px solid #bdc3c7; font-size: 1.2rem;">
+                        {% if student_status.status == '✓' %}
+                            <span style="color: #27ae60;" title="Completed ({{ student_status.completed_tasks }}/{{ student_status.total_tasks }})">✓</span>
+                        {% elif student_status.status == '✗' %}
+                            <span style="color: #e67e22;" title="Partially completed ({{ student_status.completed_tasks }}/{{ student_status.total_tasks }})">✗</span>
+                        {% else %}
+                            <span style="color: #bdc3c7;" title="Not started">—</span>
+                        {% endif %}
+                    </td>
+                    {% endfor %}
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <div style="margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid #ecf0f1;">
+            <h3 style="font-size: 1rem; color: #34495e; margin-bottom: 0.5rem;">Legend:</h3>
+            <ul style="list-style: none; padding: 0; margin: 0; display: flex; gap: 2rem; flex-wrap: wrap;">
+                <li>
+                    <span style="color: #27ae60; font-size: 1.2rem;">✓</span> = All tasks completed
+                </li>
+                <li>
+                    <span style="color: #e67e22; font-size: 1.2rem;">✗</span> = Partially completed
+                </li>
+                <li>
+                    <span style="color: #bdc3c7; font-size: 1.2rem;">—</span> = Not started
+                </li>
+            </ul>
+        </div>
+    </div>
+    {% else %}
+    <div style="background: white; padding: 2rem; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); text-align: center;">
+        <p style="color: #7f8c8d; margin: 0;">No homework assignments found for this class.</p>
+    </div>
+    {% endif %}
+</div>
+
+<style>
+    /* Make the table scrollable horizontally on small screens */
+    @media (max-width: 768px) {
+        table {
+            font-size: 0.8rem;
+        }
+        th, td {
+            padding: 0.5rem !important;
+        }
+    }
+
+    /* Hover effect for rows */
+    tbody tr:hover {
+        background: #e8f4f8 !important;
+    }
+</style>
+{% endblock %}

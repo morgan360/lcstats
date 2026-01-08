@@ -4,7 +4,10 @@
 
 {% block content %}
 <div class="container" style="max-width: 1000px; margin: 2rem auto; padding: 0 1rem;">
-    <a href="{% url 'homework:teacher_dashboard' %}" style="color: #3498db; text-decoration: none;">← Back to Dashboard</a>
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+        <a href="{% url 'homework:teacher_dashboard' %}" style="color: #3498db; text-decoration: none;">← Back to Dashboard</a>
+        <a href="{% url 'homework:class_homework_report' teacher_class.id %}" style="background: #3498db; color: white; padding: 0.5rem 1rem; border-radius: 4px; text-decoration: none; font-size: 0.9rem;">📊 View Homework Report</a>
+    </div>
 
     <h1 style="color: #2c3e50; margin: 1rem 0;">{{ teacher_class.name }}</h1>
 

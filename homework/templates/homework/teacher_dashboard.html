@@ -16,14 +16,17 @@
         {% if classes %}
             <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 1.5rem;">
                 {% for class in classes %}
-                <a href="{% url 'homework:class_detail' class.id %}" style="text-decoration: none;">
-                    <div style="background: white; border-radius: 8px; padding: 1.5rem; box-shadow: 0 2px 8px rgba(0,0,0,0.1); border-top: 4px solid #3498db; transition: all 0.3s;">
+                <div style="background: white; border-radius: 8px; padding: 1.5rem; box-shadow: 0 2px 8px rgba(0,0,0,0.1); border-top: 4px solid #3498db; transition: all 0.3s;">
+                    <a href="{% url 'homework:class_detail' class.id %}" style="text-decoration: none;">
                         <h3 style="margin: 0 0 0.5rem 0; color: #2c3e50;">{{ class.name }}</h3>
-                        <p style="margin: 0; color: #7f8c8d;">
+                        <p style="margin: 0 0 1rem 0; color: #7f8c8d;">
                             <strong>{{ class.student_count }}</strong> student{{ class.student_count|pluralize }}
                         </p>
-                    </div>
-                </a>
+                    </a>
+                    <a href="{% url 'homework:class_homework_report' class.id %}" style="display: inline-block; background: #3498db; color: white; padding: 0.4rem 0.8rem; border-radius: 4px; text-decoration: none; font-size: 0.85rem; margin-top: 0.5rem;">
+                        📊 Homework Report
+                    </a>
+                </div>
                 {% endfor %}
             </div>
         {% else %}
