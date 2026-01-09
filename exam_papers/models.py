@@ -21,6 +21,10 @@ class ExamPaper(models.Model):
         choices=PAPER_TYPE_CHOICES,
         help_text="Paper 1 or Paper 2"
     )
+    is_deferred = models.BooleanField(
+        default=False,
+        help_text="Is this a deferred exam paper?"
+    )
     title = models.CharField(
         max_length=255,
         help_text="Display title (e.g., 'Leaving Certificate 2024 Paper 1')"
@@ -70,17 +74,20 @@ class ExamPaper(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        ordering = ['-year', 'paper_type']
-        unique_together = ('year', 'paper_type')
+        ordering = ['-year', 'paper_type', 'is_deferred']
+        unique_together = ('year', 'paper_type', 'is_deferred')
 
     def __str__(self):
-        return f"{self.year} {self.get_paper_type_display()}"
+        deferred_suffix = " (Deferred)" if self.is_deferred else ""
+        return f"{self.year} {self.get_paper_type_display()}{deferred_suffix}"
 
     def save(self, *args, **kwargs):
         if not self.slug:
-            self.slug = slugify(f"{self.year}-{self.paper_type}")
+            deferred_suffix = "-deferred" if self.is_deferred else ""
+            self.slug = slugify(f"{self.year}-{self.paper_type}{deferred_suffix}")
         if not self.title:
-            self.title = f"Leaving Certificate {self.year} {self.get_paper_type_display()}"
+            deferred_text = " Deferred" if self.is_deferred else ""
+            self.title = f"Leaving Certificate {self.year}{deferred_text} {self.get_paper_type_display()}"
         super().save(*args, **kwargs)
 
 
