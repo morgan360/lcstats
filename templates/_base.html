@@ -67,6 +67,8 @@
                         </button>
                         <div
                             class="desktop-dropdown absolute left-0 top-full z-40 mt-2 min-w-[13rem] space-y-1 rounded-xl bg-twilight p-2 text-mist shadow-lg opacity-0 invisible translate-y-1 pointer-events-none transition duration-150">
+                            <a href="{% url 'cheatsheets:log_tables' %}" target="_blank"
+                        class="block rounded-lg px-3 py-2 text-sm font-semibold text-lime-glow hover:bg-rose-pop/20">📊 Log Tables</a>
                             <a href="{% url 'notes_index' %}"
                         class="block rounded-lg px-3 py-2 text-sm font-semibold text-mist hover:bg-rose-pop/20">Study
                         Resources</a>
@@ -197,6 +199,8 @@
                     </svg>
                 </button>
                 <div class="mobile-dropdown hidden space-y-1 rounded-lg bg-indigo-deep/80 p-1">
+                    <a href="{% url 'cheatsheets:log_tables' %}" target="_blank"
+                        class="block rounded-lg px-3 py-2 text-sm font-semibold text-lime-glow hover:bg-mist/10">📊 Log Tables</a>
                     <a href="{% url 'notes_index' %}"
                         class="block rounded-lg px-3 py-2 text-sm font-semibold hover:bg-mist/10">Study
                         Resources</a>
@@ -263,6 +267,9 @@
     <main class="mx-auto flex w-full max-w-6xl flex-1 flex-col px-4 py-8 sm:px-6 lg:px-8 text-midnight">
         {% block content %}{% endblock %}
     </main>
+
+    <!-- Floating Log Tables Button (for question pages) -->
+    {% block log_tables_button %}{% endblock %}
 
     <footer class="bg-indigo-deep/80 text-mist shadow-2xl backdrop-blur-xl py-4 text-center text-sm text-mist">
         &copy; 2025/26 NumScoil. All rights reserved.

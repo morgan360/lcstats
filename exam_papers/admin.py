@@ -38,14 +38,14 @@ class ExamQuestionInline(admin.TabularInline):
 
 @admin.register(ExamPaper)
 class ExamPaperAdmin(admin.ModelAdmin):
-    list_display = ('title', 'year', 'paper_type', 'total_marks', 'time_limit_minutes', 'is_published', 'pdf_link', 'created_at')
-    list_filter = ('year', 'paper_type', 'is_published')
+    list_display = ('title', 'year', 'paper_type', 'is_deferred', 'total_marks', 'time_limit_minutes', 'is_published', 'pdf_link', 'created_at')
+    list_filter = ('year', 'paper_type', 'is_deferred', 'is_published')
     search_fields = ('title', 'year')
     prepopulated_fields = {'slug': ('year', 'paper_type')}
 
     fieldsets = (
         ('Basic Information', {
-            'fields': ('year', 'paper_type', 'title', 'slug', 'is_published')
+            'fields': ('year', 'paper_type', 'is_deferred', 'title', 'slug', 'is_published')
         }),
         ('Exam Details', {
             'fields': ('time_limit_minutes', 'total_marks', 'instructions')

@@ -930,3 +930,13 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 </script>
 {% endblock %}
+
+{% block log_tables_button %}
+<!-- Floating Log Tables Button -->
+<a href="{% url 'cheatsheets:log_tables' %}" target="_blank"
+   class="fixed bottom-6 right-6 z-50 flex items-center gap-2 rounded-full bg-gradient-to-r from-lime-500 to-green-600 px-4 py-3 text-sm font-semibold text-white shadow-lg transition hover:shadow-xl hover:scale-105"
+   title="Open Log Tables">
+    <span class="text-lg">📊</span>
+    <span class="hidden sm:inline">Log Tables</span>
+</a>
+{% endblock %}
