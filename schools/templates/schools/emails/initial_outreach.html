@@ -19,9 +19,30 @@
             padding: 20px;
             text-align: center;
         }
+        .logo {
+            max-width: 200px;
+            height: auto;
+            margin-bottom: 10px;
+        }
         .content {
             padding: 20px;
             background-color: #f9f9f9;
+        }
+        .content h3 {
+            color: #2c3e50;
+            margin-top: 20px;
+        }
+        .content ul {
+            margin: 10px 0;
+        }
+        .content li {
+            margin: 8px 0;
+        }
+        .highlight-box {
+            background-color: #e8f4f8;
+            border-left: 4px solid #3498db;
+            padding: 15px;
+            margin: 20px 0;
         }
         .footer {
             padding: 20px;
@@ -29,69 +50,72 @@
             font-size: 12px;
             color: #666;
         }
-        .button {
-            display: inline-block;
-            padding: 12px 24px;
-            background-color: #3498db;
-            color: white;
-            text-decoration: none;
-            border-radius: 5px;
-            margin: 10px 0;
-        }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="header">
-            <h1>NumScoil - AI-Powered Maths Tutor</h1>
+            <img src="https://www.numscoil.ie/static/images/numscoil-logo.png" alt="NumScoil Logo" class="logo">
+            <h1>AI-Powered Maths Tutor for Leaving Cert</h1>
         </div>
 
         <div class="content">
             <p>Dear {{ principal_name }},</p>
 
-            <p>I hope this email finds you well. My name is Morgan McKnight, and I am reaching out to introduce <strong>NumScoil</strong>, an innovative AI-powered interactive tutor designed specifically for Leaving Certificate Honours Maths students.</p>
+            <p>I am writing to offer your school <strong>4 free student places</strong> on NumScoil, an AI-powered interactive tutor specifically designed for Leaving Certificate Honours Mathematics students.</p>
 
             <h3>What is NumScoil?</h3>
-            <p>NumScoil combines cutting-edge AI technology with comprehensive curriculum coverage to provide:</p>
+            <p>NumScoil is a comprehensive online learning platform that combines intelligent question-based practice with AI-powered grading and personalised feedback. The system has been specifically designed to support revision and exam preparation for the <strong>June 2026 Leaving Certificate</strong>.</p>
+
+            <h3>Key Features:</h3>
             <ul>
-                <li><strong>Intelligent Grading:</strong> Instant feedback on student answers using OpenAI's GPT-4</li>
-                <li><strong>Adaptive Hints:</strong> Context-aware help when students get stuck</li>
-                <li><strong>Full Exam Paper Practice:</strong> Complete past papers with timed exam mode</li>
-                <li><strong>Progress Tracking:</strong> Detailed analytics for students and teachers</li>
-                <li><strong>24/7 AI Chat Support:</strong> Students can ask questions anytime</li>
+                <li><strong>Interactive Practice Questions</strong> across all LC Honours Maths topics with instant AI grading</li>
+                <li><strong>Timed Exam Papers</strong> - Complete past papers under authentic exam conditions (150-minute timer) with auto-submission</li>
+                <li><strong>Timed Exam Questions</strong> - Practice individual exam questions with suggested time limits to build speed and confidence</li>
+                <li><strong>Flashcards</strong> - Hundreds of digital flashcards covering key concepts, formulas, and theorems for quick revision</li>
+                <li><strong>Intelligent Hints & Solutions</strong> that unlock progressively to encourage independent learning</li>
+                <li><strong>AI Tutor Chat</strong> providing 24/7 support for concept explanations and problem-solving guidance</li>
+                <li><strong>Progress Tracking</strong> with detailed analytics on strengths and areas for improvement</li>
+                <li><strong>Teacher Dashboard</strong> to monitor student progress and assign targeted homework</li>
             </ul>
 
-            <h3>Why NumScoil?</h3>
-            <p>We understand the challenges facing maths education:</p>
+            <h3>How it Works:</h3>
+            <p>Students will be linked to a supervising teacher from your school who can:</p>
             <ul>
-                <li>Students need more practice and immediate feedback</li>
-                <li>Teachers need tools to track individual student progress</li>
-                <li>Every student learns at their own pace</li>
+                <li>Monitor their progress through the teacher dashboard</li>
+                <li>Assign specific topics, exam questions, or flashcard sets as homework</li>
+                <li>Receive regular updates on student engagement and performance</li>
             </ul>
 
-            <p>NumScoil addresses these challenges by providing unlimited practice with instant, intelligent feedback - freeing up teachers to focus on what they do best: teaching.</p>
+            <div class="highlight-box">
+                <h3 style="margin-top: 0;">What We're Offering:</h3>
+                <ul style="margin-bottom: 0;">
+                    <li><strong>4 complimentary student accounts</strong> (valid until June Leaving Cert exam)</li>
+                    <li><strong>Full teacher account</strong> for supervising staff member</li>
+                    <li><strong>No payment required, no credit card needed</strong></li>
+                    <li>Only requirement: Completion of a brief feedback form at the end of the trial period</li>
+                </ul>
+            </div>
 
-            <h3>Special Offer for {{ school_name }}</h3>
-            <p>We would love to offer your school a <strong>free trial period</strong> to experience NumScoil firsthand. This includes:</p>
-            <ul>
-                <li>Full access for your Leaving Cert maths students</li>
-                <li>Teacher dashboard for progress monitoring</li>
-                <li>Dedicated onboarding support</li>
-                <li>Training session for your maths department</li>
-            </ul>
+            <h3>Fair Usage:</h3>
+            <p>As the system relies on AI resources (OpenAI GPT-4), reasonable usage limitations apply to ensure all students have optimal access.</p>
 
-            <p style="text-align: center;">
-                <a href="https://www.numscoil.ie" class="button">Visit NumScoil</a>
-            </p>
+            <h3>Next Steps:</h3>
+            <p>If you're interested, please reply to <strong>admin@numscoil.ie</strong> and I will send you:</p>
+            <ol>
+                <li>One teacher registration code</li>
+                <li>Four student registration codes linked to your teacher's class</li>
+                <li>Quick-start guide for both teachers and students</li>
+            </ol>
 
-            <p>I would be delighted to arrange a brief call or demo to show you how NumScoil can support your students' success in Leaving Cert maths.</p>
+            <p>This is an excellent opportunity for your top Honours Maths students to benefit from cutting-edge AI technology as they prepare for one of their most important exams.</p>
 
-            <p>Please let me know if you would be interested in learning more or scheduling a demonstration.</p>
+            <p>I look forward to hearing from you.</p>
 
-            <p>Best regards,</p>
+            <p>Kind regards,</p>
             <p><strong>Morgan McKnight</strong><br>
-            Founder, NumScoil<br>
-            Email: morganmcknight@gmail.com<br>
+            NumScoil<br>
+            Email: <a href="mailto:admin@numscoil.ie">admin@numscoil.ie</a><br>
             Website: <a href="https://www.numscoil.ie">www.numscoil.ie</a></p>
         </div>
 
