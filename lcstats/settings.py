@@ -110,6 +110,7 @@ INSTALLED_APPS = [
     'flashcards',
     'homework',
     'stats_simulator',
+    'schools',
     'hijack',
     'hijack.contrib.admin',
 ]

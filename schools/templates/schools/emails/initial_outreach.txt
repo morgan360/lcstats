@@ -1,0 +1,48 @@
+Dear {{ principal_name }},
+
+I hope this email finds you well. My name is Morgan McKnight, and I am reaching out to introduce NumScoil, an innovative AI-powered interactive tutor designed specifically for Leaving Certificate Honours Maths students.
+
+WHAT IS NUMSCOIL?
+
+NumScoil combines cutting-edge AI technology with comprehensive curriculum coverage to provide:
+
+• Intelligent Grading: Instant feedback on student answers using OpenAI's GPT-4
+• Adaptive Hints: Context-aware help when students get stuck
+• Full Exam Paper Practice: Complete past papers with timed exam mode
+• Progress Tracking: Detailed analytics for students and teachers
+• 24/7 AI Chat Support: Students can ask questions anytime
+
+WHY NUMSCOIL?
+
+We understand the challenges facing maths education:
+• Students need more practice and immediate feedback
+• Teachers need tools to track individual student progress
+• Every student learns at their own pace
+
+NumScoil addresses these challenges by providing unlimited practice with instant, intelligent feedback - freeing up teachers to focus on what they do best: teaching.
+
+SPECIAL OFFER FOR {{ school_name }}
+
+We would love to offer your school a free trial period to experience NumScoil firsthand. This includes:
+
+• Full access for your Leaving Cert maths students
+• Teacher dashboard for progress monitoring
+• Dedicated onboarding support
+• Training session for your maths department
+
+Visit us at: https://www.numscoil.ie
+
+I would be delighted to arrange a brief call or demo to show you how NumScoil can support your students' success in Leaving Cert maths.
+
+Please let me know if you would be interested in learning more or scheduling a demonstration.
+
+Best regards,
+
+Morgan McKnight
+Founder, NumScoil
+Email: morganmcknight@gmail.com
+Website: www.numscoil.ie
+
+---
+This email was sent to {{ school_name }} because we believe NumScoil could benefit your students.
+If you would prefer not to receive further information, please reply to let us know.

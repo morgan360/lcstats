@@ -1,0 +1,107 @@
+{% extends "admin/base_site.html" %}
+{% load static %}
+
+{% block title %}Send Email to Schools{% endblock %}
+
+{% block breadcrumbs %}
+<div class="breadcrumbs">
+    <a href="{% url 'admin:index' %}">Home</a>
+    &rsaquo; <a href="{% url 'admin:schools_school_changelist' %}">Schools</a>
+    &rsaquo; Send Email
+</div>
+{% endblock %}
+
+{% block content %}
+<div id="content-main">
+    <h1>Send Email to Selected Schools</h1>
+
+    <div class="module">
+        <h2>Schools to Email ({{ schools_count }})</h2>
+        <ul>
+            {% for school in schools %}
+                <li><strong>{{ school.name }}</strong> ({{ school.county}}) - {{ school.principal_name }} - {{ school.email }}</li>
+            {% empty %}
+                <li>No schools selected.</li>
+            {% endfor %}
+        </ul>
+    </div>
+
+    {% if schools_count > 0 %}
+    <form method="post" id="email-form">
+        {% csrf_token %}
+
+        <div class="module">
+            <h2>Email Settings</h2>
+
+            <div class="form-row">
+                <div>
+                    <label for="id_email_type">Email Type:</label>
+                    {{ form.email_type }}
+                    <p class="help">{{ form.email_type.help_text }}</p>
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div>
+                    <label for="id_subject">Subject:</label>
+                    {{ form.subject }}
+                    <p class="help">{{ form.subject.help_text }}</p>
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div>
+                    <label for="id_use_template">
+                        {{ form.use_template }} Use default email template
+                    </label>
+                    <p class="help">{{ form.use_template.help_text }}</p>
+                </div>
+            </div>
+
+            <div class="form-row" id="custom-message-row">
+                <div>
+                    <label for="id_custom_message">Custom Message:</label>
+                    {{ form.custom_message }}
+                    <p class="help">{{ form.custom_message.help_text }}</p>
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div>
+                    <label for="id_send_test">
+                        {{ form.send_test }} Send test email to yourself
+                    </label>
+                    <p class="help">{{ form.send_test.help_text }}</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="submit-row">
+            <input type="submit" value="Send Email" class="default" />
+            <a href="{% url 'admin:schools_school_changelist' %}" class="button cancel-link">Cancel</a>
+        </div>
+    </form>
+
+    <script>
+        // Show/hide custom message field based on template checkbox
+        document.addEventListener('DOMContentLoaded', function() {
+            const useTemplate = document.getElementById('id_use_template');
+            const customMessageRow = document.getElementById('custom-message-row');
+
+            function toggleCustomMessage() {
+                if (useTemplate.checked) {
+                    customMessageRow.style.display = 'none';
+                } else {
+                    customMessageRow.style.display = 'block';
+                }
+            }
+
+            useTemplate.addEventListener('change', toggleCustomMessage);
+            toggleCustomMessage();
+        });
+    </script>
+    {% else %}
+    <p>No schools selected. <a href="{% url 'admin:schools_school_changelist' %}">Go back to school list</a>.</p>
+    {% endif %}
+</div>
+{% endblock %}
