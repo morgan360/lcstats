@@ -2,7 +2,7 @@ NumScoil - AI-Powered Maths Tutor for Leaving Cert
 
 Dear {{ principal_name }},
 
-I am writing to offer your school 4 FREE STUDENT PLACES on NumScoil, an AI-powered interactive tutor specifically designed for Leaving Certificate Honours Mathematics students.
+I am writing to offer your school 4 complimentary student places on NumScoil, an AI-powered interactive tutor specifically designed for Leaving Certificate Honours Mathematics students.
 
 WHAT IS NUMSCOIL?
 
@@ -32,6 +32,8 @@ WHAT WE'RE OFFERING:
 • Full teacher account for supervising staff member
 • No payment required, no credit card needed
 • Only requirement: Completion of a brief feedback form at the end of the trial period
+
+This offer is available until 31 January - register today to secure your school's complimentary places.
 
 FAIR USAGE:
 
