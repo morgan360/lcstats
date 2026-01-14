@@ -46,6 +46,12 @@ class SendEmailForm(forms.Form):
         help_text="Custom email message (only used if 'Use template' is unchecked)"
     )
 
+    prefer_secondary_contact = forms.BooleanField(
+        initial=True,
+        required=False,
+        help_text="Prefer secondary contact (maths teacher/career guidance) over principal when available"
+    )
+
     send_test = forms.BooleanField(
         initial=False,
         required=False,

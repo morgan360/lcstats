@@ -121,6 +121,7 @@ class SchoolAdmin(admin.ModelAdmin):
                 email_type = form.cleaned_data['email_type']
                 use_template = form.cleaned_data['use_template']
                 custom_message = form.cleaned_data['custom_message']
+                prefer_secondary_contact = form.cleaned_data['prefer_secondary_contact']
                 send_test = form.cleaned_data['send_test']
 
                 # Determine recipients
@@ -134,8 +135,8 @@ class SchoolAdmin(admin.ModelAdmin):
 
                 for school in test_schools:
                     try:
-                        # Determine which contact to use
-                        if school.secondary_contact_name and school.secondary_contact_email:
+                        # Determine which contact to use based on preference
+                        if prefer_secondary_contact and school.secondary_contact_name and school.secondary_contact_email:
                             contact_name = school.secondary_contact_name
                             contact_email = school.secondary_contact_email
                         else:
