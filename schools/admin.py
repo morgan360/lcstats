@@ -20,6 +20,7 @@ class SchoolAdmin(admin.ModelAdmin):
         'email',
         'phone',
         'school_type',
+        'is_gaelscoil',
         'initial_email_sent',
         'response_received',
         'interested',
@@ -29,6 +30,7 @@ class SchoolAdmin(admin.ModelAdmin):
     list_filter = [
         'county',
         'school_type',
+        'is_gaelscoil',
         'response_received',
         'interested',
         'follow_up_required',
@@ -39,6 +41,8 @@ class SchoolAdmin(admin.ModelAdmin):
         'name',
         'principal_name',
         'email',
+        'secondary_contact_name',
+        'secondary_contact_email',
         'county',
         'address',
         'roll_number',
@@ -48,11 +52,15 @@ class SchoolAdmin(admin.ModelAdmin):
         ('Basic Information', {
             'fields': ('name', 'principal_name', 'email', 'phone', 'website')
         }),
+        ('Secondary Contact', {
+            'fields': ('secondary_contact_name', 'secondary_contact_role', 'secondary_contact_email'),
+            'description': 'Alternative contact (e.g., maths teacher, career guidance counsellor)'
+        }),
         ('Location', {
             'fields': ('address', 'county')
         }),
         ('School Details', {
-            'fields': ('school_type', 'roll_number')
+            'fields': ('school_type', 'roll_number', 'is_gaelscoil')
         }),
         ('Outreach Tracking', {
             'fields': (
@@ -126,9 +134,17 @@ class SchoolAdmin(admin.ModelAdmin):
 
                 for school in test_schools:
                     try:
+                        # Determine which contact to use
+                        if school.secondary_contact_name and school.secondary_contact_email:
+                            contact_name = school.secondary_contact_name
+                            contact_email = school.secondary_contact_email
+                        else:
+                            contact_name = school.principal_name
+                            contact_email = school.email
+
                         # Prepare context for template
                         context = {
-                            'principal_name': school.principal_name,
+                            'principal_name': contact_name,
                             'school_name': school.name,
                         }
 
@@ -141,7 +157,7 @@ class SchoolAdmin(admin.ModelAdmin):
                             body_html = None
 
                         # Create email
-                        to_email = recipient_email if send_test else school.email
+                        to_email = recipient_email if send_test else contact_email
                         email = EmailMultiAlternatives(
                             subject=subject,
                             body=body_text,

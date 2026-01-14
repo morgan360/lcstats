@@ -20,6 +20,28 @@ class School(models.Model):
     phone = models.CharField(max_length=20, blank=True, help_text="Contact phone number")
     website = models.URLField(blank=True, help_text="School website URL")
 
+    # Secondary Contact (Maths Teacher / Career Guidance)
+    secondary_contact_name = models.CharField(
+        max_length=200,
+        blank=True,
+        help_text="Name of maths teacher, career guidance counsellor, or other contact"
+    )
+    secondary_contact_role = models.CharField(
+        max_length=100,
+        blank=True,
+        help_text="Role/position (e.g., 'Maths Teacher', 'Career Guidance Counsellor')"
+    )
+    secondary_contact_email = models.EmailField(
+        blank=True,
+        help_text="Email for secondary contact (if different from principal)"
+    )
+
+    # Language / Gaelscoil
+    is_gaelscoil = models.BooleanField(
+        default=False,
+        help_text="Is this an Irish-speaking school (Gaelscoil)?"
+    )
+
     # Location
     address = models.TextField(blank=True, help_text="Full postal address")
     county = models.CharField(max_length=100, blank=True, help_text="County location")
