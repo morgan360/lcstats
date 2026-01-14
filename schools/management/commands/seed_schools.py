@@ -53,6 +53,7 @@ class Command(BaseCommand):
                 'county': 'Dublin',
                 'school_type': 'secondary',
                 'website': '',
+                'is_gaelscoil': True,
             },
             {
                 'name': 'Christian Brothers College Cork',
@@ -113,6 +114,7 @@ class Command(BaseCommand):
                 'county': 'Roscommon',
                 'school_type': 'secondary',
                 'website': 'https://www.ccathlone.ie',
+                'is_gaelscoil': True,
             },
             {
                 'name': 'St Kieran\'s College Kilkenny',
@@ -163,6 +165,7 @@ class Command(BaseCommand):
                 'county': 'Dublin',
                 'school_type': 'secondary',
                 'website': 'https://colaisteeoin.ie',
+                'is_gaelscoil': True,
             },
             {
                 'name': 'St Andrew\'s College Dublin',
@@ -203,6 +206,7 @@ class Command(BaseCommand):
                 'county': 'Mayo',
                 'school_type': 'community',
                 'website': 'https://colaistepobailacla.ie',
+                'is_gaelscoil': True,
             },
             {
                 'name': 'Presentation Secondary School Waterford',
@@ -213,6 +217,21 @@ class Command(BaseCommand):
                 'county': 'Waterford',
                 'school_type': 'secondary',
                 'website': 'https://www.presentationsecondarywaterford.ie',
+            },
+            {
+                'name': 'Stanhope Secondary School',
+                'principal_name': 'Mr. John O\'Brien',
+                'email': 'info@stanhopesecondary.ie',
+                'phone': '01-6710419',
+                'address': 'Manor Street, Stoneybatter, Dublin 7, D07 YP03',
+                'county': 'Dublin',
+                'school_type': 'secondary',
+                'roll_number': '60843Q',
+                'website': 'https://stanhopesecondary.ie',
+                'is_gaelscoil': False,
+                'secondary_contact_name': 'S. Mulligan',
+                'secondary_contact_role': 'Contact',
+                'secondary_contact_email': 'smulligan@stanhopesecondary.ie',
             },
         ]
 
