@@ -196,6 +196,33 @@ class HomeworkAssignmentAdmin(admin.ModelAdmin):
                     kwargs["queryset"] = TeacherProfile.objects.filter(id=request.user.teacher_profile.id)
         return super().formfield_for_foreignkey(db_field, request, **kwargs)
 
+    def save_related(self, request, form, formsets, change):
+        """
+        Auto-populate assigned_students with all students from assigned_classes.
+        This runs after the main object is saved but before M2M fields are saved.
+        """
+        super().save_related(request, form, formsets, change)
+
+        # Get the assignment instance
+        obj = form.instance
+
+        # Get all students from assigned classes
+        students_from_classes = set()
+        for teacher_class in obj.assigned_classes.all():
+            students_from_classes.update(teacher_class.students.all())
+
+        # Add these students to assigned_students (if not already there)
+        if students_from_classes:
+            obj.assigned_students.add(*students_from_classes)
+
+            # Show message to user
+            num_added = len(students_from_classes)
+            self.message_user(
+                request,
+                f"Automatically added {num_added} student(s) from selected class(es).",
+                level='INFO'
+            )
+
 
 @admin.register(HomeworkTask)
 class HomeworkTaskAdmin(admin.ModelAdmin):
