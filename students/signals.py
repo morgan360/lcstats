@@ -1,5 +1,5 @@
 from django.db.models.signals import post_save, pre_delete
-from django.contrib.auth.models import User
+from django.contrib.auth.models import User, Group
 from django.contrib.auth.signals import user_logged_in, user_logged_out, user_login_failed
 from django.contrib.sessions.models import Session
 from django.dispatch import receiver
@@ -11,6 +11,16 @@ from .models import StudentProfile, LoginHistory, UserSession
 def create_or_update_student_profile(sender, instance, created, **kwargs):
     if created:
         StudentProfile.objects.create(user=instance)
+
+        # Auto-assign user to appropriate group
+        if instance.is_staff:
+            # Teacher user
+            teachers_group, _ = Group.objects.get_or_create(name='Teachers')
+            instance.groups.add(teachers_group)
+        else:
+            # Student user
+            students_group, _ = Group.objects.get_or_create(name='Students')
+            instance.groups.add(students_group)
     else:
         instance.studentprofile.save()
 

@@ -6,6 +6,7 @@ from django.http import JsonResponse
 from django.utils import timezone
 from django.db.models import Q, Count, Case, When, IntegerField
 from datetime import timedelta
+from students.decorators import teacher_required, student_required, student_or_teacher_required
 from .models import (
     TeacherProfile,
     TeacherClass,
@@ -67,7 +68,7 @@ def get_homework_summary(user):
     }
 
 
-@login_required
+@student_or_teacher_required
 def student_homework_dashboard(request):
     """
     Main homework dashboard for students showing all their assignments.
@@ -262,16 +263,13 @@ def submit_homework(request, assignment_id):
 # TEACHER VIEWS
 # ============================================================================
 
-@login_required
+@teacher_required
 def teacher_dashboard(request):
     """
     Dashboard for teachers showing their classes and assignments.
     """
-    # Check if user is a teacher
-    try:
-        teacher_profile = request.user.teacher_profile
-    except:
-        return redirect('homework:student_dashboard')
+    # Get teacher profile (guaranteed to exist due to decorator)
+    teacher_profile = request.user.teacher_profile
 
     # Get teacher's classes
     classes = teacher_profile.classes.all().annotate(
@@ -303,7 +301,7 @@ def teacher_dashboard(request):
     return render(request, 'homework/teacher_dashboard.html', context)
 
 
-@login_required
+@teacher_required
 def class_detail(request, class_id):
     """
     Detailed view of a class for teachers.
@@ -311,12 +309,8 @@ def class_detail(request, class_id):
     teacher_class = get_object_or_404(TeacherClass, id=class_id)
 
     # Verify teacher owns this class
-    if not request.user.is_superuser:
-        try:
-            if teacher_class.teacher != request.user.teacher_profile:
-                return redirect('homework:teacher_dashboard')
-        except:
-            return redirect('homework:student_dashboard')
+    if not request.user.is_superuser and teacher_class.teacher != request.user.teacher_profile:
+        return redirect('homework:teacher_dashboard')
 
     students = teacher_class.students.all()
     assignments = teacher_class.assignments.filter(is_published=True).order_by('-due_date')
@@ -330,7 +324,7 @@ def class_detail(request, class_id):
     return render(request, 'homework/class_detail.html', context)
 
 
-@login_required
+@teacher_required
 def assignment_progress(request, assignment_id):
     """
     View showing student progress on an assignment for teachers.
@@ -338,12 +332,8 @@ def assignment_progress(request, assignment_id):
     assignment = get_object_or_404(HomeworkAssignment, id=assignment_id)
 
     # Verify teacher owns this assignment
-    if not request.user.is_superuser:
-        try:
-            if assignment.teacher != request.user.teacher_profile:
-                return redirect('homework:teacher_dashboard')
-        except:
-            return redirect('homework:student_dashboard')
+    if not request.user.is_superuser and assignment.teacher != request.user.teacher_profile:
+        return redirect('homework:teacher_dashboard')
 
     # Get all assigned students
     students = assignment.get_all_assigned_students()
