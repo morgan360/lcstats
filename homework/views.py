@@ -474,3 +474,233 @@ def class_homework_report(request, class_id):
     }
 
     return render(request, 'homework/class_homework_report.html', context)
+
+
+@login_required
+def weekly_class_homework_report(request, class_id):
+    """
+    Printable weekly homework report for a class.
+    Shows homework assignments as rows and students as columns (using initials).
+    Filters to show only assignments due in the current week.
+    """
+    teacher_class = get_object_or_404(TeacherClass, id=class_id)
+
+    # Verify teacher owns this class
+    if not request.user.is_superuser:
+        try:
+            if teacher_class.teacher != request.user.teacher_profile:
+                return redirect('homework:teacher_dashboard')
+        except:
+            return redirect('homework:student_dashboard')
+
+    # Calculate current week range (Monday to Sunday)
+    now = timezone.now()
+    # Get start of week (Monday)
+    start_of_week = now - timedelta(days=now.weekday())
+    start_of_week = start_of_week.replace(hour=0, minute=0, second=0, microsecond=0)
+    # Get end of week (Sunday)
+    end_of_week = start_of_week + timedelta(days=6, hours=23, minutes=59, seconds=59)
+
+    # Get all students in the class
+    students = teacher_class.students.all().order_by('last_name', 'first_name', 'username')
+
+    # Get assignments due this week for this class
+    assignments = teacher_class.assignments.filter(
+        is_published=True,
+        due_date__gte=start_of_week,
+        due_date__lte=end_of_week
+    ).order_by('due_date')
+
+    # Build completion matrix
+    report_data = []
+    for assignment in assignments:
+        tasks = assignment.tasks.all()
+        total_tasks = tasks.count()
+
+        student_statuses = []
+        for student in students:
+            # Count completed tasks for this student
+            completed_tasks = StudentHomeworkProgress.objects.filter(
+                student=student,
+                assignment=assignment,
+                is_completed=True
+            ).count()
+
+            # Check if submitted
+            has_submitted = HomeworkSubmission.objects.filter(
+                student=student,
+                assignment=assignment
+            ).exists()
+
+            # Determine status
+            if has_submitted:
+                status = 'Submitted'
+                status_class = 'submitted'
+            elif completed_tasks == total_tasks:
+                status = 'Completed'
+                status_class = 'completed'
+            elif completed_tasks > 0:
+                status = 'In Progress'
+                status_class = 'in-progress'
+            else:
+                status = 'Not Started'
+                status_class = 'not-started'
+
+            student_statuses.append({
+                'student': student,
+                'status': status,
+                'status_class': status_class,
+                'completed_tasks': completed_tasks,
+                'total_tasks': total_tasks,
+            })
+
+        report_data.append({
+            'assignment': assignment,
+            'total_tasks': total_tasks,
+            'student_statuses': student_statuses,
+        })
+
+    # Generate student initials
+    students_with_initials = []
+    for student in students:
+        # Try to get initials from first and last name, fallback to username
+        if student.first_name and student.last_name:
+            initials = f"{student.first_name[0]}{student.last_name[0]}"
+        elif student.first_name:
+            initials = student.first_name[:2]
+        elif student.last_name:
+            initials = student.last_name[:2]
+        else:
+            initials = student.username[:2]
+
+        students_with_initials.append({
+            'user': student,
+            'initials': initials.upper(),
+            'full_name': student.get_full_name() or student.username
+        })
+
+    context = {
+        'teacher_class': teacher_class,
+        'students': students,
+        'students_with_initials': students_with_initials,
+        'report_data': report_data,
+        'week_start': start_of_week,
+        'week_end': end_of_week,
+        'current_date': now,
+    }
+
+    return render(request, 'homework/weekly_class_report.html', context)
+
+
+@login_required
+def weekly_student_homework_report(request, student_id):
+    """
+    Printable weekly homework report for an individual student.
+    Shows all homework assigned to the student due in the current week.
+    """
+    student = get_object_or_404(User, id=student_id)
+
+    # Verify teacher has access to this student
+    if not request.user.is_superuser:
+        try:
+            teacher_profile = request.user.teacher_profile
+            # Check if student is in any of the teacher's classes
+            if not teacher_profile.classes.filter(students=student).exists():
+                return redirect('homework:teacher_dashboard')
+        except:
+            # Allow students to view their own report
+            if request.user.id != student_id:
+                return redirect('homework:student_dashboard')
+
+    # Calculate current week range (Monday to Sunday)
+    now = timezone.now()
+    start_of_week = now - timedelta(days=now.weekday())
+    start_of_week = start_of_week.replace(hour=0, minute=0, second=0, microsecond=0)
+    end_of_week = start_of_week + timedelta(days=6, hours=23, minutes=59, seconds=59)
+
+    # Get all assignments for this student due this week
+    class_assignments = HomeworkAssignment.objects.filter(
+        assigned_classes__students=student,
+        is_published=True,
+        due_date__gte=start_of_week,
+        due_date__lte=end_of_week
+    )
+    individual_assignments = HomeworkAssignment.objects.filter(
+        assigned_students=student,
+        is_published=True,
+        due_date__gte=start_of_week,
+        due_date__lte=end_of_week
+    )
+
+    assignments = (class_assignments | individual_assignments).distinct().order_by('due_date')
+
+    # Build detailed progress for each assignment
+    report_data = []
+    for assignment in assignments:
+        tasks = assignment.tasks.all().order_by('order')
+        total_tasks = tasks.count()
+
+        task_details = []
+        completed_count = 0
+
+        for task in tasks:
+            progress = StudentHomeworkProgress.objects.filter(
+                student=student,
+                assignment=assignment,
+                task=task
+            ).first()
+
+            is_completed = progress.is_completed if progress else False
+            if is_completed:
+                completed_count += 1
+
+            task_details.append({
+                'task': task,
+                'is_completed': is_completed,
+                'progress': progress,
+            })
+
+        # Check submission
+        submission = HomeworkSubmission.objects.filter(
+            student=student,
+            assignment=assignment
+        ).first()
+
+        # Overall status
+        if submission:
+            status = 'Submitted'
+            status_class = 'submitted'
+        elif completed_count == total_tasks:
+            status = 'Completed'
+            status_class = 'completed'
+        elif completed_count > 0:
+            status = 'In Progress'
+            status_class = 'in-progress'
+        else:
+            status = 'Not Started'
+            status_class = 'not-started'
+
+        is_overdue = now > assignment.due_date
+
+        report_data.append({
+            'assignment': assignment,
+            'total_tasks': total_tasks,
+            'completed_tasks': completed_count,
+            'completion_percentage': int((completed_count / total_tasks * 100) if total_tasks > 0 else 0),
+            'task_details': task_details,
+            'submission': submission,
+            'status': status,
+            'status_class': status_class,
+            'is_overdue': is_overdue,
+        })
+
+    context = {
+        'student': student,
+        'report_data': report_data,
+        'week_start': start_of_week,
+        'week_end': end_of_week,
+        'current_date': now,
+        'total_assignments': len(report_data),
+    }
+
+    return render(request, 'homework/weekly_student_report.html', context)

@@ -17,5 +17,7 @@ urlpatterns = [
     path('teacher/', views.teacher_dashboard, name='teacher_dashboard'),
     path('teacher/class/<int:class_id>/', views.class_detail, name='class_detail'),
     path('teacher/class/<int:class_id>/report/', views.class_homework_report, name='class_homework_report'),
+    path('teacher/class/<int:class_id>/weekly-report/', views.weekly_class_homework_report, name='weekly_class_report'),
+    path('teacher/student/<int:student_id>/weekly-report/', views.weekly_student_homework_report, name='weekly_student_report'),
     path('teacher/assignment/<int:assignment_id>/progress/', views.assignment_progress, name='assignment_progress'),
 ]

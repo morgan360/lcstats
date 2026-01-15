@@ -1,0 +1,191 @@
+{% extends "_base.html" %}
+
+{% block title %}{{ student.get_full_name|default:student.username }} - Weekly Homework Report{% endblock %}
+
+{% block content %}
+<div class="container" style="max-width: 900px; margin: 2rem auto; padding: 0 1rem;">
+    <div class="no-print" style="margin-bottom: 1rem;">
+        <a href="{% url 'homework:teacher_dashboard' %}" style="color: #3498db; text-decoration: none;">← Back to Dashboard</a>
+        <button onclick="window.print()" style="float: right; background: #3498db; color: white; border: none; padding: 0.5rem 1rem; border-radius: 4px; cursor: pointer;">
+            Print Report
+        </button>
+    </div>
+
+    <div class="report-header" style="margin-bottom: 2rem;">
+        <h1 style="color: #2c3e50; margin: 0.5rem 0;">Weekly Homework Report</h1>
+        <h2 style="color: #7f8c8d; font-size: 1.2rem; font-weight: normal; margin: 0.25rem 0;">
+            Student: {{ student.get_full_name|default:student.username }}
+        </h2>
+        <p style="color: #95a5a6; font-size: 0.9rem; margin: 0.25rem 0;">
+            Week: {{ week_start|date:"M d, Y" }} - {{ week_end|date:"M d, Y" }}
+        </p>
+        <p style="color: #95a5a6; font-size: 0.9rem; margin: 0.25rem 0;">
+            Generated: {{ current_date|date:"M d, Y g:i A" }}
+        </p>
+    </div>
+
+    {% if report_data %}
+    <div style="background: white; padding: 1.5rem; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+        <div style="margin-bottom: 1.5rem; padding: 1rem; background: #ecf0f1; border-radius: 4px;">
+            <h3 style="margin: 0; font-size: 1rem; color: #34495e;">Summary</h3>
+            <p style="margin: 0.5rem 0 0 0; font-size: 0.9rem; color: #7f8c8d;">
+                Total Assignments This Week: <strong>{{ total_assignments }}</strong>
+            </p>
+        </div>
+
+        <table style="width: 100%; border-collapse: collapse; font-size: 0.9rem; margin-bottom: 2rem;">
+            <thead>
+                <tr style="background: #2c3e50; color: white;">
+                    <th style="padding: 0.75rem; text-align: left; border: 1px solid #34495e;">
+                        Homework Title
+                    </th>
+                    <th style="padding: 0.75rem; text-align: center; border: 1px solid #34495e; min-width: 90px;">
+                        Due Date
+                    </th>
+                    <th style="padding: 0.75rem; text-align: center; border: 1px solid #34495e; min-width: 100px;">
+                        Status
+                    </th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for data in report_data %}
+                <tr {% if forloop.counter|divisibleby:2 %}style="background: #f8f9fa;"{% endif %}>
+                    <td style="padding: 0.75rem; border: 1px solid #bdc3c7;">
+                        <strong>{{ data.assignment.title }}</strong>
+                        <br>
+                        <small style="color: #7f8c8d;">
+                            {{ data.assignment.topic.name }} - {{ data.total_tasks }} task{{ data.total_tasks|pluralize }}
+                        </small>
+                    </td>
+                    <td style="padding: 0.75rem; text-align: center; border: 1px solid #bdc3c7; white-space: nowrap;">
+                        {{ data.assignment.due_date|date:"M d, Y" }}
+                        {% if data.is_overdue %}
+                        <br><span style="color: #e74c3c; font-size: 0.8rem; font-weight: bold;">OVERDUE</span>
+                        {% endif %}
+                    </td>
+                    <td style="padding: 0.75rem; text-align: center; border: 1px solid #bdc3c7;">
+                        {% if data.status == 'Submitted' %}
+                            <span style="color: #27ae60; font-weight: bold;">✓ Submitted</span>
+                        {% elif data.status == 'Completed' %}
+                            <span style="color: #2ecc71; font-weight: bold;">Completed</span>
+                        {% elif data.status == 'In Progress' %}
+                            <span style="color: #f39c12; font-weight: bold;">In Progress</span>
+                            <br><small style="color: #7f8c8d;">{{ data.completed_tasks }}/{{ data.total_tasks }} tasks</small>
+                        {% else %}
+                            <span style="color: #e74c3c; font-weight: bold;">Not Started</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                <tr {% if forloop.counter|divisibleby:2 %}style="background: #f8f9fa;"{% endif %}>
+                    <td colspan="3" style="padding: 0.5rem 0.75rem; border: 1px solid #bdc3c7; border-top: none;">
+                        <details style="font-size: 0.85rem;">
+                            <summary style="cursor: pointer; color: #3498db; font-weight: 500;">
+                                Task Details ({{ data.completed_tasks }}/{{ data.total_tasks }} completed)
+                            </summary>
+                            <div style="margin-top: 0.5rem; padding-left: 1rem;">
+                                {% for task_detail in data.task_details %}
+                                <div style="margin: 0.25rem 0; color: #555;">
+                                    {% if task_detail.is_completed %}
+                                        <span style="color: #27ae60;">✓</span>
+                                    {% else %}
+                                        <span style="color: #e74c3c;">○</span>
+                                    {% endif %}
+                                    {{ task_detail.task.get_content_display }}
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </details>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <div style="margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid #ecf0f1;">
+            <h3 style="font-size: 0.9rem; color: #34495e; margin-bottom: 0.5rem; font-weight: bold;">Notes:</h3>
+            <ul style="margin: 0.5rem 0; padding-left: 1.5rem; font-size: 0.85rem; color: #555;">
+                <li>This report shows all homework assignments due during the current week (Monday-Sunday).</li>
+                <li>Tasks are automatically marked complete when the student makes an attempt.</li>
+                <li>Students must complete all tasks before they can submit the assignment.</li>
+            </ul>
+        </div>
+    </div>
+    {% else %}
+    <div style="background: white; padding: 2rem; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); text-align: center;">
+        <p style="color: #7f8c8d; margin: 0;">No homework assignments due this week for this student.</p>
+    </div>
+    {% endif %}
+</div>
+
+<style>
+    /* Print styles */
+    @media print {
+        .no-print {
+            display: none !important;
+        }
+
+        body {
+            font-size: 10pt;
+        }
+
+        .container {
+            max-width: 100% !important;
+            margin: 0 !important;
+            padding: 0.5in !important;
+        }
+
+        table {
+            font-size: 9pt !important;
+            page-break-inside: auto;
+        }
+
+        tr {
+            page-break-inside: avoid;
+            page-break-after: auto;
+        }
+
+        thead {
+            display: table-header-group;
+        }
+
+        details {
+            display: block !important;
+        }
+
+        summary {
+            display: none !important;
+        }
+
+        details > div {
+            display: block !important;
+            margin-top: 0.5rem !important;
+        }
+
+        h1 {
+            font-size: 16pt;
+        }
+
+        h2 {
+            font-size: 12pt;
+        }
+
+        /* Ensure colors print */
+        * {
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+        }
+    }
+
+    /* Screen styles */
+    @media screen {
+        /* Hover effect for rows */
+        tbody tr:hover {
+            background: #e8f4f8 !important;
+        }
+
+        details summary:hover {
+            color: #2980b9;
+        }
+    }
+</style>
+{% endblock %}

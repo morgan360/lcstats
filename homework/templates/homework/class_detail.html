@@ -4,9 +4,12 @@
 
 {% block content %}
 <div class="container" style="max-width: 1000px; margin: 2rem auto; padding: 0 1rem;">
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 0.5rem;">
         <a href="{% url 'homework:teacher_dashboard' %}" style="color: #3498db; text-decoration: none;">← Back to Dashboard</a>
-        <a href="{% url 'homework:class_homework_report' teacher_class.id %}" style="background: #3498db; color: white; padding: 0.5rem 1rem; border-radius: 4px; text-decoration: none; font-size: 0.9rem;">📊 View Homework Report</a>
+        <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+            <a href="{% url 'homework:class_homework_report' teacher_class.id %}" style="background: #3498db; color: white; padding: 0.5rem 1rem; border-radius: 4px; text-decoration: none; font-size: 0.9rem;">📊 Full Report</a>
+            <a href="{% url 'homework:weekly_class_report' teacher_class.id %}" style="background: #27ae60; color: white; padding: 0.5rem 1rem; border-radius: 4px; text-decoration: none; font-size: 0.9rem;">📅 Weekly Report</a>
+        </div>
     </div>
 
     <h1 style="color: #2c3e50; margin: 1rem 0;">{{ teacher_class.name }}</h1>
@@ -16,8 +19,9 @@
         <div style="background: white; padding: 1.5rem; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
             <ul style="list-style: none; padding: 0; margin: 0;">
                 {% for student in students %}
-                <li style="padding: 0.5rem 0; border-bottom: 1px solid #eee;">
-                    {{ student.get_full_name|default:student.username }}
+                <li style="padding: 0.75rem 0; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center;">
+                    <span>{{ student.get_full_name|default:student.username }}</span>
+                    <a href="{% url 'homework:weekly_student_report' student.id %}" style="background: #95a5a6; color: white; padding: 0.3rem 0.6rem; border-radius: 4px; text-decoration: none; font-size: 0.8rem;">📄 Weekly Report</a>
                 </li>
                 {% empty %}
                 <li style="color: #7f8c8d;">No students enrolled yet.</li>

@@ -23,9 +23,14 @@
                             <strong>{{ class.student_count }}</strong> student{{ class.student_count|pluralize }}
                         </p>
                     </a>
-                    <a href="{% url 'homework:class_homework_report' class.id %}" style="display: inline-block; background: #3498db; color: white; padding: 0.4rem 0.8rem; border-radius: 4px; text-decoration: none; font-size: 0.85rem; margin-top: 0.5rem;">
-                        📊 Homework Report
-                    </a>
+                    <div style="margin-top: 0.5rem; display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                        <a href="{% url 'homework:class_homework_report' class.id %}" style="display: inline-block; background: #3498db; color: white; padding: 0.4rem 0.8rem; border-radius: 4px; text-decoration: none; font-size: 0.85rem;">
+                            📊 Full Report
+                        </a>
+                        <a href="{% url 'homework:weekly_class_report' class.id %}" style="display: inline-block; background: #27ae60; color: white; padding: 0.4rem 0.8rem; border-radius: 4px; text-decoration: none; font-size: 0.85rem;">
+                            📅 Weekly Report
+                        </a>
+                    </div>
                 </div>
                 {% endfor %}
             </div>
