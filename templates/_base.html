@@ -98,7 +98,7 @@
                     {% endif %}
 
                     {% if request.user.is_staff %}
-                    <a href="{% url 'homework:teacher_dashboard' %}" class="rounded-lg px-2 py-2 text-lime-glow transition hover:bg-mist/15">Teacher</a>
+                    <a href="{% url 'homework:teacher_dashboard' %}" class="rounded-lg px-2 py-2 text-rose-pop transition hover:bg-mist/15">Teacher</a>
                     <a href="/admin/" class="rounded-lg px-2 py-2 text-rose-pop transition hover:bg-mist/15">Admin</a>
                     {% endif %}
                 </div>
@@ -258,7 +258,7 @@
 
             {% if request.user.is_staff %}
             <a href="{% url 'homework:teacher_dashboard' %}"
-                class="block rounded-lg px-3 py-2 text-lime-glow transition hover:bg-mist/10">Teacher</a>
+                class="block rounded-lg px-3 py-2 text-rose-pop transition hover:bg-mist/10">Teacher</a>
             <a href="/admin/"
                 class="block rounded-lg px-3 py-2 text-rose-pop transition hover:bg-mist/10">Admin</a>
             {% endif %}
