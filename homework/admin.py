@@ -92,11 +92,40 @@ class TeacherClassAdmin(admin.ModelAdmin):
         return super().formfield_for_manytomany(db_field, request, **kwargs)
 
 
-class HomeworkTaskInline(admin.TabularInline):
+class HomeworkTaskInline(admin.StackedInline):
     model = HomeworkTask
     extra = 1
-    fields = ('task_type', 'section', 'exam_question', 'quickkick', 'flashcard_set', 'is_required', 'order', 'instructions')
-    readonly_fields = ()
+
+    fieldsets = (
+        ('Task Settings', {
+            'fields': ('task_type', 'is_required', 'order')
+        }),
+        ('Topic Section', {
+            'fields': ('section',),
+            'classes': ('collapse', 'task-content-section'),
+            'description': 'Select a topic section for students to complete'
+        }),
+        ('Exam Question', {
+            'fields': ('exam_question',),
+            'classes': ('collapse', 'task-content-exam_question'),
+            'description': 'Select an exam question for students to practice'
+        }),
+        ('QuickFlicks', {
+            'fields': ('quickkick',),
+            'classes': ('collapse', 'task-content-quickkick'),
+            'description': 'Select a QuickFlicks video/applet for students to watch'
+        }),
+        ('Flashcard Set', {
+            'fields': ('flashcard_set',),
+            'classes': ('collapse', 'task-content-flashcard'),
+            'description': 'Select a flashcard set for students to study'
+        }),
+        ('Additional Instructions', {
+            'fields': ('instructions',),
+            'classes': ('collapse',),
+            'description': 'Optional: Add specific instructions for this task'
+        }),
+    )
 
     class Media:
         css = {
@@ -106,7 +135,6 @@ class HomeworkTaskInline(admin.TabularInline):
 
     def get_formset(self, request, obj=None, **kwargs):
         formset = super().get_formset(request, obj, **kwargs)
-        # You could add custom queryset filtering here if needed
         return formset
 
 

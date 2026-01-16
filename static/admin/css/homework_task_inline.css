@@ -1,74 +1,64 @@
-/* Homework Task Inline Styling */
+/* Homework Task Inline Styling - Stacked Layout */
 
-/* Fix width issue - make the inline table not overflow */
-#homework_tasks-group .tabular {
-    max-width: 100%;
-    overflow-x: auto;
-    display: block;
-}
-
-/* Make the table more compact */
-#homework_tasks-group .tabular td,
-#homework_tasks-group .tabular th {
-    padding: 5px;
-    font-size: 12px;
-}
-
-/* Hide ALL content type columns by default (both th and td) */
-#homework_tasks-group .tabular thead th.column-section,
-#homework_tasks-group .tabular thead th.column-exam_question,
-#homework_tasks-group .tabular thead th.column-quickkick,
-#homework_tasks-group .tabular thead th.column-flashcard_set,
-#homework_tasks-group .tabular tbody .field-section,
-#homework_tasks-group .tabular tbody .field-exam_question,
-#homework_tasks-group .tabular tbody .field-quickkick,
-#homework_tasks-group .tabular tbody .field-flashcard_set {
+/* Hide all content type fieldsets by default */
+.task-content-section,
+.task-content-exam_question,
+.task-content-quickkick,
+.task-content-flashcard {
     display: none !important;
 }
 
-/* Show section column when task type is section */
-.task-type-section .field-section,
-#homework_tasks-group .tabular thead th.show-section {
-    display: table-cell !important;
+/* Show the appropriate fieldset based on task type */
+.task-type-section .task-content-section {
+    display: block !important;
 }
 
-/* Show exam question column when task type is exam_question */
-.task-type-exam_question .field-exam_question,
-#homework_tasks-group .tabular thead th.show-exam_question {
-    display: table-cell !important;
+.task-type-exam_question .task-content-exam_question {
+    display: block !important;
 }
 
-/* Show quickkick column when task type is quickkick */
-.task-type-quickkick .field-quickkick,
-#homework_tasks-group .tabular thead th.show-quickkick {
-    display: table-cell !important;
+.task-type-quickkick .task-content-quickkick {
+    display: block !important;
 }
 
-/* Show flashcard column when task type is flashcard */
-.task-type-flashcard .field-flashcard_set,
-#homework_tasks-group .tabular thead th.show-flashcard_set {
-    display: table-cell !important;
+.task-type-flashcard .task-content-flashcard {
+    display: block !important;
 }
 
-/* Adjust instructions field to wrap text instead of making table too wide */
-.field-instructions textarea {
-    min-width: 120px;
-    max-width: 200px;
-    width: 100%;
+/* Auto-expand the selected content type fieldset */
+.task-type-section .task-content-section h2,
+.task-type-exam_question .task-content-exam_question h2,
+.task-type-quickkick .task-content-quickkick h2,
+.task-type-flashcard .task-content-flashcard h2 {
+    display: block !important;
 }
 
-/* Make task type dropdown more compact */
-.field-task_type select {
-    max-width: 150px;
+/* Make the inline forms more compact */
+#homework_tasks-group .inline-related {
+    margin-bottom: 15px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    padding: 10px;
 }
 
-/* Make the table responsive */
-@media screen and (max-width: 1400px) {
-    #homework_tasks-group .tabular {
-        font-size: 11px;
-    }
+#homework_tasks-group .inline-related h3 {
+    background-color: #f8f9fa;
+    padding: 8px 12px;
+    margin: -10px -10px 10px -10px;
+    border-radius: 4px 4px 0 0;
+    font-size: 14px;
+}
 
-    .field-instructions textarea {
-        max-width: 120px;
-    }
+/* Style the task settings section */
+#homework_tasks-group fieldset.module {
+    margin-bottom: 10px;
+}
+
+#homework_tasks-group .form-row {
+    padding: 8px 0;
+}
+
+/* Make instructions textarea reasonable size */
+#homework_tasks-group textarea {
+    min-height: 80px;
 }
