@@ -1,5 +1,10 @@
 /* Homework Task Inline Styling - Stacked Layout */
 
+/* Constrain the overall width */
+#homework_tasks-group {
+    max-width: 900px;
+}
+
 /* Hide all content type fieldsets by default */
 .task-content-section,
 .task-content-exam_question,
@@ -25,24 +30,18 @@
     display: block !important;
 }
 
-/* Auto-expand the selected content type fieldset */
-.task-type-section .task-content-section h2,
-.task-type-exam_question .task-content-exam_question h2,
-.task-type-quickkick .task-content-quickkick h2,
-.task-type-flashcard .task-content-flashcard h2 {
-    display: block !important;
-}
-
 /* Make the inline forms more compact */
 #homework_tasks-group .inline-related {
     margin-bottom: 15px;
     border: 1px solid #ddd;
     border-radius: 4px;
     padding: 10px;
+    background-color: #f9f9f9;
 }
 
 #homework_tasks-group .inline-related h3 {
-    background-color: #f8f9fa;
+    background-color: #417690;
+    color: white;
     padding: 8px 12px;
     margin: -10px -10px 10px -10px;
     border-radius: 4px 4px 0 0;
@@ -52,6 +51,17 @@
 /* Style the task settings section */
 #homework_tasks-group fieldset.module {
     margin-bottom: 10px;
+    background-color: white;
+    padding: 10px;
+    border-radius: 4px;
+}
+
+#homework_tasks-group fieldset.module h2 {
+    font-size: 13px;
+    margin: 0 0 10px 0;
+    padding: 5px 10px;
+    background-color: #f0f0f0;
+    border-left: 3px solid #417690;
 }
 
 #homework_tasks-group .form-row {
@@ -61,4 +71,10 @@
 /* Make instructions textarea reasonable size */
 #homework_tasks-group textarea {
     min-height: 80px;
+    max-width: 100%;
+}
+
+/* Make select boxes reasonable width */
+#homework_tasks-group select {
+    max-width: 500px;
 }

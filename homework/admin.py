@@ -102,22 +102,22 @@ class HomeworkTaskInline(admin.StackedInline):
         }),
         ('Topic Section', {
             'fields': ('section',),
-            'classes': ('collapse', 'task-content-section'),
+            'classes': ('task-content-section',),
             'description': 'Select a topic section for students to complete'
         }),
         ('Exam Question', {
             'fields': ('exam_question',),
-            'classes': ('collapse', 'task-content-exam_question'),
+            'classes': ('task-content-exam_question',),
             'description': 'Select an exam question for students to practice'
         }),
         ('QuickFlicks', {
             'fields': ('quickkick',),
-            'classes': ('collapse', 'task-content-quickkick'),
+            'classes': ('task-content-quickkick',),
             'description': 'Select a QuickFlicks video/applet for students to watch'
         }),
         ('Flashcard Set', {
             'fields': ('flashcard_set',),
-            'classes': ('collapse', 'task-content-flashcard'),
+            'classes': ('task-content-flashcard',),
             'description': 'Select a flashcard set for students to study'
         }),
         ('Additional Instructions', {
