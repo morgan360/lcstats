@@ -3,6 +3,7 @@ from django.utils import timezone
 from django.contrib.auth.models import User
 from interactive_lessons.models import Question, QuestionPart
 from django.contrib.sessions.models import Session
+from schools.models import School
 import secrets
 
 
@@ -12,6 +13,14 @@ import secrets
 # -------------------------------------------------------------------------
 class StudentProfile(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE)
+    school = models.ForeignKey(
+        School,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name='students',
+        help_text="School this student belongs to"
+    )
     total_score = models.FloatField(default=0)
     lessons_completed = models.PositiveIntegerField(default=0)
     last_activity = models.DateTimeField(default=timezone.now)
@@ -99,6 +108,14 @@ class RegistrationCode(models.Model):
         choices=CODE_TYPE_CHOICES,
         default='student',
         help_text="Type of account this code creates (student or teacher)"
+    )
+    school = models.ForeignKey(
+        School,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name='registration_codes',
+        help_text="School this registration code belongs to"
     )
     teacher_class = models.ForeignKey(
         'homework.TeacherClass',

@@ -308,9 +308,14 @@ def class_detail(request, class_id):
     """
     teacher_class = get_object_or_404(TeacherClass, id=class_id)
 
-    # Verify teacher owns this class
-    if not request.user.is_superuser and teacher_class.teacher != request.user.teacher_profile:
-        return redirect('homework:teacher_dashboard')
+    # Verify teacher owns this class AND is in same school
+    if not request.user.is_superuser:
+        teacher_profile = request.user.teacher_profile
+        if teacher_class.teacher != teacher_profile:
+            return redirect('homework:teacher_dashboard')
+        # Check school isolation - teachers can only see classes from their school
+        if teacher_profile.school and teacher_class.teacher.school != teacher_profile.school:
+            return redirect('homework:teacher_dashboard')
 
     students = teacher_class.students.all()
     assignments = teacher_class.assignments.filter(is_published=True).order_by('-due_date')

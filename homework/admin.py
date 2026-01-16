@@ -15,14 +15,14 @@ from .models import (
 
 @admin.register(TeacherProfile)
 class TeacherProfileAdmin(admin.ModelAdmin):
-    list_display = ('display_name', 'user', 'email', 'is_active', 'class_count', 'created_at')
-    list_filter = ('is_active', 'created_at')
-    search_fields = ('user__username', 'user__first_name', 'user__last_name', 'display_name', 'email')
+    list_display = ('display_name', 'user', 'school', 'email', 'is_active', 'class_count', 'created_at')
+    list_filter = ('is_active', 'school', 'created_at')
+    search_fields = ('user__username', 'user__first_name', 'user__last_name', 'display_name', 'email', 'school__name')
     readonly_fields = ('created_at', 'updated_at')
 
     fieldsets = (
         ('Teacher Information', {
-            'fields': ('user', 'display_name', 'email')
+            'fields': ('user', 'school', 'display_name', 'email')
         }),
         ('Status', {
             'fields': ('is_active',)
@@ -75,6 +75,21 @@ class TeacherClassAdmin(admin.ModelAdmin):
         if not request.user.is_superuser and hasattr(request.user, 'teacher_profile'):
             qs = qs.filter(teacher=request.user.teacher_profile)
         return qs
+
+    def formfield_for_manytomany(self, db_field, request, **kwargs):
+        """Filter students by school - teachers can only add students from their school"""
+        if db_field.name == "students":
+            if not request.user.is_superuser and hasattr(request.user, 'teacher_profile'):
+                teacher_profile = request.user.teacher_profile
+                # Filter students to only those from same school
+                if teacher_profile.school:
+                    from django.contrib.auth.models import User
+                    from students.models import StudentProfile
+                    # Get users who have StudentProfile with same school
+                    kwargs["queryset"] = User.objects.filter(
+                        studentprofile__school=teacher_profile.school
+                    )
+        return super().formfield_for_manytomany(db_field, request, **kwargs)
 
 
 class HomeworkTaskInline(admin.TabularInline):
@@ -195,6 +210,24 @@ class HomeworkAssignmentAdmin(admin.ModelAdmin):
                 if not request.user.is_superuser:
                     kwargs["queryset"] = TeacherProfile.objects.filter(id=request.user.teacher_profile.id)
         return super().formfield_for_foreignkey(db_field, request, **kwargs)
+
+    def formfield_for_manytomany(self, db_field, request, **kwargs):
+        """Filter classes and students by school - teachers can only assign to their school"""
+        if not request.user.is_superuser and hasattr(request.user, 'teacher_profile'):
+            teacher_profile = request.user.teacher_profile
+
+            # Filter classes to only teacher's own classes
+            if db_field.name == "assigned_classes":
+                kwargs["queryset"] = TeacherClass.objects.filter(teacher=teacher_profile)
+
+            # Filter students to only those from same school
+            elif db_field.name == "assigned_students":
+                if teacher_profile.school:
+                    from django.contrib.auth.models import User
+                    kwargs["queryset"] = User.objects.filter(
+                        studentprofile__school=teacher_profile.school
+                    )
+        return super().formfield_for_manytomany(db_field, request, **kwargs)
 
     def save_related(self, request, form, formsets, change):
         """

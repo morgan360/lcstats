@@ -5,6 +5,7 @@ from django.core.exceptions import ValidationError
 from interactive_lessons.models import Topic, Section
 from exam_papers.models import ExamQuestion
 from quickkicks.models import QuickKick
+from schools.models import School
 
 
 class TeacherProfile(models.Model):
@@ -18,6 +19,14 @@ class TeacherProfile(models.Model):
         related_name='teacher_profile',
         limit_choices_to={'is_staff': True},
         help_text="Must be a staff user"
+    )
+    school = models.ForeignKey(
+        School,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name='teachers',
+        help_text="School this teacher belongs to"
     )
     display_name = models.CharField(
         max_length=200,

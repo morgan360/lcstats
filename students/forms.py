@@ -41,6 +41,13 @@ class SignupFormWithCode(SignupForm):
         if code and hasattr(self, '_reg_code'):
             reg_code = self._reg_code
 
+            # Assign school from registration code to student profile (signal creates StudentProfile)
+            if reg_code.school:
+                # StudentProfile is created by signal, so we can update it here
+                if hasattr(user, 'studentprofile'):
+                    user.studentprofile.school = reg_code.school
+                    user.studentprofile.save()
+
             # Set user permissions based on code type
             if reg_code.code_type == 'teacher':
                 # Note: is_staff is NOT set - teachers use Teacher Dashboard, not Django Admin
@@ -48,13 +55,18 @@ class SignupFormWithCode(SignupForm):
 
                 # Create TeacherProfile for teacher users
                 from homework.models import TeacherProfile
-                TeacherProfile.objects.get_or_create(
+                teacher_profile, created = TeacherProfile.objects.get_or_create(
                     user=user,
                     defaults={
                         'display_name': user.get_full_name() or user.username,
-                        'email': user.email
+                        'email': user.email,
+                        'school': reg_code.school  # Assign school from registration code
                     }
                 )
+                # Update school if profile already existed
+                if not created and reg_code.school:
+                    teacher_profile.school = reg_code.school
+                    teacher_profile.save()
             elif reg_code.code_type == 'student':
                 # If code is linked to a class, auto-enroll the student
                 if reg_code.teacher_class:
