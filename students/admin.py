@@ -582,14 +582,14 @@ class QuestionAttemptAdmin(admin.ModelAdmin):
 
 @admin.register(RegistrationCode)
 class RegistrationCodeAdmin(admin.ModelAdmin):
-    list_display = ('code', 'code_type', 'teacher_class', 'is_active', 'times_used', 'max_uses', 'description', 'created_at')
-    list_filter = ('is_active', 'code_type', 'created_at')
-    search_fields = ('code', 'description')
+    list_display = ('code', 'code_type', 'school', 'teacher_class', 'is_active', 'times_used', 'max_uses', 'description', 'created_at')
+    list_filter = ('is_active', 'code_type', 'school', 'created_at')
+    search_fields = ('code', 'description', 'school__name')
     readonly_fields = ('times_used', 'created_at')
 
     fieldsets = (
         ('Code Information', {
-            'fields': ('code', 'code_type', 'description')
+            'fields': ('code', 'code_type', 'school', 'description')
         }),
         ('Student Settings', {
             'fields': ('teacher_class',),
