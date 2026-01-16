@@ -43,8 +43,8 @@ class SignupFormWithCode(SignupForm):
 
             # Set user permissions based on code type
             if reg_code.code_type == 'teacher':
-                user.is_staff = True
-                user.save()
+                # Note: is_staff is NOT set - teachers use Teacher Dashboard, not Django Admin
+                # Only superusers (created via createsuperuser) get admin access
 
                 # Create TeacherProfile for teacher users
                 from homework.models import TeacherProfile
