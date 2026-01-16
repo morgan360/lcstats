@@ -16,10 +16,21 @@ from .models import StudentProfile, QuestionAttempt, RegistrationCode, LoginHist
 
 @admin.register(StudentProfile)
 class StudentProfileAdmin(admin.ModelAdmin):
-    list_display = ('user', 'total_score', 'lessons_completed', 'last_activity')
-    search_fields = ('user__username', 'user__email')
+    list_display = ('user', 'school', 'total_score', 'lessons_completed', 'last_activity')
+    list_filter = ('school',)
+    search_fields = ('user__username', 'user__email', 'school__name')
     readonly_fields = ('last_activity',)
     actions = ['generate_daily_report', 'generate_weekly_report', 'generate_monthly_report', 'generate_yearly_report', 'generate_all_attempts_report', 'generate_weekly_attempts_report']
+
+    def get_queryset(self, request):
+        """Filter students by school for teachers"""
+        qs = super().get_queryset(request)
+        # If user is a teacher (not superuser), only show students from their school
+        if not request.user.is_superuser and hasattr(request.user, 'teacher_profile'):
+            teacher_profile = request.user.teacher_profile
+            if teacher_profile.school:
+                qs = qs.filter(school=teacher_profile.school)
+        return qs
 
     def _generate_report(self, request, queryset, days=1):
         """Helper method to generate activity report as PDF"""
