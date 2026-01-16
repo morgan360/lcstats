@@ -21,9 +21,12 @@ from django.contrib.contenttypes.models import ContentType
 def setup_teacher_admin_group():
     """
     Create a 'Teacher Admins' group with permissions to:
-    - Manage exam papers (exam_papers app)
     - Manage homework assignments (homework app)
-    - Manage classes and students
+    - Manage classes and students (their school only)
+
+    Teachers do NOT have access to:
+    - User accounts (superuser only)
+    - Exam papers (superuser/exam admin only)
     """
 
     # Create the group
@@ -39,22 +42,19 @@ def setup_teacher_admin_group():
 
     # Define models that Teacher Admins can manage
     app_model_permissions = [
-        # Exam Papers app
-        ('exam_papers', 'ExamPaper'),
-        ('exam_papers', 'ExamQuestion'),
-        ('exam_papers', 'ExamQuestionPart'),
-
-        # Homework app
+        # Homework app - core teacher functionality
         ('homework', 'HomeworkAssignment'),
         ('homework', 'HomeworkTask'),
         ('homework', 'TeacherClass'),
         ('homework', 'TeacherProfile'),
 
-        # Students (for managing class enrollment)
+        # Students (for managing class enrollment and viewing progress)
         ('students', 'StudentProfile'),
 
-        # Auth (to see users for class enrollment)
-        ('auth', 'User'),  # View only added below
+        # NOTE: Teachers do NOT have access to:
+        # - auth.User (only superusers manage user accounts)
+        # - exam_papers (only superusers/exam admins upload exam papers)
+        # - Groups, Permissions (admin-only)
     ]
 
     permissions_added = []
@@ -81,9 +81,9 @@ def setup_teacher_admin_group():
 
     print(f"\n✓ Added {len(permissions_added)} permissions to Teacher Admins group")
     print("  Permissions include: add, change, delete, view for:")
-    print("    - Exam papers and questions")
     print("    - Homework assignments and tasks")
     print("    - Classes and teacher profiles")
+    print("    - Student profiles (filtered by school)")
 
     return teacher_admin_group
 
@@ -195,11 +195,11 @@ def add_teacher_admin(username):
         print(f"  - is_superuser: {user.is_superuser}")
         print(f"  - Groups: {', '.join([g.name for g in user.groups.all()])}")
         print(f"\n{username} can now:")
-        print(f"  ✓ Access Django Admin (homework & classes)")
+        print(f"  ✓ Access Django Admin (homework & classes only)")
         print(f"  ✓ Create and manage homework")
-        print(f"  ✓ Manage classes and students")
+        print(f"  ✓ Manage classes and students (their school only)")
         print(f"  ✓ Access Teacher Dashboard")
-        print(f"  ✓ Upload and edit exam papers")
+        print(f"  ✗ Cannot upload exam papers (use superuser or exam admin)")
 
     except User.DoesNotExist:
         print(f"✗ User '{username}' not found")
