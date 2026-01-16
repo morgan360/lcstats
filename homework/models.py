@@ -5,6 +5,7 @@ from django.core.exceptions import ValidationError
 from interactive_lessons.models import Topic, Section
 from exam_papers.models import ExamQuestion
 from quickkicks.models import QuickKick
+from flashcards.models import FlashcardSet
 from schools.models import School
 
 
@@ -237,12 +238,13 @@ class HomeworkAssignment(models.Model):
 class HomeworkTask(models.Model):
     """
     Individual task within a homework assignment.
-    Can reference a Section, ExamQuestion, or QuickKick.
+    Can reference a Section, ExamQuestion, QuickKick, or FlashcardSet.
     """
     TASK_TYPE_CHOICES = [
         ('section', 'Topic Section'),
         ('exam_question', 'Exam Question'),
-        ('quickkick', 'QuickKick Video/Applet'),
+        ('quickkick', 'QuickFlicks Video/Applet'),
+        ('flashcard', 'Flashcard Set'),
     ]
 
     assignment = models.ForeignKey(
@@ -281,7 +283,16 @@ class HomeworkTask(models.Model):
         null=True,
         blank=True,
         related_name='homework_tasks',
-        help_text="QuickKick to watch (if task_type='quickkick')"
+        help_text="QuickFlicks to watch (if task_type='quickkick')",
+        verbose_name="QuickFlicks"
+    )
+    flashcard_set = models.ForeignKey(
+        FlashcardSet,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name='homework_tasks',
+        help_text="Flashcard set to study (if task_type='flashcard')"
     )
 
     # Task metadata
@@ -311,7 +322,9 @@ class HomeworkTask(models.Model):
         elif self.task_type == 'exam_question' and self.exam_question:
             return f"Exam Q{self.exam_question.question_number}"
         elif self.task_type == 'quickkick' and self.quickkick:
-            return f"QuickKick: {self.quickkick.title}"
+            return f"QuickFlicks: {self.quickkick.title}"
+        elif self.task_type == 'flashcard' and self.flashcard_set:
+            return f"Flashcards: {self.flashcard_set.title}"
         return "Unknown task"
 
     def get_content_url(self):
@@ -327,6 +340,9 @@ class HomeworkTask(models.Model):
         elif self.task_type == 'quickkick' and self.quickkick:
             # QuickKicks are accessed via topic slug
             return f"/quickkicks/{self.quickkick.topic.slug}/{self.quickkick.id}/"
+        elif self.task_type == 'flashcard' and self.flashcard_set:
+            # Flashcards are accessed via topic slug
+            return f"/flashcards/{self.flashcard_set.topic.slug}/"
         return "#"
 
     def clean(self):
@@ -336,7 +352,9 @@ class HomeworkTask(models.Model):
         elif self.task_type == 'exam_question' and not self.exam_question:
             raise ValidationError({'exam_question': 'Exam question is required when task type is "exam_question"'})
         elif self.task_type == 'quickkick' and not self.quickkick:
-            raise ValidationError({'quickkick': 'QuickKick is required when task type is "quickkick"'})
+            raise ValidationError({'quickkick': 'QuickFlicks is required when task type is "quickkick"'})
+        elif self.task_type == 'flashcard' and not self.flashcard_set:
+            raise ValidationError({'flashcard_set': 'Flashcard set is required when task type is "flashcard"'})
 
         # Ensure only the correct FK is set
         if self.task_type != 'section':
@@ -345,6 +363,8 @@ class HomeworkTask(models.Model):
             self.exam_question = None
         if self.task_type != 'quickkick':
             self.quickkick = None
+        if self.task_type != 'flashcard':
+            self.flashcard_set = None
 
     def save(self, *args, **kwargs):
         self.full_clean()
@@ -450,6 +470,17 @@ class StudentHomeworkProgress(models.Model):
                 quickkick=task.quickkick
             ).exists()
             if viewed:
+                self.mark_complete()
+                return True
+
+        # Check Flashcard completion - if student has attempted flashcards in this set
+        elif task.task_type == 'flashcard' and task.flashcard_set:
+            from flashcards.models import FlashcardAttempt
+            attempts = FlashcardAttempt.objects.filter(
+                student=student,
+                flashcard__flashcard_set=task.flashcard_set
+            ).exists()
+            if attempts:
                 self.mark_complete()
                 return True
 

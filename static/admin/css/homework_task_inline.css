@@ -1,0 +1,54 @@
+/* Homework Task Inline Styling */
+
+/* Fix width issue - make the inline table not overflow */
+#homework_tasks-group .tabular {
+    max-width: 100%;
+    overflow-x: auto;
+}
+
+/* Make the table more compact */
+#homework_tasks-group .tabular td {
+    padding: 5px;
+}
+
+/* Hide fields by default based on task type */
+.field-section,
+.field-exam_question,
+.field-quickkick,
+.field-flashcard_set {
+    display: none;
+}
+
+/* Show fields based on task type */
+.task-type-section .field-section {
+    display: table-cell;
+}
+
+.task-type-exam_question .field-exam_question {
+    display: table-cell;
+}
+
+.task-type-quickkick .field-quickkick {
+    display: table-cell;
+}
+
+.task-type-flashcard .field-flashcard_set {
+    display: table-cell;
+}
+
+/* Adjust instructions field to wrap text instead of making table too wide */
+.field-instructions textarea {
+    min-width: 150px;
+    max-width: 250px;
+}
+
+/* Make the table responsive */
+@media screen and (max-width: 1400px) {
+    #homework_tasks-group .tabular {
+        font-size: 13px;
+    }
+
+    .field-instructions textarea {
+        max-width: 150px;
+    }
+}

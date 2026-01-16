@@ -114,10 +114,10 @@ class Question(models.Model):
         help_text="DEPRECATED: Use exam_papers app instead. Original PDF filename for reference"
     )
 
-    # QuickKick integration
+    # QuickFlicks integration
     is_quickkick_suitable = models.BooleanField(
         default=False,
-        help_text="Mark this question as suitable for QuickKick videos (shows in dropdown when adding test questions)"
+        help_text="Mark this question as suitable for QuickFlicks videos (shows in dropdown when adding test questions)"
     )
 
     def __str__(self):
@@ -199,10 +199,10 @@ class QuestionPart(models.Model):
         default="exact"
     )
 
-    # QuickKick integration
+    # QuickFlicks integration
     is_quickkick_suitable = models.BooleanField(
         default=False,
-        help_text="Mark this question as suitable for QuickKick videos (shows in dropdown when adding test questions)"
+        help_text="Mark this question as suitable for QuickFlicks videos (shows in dropdown when adding test questions)"
     )
     scale = models.CharField(max_length=10, blank=True, null=True)
     max_marks = models.PositiveIntegerField(default=0)

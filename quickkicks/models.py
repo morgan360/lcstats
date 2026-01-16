@@ -61,8 +61,8 @@ class QuickKick(models.Model):
 
     class Meta:
         ordering = ('topic', 'order', 'title')
-        verbose_name = "QuickKick"
-        verbose_name_plural = "QuickKicks"
+        verbose_name = "QuickFlicks"
+        verbose_name_plural = "QuickFlicks"
 
     def __str__(self):
         content_label = "Video" if self.content_type == 'video' else "GeoGebra"
@@ -123,8 +123,8 @@ class QuickKickView(models.Model):
     class Meta:
         unique_together = ('user', 'quickkick')
         ordering = ['-viewed_at']
-        verbose_name = "QuickKick View"
-        verbose_name_plural = "QuickKick Views"
+        verbose_name = "QuickFlicks View"
+        verbose_name_plural = "QuickFlicks Views"
 
     def __str__(self):
         return f"{self.user.username} viewed {self.quickkick.title}"

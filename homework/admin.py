@@ -95,8 +95,14 @@ class TeacherClassAdmin(admin.ModelAdmin):
 class HomeworkTaskInline(admin.TabularInline):
     model = HomeworkTask
     extra = 1
-    fields = ('task_type', 'section', 'exam_question', 'quickkick', 'is_required', 'order', 'instructions')
+    fields = ('task_type', 'section', 'exam_question', 'quickkick', 'flashcard_set', 'is_required', 'order', 'instructions')
     readonly_fields = ()
+
+    class Media:
+        css = {
+            'all': ('/static/admin/css/homework_task_inline.css',)
+        }
+        js = ('/static/admin/js/homework_task_inline.js',)
 
     def get_formset(self, request, obj=None, **kwargs):
         formset = super().get_formset(request, obj, **kwargs)
@@ -269,7 +275,7 @@ class HomeworkTaskAdmin(admin.ModelAdmin):
             'fields': ('assignment',)
         }),
         ('Task Content', {
-            'fields': ('task_type', 'section', 'exam_question', 'quickkick'),
+            'fields': ('task_type', 'section', 'exam_question', 'quickkick', 'flashcard_set'),
             'description': 'Select ONE content item based on task type'
         }),
         ('Task Details', {

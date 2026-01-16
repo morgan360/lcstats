@@ -10,7 +10,7 @@ class QuickKickAdmin(admin.ModelAdmin):
     ordering = ('topic', 'order', 'title')
 
     def formfield_for_foreignkey(self, db_field, request, **kwargs):
-        """Filter question dropdown to only show questions marked as QuickKick suitable"""
+        """Filter question dropdown to only show questions marked as QuickFlicks suitable"""
         if db_field.name == "question":
             from interactive_lessons.models import Question
             kwargs["queryset"] = Question.objects.filter(is_quickkick_suitable=True).select_related('topic')
