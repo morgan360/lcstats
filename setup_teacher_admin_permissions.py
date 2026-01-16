@@ -136,9 +136,9 @@ if __name__ == '__main__':
 
     # Add Tanzer to Teacher Admins
     print("\n" + "=" * 60)
-    print("Adding Tanzer to Teacher Admins")
+    print("Adding Tanzer_Fernandes to Teacher Admins")
     print("=" * 60)
-    add_user_to_teacher_admin('Tanzer')
+    add_user_to_teacher_admin('Tanzer_Fernandes')
 
     print("\n" + "=" * 60)
     print("Setup Complete!")
