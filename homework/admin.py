@@ -97,33 +97,18 @@ class HomeworkTaskInline(admin.StackedInline):
     extra = 1
 
     fieldsets = (
-        ('Task Settings', {
-            'fields': ('task_type', 'is_required', 'order')
-        }),
-        ('Topic Section', {
-            'fields': ('section',),
-            'classes': ('task-content-section',),
-            'description': 'Select a topic section for students to complete'
-        }),
-        ('Exam Question', {
-            'fields': ('exam_question',),
-            'classes': ('task-content-exam_question',),
-            'description': 'Select an exam question for students to practice'
-        }),
-        ('QuickFlicks', {
-            'fields': ('quickkick',),
-            'classes': ('task-content-quickkick',),
-            'description': 'Select a QuickFlicks video/applet for students to watch'
-        }),
-        ('Flashcard Set', {
-            'fields': ('flashcard_set',),
-            'classes': ('task-content-flashcard',),
-            'description': 'Select a flashcard set for students to study'
-        }),
-        ('Additional Instructions', {
-            'fields': ('instructions',),
-            'classes': ('collapse',),
-            'description': 'Optional: Add specific instructions for this task'
+        (None, {
+            'fields': (
+                'task_type',
+                'section',
+                'exam_question',
+                'quickkick',
+                'flashcard_set',
+                'is_required',
+                'order',
+                'instructions'
+            ),
+            'description': '👇 Select task type first, then fill in ONLY the matching field below'
         }),
     )
 
@@ -131,7 +116,18 @@ class HomeworkTaskInline(admin.StackedInline):
         css = {
             'all': ('/static/admin/css/homework_task_inline.css',)
         }
-        js = ('/static/admin/js/homework_task_inline.js',)
+
+    def formfield_for_foreignkey(self, db_field, request, **kwargs):
+        """Add custom help text to show when each field should be used"""
+        if db_field.name == "section":
+            kwargs["help_text"] = "📝 Fill this ONLY if Task Type = 'Topic Section'"
+        elif db_field.name == "exam_question":
+            kwargs["help_text"] = "📝 Fill this ONLY if Task Type = 'Exam Question'"
+        elif db_field.name == "quickkick":
+            kwargs["help_text"] = "📝 Fill this ONLY if Task Type = 'QuickFlicks Video/Applet'"
+        elif db_field.name == "flashcard_set":
+            kwargs["help_text"] = "📝 Fill this ONLY if Task Type = 'Flashcard Set'"
+        return super().formfield_for_foreignkey(db_field, request, **kwargs)
 
     def get_formset(self, request, obj=None, **kwargs):
         formset = super().get_formset(request, obj, **kwargs)
