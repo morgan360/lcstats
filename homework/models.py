@@ -60,7 +60,6 @@ class TeacherClass(models.Model):
         User,
         related_name='enrolled_classes',
         blank=True,
-        limit_choices_to={'is_staff': False},
         help_text="Students enrolled in this class"
     )
     is_active = models.BooleanField(
@@ -121,7 +120,6 @@ class HomeworkAssignment(models.Model):
         User,
         related_name='individual_assignments',
         blank=True,
-        limit_choices_to={'is_staff': False},
         help_text="Individual students assigned this homework (in addition to classes)"
     )
 
@@ -356,8 +354,7 @@ class StudentHomeworkProgress(models.Model):
     student = models.ForeignKey(
         User,
         on_delete=models.CASCADE,
-        related_name='homework_progress',
-        limit_choices_to={'is_staff': False}
+        related_name='homework_progress'
     )
     assignment = models.ForeignKey(
         HomeworkAssignment,
@@ -516,8 +513,7 @@ class HomeworkNotificationSnooze(models.Model):
     student = models.OneToOneField(
         User,
         on_delete=models.CASCADE,
-        related_name='homework_snooze',
-        limit_choices_to={'is_staff': False}
+        related_name='homework_snooze'
     )
     snoozed_until = models.DateTimeField(
         help_text="Notification won't show until after this time"
