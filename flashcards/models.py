@@ -154,6 +154,7 @@ class FlashcardAttempt(models.Model):
         ('learning', 'Learning'),
         ('know', 'Know'),
         ('dont_know', "Don't Know"),
+        ('retired', 'Retired'),
     ]
 
     student = models.ForeignKey(
@@ -223,16 +224,19 @@ class FlashcardAttempt(models.Model):
         self.view_count += 1
         self.save(update_fields=['view_count', 'last_viewed_at'])
 
-    def record_answer(self, is_correct):
+    def record_answer(self, is_correct, is_self_assessed=False):
         """
         Record an answer and update mastery level based on transition logic.
 
-        Mastery Transition Logic:
+        Mastery Transition Logic (Multiple Choice - new/learning/dont_know):
         - new -> learning (first correct) or dont_know (first incorrect)
         - learning -> know (if correct)
         - learning -> dont_know (if multiple incorrect)
-        - know -> learning (if incorrect, needs review)
         - dont_know -> learning (if correct, showing improvement)
+
+        Self-Assessment Logic (for 'know' cards):
+        - know + self-assessed correct -> retired (removed from deck)
+        - know + self-assessed incorrect -> stays know (option to demote via demote_to_learning())
         """
         # Update counts
         if is_correct:
@@ -256,10 +260,16 @@ class FlashcardAttempt(models.Model):
                     self.mastery_level = 'dont_know'
 
         elif self.mastery_level == 'know':
-            # Already mastered - incorrect answer demotes to learning
-            if not is_correct:
-                self.mastery_level = 'learning'
-            # Stays 'know' if correct
+            # Self-assessment mode for mastered cards
+            if is_self_assessed:
+                if is_correct:
+                    # Self-assessed correct - retire the card
+                    self.mastery_level = 'retired'
+                # If incorrect, stays 'know' - user can demote via demote_to_learning()
+            else:
+                # Fallback for non-self-assessed (shouldn't happen in v2)
+                if not is_correct:
+                    self.mastery_level = 'learning'
 
         elif self.mastery_level == 'dont_know':
             # Struggling - correct answer promotes back to learning
@@ -272,3 +282,43 @@ class FlashcardAttempt(models.Model):
         self.last_answered_at = timezone.now()
 
         self.save()
+
+    def demote_to_learning(self):
+        """
+        Demote a 'know' card back to 'learning' state.
+        Used when student self-assesses incorrectly and wants to go back to multiple choice.
+        """
+        if self.mastery_level == 'know':
+            self.mastery_level = 'learning'
+            self.save(update_fields=['mastery_level'])
+            return True
+        return False
+
+    def reset_progress(self):
+        """
+        Reset this card's progress to initial state.
+        """
+        self.mastery_level = 'new'
+        self.view_count = 0
+        self.correct_count = 0
+        self.incorrect_count = 0
+        self.last_answer_correct = None
+        self.last_answered_at = None
+        self.save()
+
+    @classmethod
+    def reset_set_progress(cls, student, flashcard_set):
+        """
+        Reset all progress for a student on a specific flashcard set.
+        """
+        cls.objects.filter(
+            student=student,
+            flashcard__flashcard_set=flashcard_set
+        ).update(
+            mastery_level='new',
+            view_count=0,
+            correct_count=0,
+            incorrect_count=0,
+            last_answer_correct=None,
+            last_answered_at=None
+        )

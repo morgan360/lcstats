@@ -45,8 +45,29 @@
                     <img id="front-image" style="max-height: 200px; max-width: 100%; height: auto; width: auto; display: block; margin: 0 auto;" class="rounded-lg shadow-lg object-contain">
                 </div>
 
-                <!-- Multiple Choice Options -->
+                <!-- Multiple Choice Options (for new/learning/dont_know cards) -->
                 <div class="space-y-3" id="options-container"></div>
+
+                <!-- Self-Assessment UI (for 'know' cards) -->
+                <div id="self-assess-container" class="hidden">
+                    <button id="reveal-btn" class="w-full py-4 px-6 bg-white/20 border-2 border-white/30 text-white rounded-lg font-semibold text-lg backdrop-blur-sm hover:bg-white/30 hover:border-white/60 transition-all duration-300">
+                        Reveal Answer
+                    </button>
+                    <div id="self-assess-buttons" class="hidden space-y-3 mt-4">
+                        <button id="got-it-btn" class="w-full py-4 px-6 bg-emerald-500/30 border-2 border-emerald-400 text-white rounded-lg font-semibold text-lg hover:bg-emerald-500/50 transition-all duration-300">
+                            Got it!
+                        </button>
+                        <button id="didnt-get-it-btn" class="w-full py-4 px-6 bg-rose-500/30 border-2 border-rose-400 text-white rounded-lg font-semibold text-lg hover:bg-rose-500/50 transition-all duration-300">
+                            Didn't get it
+                        </button>
+                    </div>
+                    <div id="demote-container" class="hidden mt-4">
+                        <button id="demote-btn" class="w-full py-3 px-4 bg-amber-500/20 border-2 border-amber-400 text-white rounded-lg font-medium hover:bg-amber-500/40 transition-all duration-300">
+                            Move to Multiple Choice
+                        </button>
+                        <p class="text-xs text-white/70 mt-2 text-center">This will add the card back to learning mode with options</p>
+                    </div>
+                </div>
             </div>
 
             <!-- Back of Card -->
@@ -105,6 +126,7 @@
 const cards = {{ cards_data|safe }};
 let currentIndex = 0;
 let showingAnswer = false;
+let answerRevealed = false;  // For self-assessment mode
 const flipClass = '[transform:rotateY(180deg)]';
 
 // Populate card selector dropdown
@@ -131,6 +153,12 @@ document.addEventListener('DOMContentLoaded', function() {
             displayCard();
         }
     });
+
+    // Self-assessment button handlers
+    document.getElementById('reveal-btn').onclick = revealAnswer;
+    document.getElementById('got-it-btn').onclick = () => handleSelfAssessment(true);
+    document.getElementById('didnt-get-it-btn').onclick = () => handleSelfAssessment(false);
+    document.getElementById('demote-btn').onclick = demoteCard;
 });
 
 // CSRF token for AJAX
@@ -154,6 +182,7 @@ const csrftoken = getCookie('csrftoken');
 function displayCard() {
     const card = cards[currentIndex];
     showingAnswer = false;
+    answerRevealed = false;
 
     // Update progress
     document.getElementById('current-card-num').textContent = currentIndex + 1;
@@ -190,20 +219,49 @@ function displayCard() {
         document.getElementById('front-image-container').classList.add('hidden');
     }
 
-    // Render options
+    // Decide: Multiple Choice or Self-Assessment mode
     const optionsContainer = document.getElementById('options-container');
-    optionsContainer.innerHTML = '';
-    optionsContainer.style.display = 'block';
+    const selfAssessContainer = document.getElementById('self-assess-container');
 
-    card.options.forEach((option, index) => {
-        const button = document.createElement('button');
-        button.className = 'w-full text-left p-4 rounded-lg font-medium bg-white/20 border-2 border-white/30 text-white backdrop-blur-sm transition-all duration-300 ease-in-out hover:bg-white/30 hover:border-white/60 hover:translate-x-2 disabled:opacity-70 disabled:cursor-not-allowed';
-        button.innerHTML = option.text;
-        button.dataset.optionId = option.id;
-        button.dataset.isCorrect = option.is_correct;
-        button.onclick = () => selectOption(option.id, option.is_correct);
-        optionsContainer.appendChild(button);
-    });
+    if (card.is_self_assess) {
+        // Self-assessment mode for 'know' cards
+        optionsContainer.style.display = 'none';
+        selfAssessContainer.classList.remove('hidden');
+
+        // Reset self-assess UI
+        document.getElementById('reveal-btn').classList.remove('hidden');
+        document.getElementById('self-assess-buttons').classList.add('hidden');
+        document.getElementById('demote-container').classList.add('hidden');
+
+        // Re-enable buttons for new card
+        document.getElementById('got-it-btn').disabled = false;
+        document.getElementById('didnt-get-it-btn').disabled = false;
+
+        // Restore demote button in case it was replaced with success message
+        const demoteContainer = document.getElementById('demote-container');
+        demoteContainer.innerHTML = `
+            <button id="demote-btn" class="w-full py-3 px-4 bg-amber-500/20 border-2 border-amber-400 text-white rounded-lg font-medium hover:bg-amber-500/40 transition-all duration-300">
+                Move to Multiple Choice
+            </button>
+            <p class="text-xs text-white/70 mt-2 text-center">This will add the card back to learning mode with options</p>
+        `;
+        document.getElementById('demote-btn').onclick = demoteCard;
+    } else {
+        // Multiple choice mode
+        selfAssessContainer.classList.add('hidden');
+        optionsContainer.innerHTML = '';
+        optionsContainer.style.display = 'block';
+
+        card.options.forEach((option, index) => {
+            const button = document.createElement('button');
+            button.className = 'w-full text-left p-4 rounded-lg font-medium bg-white/20 border-2 border-white/30 text-white backdrop-blur-sm transition-all duration-300 ease-in-out hover:bg-white/30 hover:border-white/60 hover:translate-x-2 disabled:opacity-70 disabled:cursor-not-allowed';
+            button.innerHTML = option.text;
+            button.dataset.optionId = option.id;
+            button.dataset.isCorrect = option.is_correct;
+            button.onclick = () => selectOption(option.id, option.is_correct);
+            optionsContainer.appendChild(button);
+        });
+    }
 
     // Update navigation
     document.getElementById('prev-btn').disabled = currentIndex === 0;
@@ -223,7 +281,168 @@ function displayCard() {
     }
 }
 
-// Handle option selection
+// Self-assessment: Reveal the answer
+function revealAnswer() {
+    if (answerRevealed) return;
+    answerRevealed = true;
+
+    const card = cards[currentIndex];
+
+    // Hide reveal button, show self-assess buttons
+    document.getElementById('reveal-btn').classList.add('hidden');
+    document.getElementById('self-assess-buttons').classList.remove('hidden');
+
+    // Show the back content inline (without flipping)
+    const backContentPreview = document.createElement('div');
+    backContentPreview.id = 'back-content-preview';
+    backContentPreview.className = 'mt-6 p-6 bg-white/20 rounded-lg backdrop-blur-sm';
+    backContentPreview.innerHTML = `
+        <div class="text-sm font-semibold uppercase tracking-wide opacity-90 mb-3">Answer:</div>
+        <div class="prose prose-invert max-w-none">${card.back_text}</div>
+        ${card.back_image ? `<div class="mt-4 text-center"><img src="${card.back_image}" style="max-height: 200px; max-width: 100%; height: auto; width: auto; display: block; margin: 0 auto;" class="rounded-lg shadow-lg object-contain"></div>` : ''}
+        ${card.explanation ? `<div class="mt-4 pt-4 border-t border-white/20"><div class="font-semibold text-sm mb-2 opacity-90">Explanation:</div><div class="prose prose-invert max-w-none text-sm">${card.explanation}</div></div>` : ''}
+    `;
+
+    // Insert before self-assess buttons
+    const selfAssessContainer = document.getElementById('self-assess-container');
+    selfAssessContainer.insertBefore(backContentPreview, document.getElementById('self-assess-buttons'));
+
+    // Render KaTeX in the revealed content
+    if (window.renderMathInElement) {
+        renderMathInElement(backContentPreview, {
+            delimiters: [
+                { left: "$$", right: "$$", display: true },
+                { left: "\\[", right: "\\]", display: true },
+                { left: "\\(", right: "\\)", display: false },
+                { left: "$", right: "$", display: false }
+            ],
+            throwOnError: false
+        });
+    }
+}
+
+// Self-assessment: Handle "Got it!" or "Didn't get it"
+function handleSelfAssessment(isCorrect) {
+    if (showingAnswer) return;
+    showingAnswer = true;
+
+    const card = cards[currentIndex];
+
+    // Disable buttons
+    document.getElementById('got-it-btn').disabled = true;
+    document.getElementById('didnt-get-it-btn').disabled = true;
+
+    // AJAX call to record self-assessed answer
+    fetch('{% url "flashcards:record_answer" %}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrftoken
+        },
+        body: JSON.stringify({
+            card_id: card.id,
+            is_self_assessed: true,
+            is_correct: isCorrect
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Update local card data
+            card.attempt.mastery_level = data.new_mastery_level;
+            card.attempt.correct_count = data.correct_count;
+            card.attempt.incorrect_count = data.incorrect_count;
+
+            // Update mastery badge
+            updateMasteryBadge(data.new_mastery_level);
+
+            if (isCorrect) {
+                // Card is now retired - show success and enable next
+                showSelfAssessResult(true, data.is_retired);
+            } else {
+                // Show demote option
+                document.getElementById('demote-container').classList.remove('hidden');
+                showSelfAssessResult(false, false);
+            }
+
+            // Enable next button
+            document.getElementById('next-btn').disabled = false;
+        }
+    })
+    .catch(error => console.error('Error:', error));
+}
+
+// Show result after self-assessment
+function showSelfAssessResult(isCorrect, isRetired) {
+    // Hide the self-assess buttons
+    document.getElementById('self-assess-buttons').classList.add('hidden');
+
+    // Create result indicator
+    const resultDiv = document.createElement('div');
+    resultDiv.id = 'self-assess-result';
+    resultDiv.className = 'text-center py-4';
+
+    if (isCorrect) {
+        resultDiv.innerHTML = `
+            <div class="text-4xl mb-2">✓</div>
+            <div class="text-lg font-semibold">${isRetired ? 'Card Retired!' : 'Correct!'}</div>
+            ${isRetired ? '<div class="text-sm opacity-80 mt-1">This card has been removed from your deck</div>' : ''}
+        `;
+        resultDiv.classList.add('text-emerald-200');
+    } else {
+        resultDiv.innerHTML = `
+            <div class="text-4xl mb-2">✗</div>
+            <div class="text-lg font-semibold">Keep practicing!</div>
+            <div class="text-sm opacity-80 mt-1">This card will stay in your deck</div>
+        `;
+        resultDiv.classList.add('text-rose-200');
+    }
+
+    // Insert after back content preview
+    const backContentPreview = document.getElementById('back-content-preview');
+    if (backContentPreview) {
+        backContentPreview.after(resultDiv);
+    }
+}
+
+// Demote card back to learning mode
+function demoteCard() {
+    const card = cards[currentIndex];
+
+    fetch('{% url "flashcards:demote_card" %}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrftoken
+        },
+        body: JSON.stringify({
+            card_id: card.id
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Update local card data
+            card.attempt.mastery_level = data.new_mastery_level;
+            card.is_self_assess = false;  // Now it's multiple choice
+
+            // Update mastery badge
+            updateMasteryBadge(data.new_mastery_level);
+
+            // Show confirmation
+            const demoteContainer = document.getElementById('demote-container');
+            demoteContainer.innerHTML = `
+                <div class="text-center py-2 text-amber-200">
+                    <div class="font-semibold">Moved to Multiple Choice</div>
+                    <div class="text-sm opacity-80">Next time you'll see options</div>
+                </div>
+            `;
+        }
+    })
+    .catch(error => console.error('Error:', error));
+}
+
+// Handle option selection (multiple choice mode)
 function selectOption(optionId, isCorrect) {
     if (showingAnswer) return;
     showingAnswer = true;
@@ -256,7 +475,8 @@ function selectOption(optionId, isCorrect) {
         },
         body: JSON.stringify({
             card_id: card.id,
-            selected_option_id: optionId
+            selected_option_id: optionId,
+            is_self_assessed: false
         })
     })
     .then(response => response.json())
@@ -267,6 +487,11 @@ function selectOption(optionId, isCorrect) {
             card.attempt.correct_count = data.correct_count;
             card.attempt.incorrect_count = data.incorrect_count;
 
+            // If card just became 'know', mark it for self-assess next time
+            if (data.new_mastery_level === 'know') {
+                card.is_self_assess = true;
+            }
+
             // Show result and back of card
             showCardBack(data.is_correct);
         }
@@ -274,7 +499,7 @@ function selectOption(optionId, isCorrect) {
     .catch(error => console.error('Error:', error));
 }
 
-// Show back of card with result
+// Show back of card with result (multiple choice mode)
 function showCardBack(isCorrect) {
     const card = cards[currentIndex];
 
@@ -365,13 +590,15 @@ function updateMasteryBadge(level) {
         'new': 'bg-gray-200 text-gray-700',
         'learning': 'bg-yellow-200 text-yellow-800',
         'know': 'bg-green-200 text-green-800',
-        'dont_know': 'bg-red-200 text-red-800'
+        'dont_know': 'bg-red-200 text-red-800',
+        'retired': 'bg-purple-200 text-purple-800'
     };
     const labels = {
         'new': 'New',
         'learning': 'Learning',
         'know': 'Know',
-        'dont_know': "Don't Know"
+        'dont_know': "Don't Know",
+        'retired': 'Retired'
     };
     badge.className = 'text-sm font-medium px-3 py-1 rounded-full ' + (colors[level] || colors['new']);
     badge.textContent = labels[level] || 'New';
@@ -379,24 +606,50 @@ function updateMasteryBadge(level) {
 
 // Navigation
 document.getElementById('next-btn').onclick = function() {
-    currentIndex++;
-    if (currentIndex >= cards.length) {
-        showCompletionModal();
+    // Remove retired cards from the deck
+    const currentCard = cards[currentIndex];
+    if (currentCard.attempt.mastery_level === 'retired') {
+        cards.splice(currentIndex, 1);
+        populateCardSelector();
+        // Don't increment index since we removed current card
+        if (currentIndex >= cards.length) {
+            showCompletionModal();
+            return;
+        }
     } else {
-        displayCard();
+        currentIndex++;
+        if (currentIndex >= cards.length) {
+            showCompletionModal();
+            return;
+        }
     }
+
+    // Clean up any preview content from self-assessment
+    const backContentPreview = document.getElementById('back-content-preview');
+    if (backContentPreview) backContentPreview.remove();
+    const selfAssessResult = document.getElementById('self-assess-result');
+    if (selfAssessResult) selfAssessResult.remove();
+
+    displayCard();
 };
 
 document.getElementById('prev-btn').onclick = function() {
     if (currentIndex > 0) {
         currentIndex--;
+
+        // Clean up any preview content from self-assessment
+        const backContentPreview = document.getElementById('back-content-preview');
+        if (backContentPreview) backContentPreview.remove();
+        const selfAssessResult = document.getElementById('self-assess-result');
+        if (selfAssessResult) selfAssessResult.remove();
+
         displayCard();
     }
 };
 
 // Show completion modal
 function showCompletionModal() {
-    document.getElementById('total-cards-completed').textContent = cards.length;
+    document.getElementById('total-cards-completed').textContent = '{{ total_in_set }}';
     document.getElementById('completion-modal').classList.remove('hidden');
     document.getElementById('completion-modal').classList.add('flex');
 }
