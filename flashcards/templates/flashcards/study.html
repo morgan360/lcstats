@@ -407,6 +407,11 @@ function showSelfAssessResult(isCorrect, isRetired) {
 
 // Demote card back to learning mode
 function demoteCard() {
+    // Ask for confirmation before demoting
+    if (!confirm('Move this card back to multiple choice mode? This will help you practice it again with answer options.')) {
+        return;
+    }
+
     const card = cards[currentIndex];
 
     fetch('{% url "flashcards:demote_card" %}', {

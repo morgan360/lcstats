@@ -1,6 +1,9 @@
-from django.shortcuts import render, get_object_or_404
+from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.decorators import login_required
+from django.contrib import messages
+from django.db import transaction
 from django.http import JsonResponse
+from django.urls import reverse
 from django.views.decorators.http import require_POST
 from interactive_lessons.models import Topic
 from .models import FlashcardSet, Flashcard, FlashcardAttempt
@@ -340,17 +343,17 @@ def reset_card_progress(request):
 
 @login_required
 @require_POST
+@transaction.atomic
 def reset_set_progress(request, topic_slug, set_id):
     """
     Reset all progress for a flashcard set.
     Redirects back to study page.
+    Uses transaction to ensure atomic reset operation.
     """
-    from django.contrib import messages
-
     topic = get_object_or_404(Topic, slug=topic_slug)
     flashcard_set = get_object_or_404(FlashcardSet, id=set_id, topic=topic, is_published=True)
 
-    # Reset all attempts for this set
+    # Reset all attempts for this set (wrapped in transaction)
     FlashcardAttempt.reset_set_progress(request.user, flashcard_set)
 
     messages.success(request, f'Progress for "{flashcard_set.title}" has been reset.')
@@ -360,8 +363,6 @@ def reset_set_progress(request, topic_slug, set_id):
         return JsonResponse({'success': True})
 
     # Redirect to study page
-    from django.shortcuts import redirect
-    from django.urls import reverse
     return redirect(reverse('flashcards:study_set', kwargs={
         'topic_slug': topic_slug,
         'set_id': set_id
