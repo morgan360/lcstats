@@ -9,6 +9,30 @@ from .models import School, EmailLog
 from .forms import SendEmailForm
 
 
+class EmailedStatusFilter(admin.SimpleListFilter):
+    """Custom filter to show schools by email status."""
+    title = 'email status'
+    parameter_name = 'emailed'
+
+    def lookups(self, request, model_admin):
+        return (
+            ('not_emailed', 'Not Emailed'),
+            ('emailed', 'Emailed'),
+            ('responded', 'Responded'),
+            ('needs_followup', 'Needs Follow-up'),
+        )
+
+    def queryset(self, request, queryset):
+        if self.value() == 'not_emailed':
+            return queryset.filter(initial_email_sent__isnull=True)
+        elif self.value() == 'emailed':
+            return queryset.filter(initial_email_sent__isnull=False)
+        elif self.value() == 'responded':
+            return queryset.filter(response_received=True)
+        elif self.value() == 'needs_followup':
+            return queryset.filter(follow_up_required=True, response_received=False)
+
+
 @admin.register(School)
 class SchoolAdmin(admin.ModelAdmin):
     """Admin interface for School model with outreach tracking."""
@@ -28,6 +52,7 @@ class SchoolAdmin(admin.ModelAdmin):
     ]
 
     list_filter = [
+        EmailedStatusFilter,  # Custom filter for email status
         'county',
         'school_type',
         'is_gaelscoil',
