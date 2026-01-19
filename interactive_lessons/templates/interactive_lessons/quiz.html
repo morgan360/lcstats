@@ -1,5 +1,4 @@
 {% extends "_base.html" %}
-{% load dict_filters %}
 {% block title %}{{ topic.name }} | NumScoil {% endblock %}
 
 {% block content %}
@@ -83,7 +82,7 @@
 
         <!-- Part Solution -->
         {% if part.solution or part.solution_image %}
-            {% if part_solution_unlocked and part.id in part_solution_unlocked and part_solution_unlocked|get_item:part.id %}
+            {% if part.solution_unlocked %}
             <details class="mt-4 rounded-md border border-[#a5d6a7] bg-[#e8f5e9] px-4 py-3 text-lg leading-relaxed">
                 <summary class="cursor-pointer font-semibold text-[#2e7d32]">📝 Solution for {{ part.label }}</summary>
                 <div class="mt-2 leading-relaxed">
@@ -103,12 +102,8 @@
             <div class="mt-4 rounded-md border border-[#ffc107] bg-[#fff3cd] px-4 py-3 text-lg leading-relaxed">
                 <div class="font-semibold text-[#856404]">🔒 Solution Locked</div>
                 <div class="mt-2 text-sm text-[#856404]">
-                    {% if part_attempt_counts and part.id in part_attempt_counts %}
-                        You have made {{ part_attempt_counts|get_item:part.id }} attempt{{ part_attempt_counts|get_item:part.id|pluralize }}.
-                        {% if part.solution_unlock_after_attempts > 0 %}
-                            Solution unlocks after {{ part.solution_unlock_after_attempts }} attempt{{ part.solution_unlock_after_attempts|pluralize }} or when you get the correct answer.
-                        {% endif %}
-                    {% else %}
+                    You have made {{ part.attempt_count }} attempt{{ part.attempt_count|pluralize }}.
+                    {% if part.solution_unlock_after_attempts > 0 %}
                         Solution unlocks after {{ part.solution_unlock_after_attempts }} attempt{{ part.solution_unlock_after_attempts|pluralize }} or when you get the correct answer.
                     {% endif %}
                 </div>
