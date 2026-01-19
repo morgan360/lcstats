@@ -12,7 +12,11 @@ import secrets
 # STUDENT PROFILE
 # -------------------------------------------------------------------------
 class StudentProfile(models.Model):
-    user = models.OneToOneField(User, on_delete=models.CASCADE)
+    user = models.OneToOneField(
+        User,
+        on_delete=models.PROTECT,
+        help_text="User account for this student"
+    )
     school = models.ForeignKey(
         School,
         on_delete=models.PROTECT,
@@ -26,7 +30,13 @@ class StudentProfile(models.Model):
     last_activity = models.DateTimeField(default=timezone.now)
 
     def __str__(self):
-        return self.user.username
+        """
+        Return username. Handles case where user might not exist.
+        """
+        try:
+            return self.user.username
+        except User.DoesNotExist:
+            return f"StudentProfile #{self.pk} (orphaned)"
 
     def update_progress(self):
         """Recalculate overall score and lessons completed."""

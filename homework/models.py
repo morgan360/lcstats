@@ -16,7 +16,7 @@ class TeacherProfile(models.Model):
     """
     user = models.OneToOneField(
         User,
-        on_delete=models.CASCADE,
+        on_delete=models.PROTECT,
         related_name='teacher_profile',
         limit_choices_to={'is_staff': True},
         help_text="Must be a staff user"
@@ -41,7 +41,16 @@ class TeacherProfile(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
-        return self.display_name or self.user.get_full_name() or self.user.username
+        """
+        Return display name, falling back to user's name/username.
+        Handles case where user might not exist (defensive programming).
+        """
+        if self.display_name:
+            return self.display_name
+        try:
+            return self.user.get_full_name() or self.user.username
+        except User.DoesNotExist:
+            return f"TeacherProfile #{self.pk} (orphaned)"
 
     class Meta:
         verbose_name = "Teacher Profile"
