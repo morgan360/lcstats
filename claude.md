@@ -62,9 +62,25 @@ The project follows a modular Django app pattern:
    - Auto-calculates completion percentage and overdue status
 
 8. **`quickkicks/`** - Bite-sized practice questions
-9. **`revision/`** - Revision materials and resources
-10. **`cheatsheets/`** - Quick reference sheets
-11. **`stats_simulator/`** - Interactive statistics simulations
+
+9. **`flashcards/`** - Spaced repetition flashcard system
+   - Models: `FlashcardSet`, `Flashcard`, `FlashcardAttempt`
+   - Multiple choice questions with 3 distractors + 1 correct answer
+   - Mastery-based progression: new → learning → know → retired
+   - Self-assessment mode for mastered cards (know state)
+   - Commands: `import_flashcards`, `export_flashcards` for JSON import/export
+   - Cards support LaTeX, images on front/back, and explanations
+
+10. **`schools/`** - School outreach management system
+    - Models: `School`, `EmailLog`
+    - Tracks secondary schools for marketing/outreach campaigns
+    - Email tracking with status (sent, failed, bounced)
+    - Follow-up scheduling and response tracking
+    - Support for Gaelscoileanna and multiple school types
+
+11. **`revision/`** - Revision materials and resources
+12. **`cheatsheets/`** - Quick reference sheets
+13. **`stats_simulator/`** - Interactive statistics simulations
 
 ### Key Architectural Patterns
 
@@ -72,6 +88,10 @@ The project follows a modular Django app pattern:
 - `Question` acts as a container/stem with optional intro text and solution image
 - `QuestionPart` holds actual sub-questions (e.g., (a), (b)), each with own prompt, answer, hint, solution, and marking scheme
 - Supports multiple answer types: exact, numeric, algebraic expression, multiple choice
+- **Solution Access Control**: Solutions unlock after threshold attempts (default: 2) or when student gets correct answer
+  - `QuestionPart.solution_unlock_after_attempts` (default: 2 for production)
+  - Set to 0 for always-visible solutions
+  - Same system as exam questions
 
 **Grading Pipeline** (`interactive_lessons/stats_tutor.py`):
 1. Numeric normalization (handles fractions, decimals, degrees→radians, π)
@@ -124,8 +144,8 @@ The project follows a modular Django app pattern:
 
 ### Environment Setup
 ```bash
-# Activate virtual environment
-source venv/bin/activate
+# Activate virtual environment (note: directory is .venv not venv)
+source .venv/bin/activate
 
 # Install dependencies
 pip install -r requirements.txt
@@ -193,6 +213,30 @@ python manage.py daily_student_report
 
 # Log out all active users
 python manage.py logout_all_users
+```
+
+**Database Backup:**
+```bash
+# Create database backup
+python manage.py backup_database
+
+# Create compressed backup (recommended for production)
+python manage.py backup_database --compress
+
+# Keep backups for 60 days (default: 30)
+python manage.py backup_database --keep-days 60
+
+# Custom backup directory
+python manage.py backup_database --backup-dir /path/to/backups
+```
+
+**Flashcards:**
+```bash
+# Import flashcards from JSON
+python manage.py import_flashcards path/to/flashcards.json
+
+# Export flashcards to JSON
+python manage.py export_flashcards --topic "Topic Name"
 ```
 
 ### Database
@@ -339,6 +383,21 @@ Results page shows score, time taken, answers
 - Attempt mode filtering: `ExamAttempt.objects.filter(attempt_mode='full_timed')` for timed exams only
 - Solution unlocking logic: check `has_correct_answer OR attempts >= threshold OR threshold == 0`
 - Upload solution images to question parts, marking scheme PDFs to papers (not JSON marking schemes)
+
+**When working with Flashcards:**
+- **Mastery Progression**: new → learning → know → retired
+- **Multiple Choice Mode** (new, learning, dont_know states):
+  - Student selects from 4 shuffled options (1 correct + 3 distractors)
+  - Correct on first attempt: new → learning
+  - Correct from learning: learning → know
+  - 2+ incorrect from learning: learning → dont_know
+  - Correct from dont_know: dont_know → learning
+- **Self-Assessment Mode** (know state only):
+  - Student shown answer, self-assesses if they knew it
+  - Self-assessed correct: know → retired (removed from deck)
+  - Self-assessed incorrect: stays know (can manually demote to learning)
+- Each card has `get_shuffled_options()` method for randomized display
+- Progress tracked via `FlashcardAttempt` with `view_count`, `correct_count`, `incorrect_count`
 
 ## Advanced Architecture Details
 

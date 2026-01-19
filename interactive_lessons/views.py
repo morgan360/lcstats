@@ -421,6 +421,32 @@ def section_question_view(request, topic_slug, section_slug, number):
         for p in parts
     )
 
+    # Check solution unlock status for each part
+    part_attempt_counts = {}
+    part_solution_unlocked = {}
+    for part in parts:
+        attempt_count = QuestionAttempt.objects.filter(
+            student=request.user.studentprofile,
+            question_part=part
+        ).count()
+        part_attempt_counts[part.id] = attempt_count
+
+        # Solution is unlocked if:
+        # 1. Threshold is 0 (always visible), OR
+        # 2. Student has correct answer, OR
+        # 3. Attempt count >= threshold
+        has_correct = QuestionAttempt.objects.filter(
+            student=request.user.studentprofile,
+            question_part=part,
+            is_correct=True
+        ).exists()
+
+        part_solution_unlocked[part.id] = (
+            part.solution_unlock_after_attempts == 0 or
+            has_correct or
+            attempt_count >= part.solution_unlock_after_attempts
+        )
+
     context = {
         "topic": topic,
         "section": section,
@@ -433,6 +459,8 @@ def section_question_view(request, topic_slug, section_slug, number):
         "results": results,
         "completed_parts": completed_parts,
         "all_parts_answered": all_parts_answered,
+        "part_attempt_counts": part_attempt_counts,
+        "part_solution_unlocked": part_solution_unlocked,
     }
 
     return render(request, "interactive_lessons/quiz.html", context)

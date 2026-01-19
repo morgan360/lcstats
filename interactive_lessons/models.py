@@ -185,6 +185,13 @@ class QuestionPart(models.Model):
         null=True,
         help_text="Optional solution image for this part (e.g., worked solution diagram)"
     )
+
+    # Solution access control
+    solution_unlock_after_attempts = models.PositiveIntegerField(
+        default=2,
+        help_text="Number of attempts before solution becomes visible (0 = always visible, 2 = default for production)"
+    )
+
     order = models.PositiveIntegerField(default=0)
 
     expected_type = models.CharField(
