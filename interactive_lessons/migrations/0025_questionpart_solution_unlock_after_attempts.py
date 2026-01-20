@@ -3,6 +3,31 @@
 from django.db import migrations, models
 
 
+def add_solution_unlock_field(apps, schema_editor):
+    """Add solution_unlock_after_attempts field if it doesn't exist."""
+    from django.db import connection
+
+    with connection.cursor() as cursor:
+        # Check if column exists
+        cursor.execute("""
+            SELECT COUNT(*) FROM information_schema.COLUMNS
+            WHERE TABLE_SCHEMA = DATABASE()
+            AND TABLE_NAME = 'interactive_lessons_questionpart'
+            AND COLUMN_NAME = 'solution_unlock_after_attempts'
+        """)
+        column_exists = cursor.fetchone()[0] > 0
+
+    if not column_exists:
+        # Column doesn't exist, add it
+        QuestionPart = apps.get_model('interactive_lessons', 'QuestionPart')
+        from django.db import connection
+        with connection.cursor() as cursor:
+            cursor.execute("""
+                ALTER TABLE interactive_lessons_questionpart
+                ADD COLUMN solution_unlock_after_attempts INT UNSIGNED NOT NULL DEFAULT 2
+            """)
+
+
 class Migration(migrations.Migration):
 
     dependencies = [
@@ -10,12 +35,5 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.AddField(
-            model_name='questionpart',
-            name='solution_unlock_after_attempts',
-            field=models.PositiveIntegerField(
-                default=2,
-                help_text='Number of attempts before solution becomes visible (0 = always visible, 2 = default for production)'
-            ),
-        ),
+        migrations.RunPython(add_solution_unlock_field, migrations.RunPython.noop),
     ]

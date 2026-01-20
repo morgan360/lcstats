@@ -118,13 +118,17 @@ def mark_student_answer(question_text, student_answer, correct_answer,
             auto_score = 1.0
         elif lower_match or upper_match:
             base_score = 50
-            feedback = "Partially correct — one bound is correct."
-            hint = "Check your calculation for the other bound."
+            if lower_match:
+                feedback = f"Partially correct. Your lower bound ({student_interval[0]:.2f}) is correct, but the upper bound is incorrect. The correct upper bound is {correct_interval[1]:.2f}."
+                hint = "Double-check your calculation for the upper bound. Remember: upper bound = mean + (critical value × standard error)."
+            else:
+                feedback = f"Partially correct. Your upper bound ({student_interval[1]:.2f}) is correct, but the lower bound is incorrect. The correct lower bound is {correct_interval[0]:.2f}."
+                hint = "Double-check your calculation for the lower bound. Remember: lower bound = mean - (critical value × standard error)."
             auto_score = 0.5
         else:
             base_score = 20
-            feedback = "Interval bounds are incorrect."
-            hint = "Review the confidence interval formula and recalculate."
+            feedback = f"Both interval bounds are incorrect. You calculated ({student_interval[0]:.2f}, {student_interval[1]:.2f}), but the correct interval is ({correct_interval[0]:.2f}, {correct_interval[1]:.2f})."
+            hint = "Review the confidence interval formula: CI = x̄ ± (critical value × SE). Check that you're using the correct critical value and standard error calculation."
             auto_score = 0.0
     else:
         # --- 2️⃣ Local numeric or algebraic check ---
@@ -147,12 +151,14 @@ def mark_student_answer(question_text, student_answer, correct_answer,
             hint = "Well done! You simplified accurately."
         elif auto_score >= 0.5:
             base_score = 70
-            feedback = "Partially correct — one element of your answer matches."
-            hint = "Recheck coefficients and signs."
-        elif student_vals or algebraic_match:
+            num_correct = int(auto_score * len(correct_vals))
+            num_total = len(correct_vals)
+            feedback = f"Partially correct — you got {num_correct} out of {num_total} values correct. Your work shows understanding, but double-check your calculations."
+            hint = "Review each part of your answer carefully. Check for sign errors, calculation mistakes, or values that might need further simplification."
+        elif student_vals:
             base_score = 50
-            feedback = "Your answer is close but not fully simplified."
-            hint = "Try simplifying the expression completely."
+            feedback = f"Your answer is numerically close but doesn't match the expected result. You entered {student_vals}, but this doesn't match the correct answer format."
+            hint = "Check if you need to simplify further, combine like terms, or express your answer in a different form (e.g., as a fraction, in simplified radical form, or factored)."
         else:
             # fallback to GPT if neither numeric nor algebraic match
             base_score, feedback, hint = gpt_grade(question_text, student_answer, correct_answer)
@@ -177,19 +183,36 @@ def mark_student_answer(question_text, student_answer, correct_answer,
 def gpt_grade(question_text, student_answer, correct_answer):
     """
     Uses GPT as a fallback for conceptual / algebraic answers.
+    Provides detailed, educational feedback to help students learn.
     """
     prompt = f"""
     You are an experienced Leaving Certificate Higher Level Maths teacher
-    grading a student's answer.
+    grading a student's answer. Your goal is to help the student LEARN, not just
+    tell them they're wrong.
 
-    Evaluate numerically and conceptually, but be tolerant of equivalent forms.
-    Accept decimals or fractions as equivalent within ±0.02.
-    Accept roots in any order.
+    EVALUATION CRITERIA:
+    - Be tolerant of equivalent forms (decimals ≈ fractions within ±0.02)
+    - Accept roots/solutions in any order
+    - Accept algebraically equivalent expressions
+    - Award partial credit for correct approach or partially correct work
 
-    Output strict JSON only with:
-    - "score": integer 0–100
-    - "feedback": concise one-line evaluation
-    - "hint": short study tip
+    FEEDBACK REQUIREMENTS:
+    When the answer is INCORRECT, your feedback must be:
+    1. SPECIFIC - Identify exactly what went wrong (calculation error, wrong formula, sign error, etc.)
+    2. EDUCATIONAL - Explain WHY it's wrong in a way that helps them understand
+    3. CONSTRUCTIVE - Give a clear next step or hint about what to try
+    4. ENCOURAGING - Acknowledge any correct elements even if final answer is wrong
+
+    Output strict JSON with these fields:
+    - "score": integer 0–100 (award partial credit generously for correct approach)
+    - "feedback": 2-3 sentences explaining what's wrong and why
+    - "hint": Specific actionable hint for what to do next (e.g., "Check your sign when expanding the brackets" or "Remember to convert to radians before using the formula")
+    - "common_mistake": (optional) If this is a common error, name it (e.g., "Sign error", "Wrong formula", "Calculation mistake")
+
+    EXAMPLES OF GOOD FEEDBACK:
+    - "Your approach is correct, but there's a calculation error. You correctly identified the quadratic formula, but when calculating the discriminant, you used b=3 instead of b=-3. This changes the sign. Try recalculating with the correct sign."
+    - "You're very close! The first part of your answer is correct, but you forgot to simplify the square root. √18 can be simplified to 3√2. Always check if you can simplify radicals."
+    - "This suggests you used the wrong formula. This is a permutation problem (order matters), not a combination. Try using nPr instead of nCr."
 
     Question: {question_text}
     Correct Answer: {correct_answer}
@@ -205,6 +228,17 @@ def gpt_grade(question_text, student_answer, correct_answer):
         raw = response.choices[0].message.content.strip()
         json_part = raw[raw.find("{"): raw.rfind("}") + 1]
         data = json.loads(json_part)
-        return data.get("score", 0), data.get("feedback", ""), data.get("hint", "")
+
+        # Extract the enhanced feedback components
+        score = data.get("score", 0)
+        feedback = data.get("feedback", "Your answer is incorrect.")
+        hint = data.get("hint", "Review the relevant notes and try again.")
+        common_mistake = data.get("common_mistake", "")
+
+        # Combine feedback with common mistake if present
+        if common_mistake:
+            feedback = f"[{common_mistake}] {feedback}"
+
+        return score, feedback, hint
     except Exception as e:
-        return 0, f"Error during grading: {e}", ""
+        return 0, f"Unable to grade this answer automatically. Please review your work and try again.", "Check your calculation step-by-step."

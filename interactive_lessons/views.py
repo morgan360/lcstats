@@ -387,6 +387,7 @@ def section_question_view(request, topic_slug, section_slug, number):
                         "is_correct": result.get("is_correct", False),
                         "score": result.get("score", 0),
                         "feedback": result.get("feedback", "No feedback generated."),
+                        "hint": result.get("hint", ""),
                     })
 
         # --- Handle "Next" button ---
@@ -546,6 +547,7 @@ def question_view(request, topic_id, number):
                         "is_correct": result.get("is_correct", False),
                         "score": result.get("score", 0),
                         "feedback": result.get("feedback", "No feedback generated."),
+                        "hint": result.get("hint", ""),
                     })
 
         # --- Handle "Next" button ---

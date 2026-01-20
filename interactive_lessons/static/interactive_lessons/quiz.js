@@ -54,8 +54,47 @@ document.addEventListener("DOMContentLoaded", () => {
         const data = await res.json();
 
         if (data.feedback) {
-          const color = data.is_correct ? "green" : "red";
-          feedbackBox.innerHTML = `<div style="color:${color};">${data.feedback} (Score: ${data.score}/100)</div>`;
+          if (data.is_correct) {
+            // Correct answer - show success message
+            feedbackBox.innerHTML = `
+              <div class="rounded-md bg-green-50 border border-green-300 px-4 py-3 mt-2">
+                <div class="flex items-start">
+                  <span class="text-2xl mr-2">✅</span>
+                  <div class="flex-1">
+                    <div class="font-semibold text-green-800">Correct!</div>
+                    <div class="text-sm text-green-700 mt-1">${data.feedback}</div>
+                    <div class="text-xs text-green-600 mt-1">Score: ${data.score}/100</div>
+                  </div>
+                </div>
+              </div>
+            `;
+          } else {
+            // Incorrect answer - show detailed feedback
+            const hintText = data.hint || "";
+            feedbackBox.innerHTML = `
+              <div class="rounded-md bg-red-50 border border-red-300 px-4 py-3 mt-2">
+                <div class="flex items-start">
+                  <span class="text-2xl mr-2">❌</span>
+                  <div class="flex-1">
+                    <div class="font-semibold text-red-800">Not quite right</div>
+                    <div class="text-sm text-red-700 mt-2 leading-relaxed">${data.feedback}</div>
+                    ${hintText ? `
+                      <div class="mt-3 rounded bg-amber-50 border-l-4 border-amber-400 px-3 py-2">
+                        <div class="flex items-start">
+                          <span class="mr-2">💡</span>
+                          <div>
+                            <div class="font-semibold text-amber-800 text-xs">Next step:</div>
+                            <div class="text-sm text-amber-700 mt-1">${hintText}</div>
+                          </div>
+                        </div>
+                      </div>
+                    ` : ''}
+                    <div class="text-xs text-red-600 mt-2">Score: ${data.score}/100</div>
+                  </div>
+                </div>
+              </div>
+            `;
+          }
         } else {
           feedbackBox.innerHTML = "<div style='color:red;'>Error checking answer.</div>";
         }
