@@ -153,16 +153,18 @@ class HomeworkAssignmentAdmin(admin.ModelAdmin):
     inlines = [HomeworkTaskInline]
     date_hierarchy = 'due_date'
 
-    class Media:
-        js = ('/static/admin/js/homework_assignment_admin.js',)
-
     fieldsets = (
         ('Assignment Details', {
             'fields': ('teacher', 'topic', 'title', 'description')
         }),
         ('Assignment Targets', {
             'fields': ('assigned_classes', 'assigned_students'),
-            'description': 'Assign to entire classes or individual students (or both)'
+            'description': (
+                '<strong>Step 1:</strong> Select classes above<br>'
+                '<strong>Step 2:</strong> Save the form<br>'
+                '<strong>Step 3:</strong> Students from selected classes will be automatically added below<br>'
+                '<em>You can also manually add/remove individual students</em>'
+            )
         }),
         ('Timing', {
             'fields': ('assigned_date', 'due_date')
