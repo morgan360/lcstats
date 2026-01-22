@@ -52,6 +52,28 @@ def normalise_numeric_answer(answer):
 
     answer = answer.strip()
 
+    # Convert unicode superscripts to regular power notation
+    # e.g., "2⁵" → "2^5", "x²" → "x^2"
+    _SUPERSCRIPTS = {
+        "⁰": "0", "¹": "1", "²": "2", "³": "3", "⁴": "4",
+        "⁵": "5", "⁶": "6", "⁷": "7", "⁸": "8", "⁹": "9",
+        "⁺": "+", "⁻": "-", "⁽": "(", "⁾": ")",
+        "ⁿ": "n", "/": "/"
+    }
+    superscript_buffer = []
+    result = []
+    for c in answer:
+        if c in _SUPERSCRIPTS:
+            superscript_buffer.append(_SUPERSCRIPTS[c])
+        else:
+            if superscript_buffer:
+                result.append("^" + "".join(superscript_buffer))
+                superscript_buffer = []
+            result.append(c)
+    if superscript_buffer:
+        result.append("^" + "".join(superscript_buffer))
+    answer = "".join(result)
+
     # replace degree symbol with radians equivalent
     answer = answer.replace("°", "*pi/180")
 
@@ -224,10 +246,25 @@ def gpt_grade(question_text, student_answer, correct_answer):
             model="gpt-4o-mini",
             messages=[{"role": "user", "content": prompt}],
             temperature=0.3,
+            response_format={"type": "json_object"}
         )
         raw = response.choices[0].message.content.strip()
-        json_part = raw[raw.find("{"): raw.rfind("}") + 1]
-        data = json.loads(json_part)
+
+        # Parse JSON with better error handling
+        try:
+            data = json.loads(raw)
+        except json.JSONDecodeError:
+            # Fallback: try to extract JSON from markdown code blocks
+            json_match = re.search(r'```(?:json)?\s*(\{.*?\})\s*```', raw, re.DOTALL)
+            if json_match:
+                data = json.loads(json_match.group(1))
+            else:
+                # Last resort: try to find any JSON object
+                json_match = re.search(r'\{.*\}', raw, re.DOTALL)
+                if json_match:
+                    data = json.loads(json_match.group(0))
+                else:
+                    raise
 
         # Extract the enhanced feedback components
         score = data.get("score", 0)
@@ -241,4 +278,7 @@ def gpt_grade(question_text, student_answer, correct_answer):
 
         return score, feedback, hint
     except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f"GPT grading error: {e}. Question: {question_text}, Student: {student_answer}, Correct: {correct_answer}")
         return 0, f"Unable to grade this answer automatically. Please review your work and try again.", "Check your calculation step-by-step."

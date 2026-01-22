@@ -19,6 +19,13 @@ _DASHES = {
     "\u2014": "-",  # em dash
 }
 
+_SUPERSCRIPTS = {
+    "⁰": "0", "¹": "1", "²": "2", "³": "3", "⁴": "4",
+    "⁵": "5", "⁶": "6", "⁷": "7", "⁸": "8", "⁹": "9",
+    "⁺": "+", "⁻": "-", "⁽": "(", "⁾": ")",
+    "ⁿ": "n", "/": "/"
+}
+
 def _preclean_plain(expr: str) -> str:
     """Make text/MathLive-ish input safe for parse_expr (non-LaTeX path)."""
     if not expr:
@@ -29,6 +36,25 @@ def _preclean_plain(expr: str) -> str:
 
     # Normalize double backslashes so we can inspect tokens sanely
     expr = expr.replace("\\\\", "\\")
+
+    # Convert unicode superscripts to ^() notation
+    # e.g., "2⁵" → "2^(5)", "x²" → "x^(2)", "2^(5/2)" → "2^(5/2)"
+    superscript_buffer = []
+    result = []
+    i = 0
+    while i < len(expr):
+        c = expr[i]
+        if c in _SUPERSCRIPTS:
+            superscript_buffer.append(_SUPERSCRIPTS[c])
+        else:
+            if superscript_buffer:
+                result.append("^(" + "".join(superscript_buffer) + ")")
+                superscript_buffer = []
+            result.append(c)
+        i += 1
+    if superscript_buffer:
+        result.append("^(" + "".join(superscript_buffer) + ")")
+    expr = "".join(result)
 
     # ± and unicode dashes
     expr = expr.replace("±", "+-")
