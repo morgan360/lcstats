@@ -87,20 +87,30 @@ If you cannot find the marks, return: {{"max_marks": 0}}"""
             ],
             max_tokens=100,
             temperature=0.1,
+            response_format={"type": "json_object"}
         )
 
         raw_response = response.choices[0].message.content.strip()
 
-        # Extract JSON
+        # Parse JSON with robust error handling
         import json
         import re
-        json_match = re.search(r'\{[^}]+\}', raw_response, re.DOTALL)
-        if json_match:
-            result = json.loads(json_match.group(0))
-            max_marks = int(result.get('max_marks', 0))
-            if max_marks > 0:
-                logger.info(f"Extracted max_marks={max_marks} for {question_part_label}")
-                return max_marks
+
+        try:
+            result = json.loads(raw_response)
+        except json.JSONDecodeError:
+            # Fallback to regex extraction
+            json_match = re.search(r'\{.*\}', raw_response, re.DOTALL)
+            if json_match:
+                result = json.loads(json_match.group(0))
+            else:
+                logger.warning(f"Could not parse JSON for max_marks extraction: {raw_response}")
+                return None
+
+        max_marks = int(result.get('max_marks', 0))
+        if max_marks > 0:
+            logger.info(f"Extracted max_marks={max_marks} for {question_part_label}")
+            return max_marks
 
         logger.warning(f"Could not extract max_marks for {question_part_label}")
         return None
@@ -252,21 +262,31 @@ Example response:
             ],
             max_tokens=500,
             temperature=0.2,  # Low temperature for consistent grading
+            response_format={"type": "json_object"}
         )
 
         # Parse the response
         raw_response = response.choices[0].message.content.strip()
 
-        # Extract JSON from response (handle markdown code blocks)
+        # Extract JSON from response with robust error handling
         import json
         import re
 
-        # Try to find JSON in the response
-        json_match = re.search(r'\{[^}]+\}', raw_response, re.DOTALL)
-        if json_match:
-            result = json.loads(json_match.group(0))
-        else:
-            raise ValueError(f"Could not parse JSON from response: {raw_response}")
+        # Try to parse JSON with multiple fallback methods
+        try:
+            result = json.loads(raw_response)
+        except json.JSONDecodeError:
+            # Fallback: try to extract JSON from markdown code blocks
+            json_match = re.search(r'```(?:json)?\s*(\{.*?\})\s*```', raw_response, re.DOTALL)
+            if json_match:
+                result = json.loads(json_match.group(1))
+            else:
+                # Last resort: try to find any JSON object (use greedy match for nested braces)
+                json_match = re.search(r'\{.*\}', raw_response, re.DOTALL)
+                if json_match:
+                    result = json.loads(json_match.group(0))
+                else:
+                    raise ValueError(f"Could not parse JSON from response: {raw_response}")
 
         # Validate required fields
         marks_awarded = float(result.get('marks_awarded', 0))
