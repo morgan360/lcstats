@@ -2,6 +2,9 @@
  * Dynamic student filtering for Homework Assignment admin
  * When a class is selected, automatically populate the students field
  * with all students from the selected classes.
+ *
+ * This works with Django's filter_horizontal widget which creates
+ * two select boxes ("from" and "to") with move buttons.
  */
 (function() {
     'use strict';
@@ -50,21 +53,27 @@
 
         /**
          * Update the students field based on selected classes
+         * Works with Django's filter_horizontal widget
          */
         function updateStudentsFromClasses() {
-            var $classesField = $('#id_assigned_classes');
-            var $studentsField = $('#id_assigned_students');
+            // For filter_horizontal, the "to" box is id_assigned_classes_to
+            var $classesToBox = $('#id_assigned_classes_to');
 
-            if (!$classesField.length || !$studentsField.length) {
-                console.log('Class or student fields not found');
+            if (!$classesToBox.length) {
+                console.log('Classes "to" box not found');
                 return;
             }
 
-            var selectedClasses = $classesField.val() || [];
+            // Get selected class IDs from the "to" box (these are the chosen classes)
+            var selectedClasses = [];
+            $classesToBox.find('option').each(function() {
+                selectedClasses.push($(this).val());
+            });
+
             console.log('Selected classes:', selectedClasses);
 
             if (selectedClasses.length === 0) {
-                // No classes selected, don't modify students
+                console.log('No classes selected');
                 return;
             }
 
@@ -75,43 +84,63 @@
             selectedClasses.forEach(function(classId) {
                 getStudentsForClass(classId, function(students) {
                     students.forEach(function(studentId) {
-                        allStudentIds.add(studentId);
+                        allStudentIds.add(String(studentId));
                     });
 
                     classesProcessed++;
 
                     // Once all classes are processed, update the students field
                     if (classesProcessed === selectedClasses.length) {
-                        updateStudentsField(allStudentIds);
+                        moveStudentsToChosenBox(allStudentIds);
                     }
                 });
             });
         }
 
         /**
-         * Update the students select field with the given student IDs
+         * Move students to the "chosen" (to) box in the filter_horizontal widget
          */
-        function updateStudentsField(studentIds) {
-            var $studentsField = $('#id_assigned_students');
+        function moveStudentsToChosenBox(studentIds) {
+            var $studentsFromBox = $('#id_assigned_students_from');
+            var $studentsToBox = $('#id_assigned_students_to');
 
-            // Get current selected students
-            var currentlySelected = new Set($studentsField.val() || []);
+            if (!$studentsFromBox.length || !$studentsToBox.length) {
+                console.log('Student filter_horizontal boxes not found');
+                return;
+            }
 
-            // Add new students from classes (preserving manually selected ones)
-            studentIds.forEach(function(id) {
-                currentlySelected.add(String(id));
+            var movedCount = 0;
+
+            // For each student ID, find it in the "from" box and move it to "to" box
+            studentIds.forEach(function(studentId) {
+                // Check if already in "to" box
+                if ($studentsToBox.find('option[value="' + studentId + '"]').length > 0) {
+                    return; // Already selected
+                }
+
+                // Find in "from" box
+                var $option = $studentsFromBox.find('option[value="' + studentId + '"]');
+                if ($option.length > 0) {
+                    // Move to "to" box
+                    $option.remove();
+                    $studentsToBox.append($option);
+                    movedCount++;
+                }
             });
 
-            // Update the field
-            $studentsField.val(Array.from(currentlySelected));
+            console.log('Moved', movedCount, 'students to chosen box');
 
-            // Trigger change event to update UI (for select2 or other plugins)
-            $studentsField.trigger('change');
-
-            console.log('Updated students field with', currentlySelected.size, 'students');
+            // Sort the "to" box options
+            var options = $studentsToBox.find('option').toArray();
+            options.sort(function(a, b) {
+                return $(a).text().localeCompare($(b).text());
+            });
+            $studentsToBox.empty().append(options);
 
             // Show a message to the user
-            showMessage('Added students from selected classes');
+            if (movedCount > 0) {
+                showMessage('Added ' + movedCount + ' student(s) from selected class(es)');
+            }
         }
 
         /**
@@ -139,28 +168,34 @@
         $(document).ready(function() {
             console.log('DOM ready, setting up homework assignment handlers');
 
-            // Listen for changes to the assigned_classes field
-            $(document).on('change', '#id_assigned_classes', function() {
-                console.log('Assigned classes changed');
-                updateStudentsFromClasses();
-            });
-
-            // Alternative: Add a button to manually trigger the update
-            var $classesField = $('#id_assigned_classes');
-            if ($classesField.length) {
+            // Add a button to manually trigger the update
+            // Insert it near the assigned_classes field
+            var $classesRow = $('.field-assigned_classes');
+            if ($classesRow.length) {
                 var $updateButton = $(
+                    '<div style="margin-top: 10px;">' +
                     '<button type="button" id="update-students-from-classes" ' +
-                    'style="margin-left: 10px; padding: 5px 10px; cursor: pointer;">' +
-                    'Add Students from Selected Classes</button>'
+                    'class="button" style="cursor: pointer;">' +
+                    '📥 Add Students from Selected Classes</button>' +
+                    '</div>'
                 );
 
-                $classesField.closest('.form-row').find('.help').before($updateButton);
+                $classesRow.append($updateButton);
 
-                $updateButton.on('click', function(e) {
+                $('#update-students-from-classes').on('click', function(e) {
                     e.preventDefault();
+                    console.log('Button clicked - updating students from classes');
                     updateStudentsFromClasses();
                 });
             }
+
+            // Also trigger automatically when classes change
+            // Watch for clicks on the "choose" arrow (moves items to "to" box)
+            $(document).on('click', '#id_assigned_classes_add_link, #id_assigned_classes_remove_link', function() {
+                console.log('Class selection changed');
+                // Wait a moment for the DOM to update
+                setTimeout(updateStudentsFromClasses, 100);
+            });
         });
     }
 
