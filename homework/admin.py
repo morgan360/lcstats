@@ -153,6 +153,9 @@ class HomeworkAssignmentAdmin(admin.ModelAdmin):
     inlines = [HomeworkTaskInline]
     date_hierarchy = 'due_date'
 
+    class Media:
+        js = ('/static/admin/js/homework_assignment_admin.js',)
+
     fieldsets = (
         ('Assignment Details', {
             'fields': ('teacher', 'topic', 'title', 'description')

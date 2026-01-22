@@ -589,6 +589,32 @@ def weekly_class_homework_report(request, class_id):
 
 
 @login_required
+def get_class_students_api(request, class_id):
+    """
+    API endpoint to get all student IDs for a given class.
+    Used by the admin interface for dynamic filtering.
+    """
+    teacher_class = get_object_or_404(TeacherClass, id=class_id)
+
+    # Verify teacher has access to this class
+    if not request.user.is_superuser:
+        if hasattr(request.user, 'teacher_profile'):
+            if teacher_class.teacher != request.user.teacher_profile:
+                return JsonResponse({'error': 'Access denied'}, status=403)
+        else:
+            return JsonResponse({'error': 'Access denied'}, status=403)
+
+    # Get all student IDs in this class
+    student_ids = list(teacher_class.students.values_list('id', flat=True))
+
+    return JsonResponse({
+        'class_id': class_id,
+        'students': student_ids,
+        'count': len(student_ids)
+    })
+
+
+@login_required
 def weekly_student_homework_report(request, student_id):
     """
     Printable weekly homework report for an individual student.

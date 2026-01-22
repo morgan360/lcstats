@@ -20,4 +20,7 @@ urlpatterns = [
     path('teacher/class/<int:class_id>/weekly-report/', views.weekly_class_homework_report, name='weekly_class_report'),
     path('teacher/student/<int:student_id>/weekly-report/', views.weekly_student_homework_report, name='weekly_student_report'),
     path('teacher/assignment/<int:assignment_id>/progress/', views.assignment_progress, name='assignment_progress'),
+
+    # API endpoints
+    path('api/class-students/<int:class_id>/', views.get_class_students_api, name='api_class_students'),
 ]
