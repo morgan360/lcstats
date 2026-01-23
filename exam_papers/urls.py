@@ -37,4 +37,12 @@ urlpatterns = [
     # Feedback on question grading
     path('attempt/<int:attempt_id>/feedback/',
          views.exam_question_feedback, name='exam_question_feedback'),
+
+    # Timer controls
+    path('attempt/<int:attempt_id>/pause/',
+         views.pause_exam, name='pause_exam'),
+    path('attempt/<int:attempt_id>/resume/',
+         views.resume_exam, name='resume_exam'),
+    path('attempt/<int:attempt_id>/exit/',
+         views.exit_exam, name='exit_exam'),
 ]

@@ -248,6 +248,21 @@ class ExamAttempt(models.Model):
         help_text="Total time spent on this attempt"
     )
 
+    # Pause/Resume functionality
+    is_paused = models.BooleanField(
+        default=False,
+        help_text="Whether the exam is currently paused"
+    )
+    paused_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="When the exam was paused"
+    )
+    total_paused_seconds = models.IntegerField(
+        default=0,
+        help_text="Total time the exam has been paused (to calculate accurate time remaining)"
+    )
+
     # Scoring
     total_marks_awarded = models.FloatField(default=0.0)
     total_marks_possible = models.FloatField(default=0.0)

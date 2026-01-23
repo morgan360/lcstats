@@ -168,8 +168,18 @@ def question_interface(request, attempt_id, question_id):
     # Calculate time remaining (for timed mode)
     time_remaining = None
     timer_percentage = 0
+    is_paused = attempt.is_paused
     if attempt.attempt_mode == 'full_timed':
+        # Calculate elapsed time excluding paused time
         elapsed = (timezone.now() - attempt.started_at).total_seconds()
+
+        # If currently paused, use the paused_at timestamp instead of now
+        if attempt.is_paused and attempt.paused_at:
+            elapsed = (attempt.paused_at - attempt.started_at).total_seconds()
+
+        # Subtract total paused time
+        elapsed -= attempt.total_paused_seconds
+
         time_limit = attempt.exam_paper.time_limit_minutes * 60
         time_remaining = int(max(0, time_limit - elapsed))
 
@@ -177,8 +187,8 @@ def question_interface(request, attempt_id, question_id):
         if time_limit > 0:
             timer_percentage = (time_remaining / time_limit) * 100
 
-        # Auto-submit if time is up
-        if time_remaining == 0 and not attempt.is_completed:
+        # Auto-submit if time is up (and not paused)
+        if time_remaining == 0 and not attempt.is_completed and not attempt.is_paused:
             attempt.is_completed = True
             attempt.completed_at = timezone.now()
             attempt.calculate_score()
@@ -197,11 +207,13 @@ def question_interface(request, attempt_id, question_id):
         'parts_with_attempts': parts_with_attempts,
         'time_remaining': time_remaining,
         'timer_percentage': timer_percentage,
+        'is_paused': is_paused,
         'prev_question': prev_question,
         'next_question': next_question,
         'is_last_question': next_question is None,
         'question_number': current_index + 1,
         'total_questions': len(all_questions),
+        'paper': attempt.exam_paper,
     }
     return render(request, 'exam_papers/question_interface.html', context)
 
@@ -461,3 +473,93 @@ def exam_question_feedback(request, attempt_id):
     except Exception as e:
         print(f"[Exam Question Feedback Error] {e}")
         return JsonResponse({"success": False, "error": str(e)}, status=500)
+
+
+@login_required
+@require_POST
+def pause_exam(request, attempt_id):
+    """Pause an exam attempt"""
+    attempt = get_object_or_404(ExamAttempt, id=attempt_id, student=request.user)
+
+    # Only allow pausing if not completed and not already paused
+    if attempt.is_completed:
+        return JsonResponse({
+            'success': False,
+            'error': 'Cannot pause a completed exam'
+        })
+
+    if attempt.is_paused:
+        return JsonResponse({
+            'success': False,
+            'error': 'Exam is already paused'
+        })
+
+    # Pause the exam
+    attempt.is_paused = True
+    attempt.paused_at = timezone.now()
+    attempt.save()
+
+    return JsonResponse({
+        'success': True,
+        'message': 'Exam paused successfully'
+    })
+
+
+@login_required
+@require_POST
+def resume_exam(request, attempt_id):
+    """Resume a paused exam attempt"""
+    attempt = get_object_or_404(ExamAttempt, id=attempt_id, student=request.user)
+
+    # Only allow resuming if paused
+    if not attempt.is_paused:
+        return JsonResponse({
+            'success': False,
+            'error': 'Exam is not paused'
+        })
+
+    # Calculate how long the exam was paused
+    if attempt.paused_at:
+        pause_duration = (timezone.now() - attempt.paused_at).total_seconds()
+        attempt.total_paused_seconds += int(pause_duration)
+
+    # Resume the exam
+    attempt.is_paused = False
+    attempt.paused_at = None
+    attempt.save()
+
+    return JsonResponse({
+        'success': True,
+        'message': 'Exam resumed successfully',
+        'total_paused_seconds': attempt.total_paused_seconds
+    })
+
+
+@login_required
+@require_POST
+def exit_exam(request, attempt_id):
+    """Exit and complete an exam attempt early"""
+    attempt = get_object_or_404(ExamAttempt, id=attempt_id, student=request.user)
+
+    # If paused, unpause first to calculate final time
+    if attempt.is_paused and attempt.paused_at:
+        pause_duration = (timezone.now() - attempt.paused_at).total_seconds()
+        attempt.total_paused_seconds += int(pause_duration)
+        attempt.is_paused = False
+
+    # Mark as completed
+    if not attempt.is_completed:
+        attempt.is_completed = True
+        attempt.is_submitted = True
+        attempt.completed_at = timezone.now()
+
+        # Calculate actual time spent (excluding paused time)
+        total_elapsed = (attempt.completed_at - attempt.started_at).total_seconds()
+        attempt.time_spent_seconds = int(total_elapsed - attempt.total_paused_seconds)
+
+        attempt.calculate_score()
+
+    return JsonResponse({
+        'success': True,
+        'redirect_url': f'/exam-papers/results/{attempt.id}/'
+    })

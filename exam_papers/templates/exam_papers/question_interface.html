@@ -10,8 +10,24 @@
         <div class="timer-content">
             <span class="timer-label">⏱️ Exam Time Remaining:</span>
             <span class="timer-display" id="timer-display">Loading...</span>
+            <div class="flex gap-2 ml-4">
+                <button class="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-md transition-all duration-200 hover:-translate-y-0.5" id="pause-btn" onclick="togglePause()">
+                    <span id="pause-icon">⏸️ Pause</span>
+                </button>
+                <button class="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white text-sm font-semibold rounded-md transition-all duration-200 hover:-translate-y-0.5" onclick="exitExam()">
+                    🚪 Exit
+                </button>
+            </div>
         </div>
         <div class="timer-progress" id="timer-progress" style="width: {{ timer_percentage }}%"></div>
+    </div>
+
+    <!-- Pause Overlay -->
+    <div id="pause-overlay" class="fixed inset-0 bg-black bg-opacity-80 z-[9999] hidden flex-col items-center justify-center">
+        <div class="text-white text-5xl font-bold mb-8 animate-pulse">⏸️ PAUSED</div>
+        <button onclick="togglePause()" class="px-8 py-4 bg-green-600 hover:bg-green-700 text-white text-xl font-bold rounded-lg transition-all duration-200">
+            ▶️ Resume
+        </button>
     </div>
     {% endif %}
 
@@ -639,6 +655,8 @@ let timeRemaining = {{ time_remaining }};
 const timerDisplay = document.getElementById('timer-display');
 const timerProgress = document.getElementById('timer-progress');
 const totalTime = {{ attempt.exam_paper.time_limit_minutes }} * 60;
+let isPaused = {{ attempt.is_paused|yesno:'true,false' }};
+let timerInterval = null;
 
 function updateTimer() {
     if (timeRemaining <= 0) {
@@ -673,9 +691,103 @@ function updateTimer() {
     timeRemaining--;
 }
 
-// Update immediately on load, then every second
-updateTimer();
-setInterval(updateTimer, 1000);
+// Pause/Resume/Exit functions
+function togglePause() {
+    const overlay = document.getElementById('pause-overlay');
+    const pauseIcon = document.getElementById('pause-icon');
+
+    if (isPaused) {
+        // Resume
+        fetch('/exam-papers/attempt/{{ attempt.id }}/resume/', {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': '{{ csrf_token }}'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                isPaused = false;
+                overlay.classList.remove('flex');
+                overlay.classList.add('hidden');
+                pauseIcon.textContent = '⏸️ Pause';
+
+                // Restart timer
+                if (timerInterval) clearInterval(timerInterval);
+                timerInterval = setInterval(updateTimer, 1000);
+            } else {
+                alert(data.error || 'Failed to resume exam');
+            }
+        })
+        .catch(error => {
+            console.error('Resume error:', error);
+            alert('An error occurred while resuming');
+        });
+    } else {
+        // Pause
+        fetch('/exam-papers/attempt/{{ attempt.id }}/pause/', {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': '{{ csrf_token }}'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                isPaused = true;
+                overlay.classList.remove('hidden');
+                overlay.classList.add('flex');
+                pauseIcon.textContent = '▶️ Resume';
+
+                // Stop timer
+                if (timerInterval) clearInterval(timerInterval);
+            } else {
+                alert(data.error || 'Failed to pause exam');
+            }
+        })
+        .catch(error => {
+            console.error('Pause error:', error);
+            alert('An error occurred while pausing');
+        });
+    }
+}
+
+function exitExam() {
+    if (!confirm('Are you sure you want to exit and submit the exam? This action cannot be undone.')) {
+        return;
+    }
+
+    fetch('/exam-papers/attempt/{{ attempt.id}}/exit/', {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': '{{ csrf_token }}'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            window.location.href = data.redirect_url;
+        } else {
+            alert('Failed to exit exam');
+        }
+    })
+    .catch(error => {
+        console.error('Exit error:', error);
+        alert('An error occurred while exiting');
+    });
+}
+
+// Initialize timer - only update if not paused
+if (!isPaused) {
+    updateTimer();
+    timerInterval = setInterval(updateTimer, 1000);
+} else {
+    // Show pause overlay if already paused
+    updateTimer(); // Display current time
+    document.getElementById('pause-overlay').classList.remove('hidden');
+    document.getElementById('pause-overlay').classList.add('flex');
+    document.getElementById('pause-icon').textContent = '▶️ Resume';
+}
 {% endif %}
 
 {% if question.suggested_time_minutes %}
