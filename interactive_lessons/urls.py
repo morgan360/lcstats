@@ -6,8 +6,8 @@ urlpatterns = [
     path("", views.select_topic, name="select_topic"),
 
     # --- Info Bot endpoint ---
-    path("info-bot/<slug:topic_slug>/", views.info_bot, name="info_bot"),
     path("info-bot/feedback/", views.infobot_feedback, name="infobot_feedback"),
+    path("info-bot/<slug:topic_slug>/", views.info_bot, name="info_bot"),
 
     # --- Section-based navigation ---
     path("<slug:topic_slug>/sections/", views.section_list, name="section_list"),
