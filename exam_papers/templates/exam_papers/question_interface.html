@@ -37,6 +37,13 @@
         <div class="timer-content">
             <span class="timer-label">⏱️ Question Suggested Time:</span>
             <span class="timer-display" id="suggested-timer-display">{{ question.suggested_time_minutes }}:00</span>
+            {% if time_remaining is None %}
+            <div class="flex gap-2 ml-4">
+                <button class="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white text-sm font-semibold rounded-md transition-all duration-200 hover:-translate-y-0.5" onclick="exitPractice()">
+                    🚪 Exit
+                </button>
+            </div>
+            {% endif %}
         </div>
         <div class="timer-progress suggested" id="suggested-timer-progress" style="width: 100%"></div>
     </div>
@@ -822,6 +829,16 @@ function updateSuggestedTimer() {
 updateSuggestedTimer();
 setInterval(updateSuggestedTimer, 1000);
 {% endif %}
+
+// Exit practice mode function
+function exitPractice() {
+    if (!confirm('Are you sure you want to exit this practice session?')) {
+        return;
+    }
+
+    // Redirect to exam papers list
+    window.location.href = '/exam-papers/';
+}
 
 // Submit answer function
 function submitAnswer(partId, attemptId) {
