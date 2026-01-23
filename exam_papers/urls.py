@@ -33,4 +33,8 @@ urlpatterns = [
 
     # Topic-based practice
     path('topic/<int:topic_id>/', views.topic_practice, name='topic_practice'),
+
+    # Feedback on question grading
+    path('attempt/<int:attempt_id>/feedback/',
+         views.exam_question_feedback, name='exam_question_feedback'),
 ]

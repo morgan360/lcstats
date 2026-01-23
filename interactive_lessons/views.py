@@ -115,7 +115,7 @@ def info_bot(request, topic_slug):
             note.content,
             extensions=["extra", "fenced_code", "tables", KatexExtension()],
         )
-        InfoBotQuery.objects.create(
+        query_obj = InfoBotQuery.objects.create(
             topic_slug=topic_slug,
             question=query,
             answer=note.content,
@@ -127,7 +127,7 @@ def info_bot(request, topic_slug):
             question_part_id=int(question_part_id) if question_part_id else None,
             question_context=question_context_str,
         )
-        return JsonResponse({"answer": html_answer})
+        return JsonResponse({"answer": html_answer, "query_id": query_obj.id})
 
     # Build enhanced prompt with question context
     context_text = "\n\n".join([n.content for _, n in scored[:3]])
@@ -187,7 +187,7 @@ def info_bot(request, topic_slug):
         extensions=["extra", "fenced_code", "tables", KatexExtension()],
     )
 
-    InfoBotQuery.objects.create(
+    query_obj = InfoBotQuery.objects.create(
         topic_slug=topic_slug,
         question=query,
         answer=raw_answer,
@@ -200,7 +200,7 @@ def info_bot(request, topic_slug):
         question_context=question_context_str,
     )
 
-    return JsonResponse({"answer": html_answer})
+    return JsonResponse({"answer": html_answer, "query_id": query_obj.id})
 
 
 # ----------------------------------------------------------------------
@@ -751,3 +751,44 @@ View and reply in admin: {request.build_absolute_uri(f'/admin/interactive_lesson
     }
     
     return render(request, 'interactive_lessons/question_contact.html', context)
+
+
+# ----------------------------------------------------------------------
+# InfoBot Feedback
+# ----------------------------------------------------------------------
+@login_required
+def infobot_feedback(request):
+    """Submit feedback (thumbs up/down) for an InfoBot answer."""
+    if request.method == "POST":
+        import json
+        from notes.models import InfoBotFeedback
+
+        data = json.loads(request.body)
+        query_id = data.get("query_id")
+        feedback_type = data.get("feedback_type")  # 'helpful' or 'not_helpful'
+
+        if not query_id or feedback_type not in ['helpful', 'not_helpful']:
+            return JsonResponse({"success": False, "error": "Invalid request"}, status=400)
+
+        try:
+            query = InfoBotQuery.objects.get(id=query_id)
+
+            # Create or update feedback
+            feedback, created = InfoBotFeedback.objects.update_or_create(
+                query=query,
+                user=request.user,
+                defaults={'feedback_type': feedback_type}
+            )
+
+            return JsonResponse({
+                "success": True,
+                "message": "Thanks for your feedback!",
+                "feedback_type": feedback_type
+            })
+        except InfoBotQuery.DoesNotExist:
+            return JsonResponse({"success": False, "error": "Query not found"}, status=404)
+        except Exception as e:
+            print(f"[InfoBot Feedback Error] {e}")
+            return JsonResponse({"success": False, "error": str(e)}, status=500)
+
+    return JsonResponse({"success": False, "error": "Method not allowed"}, status=405)

@@ -2,6 +2,7 @@
 from django.db import models
 from django.contrib.auth.models import User
 from django.utils.text import slugify
+from django.utils import timezone
 from interactive_lessons.models import Topic
 
 
@@ -329,3 +330,38 @@ class ExamQuestionAttempt(models.Model):
 
     def __str__(self):
         return f"{self.exam_attempt.student.username} - {self.question_part} (Attempt {self.attempt_number})"
+
+
+class ExamQuestionFeedback(models.Model):
+    """Track student feedback (thumbs up/down) on exam question grading/feedback."""
+    FEEDBACK_CHOICES = [
+        ('helpful', 'Thumbs Up'),
+        ('not_helpful', 'Thumbs Down'),
+    ]
+
+    attempt = models.ForeignKey(
+        ExamQuestionAttempt,
+        on_delete=models.CASCADE,
+        related_name='feedback_responses',
+        help_text="The exam question attempt this feedback is for"
+    )
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='exam_question_feedback',
+        help_text="Student who provided feedback"
+    )
+    feedback_type = models.CharField(
+        max_length=20,
+        choices=FEEDBACK_CHOICES,
+        help_text="Whether student found feedback helpful or not"
+    )
+    created_at = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        unique_together = ['attempt', 'user']
+        verbose_name = 'Exam Question Feedback'
+        verbose_name_plural = 'Exam Question Feedback'
+
+    def __str__(self):
+        return f"{self.user.username} - {self.get_feedback_type_display()} - Attempt {self.attempt.id}"

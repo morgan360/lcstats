@@ -11,7 +11,7 @@ from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.units import inch
 from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, PageBreak
 from reportlab.lib.enums import TA_LEFT, TA_CENTER, TA_RIGHT
-from .models import StudentProfile, QuestionAttempt, RegistrationCode, LoginHistory, UserSession
+from .models import StudentProfile, QuestionAttempt, RegistrationCode, LoginHistory, UserSession, QuestionFeedback
 
 
 @admin.register(StudentProfile)
@@ -748,3 +748,25 @@ class UserSessionAdmin(admin.ModelAdmin):
                 pass
         self.message_user(request, f"{count} session(s) terminated.")
     terminate_sessions.short_description = "Terminate selected sessions"
+
+
+@admin.register(QuestionFeedback)
+class QuestionFeedbackAdmin(admin.ModelAdmin):
+    list_display = ('created_at', 'user', 'feedback_type', 'question_info', 'score_awarded')
+    list_filter = ('feedback_type', 'created_at')
+    search_fields = ('user__username', 'attempt__question__topic__name')
+    ordering = ('-created_at',)
+    readonly_fields = ('created_at', 'user', 'attempt', 'feedback_type')
+
+    def has_change_permission(self, request, obj=None):
+        """Feedback is read-only"""
+        return False
+
+    def question_info(self, obj):
+        attempt = obj.attempt
+        return f"{attempt.question.topic.name} - Q{attempt.question.id}"
+    question_info.short_description = "Question"
+
+    def score_awarded(self, obj):
+        return f"{obj.attempt.score_awarded}%"
+    score_awarded.short_description = "Score"

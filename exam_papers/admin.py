@@ -11,7 +11,8 @@ from .models import (
     ExamQuestion,
     ExamQuestionPart,
     ExamAttempt,
-    ExamQuestionAttempt
+    ExamQuestionAttempt,
+    ExamQuestionFeedback
 )
 from .forms import ExtractQuestionsForm
 from .utils import extract_pdf_page_ranges, split_pdf_into_questions
@@ -293,6 +294,29 @@ class ExamQuestionAttemptAdmin(admin.ModelAdmin):
         return obj.exam_attempt.student.username
     student_username.short_description = 'Student'
     student_username.admin_order_field = 'exam_attempt__student__username'
+
+
+@admin.register(ExamQuestionFeedback)
+class ExamQuestionFeedbackAdmin(admin.ModelAdmin):
+    list_display = ('created_at', 'user', 'feedback_type', 'question_info', 'marks_awarded_display')
+    list_filter = ('feedback_type', 'created_at')
+    search_fields = ('user__username', 'attempt__question_part__question__title')
+    ordering = ('-created_at',)
+    readonly_fields = ('created_at', 'user', 'attempt', 'feedback_type')
+
+    def has_change_permission(self, request, obj=None):
+        """Feedback is read-only"""
+        return False
+
+    def question_info(self, obj):
+        attempt = obj.attempt
+        question = attempt.question_part.question
+        return f"{question.exam_paper} - Q{question.question_number}{attempt.question_part.label}"
+    question_info.short_description = "Question"
+
+    def marks_awarded_display(self, obj):
+        return f"{obj.attempt.marks_awarded}/{obj.attempt.max_marks}"
+    marks_awarded_display.short_description = "Marks"
 
 
 # Customize admin site header

@@ -2,7 +2,7 @@ from django.contrib import admin
 from django.shortcuts import render
 from django.urls import path
 from django import forms
-from .models import Note, InfoBotQuery
+from .models import Note, InfoBotQuery, InfoBotFeedback
 from .utils import search_similar
 
 
@@ -96,3 +96,26 @@ class InfoBotQueryAdmin(admin.ModelAdmin):
             color = "#F44336"  # red
         return format_html('<span style="color:{};">{:.2f}</span>', color, obj.confidence)
     confidence_display.short_description = "Confidence"
+
+
+# ---------- InfoBotFeedback Admin ----------
+@admin.register(InfoBotFeedback)
+class InfoBotFeedbackAdmin(admin.ModelAdmin):
+    list_display = ("created_at", "user", "feedback_type", "query_snippet")
+    list_filter = ("feedback_type", "created_at")
+    search_fields = ("user__username", "query__question")
+    ordering = ("-created_at",)
+    readonly_fields = ("created_at", "user", "query", "feedback_type")
+
+    def has_module_permission(self, request):
+        """Only superusers can access feedback"""
+        return request.user.is_superuser
+
+    def has_change_permission(self, request, obj=None):
+        """Feedback is read-only"""
+        return False
+
+    def query_snippet(self, obj):
+        question = obj.query.question
+        return (question[:60] + "…") if len(question) > 60 else question
+    query_snippet.short_description = "Query"

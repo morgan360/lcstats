@@ -427,3 +427,37 @@ def topic_practice(request, topic_id):
         'user_attempts': user_attempts,
     }
     return render(request, 'exam_papers/topic_practice.html', context)
+
+
+@login_required
+@require_POST
+def exam_question_feedback(request, attempt_id):
+    """Submit feedback (thumbs up/down) for exam question grading/feedback."""
+    import json
+    from .models import ExamQuestionFeedback, ExamQuestionAttempt
+
+    try:
+        data = json.loads(request.body)
+        feedback_type = data.get("feedback_type")  # 'helpful' or 'not_helpful'
+
+        if feedback_type not in ['helpful', 'not_helpful']:
+            return JsonResponse({"success": False, "error": "Invalid feedback type"}, status=400)
+
+        # Get the attempt and verify it belongs to the current user
+        attempt = get_object_or_404(ExamQuestionAttempt, id=attempt_id, exam_attempt__student=request.user)
+
+        # Create or update feedback
+        feedback, created = ExamQuestionFeedback.objects.update_or_create(
+            attempt=attempt,
+            user=request.user,
+            defaults={'feedback_type': feedback_type}
+        )
+
+        return JsonResponse({
+            "success": True,
+            "message": "Thanks for your feedback!",
+            "feedback_type": feedback_type
+        })
+    except Exception as e:
+        print(f"[Exam Question Feedback Error] {e}")
+        return JsonResponse({"success": False, "error": str(e)}, status=500)

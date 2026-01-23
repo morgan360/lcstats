@@ -176,3 +176,38 @@ class InfoBotQuery(models.Model):
 
     def __str__(self):
         return f"{self.topic_slug}: {self.question[:60]}"
+
+
+class InfoBotFeedback(models.Model):
+    """Track student feedback (thumbs up/down) on InfoBot answers."""
+    FEEDBACK_CHOICES = [
+        ('helpful', 'Thumbs Up'),
+        ('not_helpful', 'Thumbs Down'),
+    ]
+
+    query = models.ForeignKey(
+        InfoBotQuery,
+        on_delete=models.CASCADE,
+        related_name='feedback_responses',
+        help_text="The InfoBot query this feedback is for"
+    )
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='infobot_feedback',
+        help_text="Student who provided feedback"
+    )
+    feedback_type = models.CharField(
+        max_length=20,
+        choices=FEEDBACK_CHOICES,
+        help_text="Whether student found answer helpful or not"
+    )
+    created_at = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        unique_together = ['query', 'user']
+        verbose_name = 'InfoBot Feedback'
+        verbose_name_plural = 'InfoBot Feedback'
+
+    def __str__(self):
+        return f"{self.user.username} - {self.get_feedback_type_display()} - Query {self.query.id}"

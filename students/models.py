@@ -103,6 +103,41 @@ class QuestionAttempt(models.Model):
         super().save(*args, **kwargs)
 
 
+class QuestionFeedback(models.Model):
+    """Track student feedback (thumbs up/down) on question grading/feedback."""
+    FEEDBACK_CHOICES = [
+        ('helpful', 'Thumbs Up'),
+        ('not_helpful', 'Thumbs Down'),
+    ]
+
+    attempt = models.ForeignKey(
+        QuestionAttempt,
+        on_delete=models.CASCADE,
+        related_name='feedback_responses',
+        help_text="The question attempt this feedback is for"
+    )
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='question_feedback',
+        help_text="Student who provided feedback"
+    )
+    feedback_type = models.CharField(
+        max_length=20,
+        choices=FEEDBACK_CHOICES,
+        help_text="Whether student found feedback helpful or not"
+    )
+    created_at = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        unique_together = ['attempt', 'user']
+        verbose_name = 'Question Feedback'
+        verbose_name_plural = 'Question Feedback'
+
+    def __str__(self):
+        return f"{self.user.username} - {self.get_feedback_type_display()} - Attempt {self.attempt.id}"
+
+
 # -------------------------------------------------------------------------
 # REGISTRATION CODE
 # -------------------------------------------------------------------------
