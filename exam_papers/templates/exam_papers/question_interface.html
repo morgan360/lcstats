@@ -987,10 +987,21 @@ function getCsrfToken() {
 }
 
 function submitInfoBotFeedback(feedbackType) {
+    console.log('submitInfoBotFeedback called with:', feedbackType);
+    console.log('Current query ID:', window.currentInfoBotQueryId);
+    console.log('CSRF Token:', getCsrfToken());
+
     if (!window.currentInfoBotQueryId) {
         console.error('No query ID available for feedback');
+        alert('No query ID available. Please ask a question first.');
         return;
     }
+
+    const requestData = {
+        query_id: window.currentInfoBotQueryId,
+        feedback_type: feedbackType
+    };
+    console.log('Sending request:', requestData);
 
     fetch('/interactive/info-bot/feedback/', {
         method: 'POST',
@@ -998,13 +1009,14 @@ function submitInfoBotFeedback(feedbackType) {
             'Content-Type': 'application/json',
             'X-CSRFToken': getCsrfToken()
         },
-        body: JSON.stringify({
-            query_id: window.currentInfoBotQueryId,
-            feedback_type: feedbackType
-        })
+        body: JSON.stringify(requestData)
     })
-    .then(response => response.json())
+    .then(response => {
+        console.log('Response status:', response.status);
+        return response.json();
+    })
     .then(data => {
+        console.log('Response data:', data);
         if (data.success) {
             // Hide buttons
             const feedbackDiv = document.getElementById('exam-infobot-feedback');
@@ -1013,12 +1025,12 @@ function submitInfoBotFeedback(feedbackType) {
             document.getElementById('exam-infobot-feedback-message').style.display = 'inline';
         } else {
             console.error('Feedback submission failed:', data);
-            alert('Failed to submit feedback. Please try again.');
+            alert('Failed to submit feedback: ' + (data.error || 'Unknown error'));
         }
     })
     .catch(error => {
         console.error('Feedback submission error:', error);
-        alert('An error occurred while submitting feedback.');
+        alert('An error occurred while submitting feedback: ' + error.message);
     });
 }
 </script>
