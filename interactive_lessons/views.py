@@ -369,8 +369,9 @@ def section_question_view(request, topic_slug, section_slug, number):
                 completed_parts.add(part.id)
 
                 # --- Save attempt for progress tracking ---
+                attempt_id = None
                 try:
-                    QuestionAttempt.objects.create(
+                    attempt = QuestionAttempt.objects.create(
                         student=request.user.studentprofile,
                         question=part.question,
                         question_part=part,
@@ -378,6 +379,7 @@ def section_question_view(request, topic_slug, section_slug, number):
                         score_awarded=result.get("score", 0),
                         is_correct=result.get("is_correct", False),
                     )
+                    attempt_id = attempt.id
                 except Exception as e:
                     print(f"[Progress Tracking Error] {e}")
 
@@ -388,6 +390,7 @@ def section_question_view(request, topic_slug, section_slug, number):
                         "score": result.get("score", 0),
                         "feedback": result.get("feedback", "No feedback generated."),
                         "hint": result.get("hint", ""),
+                        "attempt_id": attempt_id,
                     })
 
         # --- Handle "Next" button ---
@@ -529,8 +532,9 @@ def question_view(request, topic_id, number):
                 completed_parts.add(part.id)
 
                 # --- Save attempt for progress tracking ---
+                attempt_id = None
                 try:
-                    QuestionAttempt.objects.create(
+                    attempt = QuestionAttempt.objects.create(
                         student=request.user.studentprofile,
                         question=part.question,
                         question_part=part,
@@ -538,6 +542,7 @@ def question_view(request, topic_id, number):
                         score_awarded=result.get("score", 0),
                         is_correct=result.get("is_correct", False),
                     )
+                    attempt_id = attempt.id
                 except Exception as e:
                     print(f"[Progress Tracking Error] {e}")
 
@@ -548,6 +553,7 @@ def question_view(request, topic_id, number):
                         "score": result.get("score", 0),
                         "feedback": result.get("feedback", "No feedback generated."),
                         "hint": result.get("hint", ""),
+                        "attempt_id": attempt_id,
                     })
 
         # --- Handle "Next" button ---

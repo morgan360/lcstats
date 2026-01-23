@@ -1,9 +1,11 @@
-from django.shortcuts import render, redirect
+from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.views import LogoutView
 from django.db.models import Avg, Count, Q
 from django.contrib import messages
 from django.utils import timezone
+from django.http import JsonResponse
+from django.views.decorators.http import require_POST
 from .models import StudentProfile, RegistrationCode
 from .forms import SignupFormWithCode
 
@@ -121,3 +123,37 @@ class LogoutViewAllowGet(LogoutView):
         next_page = resolve_url(next_page)
 
         return HttpResponseRedirect(next_page)
+
+
+@login_required
+@require_POST
+def question_attempt_feedback(request, attempt_id):
+    """Submit feedback (thumbs up/down) for a question attempt's grading feedback."""
+    import json
+    from .models import QuestionFeedback, QuestionAttempt
+
+    try:
+        data = json.loads(request.body)
+        feedback_type = data.get("feedback_type")  # 'helpful' or 'not_helpful'
+
+        if feedback_type not in ['helpful', 'not_helpful']:
+            return JsonResponse({"success": False, "error": "Invalid feedback type"}, status=400)
+
+        # Get the attempt and verify it belongs to the current user
+        attempt = get_object_or_404(QuestionAttempt, id=attempt_id, student__user=request.user)
+
+        # Create or update feedback
+        feedback, created = QuestionFeedback.objects.update_or_create(
+            attempt=attempt,
+            user=request.user,
+            defaults={'feedback_type': feedback_type}
+        )
+
+        return JsonResponse({
+            "success": True,
+            "message": "Thanks for your feedback!",
+            "feedback_type": feedback_type
+        })
+    except Exception as e:
+        print(f"[Question Attempt Feedback Error] {e}")
+        return JsonResponse({"success": False, "error": str(e)}, status=500)

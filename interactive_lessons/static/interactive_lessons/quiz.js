@@ -95,6 +95,25 @@ document.addEventListener("DOMContentLoaded", () => {
               </div>
             `;
           }
+
+          // Store attempt ID and show feedback buttons
+          if (data.attempt_id) {
+            // Store attempt ID in a data attribute
+            feedbackBox.dataset.attemptId = data.attempt_id;
+
+            // Show feedback buttons
+            const questionFeedbackDiv = document.getElementById(`question-feedback-${partId}`);
+            if (questionFeedbackDiv) {
+              questionFeedbackDiv.classList.remove('hidden');
+              // Reset feedback message
+              const feedbackMessage = document.getElementById(`question-feedback-message-${partId}`);
+              if (feedbackMessage) {
+                feedbackMessage.style.display = 'none';
+              }
+              // Show buttons again
+              questionFeedbackDiv.querySelectorAll('button').forEach(btn => btn.style.display = 'inline-flex');
+            }
+          }
         } else {
           feedbackBox.innerHTML = "<div style='color:red;'>Error checking answer.</div>";
         }
@@ -268,3 +287,79 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }, 100); // Wait 100ms for DOM to be fully ready
 });
+
+// ============================================================================
+// Question Feedback Submission (global function for onclick handlers)
+// ============================================================================
+function submitQuestionFeedback(partId, feedbackType) {
+  console.log('submitQuestionFeedback called:', { partId, feedbackType });
+
+  // Get the attempt ID from the feedback box data attribute
+  const feedbackBox = document.getElementById(`feedback-${partId}`);
+  if (!feedbackBox || !feedbackBox.dataset.attemptId) {
+    console.error('No attempt ID found for part', partId);
+    alert('Unable to submit feedback. Please try answering the question first.');
+    return;
+  }
+
+  const attemptId = feedbackBox.dataset.attemptId;
+  console.log('Attempt ID:', attemptId);
+
+  // Disable buttons immediately
+  const questionFeedbackDiv = document.getElementById(`question-feedback-${partId}`);
+  const buttons = questionFeedbackDiv.querySelectorAll('button');
+  buttons.forEach(btn => btn.disabled = true);
+
+  // Helper to get CSRF token from cookie
+  function getCsrfToken() {
+    const name = 'csrftoken';
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+      const cookies = document.cookie.split(';');
+      for (let i = 0; i < cookies.length; i++) {
+        const cookie = cookies[i].trim();
+        if (cookie.substring(0, name.length + 1) === (name + '=')) {
+          cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+          break;
+        }
+      }
+    }
+    return cookieValue;
+  }
+
+  // Send feedback to server
+  fetch(`/students/question-attempt/${attemptId}/feedback/`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-CSRFToken': getCsrfToken()
+    },
+    body: JSON.stringify({
+      feedback_type: feedbackType
+    })
+  })
+  .then(response => response.json())
+  .then(data => {
+    console.log('Feedback response:', data);
+    if (data.success) {
+      // Hide buttons
+      buttons.forEach(btn => btn.style.display = 'none');
+      // Show thank you message
+      const feedbackMessage = document.getElementById(`question-feedback-message-${partId}`);
+      if (feedbackMessage) {
+        feedbackMessage.style.display = 'inline';
+      }
+    } else {
+      console.error('Feedback submission failed:', data);
+      // Re-enable buttons
+      buttons.forEach(btn => btn.disabled = false);
+      alert('Failed to submit feedback: ' + (data.error || 'Unknown error'));
+    }
+  })
+  .catch(error => {
+    console.error('Feedback submission error:', error);
+    // Re-enable buttons
+    buttons.forEach(btn => btn.disabled = false);
+    alert('An error occurred while submitting feedback.');
+  });
+}
