@@ -39,8 +39,8 @@
             <span class="timer-display" id="suggested-timer-display">{{ question.suggested_time_minutes }}:00</span>
             {% if time_remaining is None %}
             <div class="flex gap-2 ml-4">
-                <button class="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white text-sm font-semibold rounded-md transition-all duration-200 hover:-translate-y-0.5" onclick="exitPractice()">
-                    🚪 Exit
+                <button class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-bold rounded-lg transition-all duration-200 hover:-translate-y-0.5 shadow-md" onclick="exitPractice()">
+                    🚪 Exit Question
                 </button>
             </div>
             {% endif %}
