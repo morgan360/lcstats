@@ -969,6 +969,23 @@ document.addEventListener('DOMContentLoaded', function() {
 // ============================================================================
 // InfoBot Feedback Submission
 // ============================================================================
+// Helper function to get CSRF token from cookie
+function getCsrfToken() {
+    const name = 'csrftoken';
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
 function submitInfoBotFeedback(feedbackType) {
     if (!window.currentInfoBotQueryId) {
         console.error('No query ID available for feedback');
@@ -979,7 +996,7 @@ function submitInfoBotFeedback(feedbackType) {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
-            'X-CSRFToken': '{{ csrf_token }}'
+            'X-CSRFToken': getCsrfToken()
         },
         body: JSON.stringify({
             query_id: window.currentInfoBotQueryId,
@@ -994,9 +1011,15 @@ function submitInfoBotFeedback(feedbackType) {
             feedbackDiv.querySelectorAll('button').forEach(btn => btn.style.display = 'none');
             // Show thank you message
             document.getElementById('exam-infobot-feedback-message').style.display = 'inline';
+        } else {
+            console.error('Feedback submission failed:', data);
+            alert('Failed to submit feedback. Please try again.');
         }
     })
-    .catch(error => console.error('Feedback submission error:', error));
+    .catch(error => {
+        console.error('Feedback submission error:', error);
+        alert('An error occurred while submitting feedback.');
+    });
 }
 </script>
 {% endblock %}
