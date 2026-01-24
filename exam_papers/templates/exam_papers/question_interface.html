@@ -10,11 +10,33 @@
         <div class="timer-content">
             <span class="timer-label">⏱️ Exam Time Remaining:</span>
             <span class="timer-display" id="timer-display">Loading...</span>
-            <div class="flex gap-2 ml-4">
-                <button class="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-md transition-all duration-200 hover:-translate-y-0.5" id="pause-btn" onclick="togglePause()">
+            <div style="display: flex; gap: 8px; margin-left: 20px;">
+                <button id="pause-btn" onclick="togglePause()" style="
+                    padding: 6px 16px !important;
+                    background: #007bff !important;
+                    color: white !important;
+                    font-weight: 600 !important;
+                    font-size: 14px !important;
+                    border-radius: 6px !important;
+                    border: none !important;
+                    cursor: pointer !important;
+                    box-shadow: 0 2px 4px rgba(0,0,0,0.1) !important;
+                    transition: all 0.2s !important;
+                " onmouseover="this.style.background='#0056b3'" onmouseout="this.style.background='#007bff'">
                     <span id="pause-icon">⏸️ Pause</span>
                 </button>
-                <button class="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white text-sm font-semibold rounded-md transition-all duration-200 hover:-translate-y-0.5" onclick="exitExam()">
+                <button onclick="exitExam()" style="
+                    padding: 6px 16px !important;
+                    background: #dc3545 !important;
+                    color: white !important;
+                    font-weight: 600 !important;
+                    font-size: 14px !important;
+                    border-radius: 6px !important;
+                    border: none !important;
+                    cursor: pointer !important;
+                    box-shadow: 0 2px 4px rgba(0,0,0,0.1) !important;
+                    transition: all 0.2s !important;
+                " onmouseover="this.style.background='#c82333'" onmouseout="this.style.background='#dc3545'">
                     🚪 Exit
                 </button>
             </div>
