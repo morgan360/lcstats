@@ -561,5 +561,5 @@ def exit_exam(request, attempt_id):
 
     return JsonResponse({
         'success': True,
-        'redirect_url': f'/exam-papers/results/{attempt.id}/'
+        'redirect_url': f'/exam-papers/attempt/{attempt.id}/results/'
     })
