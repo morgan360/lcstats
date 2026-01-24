@@ -38,7 +38,20 @@
             <span class="timer-label">⏱️ Question Suggested Time:</span>
             <span class="timer-display" id="suggested-timer-display">{{ question.suggested_time_minutes }}:00</span>
             {% if time_remaining is None %}
-            <button class="px-6 py-2.5 bg-red-600 hover:bg-red-700 text-white text-base font-bold rounded-lg transition-all duration-200 hover:-translate-y-0.5 shadow-lg ml-6" onclick="exitPractice()" style="min-width: 140px;">
+            <button onclick="exitPractice()" style="
+                padding: 10px 24px !important;
+                background: #dc3545 !important;
+                color: white !important;
+                font-weight: bold !important;
+                font-size: 16px !important;
+                border-radius: 8px !important;
+                border: none !important;
+                cursor: pointer !important;
+                box-shadow: 0 4px 6px rgba(0,0,0,0.1) !important;
+                margin-left: 24px !important;
+                min-width: 150px !important;
+                transition: all 0.2s !important;
+            " onmouseover="this.style.background='#c82333'" onmouseout="this.style.background='#dc3545'">
                 🚪 Exit Question
             </button>
             {% endif %}
