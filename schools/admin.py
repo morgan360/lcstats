@@ -176,8 +176,14 @@ class SchoolAdmin(admin.ModelAdmin):
 
                         # Generate email body
                         if use_template:
-                            body_html = render_to_string('schools/emails/initial_outreach.html', context)
-                            body_text = render_to_string('schools/emails/initial_outreach.txt', context)
+                            # Select template based on email type
+                            if email_type == 'follow_up':
+                                template_name = 'follow_up'
+                            else:
+                                template_name = 'initial_outreach'
+
+                            body_html = render_to_string(f'schools/emails/{template_name}.html', context)
+                            body_text = render_to_string(f'schools/emails/{template_name}.txt', context)
                         else:
                             body_text = custom_message
                             body_html = None

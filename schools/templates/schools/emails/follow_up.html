@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .header {
+            background-color: #2c3e50;
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+        .content {
+            padding: 20px;
+            background-color: #f9f9f9;
+        }
+        .content h3 {
+            color: #2c3e50;
+            margin-top: 20px;
+        }
+        .content ul {
+            margin: 10px 0;
+        }
+        .content li {
+            margin: 8px 0;
+        }
+        .urgent-box {
+            background-color: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 15px;
+            margin: 20px 0;
+        }
+        .cta-box {
+            background-color: #e8f4f8;
+            border-left: 4px solid #3498db;
+            padding: 15px;
+            margin: 20px 0;
+            text-align: center;
+        }
+        .cta-button {
+            display: inline-block;
+            background-color: #3498db;
+            color: white;
+            padding: 12px 30px;
+            text-decoration: none;
+            border-radius: 5px;
+            font-weight: bold;
+            margin-top: 10px;
+        }
+        .footer {
+            padding: 20px;
+            text-align: center;
+            font-size: 12px;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>NumScoil</h1>
+            <h2 style="margin-top: 5px; font-weight: normal;">Final Reminder - Offer Expires 31 Jan</h2>
+        </div>
+
+        <div class="content">
+            <p>Dear {{ principal_name }},</p>
+
+            <p>I hope this email finds you well. I wanted to follow up on my previous email about offering your school <strong>4 complimentary student places</strong> on NumScoil, our AI-powered Leaving Cert Honours Maths tutor.</p>
+
+            <p>I understand how busy this time of year is for schools. However, I wanted to reach out one final time as this offer expires on <strong>31 January</strong> (just a few days away).</p>
+
+            <div class="urgent-box">
+                <h3 style="margin-top: 0; color: #856404;">Quick Reminder of What's Included:</h3>
+                <ul style="margin-bottom: 0;">
+                    <li><strong>4 free student accounts</strong> (valid until June LC exam)</li>
+                    <li><strong>1 teacher dashboard account</strong></li>
+                    <li><strong>Timed exam papers, flashcards, AI grading, and 24/7 AI tutor chat</strong></li>
+                    <li><strong>No payment, no credit card</strong> - only a brief feedback form at the end</li>
+                </ul>
+            </div>
+
+            <div class="cta-box">
+                <p style="margin-top: 0; font-size: 16px; font-weight: bold; color: #2c3e50;">To claim your school's places:</p>
+                <p style="margin-bottom: 0;">Simply reply to this email and I'll send you the registration codes immediately.</p>
+                <a href="mailto:admin@numscoil.ie?subject=NumScoil Registration - {{ school_name }}" class="cta-button">Reply to Register</a>
+            </div>
+
+            <p>If you're not interested or this isn't the right fit for {{ school_name }}, no problem at all - just let me know and I won't follow up further.</p>
+
+            <p>Thank you for your time.</p>
+
+            <p>Kind regards,</p>
+            <p><strong>Morgan McKnight</strong><br>
+            NumScoil<br>
+            Email: <a href="mailto:admin@numscoil.ie">admin@numscoil.ie</a><br>
+            Website: <a href="https://www.numscoil.ie">www.numscoil.ie</a></p>
+        </div>
+
+        <div class="footer">
+            <p>This is a follow-up to our previous email.</p>
+            <p>If you would prefer not to receive further information, please reply to let us know.</p>
+        </div>
+    </div>
+</body>
+</html>

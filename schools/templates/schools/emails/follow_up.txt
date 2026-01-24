@@ -1,0 +1,30 @@
+Final reminder: 4 free NumScoil places for {{ school_name }} - offer expires 31 Jan
+
+Dear {{ principal_name }},
+
+I hope this email finds you well. I wanted to follow up on my previous email about offering your school 4 complimentary student places on NumScoil, our AI-powered Leaving Cert Honours Maths tutor.
+
+I understand how busy this time of year is for schools. However, I wanted to reach out one final time as this offer expires on 31 January (just a few days away).
+
+QUICK REMINDER OF WHAT'S INCLUDED:
+
+• 4 free student accounts (valid until June LC exam)
+• 1 teacher dashboard account
+• Timed exam papers, flashcards, AI grading, and 24/7 AI tutor chat
+• No payment, no credit card - only a brief feedback form at the end
+
+TO CLAIM YOUR SCHOOL'S PLACES, simply reply to this email and I'll send you the registration codes immediately.
+
+If you're not interested or this isn't the right fit for {{ school_name }}, no problem at all - just let me know and I won't follow up further.
+
+Thank you for your time.
+
+Kind regards,
+
+Morgan McKnight
+NumScoil
+Email: admin@numscoil.ie
+Website: www.numscoil.ie
+
+---
+This is a follow-up to our previous email. If you would prefer not to receive further information, please reply to let us know.
