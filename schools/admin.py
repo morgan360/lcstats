@@ -177,11 +177,13 @@ class SchoolAdmin(admin.ModelAdmin):
                         # Generate email body
                         if use_template:
                             # Select template based on email type
+                            print(f"DEBUG: email_type = '{email_type}'")  # Debug output
                             if email_type == 'follow_up':
                                 template_name = 'follow_up'
                             else:
                                 template_name = 'initial_outreach'
 
+                            print(f"DEBUG: template_name = '{template_name}'")  # Debug output
                             body_html = render_to_string(f'schools/emails/{template_name}.html', context)
                             body_text = render_to_string(f'schools/emails/{template_name}.txt', context)
                         else:
