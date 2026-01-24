@@ -39,20 +39,19 @@
             <span class="timer-display" id="suggested-timer-display">{{ question.suggested_time_minutes }}:00</span>
             {% if time_remaining is None %}
             <button onclick="exitPractice()" style="
-                padding: 10px 24px !important;
+                padding: 6px 16px !important;
                 background: #dc3545 !important;
                 color: white !important;
-                font-weight: bold !important;
-                font-size: 16px !important;
-                border-radius: 8px !important;
+                font-weight: 600 !important;
+                font-size: 14px !important;
+                border-radius: 6px !important;
                 border: none !important;
                 cursor: pointer !important;
-                box-shadow: 0 4px 6px rgba(0,0,0,0.1) !important;
-                margin-left: 24px !important;
-                min-width: 150px !important;
+                box-shadow: 0 2px 4px rgba(0,0,0,0.1) !important;
+                margin-left: 20px !important;
                 transition: all 0.2s !important;
             " onmouseover="this.style.background='#c82333'" onmouseout="this.style.background='#dc3545'">
-                🚪 Exit Question
+                🚪 Exit
             </button>
             {% endif %}
         </div>
