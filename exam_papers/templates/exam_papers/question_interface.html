@@ -38,25 +38,50 @@
             <span class="timer-label">⏱️ Question Suggested Time:</span>
             <span class="timer-display" id="suggested-timer-display">{{ question.suggested_time_minutes }}:00</span>
             {% if time_remaining is None %}
-            <button onclick="exitPractice()" style="
-                padding: 6px 16px !important;
-                background: #dc3545 !important;
-                color: white !important;
-                font-weight: 600 !important;
-                font-size: 14px !important;
-                border-radius: 6px !important;
-                border: none !important;
-                cursor: pointer !important;
-                box-shadow: 0 2px 4px rgba(0,0,0,0.1) !important;
-                margin-left: 20px !important;
-                transition: all 0.2s !important;
-            " onmouseover="this.style.background='#c82333'" onmouseout="this.style.background='#dc3545'">
-                🚪 Exit
-            </button>
+            <div style="display: flex; gap: 8px; margin-left: 20px;">
+                <button id="suggested-pause-btn" onclick="toggleSuggestedPause()" style="
+                    padding: 6px 16px !important;
+                    background: #007bff !important;
+                    color: white !important;
+                    font-weight: 600 !important;
+                    font-size: 14px !important;
+                    border-radius: 6px !important;
+                    border: none !important;
+                    cursor: pointer !important;
+                    box-shadow: 0 2px 4px rgba(0,0,0,0.1) !important;
+                    transition: all 0.2s !important;
+                " onmouseover="this.style.background='#0056b3'" onmouseout="if(!window.suggestedTimerPaused) this.style.background='#007bff'">
+                    <span id="suggested-pause-icon">⏸️ Pause</span>
+                </button>
+                <button onclick="exitPractice()" style="
+                    padding: 6px 16px !important;
+                    background: #dc3545 !important;
+                    color: white !important;
+                    font-weight: 600 !important;
+                    font-size: 14px !important;
+                    border-radius: 6px !important;
+                    border: none !important;
+                    cursor: pointer !important;
+                    box-shadow: 0 2px 4px rgba(0,0,0,0.1) !important;
+                    transition: all 0.2s !important;
+                " onmouseover="this.style.background='#c82333'" onmouseout="this.style.background='#dc3545'">
+                    🚪 Exit
+                </button>
+            </div>
             {% endif %}
         </div>
         <div class="timer-progress suggested" id="suggested-timer-progress" style="width: 100%"></div>
     </div>
+
+    <!-- Pause Overlay for Practice Mode -->
+    {% if time_remaining is None and question.suggested_time_minutes %}
+    <div id="suggested-pause-overlay" class="fixed inset-0 bg-black bg-opacity-80 z-[9999] hidden flex-col items-center justify-center">
+        <div class="text-white text-5xl font-bold mb-8 animate-pulse">⏸️ PAUSED</div>
+        <button onclick="toggleSuggestedPause()" class="px-8 py-4 bg-green-600 hover:bg-green-700 text-white text-xl font-bold rounded-lg transition-all duration-200">
+            ▶️ Resume
+        </button>
+    </div>
+    {% endif %}
     {% endif %}
 
     <!-- Exam Advice (only show for question_practice mode) -->
@@ -813,6 +838,9 @@ let suggestedTimeRemaining = {{ question.suggested_time_minutes }} * 60; // Conv
 const suggestedTimerDisplay = document.getElementById('suggested-timer-display');
 const suggestedTimerProgress = document.getElementById('suggested-timer-progress');
 const totalSuggestedTime = {{ question.suggested_time_minutes }} * 60;
+let suggestedTimerPaused = false;
+let suggestedTimerInterval = null;
+window.suggestedTimerPaused = false;
 
 function updateSuggestedTimer() {
     const minutes = Math.floor(suggestedTimeRemaining / 60);
@@ -835,9 +863,41 @@ function updateSuggestedTimer() {
     }
 }
 
+// Pause/Resume function for suggested timer
+function toggleSuggestedPause() {
+    const overlay = document.getElementById('suggested-pause-overlay');
+    const pauseIcon = document.getElementById('suggested-pause-icon');
+    const pauseBtn = document.getElementById('suggested-pause-btn');
+
+    if (suggestedTimerPaused) {
+        // Resume
+        suggestedTimerPaused = false;
+        window.suggestedTimerPaused = false;
+        overlay.classList.remove('flex');
+        overlay.classList.add('hidden');
+        pauseIcon.textContent = '⏸️ Pause';
+        pauseBtn.style.background = '#007bff';
+
+        // Restart timer
+        if (suggestedTimerInterval) clearInterval(suggestedTimerInterval);
+        suggestedTimerInterval = setInterval(updateSuggestedTimer, 1000);
+    } else {
+        // Pause
+        suggestedTimerPaused = true;
+        window.suggestedTimerPaused = true;
+        overlay.classList.remove('hidden');
+        overlay.classList.add('flex');
+        pauseIcon.textContent = '▶️ Resume';
+        pauseBtn.style.background = '#28a745';
+
+        // Stop timer
+        if (suggestedTimerInterval) clearInterval(suggestedTimerInterval);
+    }
+}
+
 // Update immediately on load, then every second
 updateSuggestedTimer();
-setInterval(updateSuggestedTimer, 1000);
+suggestedTimerInterval = setInterval(updateSuggestedTimer, 1000);
 {% endif %}
 
 // Exit practice mode function
