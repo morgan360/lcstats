@@ -12,11 +12,7 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.AddField(
-            model_name='questionpart',
-            name='solution_unlock_after_attempts',
-            field=models.PositiveIntegerField(default=2, help_text='Number of attempts before solution becomes visible (0 = always visible, 2 = default for production)'),
-        ),
+        # Note: solution_unlock_after_attempts already added by 0025, so we skip that
         migrations.AddField(
             model_name='topic',
             name='subject',
