@@ -14,7 +14,7 @@ def seed_subjects(apps, schema_editor):
             'name': 'Maths',
             'display_order': 1,
             'is_active': True,
-            'icon': '📐',
+            'icon': '',
             'description': 'Leaving Certificate Higher Level Mathematics - Interactive lessons, exam papers, and practice questions.'
         }
     )
@@ -26,7 +26,7 @@ def seed_subjects(apps, schema_editor):
             'name': 'Physics',
             'display_order': 2,
             'is_active': True,
-            'icon': '⚡',
+            'icon': '',
             'description': 'Leaving Certificate Higher Level Physics - Master concepts through interactive simulations and exam practice.'
         }
     )
