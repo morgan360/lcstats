@@ -12,9 +12,16 @@ from .models import Topic, Section, Question, QuestionPart, StudentInquiry
 
 @admin.register(Topic)
 class TopicAdmin(admin.ModelAdmin):
-    list_display = ["name", "slug"]
+    list_display = ["name", "subject", "slug"]
+    list_filter = ["subject"]
     search_fields = ["name"]
     readonly_fields = ["slug"]
+
+    fieldsets = (
+        ("Basic Information", {
+            "fields": ("subject", "name", "slug")
+        }),
+    )
 
 
 # --- Section Admin ------------------------------------------------------------
@@ -23,9 +30,9 @@ class TopicAdmin(admin.ModelAdmin):
 class SectionAdmin(admin.ModelAdmin):
     list_display = ["name", "topic", "order", "question_count"]
     list_editable = ["order"]
-    list_filter = ["topic"]
+    list_filter = ["topic__subject", "topic"]
     search_fields = ["name", "topic__name"]
-    ordering = ["topic__name", "order"]
+    ordering = ["topic__subject", "topic__name", "order"]
     readonly_fields = ["slug", "question_count"]
 
     fieldsets = (

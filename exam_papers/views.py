@@ -20,7 +20,15 @@ logger = logging.getLogger(__name__)
 @login_required
 def paper_list(request):
     """Display list of all available exam papers organized by year"""
-    papers = ExamPaper.objects.filter(is_published=True).order_by('-year', 'paper_type')
+    # Filter by current subject from middleware
+    current_subject = getattr(request, 'current_subject', None)
+    if current_subject:
+        papers = ExamPaper.objects.filter(
+            is_published=True,
+            subject=current_subject
+        ).order_by('-year', 'paper_type')
+    else:
+        papers = ExamPaper.objects.filter(is_published=True).order_by('-year', 'paper_type')
 
     # Attach attempt data to each paper
     for paper in papers:

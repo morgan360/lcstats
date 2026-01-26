@@ -98,6 +98,7 @@ INSTALLED_APPS = [
     'allauth.account',
     'allauth.socialaccount',
     # My Apps
+    'core',  # Core models (Subject, etc.)
     'home',
     'notes',
     'chat',
@@ -122,6 +123,7 @@ MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'lcstats.middleware.WWWRedirectMiddleware',  # Redirect non-www to www
     'django.contrib.sessions.middleware.SessionMiddleware',
+    'core.middleware.SubjectMiddleware',  # Track current subject (Maths/Physics)
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',

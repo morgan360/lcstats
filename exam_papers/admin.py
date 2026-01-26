@@ -39,14 +39,14 @@ class ExamQuestionInline(admin.TabularInline):
 
 @admin.register(ExamPaper)
 class ExamPaperAdmin(admin.ModelAdmin):
-    list_display = ('title', 'year', 'paper_type', 'is_deferred', 'total_marks', 'time_limit_minutes', 'is_published', 'pdf_link', 'created_at')
-    list_filter = ('year', 'paper_type', 'is_deferred', 'is_published')
+    list_display = ('title', 'subject', 'year', 'paper_type', 'is_deferred', 'total_marks', 'time_limit_minutes', 'is_published', 'pdf_link', 'created_at')
+    list_filter = ('subject', 'year', 'paper_type', 'is_deferred', 'is_published')
     search_fields = ('title', 'year')
     prepopulated_fields = {'slug': ('year', 'paper_type')}
 
     fieldsets = (
         ('Basic Information', {
-            'fields': ('year', 'paper_type', 'is_deferred', 'title', 'slug', 'is_published')
+            'fields': ('subject', 'year', 'paper_type', 'is_deferred', 'title', 'slug', 'is_published')
         }),
         ('Exam Details', {
             'fields': ('time_limit_minutes', 'total_marks', 'instructions')
@@ -182,7 +182,7 @@ class ExamPaperAdmin(admin.ModelAdmin):
 @admin.register(ExamQuestion)
 class ExamQuestionAdmin(admin.ModelAdmin):
     list_display = ('__str__', 'question_number', 'topic', 'total_marks', 'suggested_time_minutes', 'has_image', 'exam_paper')
-    list_filter = ('exam_paper__year', 'exam_paper__paper_type', 'topic')
+    list_filter = ('exam_paper__subject', 'exam_paper__year', 'exam_paper__paper_type', 'topic')
     search_fields = ('title', 'question_number')
 
     fieldsets = (
@@ -237,7 +237,7 @@ class ExamQuestionAttemptInline(admin.TabularInline):
 @admin.register(ExamAttempt)
 class ExamAttemptAdmin(admin.ModelAdmin):
     list_display = ('student', 'exam_paper', 'attempt_mode', 'percentage_score', 'is_completed', 'started_at')
-    list_filter = ('attempt_mode', 'is_completed', 'is_submitted', 'exam_paper__year', 'exam_paper__paper_type')
+    list_filter = ('exam_paper__subject', 'attempt_mode', 'is_completed', 'is_submitted', 'exam_paper__year', 'exam_paper__paper_type')
     search_fields = ('student__username', 'student__email', 'exam_paper__title')
     date_hierarchy = 'started_at'
 

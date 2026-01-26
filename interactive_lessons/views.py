@@ -213,7 +213,14 @@ def select_topic(request):
     from exam_papers.models import ExamQuestion
     from quickkicks.models import QuickKick
     from flashcards.models import FlashcardSet
-    topics = Topic.objects.all().order_by("name")
+
+    # Filter topics by current subject from middleware
+    current_subject = getattr(request, 'current_subject', None)
+    if current_subject:
+        topics = Topic.objects.filter(subject=current_subject).order_by("name")
+    else:
+        # Fallback to all topics if no subject set
+        topics = Topic.objects.all().order_by("name")
     # Annotate topics with note counts, question counts, cheat sheet counts, and revision module info
     topics_with_notes = []
     for topic in topics:

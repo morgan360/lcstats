@@ -6,6 +6,14 @@ from interactive_lessons.utils.katex_sanitizer import sanitize_katex
 
 
 class Topic(models.Model):
+    subject = models.ForeignKey(
+        'core.Subject',
+        on_delete=models.CASCADE,
+        related_name='topics',
+        null=True,  # Temporary: will assign all existing to Maths, then remove
+        blank=True,
+        help_text="Subject this topic belongs to (Maths, Physics, etc.)"
+    )
     name = models.CharField(max_length=100)
     slug = models.SlugField(unique=True, blank=True)
 

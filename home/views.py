@@ -13,11 +13,18 @@ from .forms import ContactForm
 from .models import NewsItem
 from interactive_lessons.models import Topic, Question
 from students.models import UserSession
+from core.models import Subject
 
 
 def home(request):
     # Get total question count
     total_questions = Question.objects.count()
+
+    # Get all active subjects with topic counts
+    from django.db.models import Count as DBCount
+    subjects = Subject.objects.filter(is_active=True).annotate(
+        topic_count=DBCount('topics')
+    )
 
     # Get topics with their question counts
     topics_with_counts = Topic.objects.annotate(
@@ -54,6 +61,7 @@ def home(request):
             )
 
     context = {
+        'subjects': subjects,
         'total_questions': total_questions,
         'topics_with_counts': topics_with_counts,
         'active_users_count': active_users_count,

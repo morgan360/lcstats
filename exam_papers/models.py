@@ -16,6 +16,14 @@ class ExamPaper(models.Model):
         ('p2', 'Paper 2'),
     ]
 
+    subject = models.ForeignKey(
+        'core.Subject',
+        on_delete=models.CASCADE,
+        related_name='exam_papers',
+        null=True,  # Temporary: will assign all existing to Maths, then remove
+        blank=True,
+        help_text="Subject this exam paper belongs to (Maths, Physics, etc.)"
+    )
     year = models.IntegerField(help_text="Year of the exam (e.g., 2024)")
     paper_type = models.CharField(
         max_length=10,
