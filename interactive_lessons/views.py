@@ -140,7 +140,9 @@ def info_bot(request, topic_slug):
         "- Keep answers brief and focused (2-3 sentences max unless asked to explain)",
         "- DO NOT provide step-by-step solutions unless explicitly asked",
         "- DO NOT work through examples unless asked",
-        "- Use LaTeX math notation with $ for inline math and $$ for display math",
+        "- ALWAYS wrap ALL math expressions in $ delimiters (e.g., $x^2$, $\\frac{1}{x}$, $x^{-2}$)",
+        "- Use $$ for display math on its own line",
+        "- NEVER use parentheses for math - always use $ delimiters",
         "- Be concise and helpful, but don't do their homework"
     ]
 

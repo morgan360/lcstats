@@ -18,12 +18,20 @@ document.addEventListener("DOMContentLoaded", () => {
   document.querySelectorAll(".check-btn").forEach(btn => {
     btn.addEventListener("click", async () => {
       const partId = btn.dataset.part;
-      const mf = document.getElementById("mf-" + partId);
       const feedbackBox = document.getElementById("feedback-" + partId);
 
-      if (!mf) return;
+      // Check for text input (physics/text questions) or math field (math questions)
+      const textInput = document.getElementById("answer-" + partId);
+      const mathField = document.getElementById("mf-" + partId);
 
-      const answer = mf.getValue("latex");
+      let answer = "";
+      if (textInput) {
+        answer = textInput.value;
+      } else if (mathField) {
+        answer = mathField.getValue("latex");
+      } else {
+        return; // No input field found
+      }
 
       // Require an answer
       if (!answer.trim()) {
@@ -207,8 +215,17 @@ document.addEventListener("DOMContentLoaded", () => {
             // Better approach: find the part with a recent answer input
             for (const part of parts) {
               const partId = part.dataset.partId;
+              const textInput = document.getElementById("answer-" + partId);
               const mathField = document.getElementById("mf-" + partId);
-              if (mathField && mathField.getValue("latex").trim()) {
+
+              let hasContent = false;
+              if (textInput && textInput.value.trim()) {
+                hasContent = true;
+              } else if (mathField && mathField.getValue("latex").trim()) {
+                hasContent = true;
+              }
+
+              if (hasContent) {
                 currentPartId = partId;
                 break; // Use the first part with content
               }
@@ -242,6 +259,19 @@ document.addEventListener("DOMContentLoaded", () => {
           if (data.answer) {
             infobotAnswer.innerHTML = data.answer;
             infobotAnswer.style.display = "block";
+
+            // Store query ID for feedback
+            window.currentInfoBotQueryId = data.query_id;
+
+            // Show feedback buttons
+            const feedbackDiv = document.getElementById('infobot-feedback');
+            if (feedbackDiv) {
+              feedbackDiv.style.display = 'block';
+              // Reset feedback message
+              document.getElementById('infobot-feedback-message').style.display = 'none';
+              // Show buttons again
+              feedbackDiv.querySelectorAll('button').forEach(btn => btn.style.display = 'inline-flex');
+            }
 
             // Render KaTeX math in the dynamically inserted content
             if (window.renderMathInElement) {
@@ -358,6 +388,82 @@ function submitQuestionFeedback(partId, feedbackType) {
   })
   .catch(error => {
     console.error('Feedback submission error:', error);
+    // Re-enable buttons
+    buttons.forEach(btn => btn.disabled = false);
+    alert('An error occurred while submitting feedback.');
+  });
+}
+
+// ============================================================================
+// InfoBot (NumSkull) Feedback Submission (global function for onclick handlers)
+// ============================================================================
+function submitInfoBotFeedback(feedbackType) {
+  console.log('submitInfoBotFeedback called:', { feedbackType });
+
+  // Get the query ID stored when answer was received
+  const queryId = window.currentInfoBotQueryId;
+  if (!queryId) {
+    console.error('No InfoBot query ID found');
+    alert('Unable to submit feedback. Please try asking a question first.');
+    return;
+  }
+
+  console.log('Query ID:', queryId);
+
+  // Disable buttons immediately
+  const feedbackDiv = document.getElementById('infobot-feedback');
+  const buttons = feedbackDiv.querySelectorAll('button');
+  buttons.forEach(btn => btn.disabled = true);
+
+  // Helper to get CSRF token from cookie
+  function getCsrfToken() {
+    const name = 'csrftoken';
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+      const cookies = document.cookie.split(';');
+      for (let i = 0; i < cookies.length; i++) {
+        const cookie = cookies[i].trim();
+        if (cookie.substring(0, name.length + 1) === (name + '=')) {
+          cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+          break;
+        }
+      }
+    }
+    return cookieValue;
+  }
+
+  // Send feedback to server
+  fetch('/interactive/info-bot/feedback/', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-CSRFToken': getCsrfToken()
+    },
+    body: JSON.stringify({
+      query_id: queryId,
+      feedback_type: feedbackType
+    })
+  })
+  .then(response => response.json())
+  .then(data => {
+    console.log('InfoBot feedback response:', data);
+    if (data.success) {
+      // Hide buttons
+      buttons.forEach(btn => btn.style.display = 'none');
+      // Show thank you message
+      const feedbackMessage = document.getElementById('infobot-feedback-message');
+      if (feedbackMessage) {
+        feedbackMessage.style.display = 'inline';
+      }
+    } else {
+      console.error('InfoBot feedback submission failed:', data);
+      // Re-enable buttons
+      buttons.forEach(btn => btn.disabled = false);
+      alert('Failed to submit feedback: ' + (data.error || 'Unknown error'));
+    }
+  })
+  .catch(error => {
+    console.error('InfoBot feedback submission error:', error);
     // Re-enable buttons
     buttons.forEach(btn => btn.disabled = false);
     alert('An error occurred while submitting feedback.');

@@ -1088,7 +1088,10 @@ document.addEventListener('DOMContentLoaded', function() {
             const examQuestionId = infobotSection ? infobotSection.dataset.questionId : '';
 
             if (!topicSlug) {
-                throw new Error('Topic slug not found');
+                infobotLoading.style.display = 'none';
+                infobotAnswer.innerHTML = '<div style="color:red;">This question needs a topic assigned before NumSkull can help. Please contact your teacher to link this question to a topic.</div>';
+                infobotAnswer.style.display = 'block';
+                return;
             }
 
             // Try to determine which part the student is currently working on
