@@ -394,12 +394,32 @@ def section_question_view(request, topic_slug, section_slug, number):
 
                 # --- AJAX JSON feedback response ---
                 if request.headers.get("x-requested-with") == "XMLHttpRequest":
+                    # Check if solution should be unlocked after this attempt
+                    attempt_count = QuestionAttempt.objects.filter(
+                        student=request.user.studentprofile,
+                        question_part=part
+                    ).count()
+
+                    has_correct = QuestionAttempt.objects.filter(
+                        student=request.user.studentprofile,
+                        question_part=part,
+                        is_correct=True
+                    ).exists()
+
+                    solution_unlocked = (
+                        part.solution_unlock_after_attempts == 0 or
+                        has_correct or
+                        attempt_count >= part.solution_unlock_after_attempts
+                    )
+
                     return JsonResponse({
                         "is_correct": result.get("is_correct", False),
                         "score": result.get("score", 0),
                         "feedback": result.get("feedback", "No feedback generated."),
                         "hint": result.get("hint", ""),
                         "attempt_id": attempt_id,
+                        "solution_unlocked": solution_unlocked,
+                        "attempt_count": attempt_count,
                     })
 
         # --- Handle "Next" button ---
@@ -557,12 +577,32 @@ def question_view(request, topic_id, number):
 
                 # --- AJAX JSON feedback response ---
                 if request.headers.get("x-requested-with") == "XMLHttpRequest":
+                    # Check if solution should be unlocked after this attempt
+                    attempt_count = QuestionAttempt.objects.filter(
+                        student=request.user.studentprofile,
+                        question_part=part
+                    ).count()
+
+                    has_correct = QuestionAttempt.objects.filter(
+                        student=request.user.studentprofile,
+                        question_part=part,
+                        is_correct=True
+                    ).exists()
+
+                    solution_unlocked = (
+                        part.solution_unlock_after_attempts == 0 or
+                        has_correct or
+                        attempt_count >= part.solution_unlock_after_attempts
+                    )
+
                     return JsonResponse({
                         "is_correct": result.get("is_correct", False),
                         "score": result.get("score", 0),
                         "feedback": result.get("feedback", "No feedback generated."),
                         "hint": result.get("hint", ""),
                         "attempt_id": attempt_id,
+                        "solution_unlocked": solution_unlocked,
+                        "attempt_count": attempt_count,
                     })
 
         # --- Handle "Next" button ---

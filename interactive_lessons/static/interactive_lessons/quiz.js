@@ -122,6 +122,16 @@ document.addEventListener("DOMContentLoaded", () => {
               questionFeedbackDiv.querySelectorAll('button').forEach(btn => btn.style.display = 'inline-flex');
             }
           }
+
+          // Handle solution unlock
+          if (data.solution_unlocked !== undefined) {
+            const solutionContainer = document.querySelector(`#part-${partId}-container .solution-section`);
+            if (solutionContainer && data.solution_unlocked) {
+              // Solution is now unlocked - reload page to show it
+              // We reload because the solution content needs to be rendered with KaTeX
+              location.reload();
+            }
+          }
         } else {
           feedbackBox.innerHTML = "<div style='color:red;'>Error checking answer.</div>";
         }
