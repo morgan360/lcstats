@@ -273,6 +273,12 @@ ACCOUNT_SESSION_REMEMBER = True  # Allow users to choose session persistence
 # ------------------------------------------------------------
 HIJACK_PERMISSION_CHECK = 'hijack.permissions.superusers_only'  # Only superusers can hijack
 HIJACK_LOGOUT_REDIRECT_URL = '/admin/auth/user/'  # Redirect to user list after releasing hijack
-HIJACK_ALLOW_GET_REQUESTS = True  # Allow hijacking via GET requests
 HIJACK_DISPLAY_ADMIN_BUTTON = True  # Show hijack button in admin
 HIJACK_USE_BOOTSTRAP = True  # Use Bootstrap styling for hijack button
+
+# Security: Use POST requests for hijack/release actions in production to avoid CSRF issues
+# GET requests are convenient in dev but can cause CSRF errors when releasing hijack on live site
+if DEBUG:
+    HIJACK_ALLOW_GET_REQUESTS = True  # Allow GET in development for convenience
+else:
+    HIJACK_ALLOW_GET_REQUESTS = False  # Require POST in production for security
