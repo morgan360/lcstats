@@ -8,15 +8,22 @@
 ## Phase 2A: Quick Demo (6-8 Weeks)
 **Goal:** Functional Physics app using existing infrastructure for demo purposes
 
-### Week 1-2: Multi-Subject Architecture
-- [ ] Create `Subject` model in new `core` app
-- [ ] Add migrations for Subject (seed with Maths, Physics)
-- [ ] Add `subject` ForeignKey to Topic model
-- [ ] Add `subject` ForeignKey to ExamPaper model
-- [ ] Update admin to show subject filters
-- [ ] Create homepage subject selector (Maths/Physics cards)
-- [ ] Add subject context to session/middleware
-- [ ] Filter all dashboard queries by current subject
+### Week 1-2: Multi-Subject Architecture ✅ COMPLETED (2026-01-26)
+- [x] Create `Subject` model in new `core` app
+- [x] Add migrations for Subject (seed with Maths, Physics)
+- [x] Add `subject` ForeignKey to Topic model
+- [x] Add `subject` ForeignKey to ExamPaper model
+- [x] Update admin to show subject filters
+- [x] Create homepage subject selector (Maths/Physics cards)
+- [x] Add subject context to session/middleware
+- [x] Filter all dashboard queries by current subject
+
+**Notes:**
+- Deployed to production on PythonAnywhere
+- Removed emoji icons for MySQL utf8 compatibility
+- All 18 existing topics assigned to Maths subject
+- Physics subject ready for content (shows "Coming Soon")
+- Commit: e290f3d6
 
 **Key Files:**
 - `core/models.py` (new)
