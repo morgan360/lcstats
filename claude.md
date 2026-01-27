@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-NumScoil is a Django-based web application providing an AI-powered interactive tutor for Leaving Certificate Honours Maths students. The system combines question-based learning with OpenAI integration for grading, hints, and contextual help.
+NumScoil is a Django-based web application providing an AI-powered interactive tutor for Leaving Certificate Honours students. The system supports **multiple subjects** (currently Maths and Physics) and combines question-based learning with OpenAI integration for grading, hints, and contextual help.
 
 **Tech Stack:**
 - Django 5.2.7 with MySQL backend (database: `lcaim`)
@@ -18,6 +18,14 @@ NumScoil is a Django-based web application providing an AI-powered interactive t
 ### Django Apps Structure
 
 The project follows a modular Django app pattern:
+
+0. **`core/`** - Multi-subject support (NEW - 2026-01-26)
+   - Models: `Subject` (Maths, Physics)
+   - Middleware: `SubjectMiddleware` - tracks current subject in session
+   - All content (Topics, ExamPapers) now has a `subject` ForeignKey
+   - Homepage displays subject selector cards
+   - Session-based subject switching via `?subject=maths` or `?subject=physics`
+   - **IMPORTANT**: All queries must filter by `request.current_subject`
 
 1. **`interactive_lessons/`** - Core question/lesson functionality
    - Models: `Topic`, `Question`, `QuestionPart` (multi-part questions with parts like (a), (b), etc.)
