@@ -129,10 +129,10 @@
                 </div>
             </details>
             {% else %}
-            <div class="mt-4 rounded-md border border-[#ffc107] bg-[#fff3cd] px-4 py-3 text-lg leading-relaxed">
+            <div class="mt-4 rounded-md border border-[#ffc107] bg-[#fff3cd] px-4 py-3 text-lg leading-relaxed" id="solution-locked-{{ part.id }}">
                 <div class="font-semibold text-[#856404]">🔒 Solution Locked</div>
                 <div class="mt-2 text-sm text-[#856404]">
-                    You have made {{ part.attempt_count }} attempt{{ part.attempt_count|pluralize }}.
+                    You have made <span id="attempt-count-{{ part.id }}">{{ part.attempt_count }}</span> attempt<span id="attempt-plural-{{ part.id }}">{{ part.attempt_count|pluralize }}</span>.
                     {% if part.solution_unlock_after_attempts > 0 %}
                         Solution unlocks after {{ part.solution_unlock_after_attempts }} attempt{{ part.solution_unlock_after_attempts|pluralize }} or when you get the correct answer.
                     {% endif %}

@@ -123,14 +123,24 @@ document.addEventListener("DOMContentLoaded", () => {
             }
           }
 
-          // Handle solution unlock
-          if (data.solution_unlocked !== undefined) {
-            const solutionContainer = document.querySelector(`#part-${partId}-container .solution-section`);
-            if (solutionContainer && data.solution_unlocked) {
-              // Solution is now unlocked - reload page to show it
-              // We reload because the solution content needs to be rendered with KaTeX
-              location.reload();
+          // Update attempt count display
+          if (data.attempt_count !== undefined) {
+            const attemptCountSpan = document.getElementById(`attempt-count-${partId}`);
+            const attemptPluralSpan = document.getElementById(`attempt-plural-${partId}`);
+            if (attemptCountSpan) {
+              attemptCountSpan.textContent = data.attempt_count;
             }
+            if (attemptPluralSpan) {
+              // Update plural suffix (empty string for 1, 's' for others)
+              attemptPluralSpan.textContent = data.attempt_count === 1 ? '' : 's';
+            }
+          }
+
+          // Handle solution unlock
+          if (data.solution_unlocked !== undefined && data.solution_unlocked) {
+            // Solution is now unlocked - reload page to show it
+            // We reload because the solution content needs to be rendered with KaTeX
+            location.reload();
           }
         } else {
           feedbackBox.innerHTML = "<div style='color:red;'>Error checking answer.</div>";
