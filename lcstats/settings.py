@@ -74,6 +74,12 @@ if not DEBUG:
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
 
+    # CSRF trusted origins - required for Django 4.0+ with HTTPS
+    CSRF_TRUSTED_ORIGINS = [
+        'https://numscoil.ie',
+        'https://www.numscoil.ie',
+    ]
+
     # CRITICAL: Trust Cloudflare proxy headers for HTTPS detection
     # Cloudflare sends X-Forwarded-Proto: https when user connects via HTTPS
     SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
@@ -258,6 +264,9 @@ ACCOUNT_EMAIL_CONFIRMATION_AUTHENTICATED_REDIRECT_URL = '/students/dashboard/'
 
 # Redirect URLs for allauth
 ACCOUNT_LOGOUT_REDIRECT_URL = '/'
+
+# Session behavior - remember me functionality
+ACCOUNT_SESSION_REMEMBER = True  # Allow users to choose session persistence
 
 # ------------------------------------------------------------
 # Django Hijack Configuration
