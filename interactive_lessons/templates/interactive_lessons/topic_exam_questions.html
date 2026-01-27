@@ -32,7 +32,7 @@
             <!-- Questions List -->
             <div class="questions-list" style="padding: 20px;">
                 {% for question in paper_data.questions %}
-                <div class="question-card" style="border: 1px solid #e0e0e0; border-radius: 8px; padding: 20px; margin-bottom: 15px;">
+                <div id="question-{{ question.id }}" class="question-card" style="border: 1px solid #e0e0e0; border-radius: 8px; padding: 20px; margin-bottom: 15px; scroll-margin-top: 80px;">
                     <div class="question-header-row" style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 15px;">
                         <div style="flex: 1;">
                             <h3 style="margin: 0 0 10px 0; color: #2c3e50; font-size: 1.2em;">
@@ -124,6 +124,30 @@
     transform: translateY(-2px);
     box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
 }
+.question-highlighted {
+    animation: highlight-pulse 2s ease-in-out;
+    border: 2px solid #667eea !important;
+}
+@keyframes highlight-pulse {
+    0%, 100% { background-color: white; }
+    50% { background-color: #e7f3ff; }
+}
 </style>
+
+<script>
+// Highlight the question if navigating from homework with anchor
+document.addEventListener('DOMContentLoaded', function() {
+    if (window.location.hash) {
+        const targetElement = document.querySelector(window.location.hash);
+        if (targetElement) {
+            targetElement.classList.add('question-highlighted');
+            // Smooth scroll to the element
+            setTimeout(() => {
+                targetElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }, 100);
+        }
+    }
+});
+</script>
 
 {% endblock %}

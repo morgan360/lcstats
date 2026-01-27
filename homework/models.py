@@ -337,21 +337,26 @@ class HomeworkTask(models.Model):
         return "Unknown task"
 
     def get_content_url(self):
-        """Return URL to access this content"""
+        """Return URL to access this content with proper subject and item navigation"""
         if self.task_type == 'section' and self.section:
-            # URL to section's first question or section view
-            return f"/interactive/{self.section.topic.slug}/"
+            # Link directly to the section quiz with subject parameter
+            subject_slug = self.section.topic.subject.slug if self.section.topic.subject else 'maths'
+            return f"/interactive/{self.section.topic.slug}/sections/{self.section.slug}/?subject={subject_slug}"
         elif self.task_type == 'exam_question' and self.exam_question:
-            # Link to the topic's exam questions page
+            # Link to the topic's exam questions page with subject and anchor to specific question
             if self.exam_question.topic:
-                return f"/interactive/{self.exam_question.topic.slug}/exam-questions/"
+                subject_slug = self.exam_question.topic.subject.slug if self.exam_question.topic.subject else 'maths'
+                # Add anchor to scroll to the specific question
+                return f"/interactive/{self.exam_question.topic.slug}/exam-questions/?subject={subject_slug}#question-{self.exam_question.id}"
             return f"/exam-papers/"
         elif self.task_type == 'quickkick' and self.quickkick:
-            # QuickKicks are accessed via topic slug
-            return f"/quickkicks/{self.quickkick.topic.slug}/{self.quickkick.id}/"
+            # QuickKicks are accessed via topic slug with subject parameter
+            subject_slug = self.quickkick.topic.subject.slug if self.quickkick.topic.subject else 'maths'
+            return f"/quickkicks/{self.quickkick.topic.slug}/{self.quickkick.id}/?subject={subject_slug}"
         elif self.task_type == 'flashcard' and self.flashcard_set:
-            # Flashcards are accessed via topic slug
-            return f"/flashcards/{self.flashcard_set.topic.slug}/"
+            # Flashcards are accessed via topic slug with subject parameter
+            subject_slug = self.flashcard_set.topic.subject.slug if self.flashcard_set.topic.subject else 'maths'
+            return f"/flashcards/{self.flashcard_set.topic.slug}/?subject={subject_slug}"
         return "#"
 
     def clean(self):
