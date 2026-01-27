@@ -85,7 +85,7 @@ def student_homework_dashboard(request):
         is_published=True
     )
 
-    all_assignments = (class_assignments | individual_assignments).distinct().order_by('due_date')
+    all_assignments = (class_assignments | individual_assignments).distinct().order_by('-due_date')
 
     # Annotate with completion status
     assignments_with_status = []
