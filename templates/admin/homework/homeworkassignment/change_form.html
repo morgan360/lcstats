@@ -1,0 +1,37 @@
+{% extends "admin/change_form.html" %}
+
+{% block field_sets %}
+{% for fieldset in adminform %}
+  {% include "admin/includes/fieldset.html" %}
+
+  {# Add Save button and Homework Tasks after Assignment Details fieldset #}
+  {% if fieldset.name == "Assignment Details" %}
+    <div style="padding: 15px; margin: 20px 0; border: 2px solid #28a745; border-radius: 4px; background: #f0f8f4;">
+      <p style="margin: 0 0 10px 0; color: #155724; font-size: 13px;">
+        <strong>💡 Important:</strong> Click the button below to save the assignment first. This will enable filtered task dropdowns.
+      </p>
+      <input
+        type="submit"
+        value="Save and Continue Editing"
+        class="default"
+        name="_continue"
+        style="background: #28a745; color: white; padding: 12px 20px; border: none; border-radius: 4px; cursor: pointer; font-size: 14px; font-weight: bold; box-shadow: 0 2px 4px rgba(0,0,0,0.1);"
+        onmouseover="this.style.background='#218838';"
+        onmouseout="this.style.background='#28a745';"
+      />
+    </div>
+
+    {# Insert inline formsets (Homework Tasks) here #}
+    {% if inline_admin_formsets %}
+      {% for inline_admin_formset in inline_admin_formsets %}
+        {% include inline_admin_formset.opts.template %}
+      {% endfor %}
+    {% endif %}
+  {% endif %}
+{% endfor %}
+{% endblock %}
+
+{# Hide the inline formsets from their default position at the bottom #}
+{% block inline_field_sets %}
+  {# Empty - we already rendered them after Assignment Details #}
+{% endblock %}

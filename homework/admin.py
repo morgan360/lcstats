@@ -11,6 +11,16 @@ from .models import (
     HomeworkSubmission,
     HomeworkNotificationSnooze
 )
+from .forms import (
+    PracticeQuestionsTaskForm,
+    ExamQuestionsTaskForm,
+    QuickKicksTaskForm,
+    FlashcardsTaskForm
+)
+from interactive_lessons.models import Section
+from exam_papers.models import ExamQuestion
+from quickkicks.models import QuickKick
+from flashcards.models import FlashcardSet
 
 
 @admin.register(TeacherProfile)
@@ -92,46 +102,87 @@ class TeacherClassAdmin(admin.ModelAdmin):
         return super().formfield_for_manytomany(db_field, request, **kwargs)
 
 
-class HomeworkTaskInline(admin.StackedInline):
+# Base inline class with common functionality
+class BaseHomeworkTaskInline(admin.StackedInline):
     model = HomeworkTask
     extra = 1
 
-    fieldsets = (
-        (None, {
-            'fields': (
-                'task_type',
-                'section',
-                'exam_question',
-                'quickkick',
-                'flashcard_set',
-                'is_required',
-                'order',
-                'instructions'
-            ),
-            'description': '👇 Select task type first, then fill in ONLY the matching field below'
-        }),
-    )
+    # Common fields for all task types
+    fields = ('is_required', 'order')
 
     class Media:
         css = {
             'all': ('/static/admin/css/homework_task_inline.css',)
         }
 
-    def formfield_for_foreignkey(self, db_field, request, **kwargs):
-        """Add custom help text to show when each field should be used"""
-        if db_field.name == "section":
-            kwargs["help_text"] = "📝 Fill this ONLY if Task Type = 'Topic Section'"
-        elif db_field.name == "exam_question":
-            kwargs["help_text"] = "📝 Fill this ONLY if Task Type = 'Exam Question'"
-        elif db_field.name == "quickkick":
-            kwargs["help_text"] = "📝 Fill this ONLY if Task Type = 'QuickFlicks Video/Applet'"
-        elif db_field.name == "flashcard_set":
-            kwargs["help_text"] = "📝 Fill this ONLY if Task Type = 'Flashcard Set'"
-        return super().formfield_for_foreignkey(db_field, request, **kwargs)
-
     def get_formset(self, request, obj=None, **kwargs):
-        formset = super().get_formset(request, obj, **kwargs)
-        return formset
+        """Pass the parent assignment to each form via form_kwargs"""
+        formset_class = super().get_formset(request, obj, **kwargs)
+        parent_obj = obj
+
+        # Customize the formset to pass parent to each form via kwargs
+        class CustomFormSet(formset_class):
+            def get_form_kwargs(self, index):
+                kwargs = super().get_form_kwargs(index)
+                # Pass parent assignment through form kwargs
+                kwargs['parent_assignment'] = parent_obj
+                return kwargs
+
+        return CustomFormSet
+
+    def get_queryset(self, request):
+        """Only show tasks of this specific type"""
+        qs = super().get_queryset(request)
+        # Each subclass will override this to filter by task_type
+        return qs
+
+
+class PracticeQuestionsTaskInline(BaseHomeworkTaskInline):
+    form = PracticeQuestionsTaskForm
+    verbose_name = "Practice Questions Task"
+    verbose_name_plural = "📚 Practice Questions"
+
+    fields = ('section', 'is_required', 'order')
+
+    def get_queryset(self, request):
+        qs = super().get_queryset(request)
+        return qs.filter(task_type='section')
+
+
+class ExamQuestionsTaskInline(BaseHomeworkTaskInline):
+    form = ExamQuestionsTaskForm
+    verbose_name = "Exam Question Task"
+    verbose_name_plural = "📝 Exam Questions"
+
+    fields = ('exam_question', 'is_required', 'order')
+
+    def get_queryset(self, request):
+        qs = super().get_queryset(request)
+        return qs.filter(task_type='exam_question')
+
+
+class QuickKicksTaskInline(BaseHomeworkTaskInline):
+    form = QuickKicksTaskForm
+    verbose_name = "QuickKick Task"
+    verbose_name_plural = "⚡ QuickKicks"
+
+    fields = ('quickkick', 'is_required', 'order')
+
+    def get_queryset(self, request):
+        qs = super().get_queryset(request)
+        return qs.filter(task_type='quickkick')
+
+
+class FlashcardsTaskInline(BaseHomeworkTaskInline):
+    form = FlashcardsTaskForm
+    verbose_name = "Flashcards Task"
+    verbose_name_plural = "🎴 Flashcards"
+
+    fields = ('flashcard_set', 'is_required', 'order')
+
+    def get_queryset(self, request):
+        qs = super().get_queryset(request)
+        return qs.filter(task_type='flashcard')
 
 
 @admin.register(HomeworkAssignment)
@@ -139,6 +190,7 @@ class HomeworkAssignmentAdmin(admin.ModelAdmin):
     list_display = (
         'title',
         'teacher',
+        'get_subject',
         'topic',
         'assigned_date_short',
         'due_date_short',
@@ -146,16 +198,21 @@ class HomeworkAssignmentAdmin(admin.ModelAdmin):
         'assigned_to_summary',
         'progress_summary'
     )
-    list_filter = ('teacher', 'topic', 'is_published', 'due_date', 'assigned_date')
+    list_filter = ('teacher', 'topic__subject', 'topic', 'is_published', 'due_date', 'assigned_date')
     search_fields = ('title', 'description', 'teacher__display_name', 'topic__name')
     filter_horizontal = ('assigned_classes', 'assigned_students')
     readonly_fields = ('created_at', 'updated_at', 'progress_summary')
-    inlines = [HomeworkTaskInline]
+    inlines = [
+        PracticeQuestionsTaskInline,
+        ExamQuestionsTaskInline,
+        QuickKicksTaskInline,
+        FlashcardsTaskInline
+    ]
     date_hierarchy = 'due_date'
 
     fieldsets = (
         ('Assignment Details', {
-            'fields': ('teacher', 'topic', 'title', 'description')
+            'fields': ('teacher', 'topic', 'title', 'description', 'assigned_date', 'due_date')
         }),
         ('Assignment Targets', {
             'fields': ('assigned_classes', 'assigned_students'),
@@ -166,9 +223,6 @@ class HomeworkAssignmentAdmin(admin.ModelAdmin):
                 '<em>You can also manually add/remove individual students</em>'
             )
         }),
-        ('Timing', {
-            'fields': ('assigned_date', 'due_date')
-        }),
         ('Status', {
             'fields': ('is_published', 'progress_summary')
         }),
@@ -177,6 +231,12 @@ class HomeworkAssignmentAdmin(admin.ModelAdmin):
             'classes': ('collapse',)
         }),
     )
+
+    def get_subject(self, obj):
+        """Display the subject of the assignment's topic"""
+        return obj.topic.subject.name if obj.topic and obj.topic.subject else "No Subject"
+    get_subject.short_description = "Subject"
+    get_subject.admin_order_field = 'topic__subject'
 
     def assigned_date_short(self, obj):
         return obj.assigned_date.strftime('%Y-%m-%d')
@@ -244,6 +304,16 @@ class HomeworkAssignmentAdmin(admin.ModelAdmin):
                 kwargs["initial"] = request.user.teacher_profile
                 if not request.user.is_superuser:
                     kwargs["queryset"] = TeacherProfile.objects.filter(id=request.user.teacher_profile.id)
+
+        # Filter topics by current subject (from session via SubjectMiddleware)
+        elif db_field.name == "topic":
+            from interactive_lessons.models import Topic
+            if hasattr(request, 'current_subject') and request.current_subject:
+                kwargs["queryset"] = Topic.objects.filter(subject=request.current_subject)
+            else:
+                # Fallback: show all topics if no subject in session
+                kwargs["queryset"] = Topic.objects.all()
+
         return super().formfield_for_foreignkey(db_field, request, **kwargs)
 
     def formfield_for_manytomany(self, db_field, request, **kwargs):
@@ -296,8 +366,8 @@ class HomeworkAssignmentAdmin(admin.ModelAdmin):
 class HomeworkTaskAdmin(admin.ModelAdmin):
     list_display = ('assignment', 'task_type', 'get_content_display', 'is_required', 'order')
     list_filter = ('task_type', 'is_required', 'assignment__teacher')
-    search_fields = ('assignment__title', 'instructions', 'section__name', 'exam_question__question_number')
-    readonly_fields = ('created_at', 'get_content_display', 'get_content_url')
+    search_fields = ('assignment__title', 'section__name', 'exam_question__question_number')
+    readonly_fields = ('created_at', 'get_content_display', 'get_content_url', 'task_type')
 
     fieldsets = (
         ('Assignment', {
@@ -305,10 +375,10 @@ class HomeworkTaskAdmin(admin.ModelAdmin):
         }),
         ('Task Content', {
             'fields': ('task_type', 'section', 'exam_question', 'quickkick', 'flashcard_set'),
-            'description': 'Select ONE content item based on task type'
+            'description': '📝 View task details. Edit tasks via the assignment form for better filtering.'
         }),
         ('Task Details', {
-            'fields': ('instructions', 'is_required', 'order')
+            'fields': ('is_required', 'order')
         }),
         ('Information', {
             'fields': ('get_content_display', 'get_content_url', 'created_at'),

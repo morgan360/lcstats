@@ -327,13 +327,20 @@ class HomeworkTask(models.Model):
     def get_content_display(self):
         """Return the display name of the linked content"""
         if self.task_type == 'section' and self.section:
-            return f"Section: {self.section.name}"
+            subject = self.section.topic.subject.name if self.section.topic and self.section.topic.subject else "No Subject"
+            return f"Practice Questions: {self.section.topic.name} > {self.section.name} ({subject})"
         elif self.task_type == 'exam_question' and self.exam_question:
-            return f"Exam Q{self.exam_question.question_number}"
+            subject = self.exam_question.exam_paper.subject.name if self.exam_question.exam_paper and self.exam_question.exam_paper.subject else "No Subject"
+            year = self.exam_question.exam_paper.year if self.exam_question.exam_paper else "Unknown"
+            topic = self.exam_question.topic.name if self.exam_question.topic else "No Topic"
+            return f"[{subject}] {year} - Q{self.exam_question.question_number} - {topic}"
         elif self.task_type == 'quickkick' and self.quickkick:
-            return f"QuickFlicks: {self.quickkick.title}"
+            subject = self.quickkick.topic.subject.name if self.quickkick.topic and self.quickkick.topic.subject else "No Subject"
+            return f"QuickFlicks: {self.quickkick.topic.name} > {self.quickkick.title} ({subject})"
         elif self.task_type == 'flashcard' and self.flashcard_set:
-            return f"Flashcards: {self.flashcard_set.title}"
+            subject = self.flashcard_set.topic.subject.name if self.flashcard_set.topic and self.flashcard_set.topic.subject else "No Subject"
+            card_count = self.flashcard_set.cards.count()
+            return f"Flashcards: {self.flashcard_set.topic.name} > {self.flashcard_set.title} ({card_count} cards, {subject})"
         return "Unknown task"
 
     def get_content_url(self):
