@@ -128,6 +128,16 @@ class BaseHomeworkTaskInline(admin.StackedInline):
                 kwargs['parent_assignment'] = parent_obj
                 return kwargs
 
+            def clean(self):
+                """Skip validation for completely empty forms"""
+                super().clean()
+                # Remove forms that have no data (all fields empty except DELETE checkbox)
+                for form in self.forms:
+                    if not form.has_changed() and not form.instance.pk:
+                        # This is a new, unchanged form - mark for deletion so it's not saved
+                        form.cleaned_data = {}
+                        form._errors = {}
+
         return CustomFormSet
 
     def get_queryset(self, request):
