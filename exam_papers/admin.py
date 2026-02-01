@@ -22,10 +22,25 @@ class ExamQuestionPartInline(admin.StackedInline):
     """Inline admin for question parts"""
     model = ExamQuestionPart
     extra = 1
-    fields = ('label', 'solution_image', 'max_marks', 'solution_unlock_after_attempts', 'order')
+    fields = ('label', 'solution_image', 'solution_status', 'max_marks', 'solution_unlock_after_attempts', 'order')
+    readonly_fields = ('solution_status',)
     ordering = ['order']
 
     classes = ['collapse']  # Makes inlines collapsible to save space
+
+    def solution_status(self, obj):
+        """Show visual indicator if solution image is uploaded"""
+        if obj.pk:  # Only show for saved objects
+            if obj.has_solution_image:
+                return format_html(
+                    '<span style="color: green; font-weight: bold;">✓ Solution Uploaded</span>'
+                )
+            else:
+                return format_html(
+                    '<span style="color: red; font-weight: bold;">✗ No Solution</span>'
+                )
+        return '-'
+    solution_status.short_description = 'Status'
 
 
 class ExamQuestionInline(admin.TabularInline):
@@ -179,10 +194,50 @@ class ExamPaperAdmin(admin.ModelAdmin):
     pdf_preview.short_description = 'PDF Preview & Extraction'
 
 
+class SolutionImagesFilter(admin.SimpleListFilter):
+    """Custom filter for solution image upload status"""
+    title = 'solution images'
+    parameter_name = 'has_solutions'
+
+    def lookups(self, request, model_admin):
+        return (
+            ('complete', 'All parts have solutions'),
+            ('incomplete', 'Missing some solutions'),
+            ('none', 'No solutions uploaded'),
+        )
+
+    def queryset(self, request, queryset):
+        from django.db.models import Count, Q
+
+        if self.value() == 'complete':
+            # Questions where all parts have solution images
+            for question in queryset:
+                if not question.has_all_solution_images:
+                    queryset = queryset.exclude(pk=question.pk)
+            return queryset
+        elif self.value() == 'incomplete':
+            # Questions with some but not all solution images
+            incomplete_ids = []
+            for question in queryset:
+                with_images, total = question.solution_images_status()
+                if 0 < with_images < total:
+                    incomplete_ids.append(question.pk)
+            return queryset.filter(pk__in=incomplete_ids)
+        elif self.value() == 'none':
+            # Questions with no solution images at all
+            none_ids = []
+            for question in queryset:
+                with_images, total = question.solution_images_status()
+                if with_images == 0 and total > 0:
+                    none_ids.append(question.pk)
+            return queryset.filter(pk__in=none_ids)
+        return queryset
+
+
 @admin.register(ExamQuestion)
 class ExamQuestionAdmin(admin.ModelAdmin):
-    list_display = ('__str__', 'question_number', 'topic', 'total_marks', 'suggested_time_minutes', 'has_image', 'exam_paper')
-    list_filter = ('exam_paper__subject', 'exam_paper__year', 'exam_paper__paper_type', 'topic')
+    list_display = ('__str__', 'question_number', 'topic', 'total_marks', 'suggested_time_minutes', 'has_image', 'solution_progress', 'exam_paper')
+    list_filter = ('exam_paper__subject', 'exam_paper__year', 'exam_paper__paper_type', 'topic', SolutionImagesFilter)
     search_fields = ('title', 'question_number')
 
     fieldsets = (
@@ -204,6 +259,33 @@ class ExamQuestionAdmin(admin.ModelAdmin):
         """Show if question has image"""
         return '✓' if obj.image else '-'
     has_image.short_description = 'Image'
+
+    def solution_progress(self, obj):
+        """Show solution image upload progress"""
+        with_images, total = obj.solution_images_status()
+
+        if total == 0:
+            return format_html('<span style="color: gray;">No parts</span>')
+
+        percentage = obj.solution_images_percentage
+
+        # Color coding
+        if percentage == 100:
+            color = 'green'
+            icon = '✓'
+        elif percentage > 0:
+            color = 'orange'
+            icon = '◐'
+        else:
+            color = 'red'
+            icon = '✗'
+
+        return format_html(
+            '<span style="color: {}; font-weight: bold;">{} {}/{} ({}%)</span>',
+            color, icon, with_images, total, percentage
+        )
+    solution_progress.short_description = 'Solutions'
+    solution_progress.admin_order_field = 'question_number'  # Allow sorting
 
     def image_preview(self, obj):
         """Show question image preview for easy transcription"""

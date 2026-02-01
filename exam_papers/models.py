@@ -164,6 +164,26 @@ class ExamQuestion(models.Model):
     def __str__(self):
         return f"{self.exam_paper} - Q{self.question_number}"
 
+    def solution_images_status(self):
+        """Returns a tuple of (parts_with_images, total_parts)"""
+        total_parts = self.parts.count()
+        parts_with_images = self.parts.filter(solution_image__isnull=False).exclude(solution_image='').count()
+        return parts_with_images, total_parts
+
+    @property
+    def has_all_solution_images(self):
+        """Returns True if all parts have solution images uploaded"""
+        parts_with_images, total_parts = self.solution_images_status()
+        return total_parts > 0 and parts_with_images == total_parts
+
+    @property
+    def solution_images_percentage(self):
+        """Returns percentage of parts with solution images"""
+        parts_with_images, total_parts = self.solution_images_status()
+        if total_parts == 0:
+            return 0
+        return int((parts_with_images / total_parts) * 100)
+
 
 class ExamQuestionPart(models.Model):
     """
@@ -215,6 +235,11 @@ class ExamQuestionPart(models.Model):
 
     def __str__(self):
         return f"{self.question} {self.label}"
+
+    @property
+    def has_solution_image(self):
+        """Returns True if solution image has been uploaded"""
+        return bool(self.solution_image)
 
 
 
