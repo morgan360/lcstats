@@ -71,6 +71,9 @@ class PracticeQuestionsTaskForm(BaseHomeworkTaskForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
+        # Auto-set task_type for this inline
+        self.instance.task_type = 'section'
+
         # Filter sections by topic
         if self.topic:
             self.fields['section'].queryset = Section.objects.filter(topic=self.topic)
@@ -85,7 +88,7 @@ class PracticeQuestionsTaskForm(BaseHomeworkTaskForm):
         if not cleaned_data.get('section'):
             raise forms.ValidationError("Please select a Practice Questions section")
 
-        # Auto-set task_type
+        # Ensure task_type is set (already set in __init__, but confirm in cleaned_data)
         cleaned_data['task_type'] = 'section'
 
         return cleaned_data
@@ -107,6 +110,9 @@ class ExamQuestionsTaskForm(BaseHomeworkTaskForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
+        # Auto-set task_type for this inline
+        self.instance.task_type = 'exam_question'
+
         # Filter exam questions by topic
         if self.topic:
             self.fields['exam_question'].queryset = ExamQuestion.objects.filter(topic=self.topic)
@@ -121,7 +127,7 @@ class ExamQuestionsTaskForm(BaseHomeworkTaskForm):
         if not cleaned_data.get('exam_question'):
             raise forms.ValidationError("Please select an Exam Question")
 
-        # Auto-set task_type
+        # Ensure task_type is set (already set in __init__, but confirm in cleaned_data)
         cleaned_data['task_type'] = 'exam_question'
 
         return cleaned_data
@@ -137,6 +143,9 @@ class QuickKicksTaskForm(BaseHomeworkTaskForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
+        # Auto-set task_type for this inline
+        self.instance.task_type = 'quickkick'
+
         # Filter quickkicks by topic
         if self.topic:
             self.fields['quickkick'].queryset = QuickKick.objects.filter(topic=self.topic)
@@ -151,7 +160,7 @@ class QuickKicksTaskForm(BaseHomeworkTaskForm):
         if not cleaned_data.get('quickkick'):
             raise forms.ValidationError("Please select a QuickKick")
 
-        # Auto-set task_type
+        # Ensure task_type is set (already set in __init__, but confirm in cleaned_data)
         cleaned_data['task_type'] = 'quickkick'
 
         return cleaned_data
@@ -167,6 +176,9 @@ class FlashcardsTaskForm(BaseHomeworkTaskForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
+        # Auto-set task_type for this inline
+        self.instance.task_type = 'flashcard'
+
         # Filter flashcard sets by topic
         if self.topic:
             self.fields['flashcard_set'].queryset = FlashcardSet.objects.filter(topic=self.topic)
@@ -181,7 +193,7 @@ class FlashcardsTaskForm(BaseHomeworkTaskForm):
         if not cleaned_data.get('flashcard_set'):
             raise forms.ValidationError("Please select a Flashcard Set")
 
-        # Auto-set task_type
+        # Ensure task_type is set (already set in __init__, but confirm in cleaned_data)
         cleaned_data['task_type'] = 'flashcard'
 
         return cleaned_data
