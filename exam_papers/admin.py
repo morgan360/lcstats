@@ -239,6 +239,7 @@ class ExamQuestionAdmin(admin.ModelAdmin):
     list_display = ('__str__', 'question_number', 'topic', 'total_marks', 'suggested_time_minutes', 'has_image', 'solution_progress', 'exam_paper')
     list_filter = ('exam_paper__subject', 'exam_paper__year', 'exam_paper__paper_type', 'topic', SolutionImagesFilter)
     search_fields = ('title', 'question_number')
+    change_list_template = 'admin/exam_papers/examquestion_change_list.html'
 
     fieldsets = (
         ('Question Identification', {
@@ -254,6 +255,94 @@ class ExamQuestionAdmin(admin.ModelAdmin):
 
     readonly_fields = ('image_preview',)
     inlines = [ExamQuestionPartInline]
+
+    def get_urls(self):
+        urls = super().get_urls()
+        custom_urls = [
+            path(
+                'worksheet-generator/',
+                self.admin_site.admin_view(self.worksheet_generator_view),
+                name='exam_papers_examquestion_worksheet_generator',
+            ),
+            path(
+                'worksheet-print/',
+                self.admin_site.admin_view(self.worksheet_print_view),
+                name='exam_papers_examquestion_worksheet_print',
+            ),
+        ]
+        return custom_urls + urls
+
+    def worksheet_generator_view(self, request):
+        """Custom admin view for selecting exam questions to print as a worksheet."""
+        from interactive_lessons.models import Topic
+        from core.models import Subject
+
+        subjects = Subject.objects.filter(is_active=True)
+        selected_topic_id = request.GET.get('topic')
+        selected_subject_id = request.GET.get('subject')
+
+        # Only show topics that have questions with images
+        topics = Topic.objects.filter(
+            exam_questions__image__isnull=False
+        ).exclude(
+            exam_questions__image=''
+        ).distinct().select_related('subject').order_by('subject__name', 'name')
+
+        if selected_subject_id:
+            topics = topics.filter(subject_id=selected_subject_id)
+
+        questions = ExamQuestion.objects.none()
+        if selected_topic_id:
+            if selected_topic_id == 'none':
+                questions = ExamQuestion.objects.filter(
+                    topic__isnull=True
+                ).exclude(image='').exclude(image__isnull=True)
+            else:
+                questions = ExamQuestion.objects.filter(
+                    topic_id=selected_topic_id
+                ).exclude(image='').exclude(image__isnull=True)
+            questions = questions.select_related(
+                'exam_paper', 'topic'
+            ).order_by('exam_paper__year', 'question_number')
+
+        # Count unassigned questions with images
+        unassigned_count = ExamQuestion.objects.filter(
+            topic__isnull=True
+        ).exclude(image='').exclude(image__isnull=True).count()
+
+        context = {
+            'title': 'Worksheet Generator',
+            'subjects': subjects,
+            'topics': topics,
+            'questions': questions,
+            'selected_topic_id': selected_topic_id,
+            'selected_subject_id': int(selected_subject_id) if selected_subject_id else None,
+            'unassigned_count': unassigned_count,
+            'opts': self.model._meta,
+            'has_view_permission': self.has_view_permission(request),
+            'site_header': self.admin_site.site_header,
+            'site_title': self.admin_site.site_title,
+        }
+        return render(request, 'admin/exam_papers/worksheet_generator.html', context)
+
+    def worksheet_print_view(self, request):
+        """Render a clean printable page with selected exam question images."""
+        question_ids = request.POST.getlist('question_ids')
+        if not question_ids:
+            messages.error(request, 'No questions selected.')
+            return redirect('admin:exam_papers_examquestion_worksheet_generator')
+
+        questions = ExamQuestion.objects.filter(
+            id__in=question_ids
+        ).select_related('exam_paper', 'topic').order_by(
+            'topic__name', 'exam_paper__year', 'question_number'
+        )
+
+        context = {
+            'questions': questions,
+            'title': 'Worksheet',
+        }
+        return render(request, 'admin/exam_papers/worksheet_print.html', context)
 
     def has_image(self, obj):
         """Show if question has image"""
