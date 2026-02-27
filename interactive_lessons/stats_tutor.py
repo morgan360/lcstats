@@ -169,18 +169,16 @@ def mark_student_answer(question_text, student_answer, correct_answer,
         # --- 3️⃣ Quick results if clear match ---
         if auto_score == 1.0:
             base_score = 100
-            feedback = "Excellent — fully correct algebraic simplification."
-            hint = "Well done! You simplified accurately."
+            feedback = "Excellent — fully correct!"
+            hint = "Well done!"
         elif auto_score >= 0.5:
             base_score = 70
-            num_correct = int(auto_score * len(correct_vals))
-            num_total = len(correct_vals)
-            feedback = f"Partially correct — you got {num_correct} out of {num_total} values correct. Your work shows understanding, but double-check your calculations."
-            hint = "Review each part of your answer carefully. Check for sign errors, calculation mistakes, or values that might need further simplification."
+            # Use GPT for educational feedback on partial answers
+            _, feedback, hint = gpt_grade(question_text, student_answer, correct_answer)
         elif student_vals:
             base_score = 50
-            feedback = f"Your answer is numerically close but doesn't match the expected result. You entered {student_vals}, but this doesn't match the correct answer format."
-            hint = "Check if you need to simplify further, combine like terms, or express your answer in a different form (e.g., as a fraction, in simplified radical form, or factored)."
+            # Use GPT for educational feedback on wrong numeric answers
+            _, feedback, hint = gpt_grade(question_text, student_answer, correct_answer)
         else:
             # fallback to GPT if neither numeric nor algebraic match
             base_score, feedback, hint = gpt_grade(question_text, student_answer, correct_answer)

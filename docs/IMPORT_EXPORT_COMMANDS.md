@@ -108,6 +108,139 @@ touch /var/www/morgan360_pythonanywhere_com_wsgi.py
 
 ---
 
+## Subject-Specific Deployment (Maths or Physics Only)
+
+**Use these scripts when you want to deploy only Maths or only Physics data to production.**
+
+This is useful when:
+- Production server doesn't have both subjects set up yet
+- You want to deploy Maths and Physics independently
+- Avoiding foreign key errors from missing Subject references
+
+### Current Database Status
+
+Your local database contains:
+- **19 Maths topics** with 495 questions (697 question parts)
+- **11 Physics topics** with 1 question (4 question parts)
+
+### Deploy Maths Only (Merge Mode)
+
+**Use this to ADD new questions to existing production data.**
+
+```bash
+# LOCAL: Export only Maths data
+./deployment/sync_maths_only_to_production.sh
+
+# This exports 5 files:
+# - maths_topics_YYYYMMDD_HHMMSS.json (19 topics)
+# - maths_sections_YYYYMMDD_HHMMSS.json (175 sections)
+# - maths_questions_YYYYMMDD_HHMMSS.json (495 questions)
+# - maths_parts_YYYYMMDD_HHMMSS.json (697 question parts)
+# - maths_notes_YYYYMMDD_HHMMSS.json (5 notes)
+
+# Upload files via PythonAnywhere Files tab, then:
+
+# PRODUCTION: Import Maths data
+cd ~/lcstats
+source venv/bin/activate
+python manage.py loaddata maths_topics_YYYYMMDD_HHMMSS.json
+python manage.py loaddata maths_sections_YYYYMMDD_HHMMSS.json
+python manage.py loaddata maths_questions_YYYYMMDD_HHMMSS.json
+python manage.py loaddata maths_parts_YYYYMMDD_HHMMSS.json
+python manage.py loaddata maths_notes_YYYYMMDD_HHMMSS.json
+touch /var/www/morganmck_eu_pythonanywhere_com_wsgi.py
+```
+
+### Deploy Maths Only (REPLACE Mode) - LOCAL IS SOURCE OF TRUTH
+
+**⚠️ Use this when local is the source of truth and you want production to be an exact copy.**
+
+**What it does:**
+- Deletes ALL existing Maths data in production
+- Imports fresh data from local
+- Production becomes exact mirror of local (no duplicates, no conflicts)
+
+**When to use:**
+- You have duplicate sections in production (e.g., "Argand Diagram" vs "Argand Diagrams")
+- Production has old/incorrect data
+- You want to ensure production exactly matches local
+
+```bash
+# LOCAL: Export Maths data and generate delete/import commands
+./deployment/sync_maths_replace_production.sh
+
+# Follow the on-screen instructions:
+# 1. Upload 5 JSON files to PythonAnywhere
+# 2. Run DELETE script on production (removes old Maths data)
+# 3. Run IMPORT script on production (adds fresh data)
+```
+
+**⚠️ WARNING:**
+- This DELETES all existing Maths topics, sections, questions, and question parts
+- Student progress data (attempts, scores) is NOT deleted
+- Cannot be undone - make sure local is correct before running!
+
+**Safe Alternative:** If you only want to add NEW questions without deleting anything, use the "Merge Mode" above instead.
+
+---
+
+### Deploy Physics Only
+
+```bash
+# LOCAL: Export only Physics data
+./deployment/sync_physics_only_to_production.sh
+
+# This exports 5 files:
+# - physics_topics_YYYYMMDD_HHMMSS.json (11 topics)
+# - physics_sections_YYYYMMDD_HHMMSS.json (1 section)
+# - physics_questions_YYYYMMDD_HHMMSS.json (1 question)
+# - physics_parts_YYYYMMDD_HHMMSS.json (4 question parts)
+# - physics_notes_YYYYMMDD_HHMMSS.json (0 notes)
+
+# Upload files via PythonAnywhere Files tab, then:
+
+# PRODUCTION: Import Physics data
+cd ~/lcstats
+source venv/bin/activate
+python manage.py loaddata physics_topics_YYYYMMDD_HHMMSS.json
+python manage.py loaddata physics_sections_YYYYMMDD_HHMMSS.json
+python manage.py loaddata physics_questions_YYYYMMDD_HHMMSS.json
+python manage.py loaddata physics_parts_YYYYMMDD_HHMMSS.json
+python manage.py loaddata physics_notes_YYYYMMDD_HHMMSS.json
+touch /var/www/morganmck_eu_pythonanywhere_com_wsgi.py
+```
+
+### Deploy Both Subjects (All Data)
+
+```bash
+# LOCAL: Export all topics (Maths + Physics)
+./deployment/sync_to_production_simple.sh
+
+# This exports 2 files with ALL data:
+# - questions_YYYYMMDD_HHMMSS.json (ALL topics, sections, questions, parts)
+# - notes_YYYYMMDD_HHMMSS.json (ALL notes)
+
+# Use this ONLY if production server has both Maths and Physics subjects configured
+```
+
+**Key Benefits of Subject-Specific Scripts:**
+- ✅ No Subject foreign key errors
+- ✅ Deploy Maths and Physics independently
+- ✅ Smaller export files (faster uploads)
+- ✅ Prevents conflicts when production only has one subject
+
+**Which Script to Use:**
+
+| Scenario | Script to Use |
+|----------|--------------|
+| Production has only Maths | `sync_maths_only_to_production.sh` |
+| Production has only Physics | `sync_physics_only_to_production.sh` |
+| Production has both subjects | `sync_to_production_simple.sh` |
+| Adding new Maths questions only | `sync_maths_only_to_production.sh` |
+| Adding new Physics questions only | `sync_physics_only_to_production.sh` |
+
+---
+
 ## Flashcards
 
 ### Import Flashcards
@@ -274,7 +407,11 @@ python manage.py import_questions_safe your_file.json
 
 | Task | Command |
 |------|---------|
-| Export questions | `python manage.py dumpdata interactive_lessons.Topic interactive_lessons.Section interactive_lessons.Question interactive_lessons.QuestionPart --indent 2 > questions.json` |
+| Export Maths (merge) | `./deployment/sync_maths_only_to_production.sh` |
+| Export Maths (replace) | `./deployment/sync_maths_replace_production.sh` |
+| Export Physics only | `./deployment/sync_physics_only_to_production.sh` |
+| Export all subjects | `./deployment/sync_to_production_simple.sh` |
+| Export questions (safe) | `./deployment/sync_questions_safe.sh` |
 | Export notes | `python manage.py dumpdata notes.Note --indent 2 > notes.json` |
 | Import questions | `python manage.py loaddata questions.json` |
 | Import notes | `python manage.py loaddata notes.json` |

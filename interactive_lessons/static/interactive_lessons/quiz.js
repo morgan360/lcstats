@@ -104,6 +104,19 @@ document.addEventListener("DOMContentLoaded", () => {
             `;
           }
 
+          // Re-render KaTeX in dynamically inserted feedback
+          if (window.renderMathInElement) {
+            renderMathInElement(feedbackBox, {
+              delimiters: [
+                {left: "$$", right: "$$", display: true},
+                {left: "\\[", right: "\\]", display: true},
+                {left: "\\(", right: "\\)", display: false},
+                {left: "$", right: "$", display: false}
+              ],
+              throwOnError: false
+            });
+          }
+
           // Store attempt ID and show feedback buttons
           if (data.attempt_id) {
             // Store attempt ID in a data attribute
@@ -138,9 +151,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
           // Handle solution unlock
           if (data.solution_unlocked !== undefined && data.solution_unlocked) {
-            // Solution is now unlocked - reload page to show it
-            // We reload because the solution content needs to be rendered with KaTeX
-            location.reload();
+            // Fetch and display the solution via AJAX instead of reloading
+            fetchAndDisplaySolution(partId);
           }
         } else {
           feedbackBox.innerHTML = "<div style='color:red;'>Error checking answer.</div>";
@@ -412,6 +424,53 @@ function submitQuestionFeedback(partId, feedbackType) {
     buttons.forEach(btn => btn.disabled = false);
     alert('An error occurred while submitting feedback.');
   });
+}
+
+// ============================================================================
+// Fetch and Display Solution via AJAX (avoids page reload)
+// ============================================================================
+async function fetchAndDisplaySolution(partId) {
+  try {
+    const response = await fetch(`/interactive/get-solution/${partId}/`, {
+      method: 'GET',
+      headers: {
+        'X-Requested-With': 'XMLHttpRequest'
+      }
+    });
+
+    const data = await response.json();
+
+    if (data.success && data.solution_html) {
+      // Replace the locked solution box with the actual solution
+      const lockedBox = document.getElementById(`solution-locked-${partId}`);
+      if (lockedBox) {
+        // Create a new solution details element
+        const solutionContainer = document.createElement('details');
+        solutionContainer.className = 'mt-4 rounded-md border border-[#a5d6a7] bg-[#e8f5e9] px-4 py-3 text-lg leading-relaxed';
+        solutionContainer.innerHTML = data.solution_html;
+
+        // Replace locked box with solution
+        lockedBox.parentElement.replaceChild(solutionContainer, lockedBox);
+
+        // Render KaTeX math in the solution
+        if (window.renderMathInElement) {
+          renderMathInElement(solutionContainer, {
+            delimiters: [
+              {left: "$$", right: "$$", display: true},
+              {left: "\\[", right: "\\]", display: true},
+              {left: "\\(", right: "\\)", display: false},
+              {left: "$", right: "$", display: false}
+            ],
+            throwOnError: false
+          });
+        }
+      }
+    } else {
+      console.error('Failed to fetch solution:', data.error || 'Unknown error');
+    }
+  } catch (error) {
+    console.error('Error fetching solution:', error);
+  }
 }
 
 // ============================================================================

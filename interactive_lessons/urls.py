@@ -9,6 +9,9 @@ urlpatterns = [
     path("info-bot/feedback/", views.infobot_feedback, name="infobot_feedback"),
     path("info-bot/<slug:topic_slug>/", views.info_bot, name="info_bot"),
 
+    # --- Get solution (AJAX endpoint) ---
+    path("get-solution/<int:part_id>/", views.get_solution, name="get_solution"),
+
     # --- Section-based navigation ---
     path("<slug:topic_slug>/sections/", views.section_list, name="section_list"),
     path("<slug:topic_slug>/sections/<slug:section_slug>/", views.section_quiz, name="section_quiz"),

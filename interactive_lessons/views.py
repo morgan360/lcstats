@@ -412,11 +412,17 @@ def section_question_view(request, topic_slug, section_slug, number):
                         attempt_count >= part.solution_unlock_after_attempts
                     )
 
+                    # Use teacher-written hint if available for incorrect answers
+                    hint = result.get("hint", "")
+                    teacher_hint = part.question.hint
+                    if teacher_hint and not result.get("is_correct", False):
+                        hint = teacher_hint
+
                     return JsonResponse({
                         "is_correct": result.get("is_correct", False),
                         "score": result.get("score", 0),
                         "feedback": result.get("feedback", "No feedback generated."),
-                        "hint": result.get("hint", ""),
+                        "hint": hint,
                         "attempt_id": attempt_id,
                         "solution_unlocked": solution_unlocked,
                         "attempt_count": attempt_count,
@@ -595,11 +601,17 @@ def question_view(request, topic_id, number):
                         attempt_count >= part.solution_unlock_after_attempts
                     )
 
+                    # Use teacher-written hint if available for incorrect answers
+                    hint = result.get("hint", "")
+                    teacher_hint = part.question.hint
+                    if teacher_hint and not result.get("is_correct", False):
+                        hint = teacher_hint
+
                     return JsonResponse({
                         "is_correct": result.get("is_correct", False),
                         "score": result.get("score", 0),
                         "feedback": result.get("feedback", "No feedback generated."),
-                        "hint": result.get("hint", ""),
+                        "hint": hint,
                         "attempt_id": attempt_id,
                         "solution_unlocked": solution_unlocked,
                         "attempt_count": attempt_count,
@@ -847,3 +859,41 @@ def infobot_feedback(request):
             return JsonResponse({"success": False, "error": str(e)}, status=500)
 
     return JsonResponse({"success": False, "error": "Method not allowed"}, status=405)
+
+
+# ----------------------------------------------------------------------
+# Get Solution (AJAX endpoint to avoid page reload)
+# ----------------------------------------------------------------------
+@login_required
+def get_solution(request, part_id):
+    """Return solution HTML for a question part via AJAX."""
+    try:
+        part = get_object_or_404(QuestionPart, id=part_id)
+
+        # Build solution HTML
+        solution_html = f'<summary class="cursor-pointer font-semibold text-[#2e7d32]">📝 Solution for {part.label}</summary>'
+        solution_html += '<div class="mt-2 leading-relaxed">'
+
+        if part.solution:
+            solution_html += render_math_markdown(part.solution or "")
+
+        if part.solution_image:
+            solution_html += f'''
+                <div class="mt-4 text-center">
+                    <img src="{part.solution_image.url}" alt="Solution for {part.label}"
+                        class="mx-auto h-auto max-w-full rounded-lg shadow-md">
+                </div>
+            '''
+
+        solution_html += '</div>'
+
+        return JsonResponse({
+            "success": True,
+            "solution_html": solution_html
+        })
+
+    except QuestionPart.DoesNotExist:
+        return JsonResponse({"success": False, "error": "Question part not found"}, status=404)
+    except Exception as e:
+        print(f"[Get Solution Error] {e}")
+        return JsonResponse({"success": False, "error": str(e)}, status=500)
