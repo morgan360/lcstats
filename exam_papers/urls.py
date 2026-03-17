@@ -45,4 +45,8 @@ urlpatterns = [
          views.resume_exam, name='resume_exam'),
     path('attempt/<int:attempt_id>/exit/',
          views.exit_exam, name='exit_exam'),
+
+    # Worksheet generator (public, for all logged-in users)
+    path('worksheet/', views.worksheet_generator, name='worksheet_generator'),
+    path('worksheet/print/', views.worksheet_print, name='worksheet_print'),
 ]

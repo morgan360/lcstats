@@ -1,16 +1,12 @@
-{% extends "admin/base_site.html" %}
-{% load static %}
+{% extends "_base.html" %}
 
-{% block extrahead %}
-{{ block.super }}
+{% block title %}Print Exam Questions - NumScoil{% endblock %}
+
+{% block extra_head %}
 <style>
     .worksheet-container {
         max-width: 1200px;
-        margin: 20px auto;
-        background: white;
-        padding: 30px;
-        border-radius: 8px;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        margin: 0 auto;
     }
 
     .filters {
@@ -19,8 +15,9 @@
         align-items: end;
         margin-bottom: 25px;
         padding: 20px;
-        background: #f8f9fa;
-        border-radius: 4px;
+        background: rgba(255,255,255,0.05);
+        border-radius: 8px;
+        border: 1px solid rgba(255,255,255,0.1);
     }
 
     .filter-group {
@@ -32,15 +29,21 @@
     .filter-group label {
         font-weight: 600;
         font-size: 13px;
-        color: #333;
     }
 
     .filter-group select {
         padding: 8px 12px;
         font-size: 14px;
-        border: 1px solid #ccc;
-        border-radius: 4px;
+        border: 1px solid rgba(255,255,255,0.2);
+        border-radius: 6px;
         min-width: 200px;
+        background: rgba(255,255,255,0.1);
+        color: inherit;
+    }
+
+    .filter-group select option {
+        background: #1a1a2e;
+        color: #e0e0e0;
     }
 
     .toolbar {
@@ -49,7 +52,9 @@
         align-items: center;
         margin-bottom: 15px;
         padding: 10px 0;
-        border-bottom: 1px solid #e0e0e0;
+        border-bottom: 1px solid rgba(255,255,255,0.1);
+        flex-wrap: wrap;
+        gap: 10px;
     }
 
     .toolbar .selection-controls {
@@ -62,28 +67,29 @@
         padding: 5px 12px;
         font-size: 13px;
         cursor: pointer;
-        border: 1px solid #ccc;
+        border: 1px solid rgba(255,255,255,0.2);
         border-radius: 4px;
-        background: #fff;
+        background: rgba(255,255,255,0.1);
+        color: inherit;
     }
 
     .toolbar .selection-controls button:hover {
-        background: #f0f0f0;
+        background: rgba(255,255,255,0.2);
     }
 
     .selected-count {
         font-size: 13px;
-        color: #666;
+        opacity: 0.7;
     }
 
     .question-grid {
         display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(450px, 1fr));
+        grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
         gap: 20px;
     }
 
     .question-card {
-        border: 2px solid #ddd;
+        border: 2px solid rgba(255,255,255,0.15);
         border-radius: 8px;
         padding: 15px;
         cursor: pointer;
@@ -91,12 +97,12 @@
     }
 
     .question-card:hover {
-        border-color: #999;
+        border-color: rgba(255,255,255,0.3);
     }
 
     .question-card.selected {
-        border-color: #417690;
-        background: #f0f7ff;
+        border-color: #6366f1;
+        background: rgba(99, 102, 241, 0.1);
     }
 
     .question-card input[type="checkbox"] {
@@ -113,22 +119,36 @@
 
     .question-meta .paper-info {
         font-weight: 600;
-        color: #417690;
+        color: #818cf8;
     }
 
     .question-meta .marks {
-        background: #e8f4fd;
+        background: rgba(99, 102, 241, 0.2);
         padding: 2px 8px;
         border-radius: 12px;
         font-size: 12px;
-        color: #417690;
+        color: #a5b4fc;
+    }
+
+    .question-meta .solutions-badge {
+        background: rgba(34, 197, 94, 0.2);
+        padding: 2px 8px;
+        border-radius: 12px;
+        font-size: 11px;
+        color: #86efac;
+        margin-left: 6px;
+    }
+
+    .question-meta .solutions-badge.partial {
+        background: rgba(234, 179, 8, 0.2);
+        color: #fde047;
     }
 
     .question-card .check-indicator {
         display: inline-block;
         width: 20px;
         height: 20px;
-        border: 2px solid #ccc;
+        border: 2px solid rgba(255,255,255,0.3);
         border-radius: 4px;
         margin-right: 8px;
         vertical-align: middle;
@@ -136,8 +156,8 @@
     }
 
     .question-card.selected .check-indicator {
-        background: #417690;
-        border-color: #417690;
+        background: #6366f1;
+        border-color: #6366f1;
     }
 
     .question-card.selected .check-indicator::after {
@@ -153,61 +173,81 @@
     .question-card img {
         max-width: 100%;
         height: auto;
-        border: 1px solid #e0e0e0;
+        border: 1px solid rgba(255,255,255,0.1);
         border-radius: 4px;
     }
 
     .submit-section {
         margin-top: 25px;
         padding-top: 20px;
-        border-top: 2px solid #e0e0e0;
+        border-top: 2px solid rgba(255,255,255,0.1);
         display: flex;
-        gap: 10px;
+        gap: 15px;
+        align-items: center;
+        flex-wrap: wrap;
     }
 
-    .submit-section button {
+    .submit-section button[type="submit"] {
         padding: 10px 25px;
         font-size: 14px;
         cursor: pointer;
-        background: #417690;
+        background: #6366f1;
         color: white;
         border: none;
-        border-radius: 4px;
+        border-radius: 6px;
+        font-weight: 600;
     }
 
-    .submit-section button:hover {
-        background: #205067;
+    .submit-section button[type="submit"]:hover {
+        background: #4f46e5;
     }
 
-    .submit-section button:disabled {
-        background: #999;
+    .submit-section button[type="submit"]:disabled {
+        background: #555;
         cursor: not-allowed;
+    }
+
+    .solutions-toggle {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 14px;
+    }
+
+    .solutions-toggle input[type="checkbox"] {
+        width: 18px;
+        height: 18px;
+        accent-color: #6366f1;
     }
 
     .empty-state {
         text-align: center;
         padding: 60px 20px;
-        color: #666;
+        opacity: 0.6;
     }
 
     .empty-state p {
         font-size: 16px;
     }
-</style>
-{% endblock %}
 
-{% block breadcrumbs %}
-<div class="breadcrumbs">
-    <a href="{% url 'admin:index' %}">Home</a>
-    &rsaquo; <a href="{% url 'admin:exam_papers_examquestion_changelist' %}">Exam Questions</a>
-    &rsaquo; Worksheet Generator
-</div>
+    @media (max-width: 640px) {
+        .filters {
+            flex-direction: column;
+        }
+        .filter-group select {
+            min-width: 100%;
+        }
+        .question-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
 {% endblock %}
 
 {% block content %}
 <div class="worksheet-container">
-    <h1>Worksheet Generator</h1>
-    <p>Select a topic to browse exam questions, then pick questions to generate a printable worksheet.</p>
+    <h1 class="text-2xl font-bold mb-2">Print Exam Questions</h1>
+    <p class="mb-6 opacity-70">Select a topic to browse exam questions, then pick questions to generate a printable worksheet.</p>
 
     <div class="filters">
         <div class="filter-group">
@@ -241,7 +281,7 @@
     </div>
 
     {% if questions %}
-    <form method="post" action="{% url 'admin:exam_papers_examquestion_worksheet_print' %}" target="_blank">
+    <form method="post" action="{% url 'exam_papers:worksheet_print' %}" target="_blank">
         {% csrf_token %}
 
         <div class="toolbar">
@@ -261,9 +301,18 @@
                         <span class="check-indicator"></span>
                         <span class="paper-info">{{ question.exam_paper }} - Q{{ question.question_number }}</span>
                     </span>
-                    {% if question.total_marks %}
-                    <span class="marks">{{ question.total_marks }} marks</span>
-                    {% endif %}
+                    <span>
+                        {% if question.total_marks %}
+                        <span class="marks">{{ question.total_marks }} marks</span>
+                        {% endif %}
+                        {% with status=question.solution_images_status %}
+                        {% if status.0 == status.1 and status.1 > 0 %}
+                        <span class="solutions-badge">Solutions</span>
+                        {% elif status.0 > 0 %}
+                        <span class="solutions-badge partial">{{ status.0 }}/{{ status.1 }} Solutions</span>
+                        {% endif %}
+                        {% endwith %}
+                    </span>
                 </div>
                 {% if question.image %}
                 <img src="{{ question.image.url }}" alt="Question {{ question.question_number }}" loading="lazy">
@@ -274,8 +323,8 @@
 
         <div class="submit-section">
             <button type="submit" id="print-btn" disabled>Generate Printable Worksheet</button>
-            <label style="display: flex; align-items: center; gap: 8px; font-size: 14px; margin-left: 15px; cursor: pointer;">
-                <input type="checkbox" name="include_solutions" value="1" style="width: 18px; height: 18px;">
+            <label class="solutions-toggle">
+                <input type="checkbox" name="include_solutions" value="1" id="include-solutions">
                 Include marking schemes
             </label>
         </div>
@@ -305,7 +354,7 @@ function filterChanged() {
 }
 
 function selectAll() {
-    document.querySelectorAll('.question-card input[type="checkbox"]').forEach(cb => {
+    document.querySelectorAll('.question-card input[type="checkbox"][name="question_ids"]').forEach(cb => {
         cb.checked = true;
         cb.closest('.question-card').classList.add('selected');
     });
@@ -313,7 +362,7 @@ function selectAll() {
 }
 
 function deselectAll() {
-    document.querySelectorAll('.question-card input[type="checkbox"]').forEach(cb => {
+    document.querySelectorAll('.question-card input[type="checkbox"][name="question_ids"]').forEach(cb => {
         cb.checked = false;
         cb.closest('.question-card').classList.remove('selected');
     });
@@ -321,11 +370,10 @@ function deselectAll() {
 }
 
 function updateCount() {
-    const checked = document.querySelectorAll('.question-card input[type="checkbox"]:checked').length;
+    const checked = document.querySelectorAll('.question-card input[type="checkbox"][name="question_ids"]:checked').length;
     document.getElementById('count').textContent = checked;
     document.getElementById('print-btn').disabled = checked === 0;
 
-    // Update card visual state
     document.querySelectorAll('.question-card').forEach(card => {
         const cb = card.querySelector('input[type="checkbox"]');
         card.classList.toggle('selected', cb.checked);

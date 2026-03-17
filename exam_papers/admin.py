@@ -328,18 +328,22 @@ class ExamQuestionAdmin(admin.ModelAdmin):
     def worksheet_print_view(self, request):
         """Render a clean printable page with selected exam question images."""
         question_ids = request.POST.getlist('question_ids')
+        include_solutions = request.POST.get('include_solutions') == '1'
         if not question_ids:
             messages.error(request, 'No questions selected.')
             return redirect('admin:exam_papers_examquestion_worksheet_generator')
 
         questions = ExamQuestion.objects.filter(
             id__in=question_ids
-        ).select_related('exam_paper', 'topic').order_by(
+        ).select_related('exam_paper', 'topic').prefetch_related(
+            'parts'
+        ).order_by(
             'topic__name', 'exam_paper__year', 'question_number'
         )
 
         context = {
             'questions': questions,
+            'include_solutions': include_solutions,
             'title': 'Worksheet',
         }
         return render(request, 'admin/exam_papers/worksheet_print.html', context)

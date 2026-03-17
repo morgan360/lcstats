@@ -53,6 +53,10 @@
                                 class="block rounded-lg px-3 py-2 text-sm font-semibold hover:bg-rose-pop/20">
                                 Exam Papers
                             </a>
+                            <a href="{% url 'exam_papers:worksheet_generator' %}"
+                                class="block rounded-lg px-3 py-2 text-sm font-semibold hover:bg-rose-pop/20">
+                                Print Exam Questions
+                            </a>
                         </div>
                     </div>
 
@@ -187,6 +191,8 @@
                         Questions</a>
                     <a href="{% url 'exam_papers:paper_list' %}"
                         class="block rounded-lg px-3 py-2 text-sm font-semibold hover:bg-mist/10">Exam Papers</a>
+                    <a href="{% url 'exam_papers:worksheet_generator' %}"
+                        class="block rounded-lg px-3 py-2 text-sm font-semibold hover:bg-mist/10">Print Exam Questions</a>
                 </div>
             </div>
 

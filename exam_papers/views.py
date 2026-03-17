@@ -571,3 +571,78 @@ def exit_exam(request, attempt_id):
         'success': True,
         'redirect_url': f'/exam-papers/attempt/{attempt.id}/results/'
     })
+
+
+@login_required
+def worksheet_generator(request):
+    """Public view for selecting exam questions to print as a worksheet."""
+    from core.models import Subject
+
+    subjects = Subject.objects.filter(is_active=True)
+    selected_topic_id = request.GET.get('topic')
+    selected_subject_id = request.GET.get('subject')
+
+    # Only show topics that have questions with images
+    topics = Topic.objects.filter(
+        exam_questions__image__isnull=False
+    ).exclude(
+        exam_questions__image=''
+    ).distinct().select_related('subject').order_by('subject__name', 'name')
+
+    if selected_subject_id:
+        topics = topics.filter(subject_id=selected_subject_id)
+
+    questions = ExamQuestion.objects.none()
+    if selected_topic_id:
+        if selected_topic_id == 'none':
+            questions = ExamQuestion.objects.filter(
+                topic__isnull=True
+            ).exclude(image='').exclude(image__isnull=True)
+        else:
+            questions = ExamQuestion.objects.filter(
+                topic_id=selected_topic_id
+            ).exclude(image='').exclude(image__isnull=True)
+        questions = questions.select_related(
+            'exam_paper', 'topic'
+        ).prefetch_related('parts').order_by('exam_paper__year', 'question_number')
+
+    # Count unassigned questions with images
+    unassigned_count = ExamQuestion.objects.filter(
+        topic__isnull=True
+    ).exclude(image='').exclude(image__isnull=True).count()
+
+    context = {
+        'subjects': subjects,
+        'topics': topics,
+        'questions': questions,
+        'selected_topic_id': selected_topic_id,
+        'selected_subject_id': int(selected_subject_id) if selected_subject_id else None,
+        'unassigned_count': unassigned_count,
+    }
+    return render(request, 'exam_papers/worksheet_generator.html', context)
+
+
+@login_required
+@require_POST
+def worksheet_print(request):
+    """Render a clean printable page with selected exam question images and optional marking schemes."""
+    question_ids = request.POST.getlist('question_ids')
+    include_solutions = request.POST.get('include_solutions') == '1'
+
+    if not question_ids:
+        from django.contrib import messages
+        messages.error(request, 'No questions selected.')
+        return redirect('exam_papers:worksheet_generator')
+
+    questions = ExamQuestion.objects.filter(
+        id__in=question_ids
+    ).select_related('exam_paper', 'topic').prefetch_related(
+        'parts'
+    ).order_by('topic__name', 'exam_paper__year', 'question_number')
+
+    context = {
+        'questions': questions,
+        'include_solutions': include_solutions,
+        'title': 'Worksheet',
+    }
+    return render(request, 'exam_papers/worksheet_print.html', context)
