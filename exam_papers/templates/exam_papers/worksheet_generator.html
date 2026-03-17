@@ -51,10 +51,16 @@
         justify-content: space-between;
         align-items: center;
         margin-bottom: 15px;
-        padding: 10px 0;
+        padding: 12px 15px;
         border-bottom: 1px solid rgba(255,255,255,0.1);
         flex-wrap: wrap;
         gap: 10px;
+        position: sticky;
+        top: 0;
+        z-index: 30;
+        background: rgba(26, 26, 46, 0.95);
+        backdrop-filter: blur(8px);
+        border-radius: 8px;
     }
 
     .toolbar .selection-controls {
@@ -177,17 +183,7 @@
         border-radius: 4px;
     }
 
-    .submit-section {
-        margin-top: 25px;
-        padding-top: 20px;
-        border-top: 2px solid rgba(255,255,255,0.1);
-        display: flex;
-        gap: 15px;
-        align-items: center;
-        flex-wrap: wrap;
-    }
-
-    .submit-section button[type="submit"] {
+    .toolbar button[type="submit"] {
         padding: 10px 25px;
         font-size: 14px;
         cursor: pointer;
@@ -198,11 +194,11 @@
         font-weight: 600;
     }
 
-    .submit-section button[type="submit"]:hover {
+    .toolbar button[type="submit"]:hover {
         background: #4f46e5;
     }
 
-    .submit-section button[type="submit"]:disabled {
+    .toolbar button[type="submit"]:disabled {
         background: #555;
         cursor: not-allowed;
     }
@@ -287,6 +283,13 @@
                 <button type="button" onclick="deselectAll()">Deselect All</button>
                 <span class="selected-count"><span id="count">0</span> of {{ questions|length }} selected</span>
             </div>
+            <div style="display: flex; align-items: center; gap: 15px;">
+                <label class="solutions-toggle">
+                    <input type="checkbox" name="include_solutions" value="1" id="include-solutions">
+                    Include marking schemes
+                </label>
+                <button type="submit" id="print-btn" disabled>Generate Printable Worksheet</button>
+            </div>
         </div>
 
         <div class="question-grid">
@@ -318,13 +321,6 @@
             {% endfor %}
         </div>
 
-        <div class="submit-section">
-            <button type="submit" id="print-btn" disabled>Generate Printable Worksheet</button>
-            <label class="solutions-toggle">
-                <input type="checkbox" name="include_solutions" value="1" id="include-solutions">
-                Include marking schemes
-            </label>
-        </div>
     </form>
 
     {% elif selected_topic_id %}
