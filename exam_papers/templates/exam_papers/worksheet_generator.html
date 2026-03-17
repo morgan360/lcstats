@@ -4,248 +4,25 @@
 
 {% block content %}
 <style>
-    .worksheet-container {
-        max-width: 1200px;
-        margin: 0 auto;
-    }
-
-    .filters {
-        display: flex;
-        gap: 15px;
-        align-items: end;
-        margin-bottom: 25px;
-        padding: 20px;
-        background: rgba(255,255,255,0.05);
-        border-radius: 8px;
-        border: 1px solid rgba(255,255,255,0.1);
-    }
-
-    .filter-group {
-        display: flex;
-        flex-direction: column;
-        gap: 5px;
-    }
-
-    .filter-group label {
-        font-weight: 600;
-        font-size: 13px;
-    }
-
-    .filter-group select {
-        padding: 8px 12px;
-        font-size: 14px;
-        border: 1px solid rgba(255,255,255,0.2);
-        border-radius: 6px;
-        min-width: 200px;
-        background: rgba(255,255,255,0.1);
-        color: inherit;
-    }
-
-    .filter-group select option {
-        background: #1a1a2e;
-        color: #e0e0e0;
-    }
-
-    .toolbar {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 15px;
-        padding: 12px 15px;
-        border-bottom: 1px solid rgba(255,255,255,0.1);
-        flex-wrap: wrap;
-        gap: 10px;
-        position: sticky;
-        top: 0;
-        z-index: 30;
-        background: rgba(26, 26, 46, 0.95);
-        backdrop-filter: blur(8px);
-        border-radius: 8px;
-    }
-
-    .toolbar .selection-controls {
-        display: flex;
-        gap: 10px;
-        align-items: center;
-    }
-
-    .toolbar .selection-controls button {
-        padding: 5px 12px;
-        font-size: 13px;
-        cursor: pointer;
-        border: 1px solid rgba(255,255,255,0.2);
-        border-radius: 4px;
-        background: rgba(255,255,255,0.1);
-        color: inherit;
-    }
-
-    .toolbar .selection-controls button:hover {
-        background: rgba(255,255,255,0.2);
-    }
-
-    .selected-count {
-        font-size: 13px;
-        opacity: 0.7;
-    }
-
-    .question-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
-        gap: 20px;
-    }
-
-    .question-card {
-        border: 2px solid rgba(255,255,255,0.15);
-        border-radius: 8px;
-        padding: 15px;
-        cursor: pointer;
-        transition: border-color 0.2s, background 0.2s;
-    }
-
-    .question-card:hover {
-        border-color: rgba(255,255,255,0.3);
-    }
-
-    .question-card.selected {
-        border-color: #6366f1;
-        background: rgba(99, 102, 241, 0.1);
-    }
-
-    .question-card input[type="checkbox"] {
-        display: none;
-    }
-
-    .question-meta {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 10px;
-        font-size: 13px;
-    }
-
-    .question-meta .paper-info {
-        font-weight: 600;
-        color: #818cf8;
-    }
-
-    .question-meta .marks {
-        background: rgba(99, 102, 241, 0.2);
-        padding: 2px 8px;
-        border-radius: 12px;
-        font-size: 12px;
-        color: #a5b4fc;
-    }
-
-    .question-meta .solutions-badge {
-        background: rgba(34, 197, 94, 0.2);
-        padding: 2px 8px;
-        border-radius: 12px;
-        font-size: 11px;
-        color: #86efac;
-        margin-left: 6px;
-    }
-
-    .question-meta .solutions-badge.partial {
-        background: rgba(234, 179, 8, 0.2);
-        color: #fde047;
-    }
-
-    .question-card .check-indicator {
-        display: inline-block;
-        width: 20px;
-        height: 20px;
-        border: 2px solid rgba(255,255,255,0.3);
-        border-radius: 4px;
-        margin-right: 8px;
-        vertical-align: middle;
-        position: relative;
-    }
-
-    .question-card.selected .check-indicator {
-        background: #6366f1;
-        border-color: #6366f1;
-    }
-
-    .question-card.selected .check-indicator::after {
-        content: '\2713';
-        color: white;
-        position: absolute;
-        top: -2px;
-        left: 3px;
-        font-size: 14px;
-        font-weight: bold;
-    }
-
-    .question-card img {
-        max-width: 100%;
-        height: auto;
-        border: 1px solid rgba(255,255,255,0.1);
-        border-radius: 4px;
-    }
-
-    .toolbar button[type="submit"] {
-        padding: 10px 25px;
-        font-size: 14px;
-        cursor: pointer;
-        background: #6366f1;
-        color: white;
-        border: none;
-        border-radius: 6px;
-        font-weight: 600;
-    }
-
-    .toolbar button[type="submit"]:hover {
-        background: #4f46e5;
-    }
-
-    .toolbar button[type="submit"]:disabled {
-        background: #555;
-        cursor: not-allowed;
-    }
-
-    .solutions-toggle {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        font-size: 14px;
-    }
-
-    .solutions-toggle input[type="checkbox"] {
-        width: 18px;
-        height: 18px;
-        accent-color: #6366f1;
-    }
-
-    .empty-state {
-        text-align: center;
-        padding: 60px 20px;
-        opacity: 0.6;
-    }
-
-    .empty-state p {
-        font-size: 16px;
-    }
-
-    @media (max-width: 640px) {
-        .filters {
-            flex-direction: column;
-        }
-        .filter-group select {
-            min-width: 100%;
-        }
-        .question-grid {
-            grid-template-columns: 1fr;
-        }
-    }
+    .question-card input[type="checkbox"] { display: none; }
+    .question-card.selected { border-color: #9448B0 !important; background: rgba(148, 72, 176, 0.1); }
+    .question-card.selected .check-indicator { background: #9448B0; border-color: #9448B0; }
+    .question-card.selected .check-indicator::after { content: '\2713'; color: white; position: absolute; top: -2px; left: 3px; font-size: 14px; font-weight: bold; }
+    select option { background: #001C3D; color: #F0EFEB; }
 </style>
-<div class="worksheet-container">
-    <h1 class="text-2xl font-bold mb-2">Print Exam Questions</h1>
-    <p class="mb-6 opacity-70">Select a topic to browse exam questions, then pick questions to generate a printable worksheet.</p>
 
-    <div class="filters">
-        <div class="filter-group">
-            <label for="subject-select">Subject</label>
-            <select id="subject-select" onchange="filterChanged()">
+<div class="mx-auto max-w-6xl px-4 py-8">
+    <h1 class="text-2xl font-semibold text-mist text-center">Print Exam Questions</h1>
+    <p class="mt-4 rounded-xl border border-indigo-deep/20 bg-mist px-5 py-4 text-sm text-indigo-deep shadow-[0_8px_24px_rgba(0,0,0,0.08)]">
+        Select a topic to browse exam questions, then pick questions to generate a printable worksheet with optional marking schemes.
+    </p>
+
+    <!-- Filters -->
+    <div class="mt-8 flex flex-col sm:flex-row gap-4 items-end rounded-xl border border-mist/10 bg-twilight p-5">
+        <div class="flex flex-col gap-1 flex-1">
+            <label for="subject-select" class="text-sm font-semibold text-mist">Subject</label>
+            <select id="subject-select" onchange="filterChanged()"
+                class="rounded-lg border border-mist/20 bg-midnight/50 px-3 py-2 text-sm text-mist">
                 <option value="">All Subjects</option>
                 {% for subject in subjects %}
                 <option value="{{ subject.id }}" {% if selected_subject_id == subject.id %}selected{% endif %}>
@@ -254,10 +31,10 @@
                 {% endfor %}
             </select>
         </div>
-
-        <div class="filter-group">
-            <label for="topic-select">Topic</label>
-            <select id="topic-select" onchange="filterChanged()">
+        <div class="flex flex-col gap-1 flex-1">
+            <label for="topic-select" class="text-sm font-semibold text-mist">Topic</label>
+            <select id="topic-select" onchange="filterChanged()"
+                class="rounded-lg border border-mist/20 bg-midnight/50 px-3 py-2 text-sm text-mist">
                 <option value="">-- Select a topic --</option>
                 {% for topic in topics %}
                 <option value="{{ topic.id }}" {% if selected_topic_id == topic.id|stringformat:"d" %}selected{% endif %}>
@@ -277,60 +54,68 @@
     <form method="post" action="{% url 'exam_papers:worksheet_print' %}" target="_blank">
         {% csrf_token %}
 
-        <div class="toolbar">
-            <div class="selection-controls">
-                <button type="button" onclick="selectAll()">Select All</button>
-                <button type="button" onclick="deselectAll()">Deselect All</button>
-                <span class="selected-count"><span id="count">0</span> of {{ questions|length }} selected</span>
+        <!-- Sticky toolbar -->
+        <div class="sticky top-0 z-30 mt-6 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-mist/10 bg-twilight/95 px-5 py-3 shadow-lg backdrop-blur-sm">
+            <div class="flex items-center gap-3">
+                <button type="button" onclick="selectAll()"
+                    class="rounded-lg border border-mist/20 bg-mist/10 px-3 py-1.5 text-xs font-semibold text-mist transition hover:bg-mist/20">Select All</button>
+                <button type="button" onclick="deselectAll()"
+                    class="rounded-lg border border-mist/20 bg-mist/10 px-3 py-1.5 text-xs font-semibold text-mist transition hover:bg-mist/20">Deselect All</button>
+                <span class="text-xs text-mist/60"><span id="count">0</span> of {{ questions|length }} selected</span>
             </div>
-            <div style="display: flex; align-items: center; gap: 15px;">
-                <label class="solutions-toggle">
-                    <input type="checkbox" name="include_solutions" value="1" id="include-solutions">
+            <div class="flex items-center gap-4">
+                <label class="flex cursor-pointer items-center gap-2 text-sm font-semibold text-mist">
+                    <input type="checkbox" name="include_solutions" value="1" id="include-solutions"
+                        class="h-4 w-4 rounded accent-violet-royal">
                     Include marking schemes
                 </label>
-                <button type="submit" id="print-btn" disabled>Generate Printable Worksheet</button>
+                <button type="submit" id="print-btn" disabled
+                    class="rounded-lg bg-gradient-to-b from-violet-royal to-indigo-deep px-5 py-2 text-sm font-semibold text-mist shadow-[0_6px_20px_rgba(0,0,0,0.15)] transition hover:-translate-y-0.5 hover:shadow-[0_10px_26px_rgba(0,0,0,0.2)] disabled:opacity-40 disabled:hover:translate-y-0 disabled:cursor-not-allowed">
+                    Generate Printable Worksheet
+                </button>
             </div>
         </div>
 
-        <div class="question-grid">
+        <!-- Question grid -->
+        <div class="mt-6 grid grid-cols-1 gap-5 md:grid-cols-2">
             {% for question in questions %}
-            <label class="question-card" for="q-{{ question.id }}">
+            <label class="question-card cursor-pointer rounded-xl border-2 border-mist/15 p-4 transition hover:border-mist/30" for="q-{{ question.id }}">
                 <input type="checkbox" name="question_ids" value="{{ question.id }}" id="q-{{ question.id }}" onchange="updateCount()">
-                <div class="question-meta">
-                    <span>
-                        <span class="check-indicator"></span>
-                        <span class="paper-info">{{ question.exam_paper }} - Q{{ question.question_number }}</span>
+                <div class="mb-3 flex items-center justify-between text-sm">
+                    <span class="flex items-center gap-2">
+                        <span class="check-indicator relative inline-block h-5 w-5 rounded border-2 border-mist/30"></span>
+                        <span class="font-semibold text-violet-royal">{{ question.exam_paper }} - Q{{ question.question_number }}</span>
                     </span>
-                    <span>
+                    <span class="flex items-center gap-1.5">
                         {% if question.total_marks %}
-                        <span class="marks">{{ question.total_marks }} marks</span>
+                        <span class="rounded-full bg-indigo-deep/30 px-2.5 py-0.5 text-xs font-semibold text-mist/80">{{ question.total_marks }} marks</span>
                         {% endif %}
                         {% with status=question.solution_images_status %}
                         {% if status.0 == status.1 and status.1 > 0 %}
-                        <span class="solutions-badge">Solutions</span>
+                        <span class="rounded-full bg-lime-glow/20 px-2.5 py-0.5 text-xs font-semibold text-lime-glow">Solutions</span>
                         {% elif status.0 > 0 %}
-                        <span class="solutions-badge partial">{{ status.0 }}/{{ status.1 }} Solutions</span>
+                        <span class="rounded-full bg-rose-pop/20 px-2.5 py-0.5 text-xs font-semibold text-rose-pop">{{ status.0 }}/{{ status.1 }} Solutions</span>
                         {% endif %}
                         {% endwith %}
                     </span>
                 </div>
                 {% if question.image %}
-                <img src="{{ question.image.url }}" alt="Question {{ question.question_number }}" loading="lazy">
+                <img src="{{ question.image.url }}" alt="Question {{ question.question_number }}" loading="lazy"
+                    class="w-full rounded-lg border border-mist/10">
                 {% endif %}
             </label>
             {% endfor %}
         </div>
-
     </form>
 
     {% elif selected_topic_id %}
-    <div class="empty-state">
-        <p>No questions with images found for this topic.</p>
+    <div class="mt-16 text-center text-mist/60">
+        <p class="text-lg">No questions with images found for this topic.</p>
     </div>
 
     {% else %}
-    <div class="empty-state">
-        <p>Select a topic above to browse exam questions.</p>
+    <div class="mt-16 text-center text-mist/60">
+        <p class="text-lg">Select a topic above to browse exam questions.</p>
     </div>
     {% endif %}
 </div>
