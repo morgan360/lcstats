@@ -7,7 +7,11 @@ urlpatterns = [
     # List of all available exam papers
     path('', views.paper_list, name='paper_list'),
 
-    # Full paper attempt (timed or practice)
+    # Worksheet generator (public, for all logged-in users)
+    path('worksheet/', views.worksheet_generator, name='worksheet_generator'),
+    path('worksheet/print/', views.worksheet_print, name='worksheet_print'),
+
+    # Full paper attempt (timed or practice) - slug catch-all must come after specific routes
     path('<slug:slug>/', views.paper_detail, name='paper_detail'),
     path('<slug:slug>/start/', views.start_paper_attempt, name='start_paper_attempt'),
 
@@ -46,7 +50,4 @@ urlpatterns = [
     path('attempt/<int:attempt_id>/exit/',
          views.exit_exam, name='exit_exam'),
 
-    # Worksheet generator (public, for all logged-in users)
-    path('worksheet/', views.worksheet_generator, name='worksheet_generator'),
-    path('worksheet/print/', views.worksheet_print, name='worksheet_print'),
 ]
