@@ -34,28 +34,19 @@
             height: auto;
         }
 
-        .solutions-section {
-            page-break-before: always;
-        }
-
-        .solutions-section h2 {
-            font-size: 20px;
-            margin-bottom: 20px;
-            padding-bottom: 8px;
-            border-bottom: 2px solid #333;
-        }
-
         .solution-group {
             page-break-inside: avoid;
-            margin-bottom: 25px;
+            margin-bottom: 12px;
         }
 
-        .solution-group h3 {
-            font-size: 14px;
+        .solution-header {
+            font-size: 13px;
+            font-weight: bold;
             color: #444;
             margin-bottom: 8px;
-            padding-bottom: 4px;
-            border-bottom: 1px solid #ddd;
+            padding: 6px 10px;
+            background: #f0f0f0;
+            border-left: 4px solid #666;
         }
 
         .solution-part {
@@ -134,29 +125,24 @@
         <img src="{{ question.image.url }}" alt="Question {{ question.question_number }}">
         {% endif %}
     </div>
-    {% endfor %}
 
     {% if include_solutions %}
-    <div class="solutions-section">
-        <h2>Marking Schemes</h2>
-        {% for question in questions %}
-        {% with parts=question.parts.all %}
-        {% if parts %}
-        <div class="solution-group">
-            <h3>{{ question.exam_paper }} &mdash; Question {{ question.question_number }}</h3>
-            {% for part in parts %}
-            {% if part.solution_image %}
-            <div class="solution-part">
-                <div class="part-label">Part {{ part.label }}{% if part.max_marks %} ({{ part.max_marks }} marks){% endif %}</div>
-                <img src="{{ part.solution_image.url }}" alt="Solution {{ part.label }}">
-            </div>
-            {% endif %}
-            {% endfor %}
-        </div>
+    {% with parts=question.parts.all %}
+    {% for part in parts %}
+    {% if part.solution_image %}
+    <div class="solution-group">
+        {% if forloop.first %}
+        <div class="solution-header">Marking Scheme &mdash; {{ question.exam_paper }} Q{{ question.question_number }}</div>
         {% endif %}
-        {% endwith %}
-        {% endfor %}
+        <div class="solution-part">
+            <div class="part-label">Part {{ part.label }}{% if part.max_marks %} ({{ part.max_marks }} marks){% endif %}</div>
+            <img src="{{ part.solution_image.url }}" alt="Solution {{ part.label }}">
+        </div>
     </div>
     {% endif %}
+    {% endfor %}
+    {% endwith %}
+    {% endif %}
+    {% endfor %}
 </body>
 </html>
