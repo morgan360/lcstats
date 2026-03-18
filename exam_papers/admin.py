@@ -303,7 +303,7 @@ class ExamQuestionAdmin(admin.ModelAdmin):
                 ).exclude(image='').exclude(image__isnull=True)
             questions = questions.select_related(
                 'exam_paper', 'topic'
-            ).order_by('exam_paper__year', 'question_number')
+            ).prefetch_related('parts').order_by('-exam_paper__year', 'question_number')
 
         # Count unassigned questions with images
         unassigned_count = ExamQuestion.objects.filter(
