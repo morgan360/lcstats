@@ -574,6 +574,32 @@ def exit_exam(request, attempt_id):
 
 
 @login_required
+def papers_and_solutions(request):
+    """Browse exam papers and marking schemes by year."""
+    current_subject = getattr(request, 'current_subject', None)
+    if current_subject:
+        papers = ExamPaper.objects.filter(
+            is_published=True,
+            subject=current_subject
+        ).order_by('-year', 'paper_type', 'is_deferred')
+    else:
+        papers = ExamPaper.objects.filter(
+            is_published=True
+        ).order_by('-year', 'paper_type', 'is_deferred')
+
+    papers_by_year = {}
+    for paper in papers:
+        if paper.year not in papers_by_year:
+            papers_by_year[paper.year] = []
+        papers_by_year[paper.year].append(paper)
+
+    context = {
+        'papers_by_year': dict(sorted(papers_by_year.items(), reverse=True)),
+    }
+    return render(request, 'exam_papers/papers_and_solutions.html', context)
+
+
+@login_required
 def worksheet_generator(request):
     """Public view for selecting exam questions to print as a worksheet."""
     from core.models import Subject

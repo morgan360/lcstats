@@ -1,0 +1,88 @@
+{% extends "_base.html" %}
+
+{% block title %}Papers & Marking Schemes - NumScoil{% endblock %}
+
+{% block content %}
+<div class="mx-auto max-w-5xl px-4 py-8">
+    <h1 class="text-2xl font-semibold text-mist text-center">Papers & Marking Schemes</h1>
+    <p class="mt-4 rounded-xl border border-indigo-deep/20 bg-mist px-5 py-4 text-sm text-indigo-deep shadow-[0_8px_24px_rgba(0,0,0,0.08)]">
+        Browse and download Leaving Certificate exam papers and their official marking schemes.
+    </p>
+
+    {% if papers_by_year %}
+    <div class="mt-10 space-y-12">
+        {% for year, papers in papers_by_year.items %}
+        <section>
+            <!-- Year header -->
+            <div class="mb-4 flex items-baseline gap-4">
+                <h2 class="text-3xl font-bold text-mist">{{ year }}</h2>
+                <div class="h-px flex-1" style="background: linear-gradient(90deg, rgba(148,72,176,0.5), transparent);"></div>
+            </div>
+
+            <!-- Column headers -->
+            <div class="mb-2 hidden sm:grid sm:grid-cols-3 gap-4 px-4 text-xs font-semibold uppercase tracking-wider" style="color: #999;">
+                <span>Paper</span>
+                <span class="text-center">Exam Paper</span>
+                <span class="text-center">Marking Scheme</span>
+            </div>
+
+            <!-- Papers for this year -->
+            <div class="space-y-3">
+                {% for paper in papers %}
+                <div class="rounded-xl border border-mist/10 p-4 transition hover:border-mist/20"
+                     style="background: rgba(23, 50, 81, 0.5);">
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 items-center">
+                        <!-- Paper info -->
+                        <div>
+                            <div class="text-base font-semibold text-mist">{{ paper.get_paper_type_display }}</div>
+                            {% if paper.is_deferred %}
+                            <span class="mt-1 inline-block rounded-full px-2.5 py-0.5 text-xs font-semibold"
+                                  style="background: rgba(232, 124, 184, 0.2); color: #E47CB8;">Deferred</span>
+                            {% endif %}
+                        </div>
+
+                        <!-- Exam paper PDF -->
+                        <div class="text-center">
+                            {% if paper.source_pdf %}
+                            <a href="{{ paper.source_pdf.url }}" target="_blank"
+                               class="inline-flex items-center gap-2 rounded-lg px-5 py-2.5 text-sm font-semibold text-mist transition hover:-translate-y-0.5"
+                               style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); box-shadow: 0 6px 20px rgba(102, 126, 234, 0.25);">
+                                <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                                </svg>
+                                Exam Paper
+                            </a>
+                            {% else %}
+                            <span class="text-sm" style="color: #666;">Not available</span>
+                            {% endif %}
+                        </div>
+
+                        <!-- Marking scheme PDF -->
+                        <div class="text-center">
+                            {% if paper.marking_scheme_pdf %}
+                            <a href="{{ paper.marking_scheme_pdf.url }}" target="_blank"
+                               class="inline-flex items-center gap-2 rounded-lg px-5 py-2.5 text-sm font-semibold text-mist transition hover:-translate-y-0.5"
+                               style="background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%); color: #001C3D; box-shadow: 0 6px 20px rgba(67, 233, 123, 0.2);">
+                                <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                </svg>
+                                Marking Scheme
+                            </a>
+                            {% else %}
+                            <span class="text-sm" style="color: #666;">Not available</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </section>
+        {% endfor %}
+    </div>
+    {% else %}
+    <p class="mt-10 rounded-xl border border-indigo-deep/15 bg-mist px-6 py-10 text-center text-sm text-indigo-deep/70">
+        No exam papers available yet. Check back soon!
+    </p>
+    {% endif %}
+</div>
+{% endblock %}

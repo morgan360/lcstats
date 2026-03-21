@@ -7,6 +7,9 @@ urlpatterns = [
     # List of all available exam papers
     path('', views.paper_list, name='paper_list'),
 
+    # Papers & marking schemes browser
+    path('browse/', views.papers_and_solutions, name='papers_and_solutions'),
+
     # Worksheet generator (public, for all logged-in users)
     path('worksheet/', views.worksheet_generator, name='worksheet_generator'),
     path('worksheet/print/', views.worksheet_print, name='worksheet_print'),
