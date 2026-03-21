@@ -7,6 +7,9 @@ urlpatterns = [
     # List all flashcard sets (all topics)
     path('', views.flashcard_sets_index, name='flashcard_sets_index'),
 
+    # Staff: import flashcards from JSON (must be before slug catch-all)
+    path('import/', views.import_flashcards_view, name='import_flashcards'),
+
     # List sets for a specific topic
     path('<slug:topic_slug>/', views.flashcard_sets_list, name='flashcard_sets_list'),
 

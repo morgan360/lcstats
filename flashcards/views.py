@@ -1,5 +1,6 @@
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.decorators import login_required
+from django.contrib.admin.views.decorators import staff_member_required
 from django.contrib import messages
 from django.db import transaction
 from django.http import JsonResponse
@@ -7,6 +8,7 @@ from django.urls import reverse
 from django.views.decorators.http import require_POST
 from interactive_lessons.models import Topic
 from .models import FlashcardSet, Flashcard, FlashcardAttempt
+from .services import import_flashcards_from_data, preview_flashcard_import
 import json
 import markdown
 from markdown_katex import KatexExtension
@@ -367,3 +369,83 @@ def reset_set_progress(request, topic_slug, set_id):
         'topic_slug': topic_slug,
         'set_id': set_id
     }))
+
+
+@login_required
+@staff_member_required
+def import_flashcards_view(request):
+    """
+    Two-step flashcard import: upload JSON -> preview -> confirm import.
+    """
+    context = {'step': 'upload'}
+
+    if request.method == 'POST':
+        if 'confirm_import' in request.POST:
+            # Step 2: Confirm and import
+            data_json = request.session.get('flashcard_import_data')
+            if not data_json:
+                messages.error(request, 'Import session expired. Please upload again.')
+                return render(request, 'flashcards/import_flashcards.html', context)
+
+            try:
+                data = json.loads(data_json)
+                result = import_flashcards_from_data(data)
+                del request.session['flashcard_import_data']
+
+                context = {
+                    'step': 'results',
+                    'result': result,
+                }
+                if result['errors']:
+                    messages.warning(request, f"Import completed with {len(result['errors'])} error(s).")
+                else:
+                    messages.success(
+                        request,
+                        f"Imported {result['sets_created']} set(s) with {result['cards_created']} card(s). "
+                        f"{result['sets_skipped']} duplicate(s) skipped."
+                    )
+            except Exception as e:
+                messages.error(request, f'Import failed: {e}')
+
+            return render(request, 'flashcards/import_flashcards.html', context)
+
+        elif 'cancel_import' in request.POST:
+            request.session.pop('flashcard_import_data', None)
+            messages.info(request, 'Import cancelled.')
+            return render(request, 'flashcards/import_flashcards.html', context)
+
+        else:
+            # Step 1: Upload and preview
+            uploaded_file = request.FILES.get('json_file')
+            if not uploaded_file:
+                messages.error(request, 'Please select a JSON file to upload.')
+                return render(request, 'flashcards/import_flashcards.html', context)
+
+            if not uploaded_file.name.endswith('.json'):
+                messages.error(request, 'Please upload a .json file.')
+                return render(request, 'flashcards/import_flashcards.html', context)
+
+            try:
+                raw = uploaded_file.read().decode('utf-8')
+                data = json.loads(raw)
+            except (json.JSONDecodeError, UnicodeDecodeError) as e:
+                messages.error(request, f'Invalid JSON file: {e}')
+                return render(request, 'flashcards/import_flashcards.html', context)
+
+            if 'sets' not in data:
+                messages.error(request, "Invalid format: 'sets' key not found in JSON.")
+                return render(request, 'flashcards/import_flashcards.html', context)
+
+            previews = preview_flashcard_import(data)
+            request.session['flashcard_import_data'] = raw
+
+            context = {
+                'step': 'preview',
+                'previews': previews,
+                'total_sets': len(previews),
+                'total_cards': sum(p['card_count'] for p in previews),
+                'duplicate_count': sum(1 for p in previews if p['is_duplicate']),
+                'new_count': sum(1 for p in previews if not p['is_duplicate']),
+            }
+
+    return render(request, 'flashcards/import_flashcards.html', context)
