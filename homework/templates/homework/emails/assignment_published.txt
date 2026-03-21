@@ -1,0 +1,14 @@
+Hi {{ student.first_name|default:student.username }},
+
+You have a new homework assignment from {{ teacher_name }}:
+
+Title: {{ assignment.title }}
+Topic: {{ assignment.topic.name }}
+Due Date: {{ assignment.due_date|date:"l, j F Y \a\t H:i" }}
+{% if assignment.description %}
+Instructions: {{ assignment.description }}
+{% endif %}
+
+View your assignment at: {{ site_url }}/homework/assignment/{{ assignment.id }}/
+
+- NumScoil

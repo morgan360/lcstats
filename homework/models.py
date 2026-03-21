@@ -156,6 +156,10 @@ class HomeworkAssignment(models.Model):
         default=False,
         help_text="Whether students can see this assignment (draft mode if False)"
     )
+    notification_sent = models.BooleanField(
+        default=False,
+        help_text="Whether email notifications have been sent for this assignment"
+    )
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

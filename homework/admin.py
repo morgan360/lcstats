@@ -201,7 +201,7 @@ class HomeworkAssignmentAdmin(admin.ModelAdmin):
     list_filter = ('teacher', 'topic__subject', 'topic', 'is_published', 'due_date', 'assigned_date')
     search_fields = ('title', 'description', 'teacher__display_name', 'topic__name')
     filter_horizontal = ('assigned_classes', 'assigned_students')
-    readonly_fields = ('created_at', 'updated_at', 'progress_summary')
+    readonly_fields = ('created_at', 'updated_at', 'progress_summary', 'notification_sent')
     inlines = [
         PracticeQuestionsTaskInline,
         ExamQuestionsTaskInline,
@@ -224,7 +224,7 @@ class HomeworkAssignmentAdmin(admin.ModelAdmin):
             )
         }),
         ('Status', {
-            'fields': ('is_published', 'progress_summary')
+            'fields': ('is_published', 'notification_sent', 'progress_summary')
         }),
         ('Timestamps', {
             'fields': ('created_at', 'updated_at'),
@@ -333,6 +333,39 @@ class HomeworkAssignmentAdmin(admin.ModelAdmin):
                         studentprofile__school=teacher_profile.school
                     )
         return super().formfield_for_manytomany(db_field, request, **kwargs)
+
+    def save_model(self, request, obj, form, change):
+        """Detect when is_published transitions to True and send email notifications."""
+        should_notify = False
+        if change and 'is_published' in form.changed_data and obj.is_published:
+            # Verify it was previously unpublished
+            try:
+                old = HomeworkAssignment.objects.get(pk=obj.pk)
+                if not old.is_published and not old.notification_sent:
+                    should_notify = True
+            except HomeworkAssignment.DoesNotExist:
+                pass
+
+        super().save_model(request, obj, form, change)
+
+        if should_notify:
+            from .services import send_assignment_published_email
+            result = send_assignment_published_email(obj)
+            obj.notification_sent = True
+            obj.save(update_fields=['notification_sent'])
+
+            if result['sent'] > 0:
+                self.message_user(
+                    request,
+                    f"Email notifications sent to {result['sent']} student(s).",
+                    level='SUCCESS'
+                )
+            if result['failed'] > 0:
+                self.message_user(
+                    request,
+                    f"Failed to send {result['failed']} email(s). Check logs for details.",
+                    level='WARNING'
+                )
 
     def save_related(self, request, form, formsets, change):
         """
