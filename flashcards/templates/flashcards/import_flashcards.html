@@ -1,0 +1,152 @@
+{% extends "_base.html" %}
+
+{% block title %}Import Flashcards - NumScoil{% endblock %}
+
+{% block content %}
+<div style="max-width: 800px; margin: 0 auto;">
+    <h1 style="font-size: 1.75rem; font-weight: 700; color: #e8e0f0; margin-bottom: 0.5rem;">Import Flashcards</h1>
+    <p style="color: #b0a8c0; margin-bottom: 1.5rem;">Upload a JSON export file to import flashcard sets. Duplicates are automatically detected and skipped.</p>
+
+    {% if messages %}
+    <div style="margin-bottom: 1.5rem;">
+        {% for message in messages %}
+        <div style="padding: 0.75rem 1rem; border-radius: 0.5rem; margin-bottom: 0.5rem;
+            {% if message.tags == 'error' %}background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.3); color: #fca5a5;
+            {% elif message.tags == 'warning' %}background: rgba(245, 158, 11, 0.15); border: 1px solid rgba(245, 158, 11, 0.3); color: #fcd34d;
+            {% elif message.tags == 'success' %}background: rgba(34, 197, 94, 0.15); border: 1px solid rgba(34, 197, 94, 0.3); color: #86efac;
+            {% else %}background: rgba(148, 72, 176, 0.15); border: 1px solid rgba(148, 72, 176, 0.3); color: #d8b4fe;
+            {% endif %}">
+            {{ message }}
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    {% if step == 'upload' %}
+    <!-- Upload Form -->
+    <div style="background: rgba(255,255,255,0.05); border-radius: 0.75rem; padding: 2rem; border: 1px solid rgba(255,255,255,0.1);">
+        <form method="post" enctype="multipart/form-data">
+            {% csrf_token %}
+            <div style="margin-bottom: 1.5rem;">
+                <label for="json_file" style="display: block; font-weight: 600; color: #e8e0f0; margin-bottom: 0.5rem;">JSON File</label>
+                <input type="file" name="json_file" id="json_file" accept=".json"
+                    style="display: block; width: 100%; padding: 0.5rem; border-radius: 0.5rem; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.2); color: #e8e0f0;">
+                <p style="color: #b0a8c0; font-size: 0.85rem; margin-top: 0.25rem;">
+                    Upload a file exported with <code style="background: rgba(255,255,255,0.1); padding: 0.1rem 0.3rem; border-radius: 0.25rem;">python manage.py export_flashcards</code>
+                </p>
+            </div>
+            <button type="submit"
+                style="padding: 0.6rem 1.5rem; border-radius: 0.5rem; background: linear-gradient(135deg, #9448b0, #6366f1); color: white; font-weight: 600; border: none; cursor: pointer;">
+                Upload &amp; Preview
+            </button>
+        </form>
+    </div>
+
+    {% elif step == 'preview' %}
+    <!-- Preview Table -->
+    <div style="background: rgba(255,255,255,0.05); border-radius: 0.75rem; padding: 1.5rem; border: 1px solid rgba(255,255,255,0.1); margin-bottom: 1.5rem;">
+        <h2 style="font-size: 1.25rem; font-weight: 600; color: #e8e0f0; margin-bottom: 0.25rem;">Preview</h2>
+        <p style="color: #b0a8c0; font-size: 0.9rem; margin-bottom: 1rem;">
+            {{ total_sets }} set{{ total_sets|pluralize }} found &middot;
+            {{ total_cards }} card{{ total_cards|pluralize }} total &middot;
+            <span style="color: #86efac;">{{ new_count }} new</span>
+            {% if duplicate_count %} &middot; <span style="color: #fcd34d;">{{ duplicate_count }} duplicate{{ duplicate_count|pluralize }}</span>{% endif %}
+        </p>
+
+        <div style="overflow-x: auto;">
+            <table style="width: 100%; border-collapse: collapse; font-size: 0.9rem;">
+                <thead>
+                    <tr style="border-bottom: 1px solid rgba(255,255,255,0.15);">
+                        <th style="text-align: left; padding: 0.5rem 0.75rem; color: #b0a8c0; font-weight: 600;">Set Title</th>
+                        <th style="text-align: left; padding: 0.5rem 0.75rem; color: #b0a8c0; font-weight: 600;">Topic</th>
+                        <th style="text-align: center; padding: 0.5rem 0.75rem; color: #b0a8c0; font-weight: 600;">Cards</th>
+                        <th style="text-align: center; padding: 0.5rem 0.75rem; color: #b0a8c0; font-weight: 600;">Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for p in previews %}
+                    <tr style="border-bottom: 1px solid rgba(255,255,255,0.07);">
+                        <td style="padding: 0.5rem 0.75rem; color: #e8e0f0;">{{ p.title }}</td>
+                        <td style="padding: 0.5rem 0.75rem; color: #b0a8c0;">
+                            {{ p.topic_name }}
+                            {% if not p.topic_exists %}
+                            <span style="font-size: 0.75rem; color: #fcd34d;" title="Topic will be created">(new topic)</span>
+                            {% endif %}
+                        </td>
+                        <td style="padding: 0.5rem 0.75rem; text-align: center; color: #e8e0f0;">{{ p.card_count }}</td>
+                        <td style="padding: 0.5rem 0.75rem; text-align: center;">
+                            {% if p.is_duplicate %}
+                            <span style="display: inline-block; padding: 0.15rem 0.5rem; border-radius: 1rem; background: rgba(245, 158, 11, 0.2); color: #fcd34d; font-size: 0.8rem;">Duplicate - will skip</span>
+                            {% else %}
+                            <span style="display: inline-block; padding: 0.15rem 0.5rem; border-radius: 1rem; background: rgba(34, 197, 94, 0.2); color: #86efac; font-size: 0.8rem;">New - will import</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div style="display: flex; gap: 1rem;">
+        <form method="post">
+            {% csrf_token %}
+            <button type="submit" name="confirm_import" value="1"
+                style="padding: 0.6rem 1.5rem; border-radius: 0.5rem; background: linear-gradient(135deg, #22c55e, #16a34a); color: white; font-weight: 600; border: none; cursor: pointer;">
+                Confirm Import ({{ new_count }} set{{ new_count|pluralize }})
+            </button>
+        </form>
+        <form method="post">
+            {% csrf_token %}
+            <button type="submit" name="cancel_import" value="1"
+                style="padding: 0.6rem 1.5rem; border-radius: 0.5rem; background: rgba(255,255,255,0.1); color: #e8e0f0; font-weight: 600; border: 1px solid rgba(255,255,255,0.2); cursor: pointer;">
+                Cancel
+            </button>
+        </form>
+    </div>
+
+    {% elif step == 'results' %}
+    <!-- Results -->
+    <div style="background: rgba(255,255,255,0.05); border-radius: 0.75rem; padding: 1.5rem; border: 1px solid rgba(255,255,255,0.1); margin-bottom: 1.5rem;">
+        <h2 style="font-size: 1.25rem; font-weight: 600; color: #e8e0f0; margin-bottom: 1rem;">Import Results</h2>
+
+        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-bottom: 1rem;">
+            <div style="background: rgba(34, 197, 94, 0.1); border-radius: 0.5rem; padding: 1rem; text-align: center;">
+                <div style="font-size: 1.5rem; font-weight: 700; color: #86efac;">{{ result.sets_created }}</div>
+                <div style="font-size: 0.85rem; color: #b0a8c0;">Sets Created</div>
+            </div>
+            <div style="background: rgba(99, 102, 241, 0.1); border-radius: 0.5rem; padding: 1rem; text-align: center;">
+                <div style="font-size: 1.5rem; font-weight: 700; color: #a5b4fc;">{{ result.cards_created }}</div>
+                <div style="font-size: 0.85rem; color: #b0a8c0;">Cards Created</div>
+            </div>
+            <div style="background: rgba(245, 158, 11, 0.1); border-radius: 0.5rem; padding: 1rem; text-align: center;">
+                <div style="font-size: 1.5rem; font-weight: 700; color: #fcd34d;">{{ result.sets_skipped }}</div>
+                <div style="font-size: 0.85rem; color: #b0a8c0;">Duplicates Skipped</div>
+            </div>
+        </div>
+
+        {% if result.errors %}
+        <div style="margin-top: 1rem;">
+            <h3 style="font-size: 1rem; font-weight: 600; color: #fca5a5; margin-bottom: 0.5rem;">Errors</h3>
+            <ul style="list-style: disc; padding-left: 1.5rem; color: #fca5a5; font-size: 0.9rem;">
+                {% for error in result.errors %}
+                <li>{{ error }}</li>
+                {% endfor %}
+            </ul>
+        </div>
+        {% endif %}
+    </div>
+
+    <div style="display: flex; gap: 1rem;">
+        <a href="{% url 'flashcards:import_flashcards' %}"
+            style="display: inline-block; padding: 0.6rem 1.5rem; border-radius: 0.5rem; background: linear-gradient(135deg, #9448b0, #6366f1); color: white; font-weight: 600; text-decoration: none;">
+            Import Another
+        </a>
+        <a href="{% url 'flashcards:flashcard_sets_index' %}"
+            style="display: inline-block; padding: 0.6rem 1.5rem; border-radius: 0.5rem; background: rgba(255,255,255,0.1); color: #e8e0f0; font-weight: 600; text-decoration: none; border: 1px solid rgba(255,255,255,0.2);">
+            View Flashcards
+        </a>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
