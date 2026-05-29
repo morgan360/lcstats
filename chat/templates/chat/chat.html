@@ -1,25 +1,51 @@
-{% extends "base.html" %}
+{% extends "_base.html" %}
+{% load static %}
+
+{% block title %}Ask NumSkull · NumScoil{% endblock %}
+
 {% block content %}
-<h1>Ask a Maths Question</h1>
+<div class="mx-auto w-full max-w-4xl">
+    <div class="rounded-2xl border border-indigo-deep/15 bg-mist px-6 py-6 shadow-sm sm:px-8 sm:py-8">
+        <div class="mb-1 flex items-center gap-2">
+            <span class="inline-flex items-center rounded-full bg-rose-pop/15 px-2 py-0.5 text-xs font-bold uppercase tracking-wide text-rose-pop">AI</span>
+            <h1 class="text-2xl font-bold text-indigo-deep sm:text-3xl">Ask NumSkull</h1>
+        </div>
+        <p class="mb-5 text-sm text-indigo-deep/80 sm:text-base">
+            Type any Leaving Cert Honours Maths question. NumSkull is powered by GPT-4o-mini and uses NumScoil's own notes as context, so answers stay on-syllabus.
+        </p>
 
-<form method="get">
-  <input type="text" name="query" value="{{ query }}" placeholder="Enter your question...">
-  <button type="submit">Ask</button>
-</form>
+        <form method="get" class="flex flex-col gap-3 sm:flex-row sm:items-stretch">
+            <input type="text"
+                   name="query"
+                   value="{{ query|default:'' }}"
+                   placeholder="e.g. Differentiate sin(2x) from first principles"
+                   autofocus
+                   class="w-full flex-1 rounded-lg border border-indigo-deep/20 bg-white px-4 py-3 text-sm text-midnight shadow-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-deep sm:text-base">
+            <button type="submit"
+                    class="inline-flex items-center justify-center rounded-lg bg-indigo-deep px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-deep sm:text-base">
+                Ask
+            </button>
+        </form>
+    </div>
 
-{% if answer %}
-  <hr>
-  <div class="answer">
-    {{ answer|safe }}
-  </div>
+    {% if answer %}
+    <div class="mt-6 rounded-2xl border border-indigo-deep/15 bg-white px-6 py-6 shadow-sm sm:px-8 sm:py-8">
+        <h2 class="mb-3 text-lg font-semibold text-indigo-deep">Answer</h2>
+        <div class="prose prose-indigo max-w-none text-midnight leading-relaxed">
+            {{ answer|safe }}
+        </div>
+    </div>
 
-  {% if notes %}
-    <h2>Related Notes</h2>
-    <ul>
-      {% for note in notes %}
-        <li>{{ note|truncatewords:25 }}</li>
-      {% endfor %}
-    </ul>
-  {% endif %}
-{% endif %}
+    {% if notes %}
+    <div class="mt-6 rounded-2xl border border-indigo-deep/10 bg-mist/60 px-6 py-5 shadow-sm sm:px-8">
+        <h3 class="mb-2 text-sm font-semibold uppercase tracking-wide text-indigo-deep/80">Related notes used as context</h3>
+        <ul class="space-y-1 text-sm text-indigo-deep/90">
+            {% for note in notes %}
+            <li class="border-l-2 border-indigo-deep/30 pl-3">{{ note|truncatewords:30 }}</li>
+            {% endfor %}
+        </ul>
+    </div>
+    {% endif %}
+    {% endif %}
+</div>
 {% endblock %}
