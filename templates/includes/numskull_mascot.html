@@ -1,38 +1,14 @@
 {% load static %}
-{# NumSkull - floating site-wide mascot. Override {% block mascot %}{% endblock %} on pages where it should be hidden (e.g. full timed exam). #}
+{# NumSkull - floating site-wide mascot with a self-contained ask/answer popup.
+   Override {% block mascot %}{% endblock %} on pages where it should be hidden (e.g. full timed exam).
+   Context awareness: if the page has an element carrying data-numskull-context="practice"|"exam"
+   plus data-topic-slug/data-question-id, NumSkull asks the topic-aware info-bot endpoint with that
+   context. Otherwise it falls back to a general AI question (no topic/question context). #}
 <div id="numskull" class="numskull" data-state="idle" aria-live="polite">
     <button type="button" id="numskull-toggle" class="numskull__toggle" aria-label="Get AI help from NumSkull" aria-expanded="false">
         <span class="numskull__badge" aria-hidden="true">AI</span>
         <span class="numskull__tip" id="numskull-tip" aria-hidden="true">AI help — ask me</span>
-        <svg class="numskull__char" viewBox="0 0 120 140" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-            <defs>
-                <radialGradient id="numskullHead" cx="50%" cy="40%" r="60%">
-                    <stop offset="0%" stop-color="#bff3ff" stop-opacity="0.95"/>
-                    <stop offset="60%" stop-color="#7ad7ff" stop-opacity="0.55"/>
-                    <stop offset="100%" stop-color="#4aa8ff" stop-opacity="0.25"/>
-                </radialGradient>
-                <filter id="numskullGlow" x="-30%" y="-30%" width="160%" height="160%">
-                    <feGaussianBlur stdDeviation="3" result="blur"/>
-                    <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
-                </filter>
-            </defs>
-
-            {# Body - small rounded base #}
-            <ellipse cx="60" cy="120" rx="26" ry="8" fill="#000" opacity="0.25"/>
-            <path d="M40 112 Q40 95 60 95 Q80 95 80 112 Z" fill="#4aa8ff" opacity="0.55"/>
-
-            {# Head - translucent holographic orb #}
-            <circle cx="60" cy="60" r="42" fill="url(#numskullHead)" stroke="#bff3ff" stroke-width="1.5" stroke-opacity="0.7" filter="url(#numskullGlow)"/>
-
-            {# Eyes - dark navy for contrast against the light orb #}
-            <circle cx="46" cy="58" r="3.5" fill="#0b1230"/>
-            <circle cx="74" cy="58" r="3.5" fill="#0b1230"/>
-
-            {# √i in the middle of the head, dark navy so it reads clearly #}
-            <g transform="translate(60 76)" font-family="'Times New Roman', serif" font-style="italic" fill="#0b1230">
-                <text text-anchor="middle" font-size="28" font-weight="bold" stroke="#0b1230" stroke-width="0.6">√<tspan font-style="italic">i</tspan></text>
-            </g>
-        </svg>
+        <img class="numskull__char" src="{% static 'images/numskull_character.jpg' %}" alt="" aria-hidden="true">
     </button>
 
     <div id="numskull-panel" class="numskull__panel" role="dialog" aria-label="NumSkull helper" hidden>
@@ -42,8 +18,29 @@
             <button type="button" class="numskull__close" id="numskull-close" aria-label="Close NumSkull">×</button>
         </div>
         <p class="numskull__msg" id="numskull-msg">I'm the AI tutor. A bit imaginary, but I can help for real.</p>
+
+        <div class="numskull__ask">
+            <input type="text" id="numskull-query" placeholder="e.g., What is the quadratic formula?" class="numskull__input">
+            <button type="button" id="numskull-ask-btn" class="numskull__btn numskull__btn--primary">Ask</button>
+        </div>
+
+        <div id="numskull-loading" class="numskull__loading" hidden>🔄 Thinking...</div>
+
+        <div id="numskull-answer" class="numskull__answer" hidden></div>
+
+        <div id="numskull-feedback" class="numskull__feedback" hidden>
+            <p class="numskull__feedback-q">Was this helpful?</p>
+            <div class="numskull__feedback-row">
+                <button type="button" class="numskull__fbtn numskull__fbtn--yes" data-fb="helpful">Yes</button>
+                <button type="button" class="numskull__fbtn numskull__fbtn--no" data-fb="not_helpful">No</button>
+                <span id="numskull-feedback-message" class="numskull__feedback-msg" hidden>✓ Thanks for your feedback!</span>
+            </div>
+        </div>
+
         <div class="numskull__actions">
-            <a href="{% url 'chat_view' %}" id="numskull-primary" class="numskull__btn numskull__btn--primary">Ask the AI</a>
+            {% if user.is_authenticated %}
+            <a href="{% url 'contact_teacher' %}" class="numskull__btn numskull__btn--ghost">Contact Teacher</a>
+            {% endif %}
             <button type="button" class="numskull__btn numskull__btn--ghost" id="numskull-hide-session">Hide for now</button>
         </div>
     </div>
@@ -61,12 +58,13 @@
 
     .numskull__toggle {
         position: relative;
-        width: 72px;
-        height: 84px;
+        width: 68px;
+        height: 68px;
         padding: 0;
         background: transparent;
         border: none;
         cursor: pointer;
+        border-radius: 50%;
         filter: drop-shadow(0 6px 14px rgba(74, 168, 255, 0.45));
         animation: numskull-bob 4s ease-in-out infinite;
     }
@@ -92,7 +90,7 @@
     .numskull__tip {
         position: absolute;
         left: calc(100% + 6px);
-        top: 22px;
+        top: 16px;
         background: #0b1230;
         color: #f0f6ff;
         font-size: 0.72rem;
@@ -129,7 +127,15 @@
         outline-offset: 4px;
         border-radius: 999px;
     }
-    .numskull__char { width: 100%; height: 100%; }
+    .numskull__char {
+        width: 100%;
+        height: 100%;
+        border-radius: 50%;
+        object-fit: cover;
+        display: block;
+        border: 3px solid #bff3ff;
+        box-shadow: 0 0 0 2px rgba(11, 18, 48, 0.6);
+    }
 
     @keyframes numskull-bob {
         0%, 100% { transform: translateY(0); }
@@ -142,11 +148,13 @@
     .numskull__panel {
         position: absolute;
         left: 0;
-        top: 96px;
-        width: 18rem;
+        top: 80px;
+        width: 22rem;
+        max-height: 75vh;
+        overflow-y: auto;
         padding: 0.9rem 1rem 1rem;
         border-radius: 14px;
-        background: rgba(18, 22, 48, 0.92);
+        background: rgba(18, 22, 48, 0.96);
         color: #f0f6ff;
         box-shadow: 0 18px 40px rgba(0, 0, 0, 0.45);
         backdrop-filter: blur(8px);
@@ -192,6 +200,57 @@
         padding: 0 4px;
     }
     .numskull__msg { margin: 0 0 0.75rem; font-size: 0.9rem; line-height: 1.35; }
+
+    .numskull__ask { display: flex; gap: 0.4rem; margin-bottom: 0.6rem; }
+    .numskull__input {
+        flex: 1;
+        min-width: 0;
+        padding: 0.45rem 0.6rem;
+        border-radius: 8px;
+        border: 1px solid rgba(191, 243, 255, 0.35);
+        background: rgba(255, 255, 255, 0.06);
+        color: #f0f6ff;
+        font-size: 0.85rem;
+    }
+    .numskull__input::placeholder { color: rgba(240, 246, 255, 0.5); }
+    .numskull__input:focus-visible {
+        outline: 2px solid #bff3ff;
+        outline-offset: 1px;
+    }
+
+    .numskull__loading { font-size: 0.85rem; margin-bottom: 0.6rem; }
+
+    .numskull__answer {
+        margin-bottom: 0.6rem;
+        padding: 0.6rem 0.7rem;
+        border-radius: 8px;
+        background: rgba(255, 255, 255, 0.92);
+        color: #14172b;
+        font-size: 0.85rem;
+        line-height: 1.4;
+        max-height: 16rem;
+        overflow-y: auto;
+    }
+    .numskull__answer :first-child { margin-top: 0; }
+    .numskull__answer :last-child { margin-bottom: 0; }
+
+    .numskull__feedback { margin-bottom: 0.6rem; }
+    .numskull__feedback-q { margin: 0 0 0.35rem; font-size: 0.8rem; color: rgba(240, 246, 255, 0.8); }
+    .numskull__feedback-row { display: flex; align-items: center; gap: 0.4rem; }
+    .numskull__fbtn {
+        padding: 0.3rem 0.65rem;
+        border-radius: 999px;
+        font-size: 0.78rem;
+        font-weight: 600;
+        cursor: pointer;
+        border: 1px solid rgba(191, 243, 255, 0.35);
+        background: transparent;
+        color: #f0f6ff;
+    }
+    .numskull__fbtn--yes:hover { background: rgba(80, 220, 140, 0.2); }
+    .numskull__fbtn--no:hover { background: rgba(255, 93, 143, 0.2); }
+    .numskull__feedback-msg { font-size: 0.78rem; color: #8ef0b0; font-weight: 600; }
+
     .numskull__actions { display: flex; gap: 0.5rem; }
     .numskull__btn {
         flex: 1;
@@ -204,7 +263,7 @@
         cursor: pointer;
         border: 1px solid transparent;
     }
-    .numskull__btn--primary { background: #4aa8ff; color: #0b1230; }
+    .numskull__btn--primary { flex: 0 0 auto; background: #4aa8ff; color: #0b1230; }
     .numskull__btn--primary:hover { filter: brightness(1.08); }
     .numskull__btn--ghost {
         background: transparent;
@@ -215,8 +274,8 @@
 
     @media (max-width: 480px) {
         .numskull { left: 0.75rem; top: 4.25rem; }
-        .numskull__toggle { width: 60px; height: 70px; }
-        .numskull__panel { width: 16rem; top: 80px; }
+        .numskull__toggle { width: 56px; height: 56px; }
+        .numskull__panel { width: calc(100vw - 2.5rem); top: 72px; }
     }
 </style>
 
@@ -229,53 +288,200 @@
         var closeBtn = document.getElementById('numskull-close');
         var hideBtn = document.getElementById('numskull-hide-session');
         var msg = document.getElementById('numskull-msg');
-        var primary = document.getElementById('numskull-primary');
         var tip = document.getElementById('numskull-tip');
+        var queryInput = document.getElementById('numskull-query');
+        var askBtn = document.getElementById('numskull-ask-btn');
+        var loading = document.getElementById('numskull-loading');
+        var answer = document.getElementById('numskull-answer');
+        var feedback = document.getElementById('numskull-feedback');
+        var feedbackMessage = document.getElementById('numskull-feedback-message');
 
         if (sessionStorage.getItem('numskull-hidden') === '1') {
             root.hidden = true;
             return;
         }
 
-        // Topic-aware infobot inputs on question pages:
-        //   #infobot-query        -> interactive_lessons quiz template
-        //   #exam-infobot-query   -> exam_papers practice question interface
-        var infobot = document.getElementById('infobot-query')
-            || document.getElementById('exam-infobot-query');
+        // Question-aware context, if this page provides it:
+        //   data-numskull-context="practice"  (interactive_lessons quiz template)
+        //   data-numskull-context="exam"      (exam_papers practice question interface)
+        var contextEl = document.querySelector('[data-numskull-context]');
+        var contextType = contextEl ? contextEl.dataset.numskullContext : '';
+        var topicSlug = contextEl ? contextEl.dataset.topicSlug : '';
+        var questionId = contextEl ? contextEl.dataset.questionId : '';
 
-        if (infobot) {
-            msg.textContent = "There's a question-aware AI helper on this page — want me to jump you to it?";
-            primary.textContent = 'Take me there';
-            primary.setAttribute('href', '#' + infobot.id);
+        if (contextType) {
+            msg.textContent = "Ask me anything about this question — I've got the context.";
             if (tip) tip.textContent = 'Ask AI about this question';
         }
 
-        function focusInfobot() {
-            infobot.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            setTimeout(function () { infobot.focus({ preventScroll: true }); }, 350);
+        function currentPartId() {
+            if (contextType === 'exam') {
+                var containers = document.querySelectorAll('.part-container');
+                if (!containers.length) return '';
+                var partId = containers[0].id.replace('part-', '');
+                for (var i = 0; i < containers.length; i++) {
+                    var id = containers[i].id.replace('part-', '');
+                    var field = document.getElementById('answer-' + id);
+                    if (field && field.value && field.value.trim()) {
+                        partId = id;
+                        break;
+                    }
+                }
+                return partId;
+            }
+
+            if (contextType === 'practice') {
+                var parts = document.querySelectorAll('[data-part-id]');
+                if (!parts.length) return '';
+                var current = parts[0].dataset.partId;
+                for (var j = 0; j < parts.length; j++) {
+                    var pid = parts[j].dataset.partId;
+                    var textInput = document.getElementById('answer-' + pid);
+                    var mathField = document.getElementById('mf-' + pid);
+                    var hasContent = (textInput && textInput.value.trim()) ||
+                        (mathField && mathField.getValue && mathField.getValue('latex').trim());
+                    if (hasContent) {
+                        current = pid;
+                        break;
+                    }
+                }
+                return current;
+            }
+
+            return '';
         }
+
+        function getCsrfToken() {
+            var name = 'csrftoken';
+            var cookies = document.cookie ? document.cookie.split(';') : [];
+            for (var i = 0; i < cookies.length; i++) {
+                var cookie = cookies[i].trim();
+                if (cookie.indexOf(name + '=') === 0) {
+                    return decodeURIComponent(cookie.substring(name.length + 1));
+                }
+            }
+            return null;
+        }
+
+        function renderMath() {
+            if (window.renderMathInElement) {
+                renderMathInElement(answer, {
+                    delimiters: [
+                        {left: "$$", right: "$$", display: true},
+                        {left: "\\[", right: "\\]", display: true},
+                        {left: "\\(", right: "\\)", display: false},
+                        {left: "$", right: "$", display: false}
+                    ],
+                    throwOnError: false
+                });
+            }
+        }
+
+        function showAnswer(html) {
+            answer.innerHTML = html;
+            answer.hidden = false;
+            renderMath();
+        }
+
+        function askQuestion() {
+            var query = queryInput.value.trim();
+            if (!query) {
+                queryInput.focus();
+                return;
+            }
+
+            loading.hidden = false;
+            answer.hidden = true;
+            answer.innerHTML = '';
+            feedback.hidden = true;
+            window.currentInfoBotQueryId = null;
+
+            var url;
+            if (contextType && topicSlug) {
+                url = '/interactive/info-bot/' + topicSlug + '/?query=' + encodeURIComponent(query);
+                if (questionId) {
+                    url += (contextType === 'exam' ? '&exam_question_id=' : '&practice_question_id=') + questionId;
+                }
+                var partId = currentPartId();
+                if (partId) url += '&question_part_id=' + partId;
+            } else if (contextType && !topicSlug) {
+                loading.hidden = true;
+                showAnswer('<div style="color:#c0392b;">This question needs a topic assigned before NumSkull can help. Please contact your teacher to link it.</div>');
+                return;
+            } else {
+                url = '/chat/?query=' + encodeURIComponent(query);
+            }
+
+            fetch(url, {
+                method: 'GET',
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            })
+            .then(function (response) { return response.json(); })
+            .then(function (data) {
+                loading.hidden = true;
+                if (data.answer) {
+                    showAnswer(data.answer);
+                    if (data.query_id) {
+                        window.currentInfoBotQueryId = data.query_id;
+                        feedback.hidden = false;
+                        feedbackMessage.hidden = true;
+                        feedback.querySelectorAll('.numskull__fbtn').forEach(function (btn) {
+                            btn.style.display = 'inline-flex';
+                        });
+                    }
+                    answer.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                } else {
+                    showAnswer('<div style="color:#c0392b;">Sorry, I couldn\'t find an answer to that question.</div>');
+                }
+            })
+            .catch(function (error) {
+                console.error('NumSkull error:', error);
+                loading.hidden = true;
+                showAnswer('<div style="color:#c0392b;">Error: unable to get an answer. Please try again.</div>');
+            });
+        }
+
+        askBtn.addEventListener('click', askQuestion);
+        queryInput.addEventListener('keypress', function (e) {
+            if (e.key === 'Enter') askQuestion();
+        });
+
+        feedback.addEventListener('click', function (e) {
+            var btn = e.target.closest('.numskull__fbtn');
+            if (!btn || !window.currentInfoBotQueryId) return;
+
+            fetch('/interactive/info-bot/feedback/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCsrfToken()
+                },
+                body: JSON.stringify({
+                    query_id: window.currentInfoBotQueryId,
+                    feedback_type: btn.dataset.fb
+                })
+            })
+            .then(function (response) { return response.json(); })
+            .then(function (data) {
+                if (data.success) {
+                    feedback.querySelectorAll('.numskull__fbtn').forEach(function (b) {
+                        b.style.display = 'none';
+                    });
+                    feedbackMessage.hidden = false;
+                } else {
+                    console.error('NumSkull feedback error:', data);
+                }
+            })
+            .catch(function (error) { console.error('NumSkull feedback error:', error); });
+        });
 
         function setOpen(open) {
             panel.hidden = !open;
             toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+            if (open) setTimeout(function () { queryInput.focus(); }, 50);
         }
 
-        toggle.addEventListener('click', function () {
-            if (infobot) {
-                focusInfobot();
-                return;
-            }
-            setOpen(panel.hidden);
-        });
-
-        if (primary && infobot) {
-            primary.addEventListener('click', function (e) {
-                e.preventDefault();
-                setOpen(false);
-                focusInfobot();
-            });
-        }
-
+        toggle.addEventListener('click', function () { setOpen(panel.hidden); });
         closeBtn.addEventListener('click', function () { setOpen(false); });
         hideBtn.addEventListener('click', function () {
             sessionStorage.setItem('numskull-hidden', '1');

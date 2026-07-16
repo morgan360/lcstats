@@ -5,10 +5,16 @@
 <div class="mx-auto max-w-xl px-4 py-10 sm:px-6 lg:px-8">
     <div class="rounded-2xl border border-indigo-deep/10 bg-mist/80 p-6 shadow-[0_12px_28px_rgba(0,0,0,0.08)]">
         <h1 class="mb-2 text-2xl font-semibold text-indigo-deep text-center"><span class="mr-1">📧</span> Contact Teacher</h1>
+        {% if question %}
         <p class="mb-4 text-sm text-indigo-deep/80">
             <strong>About Question:</strong> {{ question.topic.name }} - Q{{ question.order }}
             {% if question.section %}<br><strong>Section:</strong> {{ question.section }}{% endif %}
         </p>
+        {% else %}
+        <p class="mb-4 text-sm text-indigo-deep/80">
+            Have a question or need help? Send a message directly to your teacher.
+        </p>
+        {% endif %}
 
         {% if messages %}
             {% for message in messages %}
@@ -65,7 +71,7 @@
                         class="inline-flex items-center gap-2 rounded-lg bg-gradient-03 px-4 py-2 text-sm font-semibold text-mist shadow-[0_12px_24px_rgba(148,72,176,0.28)] transition hover:-translate-y-0.5 hover:shadow-[0_16px_30px_rgba(148,72,176,0.34)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-royal">
                         Send Message
                 </button>
-                <a href="{% url 'question_view' question.topic.id question.order %}"
+                <a href="{% if question %}{% url 'question_view' question.topic.id question.order %}{% else %}{% url 'dashboard' %}{% endif %}"
                     class="inline-flex items-center gap-2 rounded-lg bg-indigo-deep/15 px-4 py-2 text-sm font-semibold text-indigo-deep shadow-[0_8px_18px_rgba(0,0,0,0.06)] transition hover:-translate-y-0.5 hover:shadow-[0_12px_24px_rgba(0,0,0,0.1)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-deep">
                     Cancel
                 </a>

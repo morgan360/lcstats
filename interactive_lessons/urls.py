@@ -12,6 +12,10 @@ urlpatterns = [
     # --- Get solution (AJAX endpoint) ---
     path("get-solution/<int:part_id>/", views.get_solution, name="get_solution"),
 
+    # --- Contact teacher (general, no specific question) ---
+    # Must come before the single-segment <slug:topic_slug>/ catch-all below.
+    path("contact/", views.question_contact, name="contact_teacher"),
+
     # --- Section-based navigation ---
     path("<slug:topic_slug>/sections/", views.section_list, name="section_list"),
     path("<slug:topic_slug>/sections/<slug:section_slug>/", views.section_quiz, name="section_quiz"),

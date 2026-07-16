@@ -747,17 +747,17 @@ def topic_exam_questions(request, topic_slug):
 
 
 @login_required
-def question_contact(request, question_id):
-    """Allow students to email the teacher about a specific question"""
-    question = get_object_or_404(Question, id=question_id)
-    
+def question_contact(request, question_id=None):
+    """Allow students to email the teacher, optionally about a specific question"""
+    question = get_object_or_404(Question, id=question_id) if question_id else None
+
     if request.method == "POST":
         form = QuestionContactForm(
             request.POST,
             question=question,
             student=request.user
         )
-        
+
         if form.is_valid():
             subject = form.cleaned_data['subject']
             message = form.cleaned_data['message']
@@ -768,23 +768,27 @@ def question_contact(request, question_id):
                 question=question,
                 subject=subject,
                 message=message,
-                topic_name=question.topic.name,
-                question_number=f"Q{question.order}",
-                section_name=question.section if question.section else None,
+                topic_name=question.topic.name if question else '',
+                question_number=f"Q{question.order}" if question else '',
+                section_name=question.section if question and question.section else None,
             )
 
             # Build email content
+            question_details = (
+                f"""Question Details:
+- Topic: {question.topic.name}
+- Question: Q{question.order}
+{f'- Section: {question.section}' if question.section else ''}
+
+"""
+                if question else ""
+            )
             email_body = f"""
 Student Question/Inquiry
 
 From: {request.user.get_full_name() or request.user.username} ({request.user.email})
 
-Question Details:
-- Topic: {question.topic.name}
-- Question: Q{question.order}
-{f'- Section: {question.section}' if question.section else ''}
-
-Subject: {subject}
+{question_details}Subject: {subject}
 
 Message:
 {message}
@@ -803,20 +807,22 @@ View and reply in admin: {request.build_absolute_uri(f'/admin/interactive_lesson
                 )
 
                 messages.success(request, "Your message has been sent! I'll get back to you soon.")
-                return redirect('question_view', topic_id=question.topic.id, number=question.order)
+                if question:
+                    return redirect('question_view', topic_id=question.topic.id, number=question.order)
+                return redirect('dashboard')
 
             except Exception as e:
                 messages.error(request, f"Sorry, there was an error sending your message. Please try again or email directly.")
                 print(f"[Email Error] {e}")
-    
+
     else:
         form = QuestionContactForm(question=question, student=request.user)
-    
+
     context = {
         'form': form,
         'question': question,
     }
-    
+
     return render(request, 'interactive_lessons/question_contact.html', context)
 
 

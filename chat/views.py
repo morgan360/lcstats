@@ -1,4 +1,5 @@
 
+from django.http import JsonResponse
 from django.shortcuts import render
 from openai import OpenAI
 from notes.utils import search_similar
@@ -20,8 +21,12 @@ client = OpenAI()
 
 def chat_view(request):
     query = request.GET.get("query")
+    is_ajax = request.headers.get("X-Requested-With") == "XMLHttpRequest"
     answer = None
     retrieved_notes = []
+
+    if not query and is_ajax:
+        return JsonResponse({"answer": ""})
 
     if query:
         # Step 1: Get related notes for context
@@ -61,6 +66,9 @@ def chat_view(request):
         answer_html = re.sub(r"\\\\", r"\\", answer_html)
 
         answer = mark_safe(answer_html)
+
+    if is_ajax:
+        return JsonResponse({"answer": answer or ""})
 
     context = {
         "query": query,
