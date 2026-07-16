@@ -50,8 +50,8 @@ context. Otherwise it falls back to a general AI question (no topic/question con
 <style>
     .numskull {
         position: fixed;
-        left: 1.25rem;
-        top: 5rem;
+        left: calc(1.25rem + 0.5cm);
+        top: calc(5rem + 0.5cm);
         z-index: 1100;
         font-family: inherit;
     }
@@ -59,8 +59,8 @@ context. Otherwise it falls back to a general AI question (no topic/question con
 
     .numskull-restore {
         position: fixed;
-        left: 1.25rem;
-        top: 5rem;
+        left: calc(1.25rem + 0.5cm);
+        top: calc(5rem + 0.5cm);
         z-index: 1100;
         padding: 0.5rem 0.9rem;
         border-radius: 999px;
@@ -292,7 +292,7 @@ context. Otherwise it falls back to a general AI question (no topic/question con
     .numskull__btn--ghost:hover { background: rgba(191, 243, 255, 0.1); }
 
     @media (max-width: 480px) {
-        .numskull { left: 0.75rem; top: 4.25rem; }
+        .numskull { left: calc(0.75rem + 0.5cm); top: calc(4.25rem + 0.5cm); }
         .numskull__toggle { width: 56px; height: 56px; }
         .numskull__panel { width: calc(100vw - 2.5rem); top: 72px; }
     }
