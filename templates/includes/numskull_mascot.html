@@ -1,9 +1,11 @@
 {% load static %}
-{# NumSkull - floating site-wide mascot with a self-contained ask/answer popup.
-   Override {% block mascot %}{% endblock %} on pages where it should be hidden (e.g. full timed exam).
-   Context awareness: if the page has an element carrying data-numskull-context="practice"|"exam"
-   plus data-topic-slug/data-question-id, NumSkull asks the topic-aware info-bot endpoint with that
-   context. Otherwise it falls back to a general AI question (no topic/question context). #}
+{% comment %}
+NumSkull - floating site-wide mascot with a self-contained ask/answer popup.
+Override {% block mascot %}{% endblock %} on pages where it should be hidden (e.g. full timed exam).
+Context awareness: if the page has an element carrying data-numskull-context="practice"|"exam"
+plus data-topic-slug/data-question-id, NumSkull asks the topic-aware info-bot endpoint with that
+context. Otherwise it falls back to a general AI question (no topic/question context).
+{% endcomment %}
 <div id="numskull" class="numskull" data-state="idle" aria-live="polite">
     <button type="button" id="numskull-toggle" class="numskull__toggle" aria-label="Get AI help from NumSkull" aria-expanded="false">
         <span class="numskull__badge" aria-hidden="true">AI</span>
@@ -38,13 +40,12 @@
         </div>
 
         <div class="numskull__actions">
-            {% if user.is_authenticated %}
-            <a href="{% url 'contact_teacher' %}" class="numskull__btn numskull__btn--ghost">Contact Teacher</a>
-            {% endif %}
             <button type="button" class="numskull__btn numskull__btn--ghost" id="numskull-hide-session">Hide for now</button>
         </div>
     </div>
 </div>
+
+<button type="button" id="numskull-restore" class="numskull-restore" hidden>🧠 Show AI helper</button>
 
 <style>
     .numskull {
@@ -55,6 +56,24 @@
         font-family: inherit;
     }
     .numskull[hidden] { display: none; }
+
+    .numskull-restore {
+        position: fixed;
+        left: 1.25rem;
+        top: 5rem;
+        z-index: 1100;
+        padding: 0.5rem 0.9rem;
+        border-radius: 999px;
+        border: 1px solid rgba(191, 243, 255, 0.4);
+        background: rgba(18, 22, 48, 0.92);
+        color: #f0f6ff;
+        font-size: 0.8rem;
+        font-weight: 600;
+        cursor: pointer;
+        box-shadow: 0 6px 14px rgba(0, 0, 0, 0.35);
+    }
+    .numskull-restore[hidden] { display: none; }
+    .numskull-restore:hover { background: rgba(18, 22, 48, 1); }
 
     .numskull__toggle {
         position: relative;
@@ -283,6 +302,21 @@
     (function () {
         var root = document.getElementById('numskull');
         if (!root) return;
+        var restoreBtn = document.getElementById('numskull-restore');
+
+        if (sessionStorage.getItem('numskull-hidden') === '1') {
+            root.hidden = true;
+            if (restoreBtn) restoreBtn.hidden = false;
+        }
+
+        if (restoreBtn) {
+            restoreBtn.addEventListener('click', function () {
+                sessionStorage.removeItem('numskull-hidden');
+                root.hidden = false;
+                restoreBtn.hidden = true;
+            });
+        }
+
         var toggle = document.getElementById('numskull-toggle');
         var panel = document.getElementById('numskull-panel');
         var closeBtn = document.getElementById('numskull-close');
@@ -295,11 +329,6 @@
         var answer = document.getElementById('numskull-answer');
         var feedback = document.getElementById('numskull-feedback');
         var feedbackMessage = document.getElementById('numskull-feedback-message');
-
-        if (sessionStorage.getItem('numskull-hidden') === '1') {
-            root.hidden = true;
-            return;
-        }
 
         // Question-aware context, if this page provides it:
         //   data-numskull-context="practice"  (interactive_lessons quiz template)
@@ -486,6 +515,7 @@
         hideBtn.addEventListener('click', function () {
             sessionStorage.setItem('numskull-hidden', '1');
             root.hidden = true;
+            if (restoreBtn) restoreBtn.hidden = false;
         });
 
         document.addEventListener('keydown', function (e) {
