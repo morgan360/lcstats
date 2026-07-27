@@ -21,6 +21,7 @@ urlpatterns = [
     path('flashcards/', include('flashcards.urls')),
     path('homework/', include('homework.urls')),
     path('stats-simulator/', include('stats_simulator.urls')),
+    path('reports/', include('reports.urls')),
 
 ]
 if settings.DEBUG:

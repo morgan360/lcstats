@@ -23,6 +23,18 @@ def check_and_remove_fields(apps, schema_editor):
         table_name = 'exam_papers_examquestionpart'
 
         if 'answer_format_template_id' in existing_columns:
+            # Fresh installations still have the FK constraint from 0008 (its
+            # auto-generated name varies), so look it up and drop it first.
+            cursor.execute("""
+                SELECT CONSTRAINT_NAME
+                FROM information_schema.KEY_COLUMN_USAGE
+                WHERE TABLE_SCHEMA = DATABASE()
+                AND TABLE_NAME = 'exam_papers_examquestionpart'
+                AND COLUMN_NAME = 'answer_format_template_id'
+                AND REFERENCED_TABLE_NAME IS NOT NULL
+            """)
+            for (constraint_name,) in cursor.fetchall():
+                cursor.execute(f"ALTER TABLE {table_name} DROP FOREIGN KEY `{constraint_name}`")
             cursor.execute(f"ALTER TABLE {table_name} DROP COLUMN answer_format_template_id")
 
         if 'answer' in existing_columns:

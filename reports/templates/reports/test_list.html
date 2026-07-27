@@ -1,0 +1,47 @@
+{% extends "_base.html" %}
+{% block title %}{{ teacher_class.name }} · Tests{% endblock %}
+{% block extra_head %}{% include "reports/includes/_pwa_head.html" %}{% endblock %}
+
+{% block content %}
+{% include "reports/includes/messages.html" %}
+
+<h1 class="mb-4 text-xl font-bold">{{ teacher_class.name }} — tests</h1>
+
+<form method="post" class="mb-6 rounded-2xl bg-white p-4 shadow-sm ring-1 ring-twilight/10">
+    {% csrf_token %}
+    <h2 class="mb-3 text-sm font-semibold text-twilight/80">New test</h2>
+    <div class="flex flex-col gap-2 sm:flex-row">
+        <input type="text" name="name" required placeholder="e.g. Algebra Christmas test"
+            class="min-h-[44px] flex-1 rounded-xl border border-twilight/20 px-3 text-sm">
+        <input type="date" name="date" value="{{ today|date:'Y-m-d' }}"
+            class="min-h-[44px] rounded-xl border border-twilight/20 px-3 text-sm">
+        <input type="number" name="max_marks" value="100" min="1" aria-label="Max marks"
+            class="min-h-[44px] w-24 rounded-xl border border-twilight/20 px-3 text-sm">
+        <button type="submit" class="min-h-[44px] rounded-xl bg-gradient-03 px-4 text-sm font-semibold text-mist shadow-sm hover:brightness-105">Create</button>
+    </div>
+</form>
+
+{% if tests %}
+<div class="space-y-3">
+    {% for test in tests %}
+    <a href="{% url 'reports:test_detail' test.id %}"
+        class="flex items-center justify-between rounded-2xl bg-white p-4 shadow-sm ring-1 ring-twilight/10 transition hover:shadow-md">
+        <div>
+            <div class="font-semibold">{{ test.name }}</div>
+            <div class="text-sm text-twilight/70">{{ test.date|date:"j M Y" }} · out of {{ test.max_marks }}</div>
+        </div>
+        <div class="text-right text-sm">
+            {% if test.num_results %}
+            <div class="font-semibold">{{ test.avg_score|floatformat:1 }} avg</div>
+            <div class="text-twilight/70">{{ test.num_results }} result{{ test.num_results|pluralize }}</div>
+            {% else %}
+            <span class="rounded-full bg-twilight/10 px-3 py-1 text-xs font-semibold text-twilight/70">No results yet</span>
+            {% endif %}
+        </div>
+    </a>
+    {% endfor %}
+</div>
+{% else %}
+<p class="text-twilight/70">No tests yet.</p>
+{% endif %}
+{% endblock %}

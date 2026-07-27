@@ -42,6 +42,19 @@ def reverse_safe_remove(apps, schema_editor):
     pass
 
 
+def safe_add_is_deferred(apps, schema_editor):
+    """
+    Add is_deferred only if 0014 (a parallel branch merged by 0015) hasn't
+    already added it — on fresh installations Django applies 0014 before 0013.
+    """
+    if not check_column_exists('exam_papers_exampaper', 'is_deferred'):
+        with schema_editor.connection.cursor() as cursor:
+            cursor.execute(
+                "ALTER TABLE exam_papers_exampaper "
+                "ADD COLUMN is_deferred TINYINT(1) NOT NULL DEFAULT 0"
+            )
+
+
 class Migration(migrations.Migration):
 
     dependencies = [
@@ -49,11 +62,19 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        # First add the new field
-        migrations.AddField(
-            model_name='exampaper',
-            name='is_deferred',
-            field=models.BooleanField(default=False, help_text='Is this a deferred exam paper?'),
+        # First add the new field (conditionally at DB level: 0014 may have
+        # already added it on fresh installations)
+        migrations.SeparateDatabaseAndState(
+            database_operations=[
+                migrations.RunPython(safe_add_is_deferred, migrations.RunPython.noop),
+            ],
+            state_operations=[
+                migrations.AddField(
+                    model_name='exampaper',
+                    name='is_deferred',
+                    field=models.BooleanField(default=False, help_text='Is this a deferred exam paper?'),
+                ),
+            ],
         ),
         # Update model options
         migrations.AlterModelOptions(

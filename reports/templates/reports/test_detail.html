@@ -1,0 +1,64 @@
+{% extends "_base.html" %}
+{% block title %}{{ test.name }} · Results{% endblock %}
+{% block extra_head %}{% include "reports/includes/_pwa_head.html" %}{% endblock %}
+
+{% block content %}
+{% include "reports/includes/messages.html" %}
+
+<div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+    <div>
+        <h1 class="text-xl font-bold">{{ test.name }}</h1>
+        <p class="text-sm text-twilight/70">{{ test.teacher_class.name }} · {{ test.date|date:"j M Y" }} · out of {{ test.max_marks }}</p>
+    </div>
+    <a href="{% url 'reports:test_list' test.teacher_class.id %}" class="rounded-lg bg-twilight/10 px-3 py-2 text-sm font-semibold hover:bg-twilight/20">All tests</a>
+</div>
+
+{% if stats %}
+<div class="mb-4 flex flex-wrap gap-4 rounded-2xl bg-twilight/5 px-4 py-3 text-sm">
+    <span><span class="font-semibold">{{ stats.avg }}</span> average</span>
+    <span><span class="font-semibold">{{ stats.high|floatformat:"-1" }}</span> highest</span>
+    <span><span class="font-semibold">{{ stats.low|floatformat:"-1" }}</span> lowest</span>
+    <span><span class="font-semibold">{{ stats.sat }}</span> sat the test</span>
+</div>
+{% endif %}
+
+<form method="post">
+    {% csrf_token %}
+    <div class="space-y-2">
+        {% for row in rows %}
+        <div class="rounded-2xl bg-white p-3 shadow-sm ring-1 ring-twilight/10">
+            <div class="flex flex-col gap-2 sm:flex-row sm:items-center">
+                <div class="flex-1 font-semibold">{{ row.student.get_full_name|default:row.student.username }}</div>
+                <div class="flex items-center gap-2">
+                    <input type="text" inputmode="decimal" name="score_{{ row.student.id }}"
+                        value="{% if row.result.score is not None %}{{ row.result.score|floatformat:'-1' }}{% endif %}"
+                        placeholder="—" aria-label="Score"
+                        class="min-h-[44px] w-20 rounded-xl border border-twilight/20 px-3 text-center text-sm">
+                    <span class="text-sm text-twilight/60">/ {{ test.max_marks }}</span>
+                    <select name="preset_{{ row.student.id }}" class="min-h-[44px] flex-1 rounded-xl border border-twilight/20 bg-white px-2 text-sm sm:w-56">
+                        <option value="">— comment —</option>
+                        {% for preset in test_presets %}
+                        <option value="{{ preset.id }}" {% if row.result.comment_preset_id == preset.id %}selected{% endif %}>{{ preset.text }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <input type="text" maxlength="300" name="comment_{{ row.student.id }}" value="{{ row.result.comment_text|default:'' }}"
+                    placeholder="Extra note (optional)"
+                    class="min-h-[44px] flex-1 rounded-xl border border-twilight/20 px-3 text-sm">
+            </div>
+        </div>
+        {% empty %}
+        <p class="text-twilight/70">No students enrolled in this class.</p>
+        {% endfor %}
+    </div>
+    <div class="mt-4 flex items-center justify-between">
+        <button type="submit" class="min-h-[44px] rounded-xl bg-gradient-03 px-6 text-sm font-semibold text-mist shadow-sm hover:brightness-105">Save results</button>
+    </div>
+</form>
+
+<form method="post" action="{% url 'reports:test_delete' test.id %}" class="mt-8 text-right"
+    onsubmit="return confirm('Delete this test and all its results?');">
+    {% csrf_token %}
+    <button type="submit" class="text-sm text-rose-pop underline opacity-70 hover:opacity-100">Delete test</button>
+</form>
+{% endblock %}

@@ -3,6 +3,26 @@
 from django.db import migrations, models
 
 
+def safe_add_column(apps, schema_editor):
+    """
+    0025 already added this column with raw SQL (database only, no state),
+    so on fresh installations the column exists before this migration runs.
+    Only add it if missing; the state operation below records it either way.
+    """
+    with schema_editor.connection.cursor() as cursor:
+        cursor.execute("""
+            SELECT COUNT(*) FROM information_schema.COLUMNS
+            WHERE TABLE_SCHEMA = DATABASE()
+            AND TABLE_NAME = 'interactive_lessons_questionpart'
+            AND COLUMN_NAME = 'solution_unlock_after_attempts'
+        """)
+        if cursor.fetchone()[0] == 0:
+            cursor.execute("""
+                ALTER TABLE interactive_lessons_questionpart
+                ADD COLUMN solution_unlock_after_attempts INT UNSIGNED NOT NULL DEFAULT 2
+            """)
+
+
 class Migration(migrations.Migration):
 
     dependencies = [
@@ -10,9 +30,16 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.AddField(
-            model_name='questionpart',
-            name='solution_unlock_after_attempts',
-            field=models.PositiveIntegerField(default=2, help_text='Number of attempts before solution becomes visible (0 = always visible, 2 = default for production)'),
+        migrations.SeparateDatabaseAndState(
+            database_operations=[
+                migrations.RunPython(safe_add_column, migrations.RunPython.noop),
+            ],
+            state_operations=[
+                migrations.AddField(
+                    model_name='questionpart',
+                    name='solution_unlock_after_attempts',
+                    field=models.PositiveIntegerField(default=2, help_text='Number of attempts before solution becomes visible (0 = always visible, 2 = default for production)'),
+                ),
+            ],
         ),
     ]

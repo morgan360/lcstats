@@ -123,6 +123,7 @@ INSTALLED_APPS = [
     'homework',
     'stats_simulator',
     'schools',
+    'reports',
     'hijack',
     'hijack.contrib.admin',
 ]

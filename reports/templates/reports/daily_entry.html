@@ -1,0 +1,183 @@
+{% extends "_base.html" %}
+{% block title %}{{ teacher_class.name }} · Daily entry{% endblock %}
+{% block extra_head %}{% include "reports/includes/_pwa_head.html" %}{% endblock %}
+
+{% block content %}
+{% include "reports/includes/messages.html" %}
+
+<div class="sticky top-0 z-10 -mx-4 mb-4 bg-mist/95 px-4 py-3 backdrop-blur sm:-mx-6 sm:px-6">
+    <div class="flex items-center justify-between gap-2">
+        <div class="min-w-0">
+            <h1 class="truncate text-lg font-bold">{{ teacher_class.name }}</h1>
+            <div class="text-sm text-twilight/70">
+                {{ date|date:"l j F" }}{% if session.slot %} · {{ session.slot.start_time|time:"H:i" }}{% if session.slot.label %} ({{ session.slot.label }}){% endif %}{% endif %}
+            </div>
+        </div>
+        <div class="flex shrink-0 items-center gap-1 text-sm font-semibold">
+            <a href="?date={{ prev_date|date:'Y-m-d' }}" class="rounded-lg bg-twilight/10 px-3 py-2 hover:bg-twilight/20" aria-label="Previous day">‹</a>
+            {% if date != today %}
+            <a href="{% url 'reports:daily_entry' teacher_class.id %}" class="rounded-lg bg-twilight/10 px-3 py-2 hover:bg-twilight/20">Today</a>
+            {% endif %}
+            <a href="?date={{ next_date|date:'Y-m-d' }}" class="rounded-lg bg-twilight/10 px-3 py-2 hover:bg-twilight/20" aria-label="Next day">›</a>
+        </div>
+    </div>
+    <label class="mt-2 flex items-center gap-2 text-sm text-twilight/80">
+        <input type="checkbox" id="homeworkDue" class="h-5 w-5 rounded accent-midnight" {% if session.homework_due %}checked{% endif %}>
+        Homework was due today
+    </label>
+</div>
+
+<p class="mb-3 text-xs text-twilight/60">Tap a chip to change it — everyone starts Present with homework Done. Changes save instantly.
+    <span class="ml-1 inline-flex items-center gap-1"><span class="inline-block h-2 w-2 rounded-full bg-lime-glow ring-1 ring-midnight/20"></span> = worked on NumScoil since {{ since|date:"j M" }}</span>
+</p>
+
+<div id="roster" class="space-y-2" data-set-url-template="{% url 'reports:set_record' 0 %}">
+    {% for record in records %}
+    <div class="rounded-2xl bg-white p-3 shadow-sm ring-1 ring-twilight/10" data-record-id="{{ record.id }}">
+        <div class="flex items-center gap-2">
+            <div class="min-w-0 flex-1">
+                <span class="truncate font-semibold">{{ record.student.get_full_name|default:record.student.username }}</span>
+                {% if record.student.id in active_ids %}
+                <span class="ml-1 inline-block h-2 w-2 rounded-full bg-lime-glow ring-1 ring-midnight/20" title="Active on NumScoil since last class"></span>
+                {% endif %}
+            </div>
+            <button type="button" class="chip min-h-[44px] min-w-[72px] rounded-xl px-2 text-sm font-semibold transition"
+                data-field="attendance" data-state="{{ record.attendance }}"></button>
+            <button type="button" class="chip min-h-[44px] min-w-[72px] rounded-xl px-2 text-sm font-semibold transition"
+                data-field="homework" data-state="{{ record.homework }}"></button>
+            <button type="button" class="comment-toggle min-h-[44px] min-w-[44px] rounded-xl text-lg transition
+                {% if record.has_comment %}bg-rose-pop/15{% else %}bg-twilight/10 opacity-60{% endif %}"
+                aria-label="Comment">💬</button>
+        </div>
+        <div class="comment-panel mt-3 hidden border-t border-twilight/10 pt-3">
+            <div class="flex flex-col gap-2 sm:flex-row">
+                <select class="comment-preset min-h-[44px] flex-1 rounded-xl border border-twilight/20 bg-white px-2 text-sm">
+                    <option value="">— no preset —</option>
+                    {% for preset in behaviour_presets %}
+                    <option value="{{ preset.id }}" {% if record.comment_preset_id == preset.id %}selected{% endif %}>{{ preset.text }}</option>
+                    {% endfor %}
+                </select>
+                <input type="text" maxlength="300" placeholder="Extra note (optional)" value="{{ record.comment_text }}"
+                    class="comment-text min-h-[44px] flex-1 rounded-xl border border-twilight/20 px-3 text-sm">
+                <button type="button" class="comment-save min-h-[44px] rounded-xl bg-midnight px-4 text-sm font-semibold text-mist">Save</button>
+            </div>
+        </div>
+    </div>
+    {% empty %}
+    <p class="text-twilight/70">No students enrolled in this class yet.</p>
+    {% endfor %}
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+(function () {
+    const CSRF = "{{ csrf_token }}";
+    const SET_URL_TEMPLATE = document.getElementById('roster').dataset.setUrlTemplate;
+    const HOMEWORK_DUE_URL = "{% url 'reports:set_homework_due' session.id %}";
+
+    const STATES = {
+        attendance: {
+            order: ['present', 'absent', 'late'],
+            labels: { present: 'Present', absent: 'Absent', late: 'Late' },
+            classes: {
+                present: 'bg-lime-glow/25 text-midnight ring-1 ring-lime-glow',
+                absent: 'bg-rose-pop/15 text-rose-pop ring-1 ring-rose-pop/50',
+                late: 'bg-amber-100 text-amber-800 ring-1 ring-amber-300',
+            },
+        },
+        homework: {
+            order: ['done', 'partial', 'not_done'],
+            labels: { done: 'HW ✓', partial: 'HW ½', not_done: 'HW ✗' },
+            classes: {
+                done: 'bg-lime-glow/25 text-midnight ring-1 ring-lime-glow',
+                partial: 'bg-amber-100 text-amber-800 ring-1 ring-amber-300',
+                not_done: 'bg-rose-pop/15 text-rose-pop ring-1 ring-rose-pop/50',
+            },
+        },
+    };
+    const BASE = 'chip min-h-[44px] min-w-[72px] rounded-xl px-2 text-sm font-semibold transition ';
+    const inFlight = new Set();
+
+    function paint(chip) {
+        const spec = STATES[chip.dataset.field];
+        const state = chip.dataset.state;
+        chip.className = BASE + spec.classes[state];
+        chip.textContent = spec.labels[state];
+    }
+
+    function post(url, body) {
+        return fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF },
+            body: JSON.stringify(body),
+        }).then(function (resp) {
+            if (!resp.ok) throw new Error('save failed');
+            return resp.json();
+        });
+    }
+
+    function setUrl(recordId) {
+        return SET_URL_TEMPLATE.replace('/0/', '/' + recordId + '/');
+    }
+
+    document.querySelectorAll('.chip').forEach(paint);
+
+    document.getElementById('roster').addEventListener('click', function (event) {
+        const chip = event.target.closest('.chip');
+        const commentToggle = event.target.closest('.comment-toggle');
+        const commentSave = event.target.closest('.comment-save');
+        const row = event.target.closest('[data-record-id]');
+        if (!row) return;
+        const recordId = row.dataset.recordId;
+
+        if (chip) {
+            if (inFlight.has(recordId)) return;
+            const spec = STATES[chip.dataset.field];
+            const previous = chip.dataset.state;
+            const next = spec.order[(spec.order.indexOf(previous) + 1) % spec.order.length];
+            chip.dataset.state = next;
+            paint(chip);
+            inFlight.add(recordId);
+            post(setUrl(recordId), { field: chip.dataset.field, value: next })
+                .catch(function () {
+                    chip.dataset.state = previous;
+                    paint(chip);
+                    chip.classList.add('ring-2', 'ring-rose-pop');
+                    setTimeout(function () { chip.classList.remove('ring-2', 'ring-rose-pop'); }, 1500);
+                })
+                .finally(function () { inFlight.delete(recordId); });
+        }
+
+        if (commentToggle) {
+            row.querySelector('.comment-panel').classList.toggle('hidden');
+        }
+
+        if (commentSave) {
+            const preset = row.querySelector('.comment-preset').value;
+            const text = row.querySelector('.comment-text').value;
+            commentSave.textContent = '…';
+            post(setUrl(recordId), { field: 'comment', preset_id: preset || null, text: text })
+                .then(function (data) {
+                    commentSave.textContent = 'Saved ✓';
+                    const toggle = row.querySelector('.comment-toggle');
+                    toggle.classList.toggle('bg-rose-pop/15', data.has_comment);
+                    toggle.classList.toggle('bg-twilight/10', !data.has_comment);
+                    toggle.classList.toggle('opacity-60', !data.has_comment);
+                    setTimeout(function () {
+                        commentSave.textContent = 'Save';
+                        row.querySelector('.comment-panel').classList.add('hidden');
+                    }, 700);
+                })
+                .catch(function () { commentSave.textContent = 'Retry'; });
+        }
+    });
+
+    document.getElementById('homeworkDue').addEventListener('change', function (event) {
+        const checkbox = event.target;
+        post(HOMEWORK_DUE_URL, { homework_due: checkbox.checked })
+            .catch(function () { checkbox.checked = !checkbox.checked; });
+    });
+})();
+</script>
+{% endblock %}

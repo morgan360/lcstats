@@ -18,6 +18,7 @@
 
     <!-- ✅ KaTeX styles -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    {% block extra_head %}{% endblock %}
 </head>
 
 <body class="flex min-h-screen flex-col bg-midnight font-sans text-mist overflow-x-hidden">
@@ -110,6 +111,7 @@
 
                     {% if request.user.is_staff %}
                     <a href="{% url 'homework:teacher_dashboard' %}" class="rounded-lg px-2 py-2 text-rose-pop transition hover:bg-mist/15">Teacher</a>
+                    <a href="{% url 'reports:dashboard' %}" class="rounded-lg px-2 py-2 text-rose-pop transition hover:bg-mist/15">Reports</a>
                     <a href="{% url 'flashcards:import_flashcards' %}" class="rounded-lg px-2 py-2 text-rose-pop transition hover:bg-mist/15">Import Flashcards</a>
                     <a href="/admin/" class="rounded-lg px-2 py-2 text-rose-pop transition hover:bg-mist/15">Admin</a>
                     {% endif %}
@@ -278,6 +280,8 @@
             {% if request.user.is_staff %}
             <a href="{% url 'homework:teacher_dashboard' %}"
                 class="block rounded-lg px-3 py-2 text-rose-pop transition hover:bg-mist/10">Teacher</a>
+            <a href="{% url 'reports:dashboard' %}"
+                class="block rounded-lg px-3 py-2 text-rose-pop transition hover:bg-mist/10">Reports</a>
             <a href="{% url 'flashcards:import_flashcards' %}"
                 class="block rounded-lg px-3 py-2 text-rose-pop transition hover:bg-mist/10">Import Flashcards</a>
             <a href="/admin/"

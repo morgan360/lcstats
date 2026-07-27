@@ -1,0 +1,116 @@
+{% extends "_base.html" %}
+{% block title %}{{ student.get_full_name|default:student.username }} · Report{% endblock %}
+{% block extra_head %}{% include "reports/includes/_pwa_head.html" %}{% endblock %}
+
+{% block content %}
+{% include "reports/includes/messages.html" %}
+
+<div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+    <div>
+        <h1 class="text-xl font-bold">{{ student.get_full_name|default:student.username }}</h1>
+        <p class="text-sm text-twilight/70">{{ start|date:"j M Y" }} — {{ end|date:"j M Y" }}</p>
+    </div>
+    <div class="flex gap-2 text-sm font-semibold">
+        <a href="{% url 'reports:student_report_csv' student.id %}?start={{ start|date:'Y-m-d' }}&end={{ end|date:'Y-m-d' }}"
+            class="rounded-lg bg-twilight/10 px-3 py-2 hover:bg-twilight/20">CSV</a>
+        <a href="{% url 'reports:student_report_pdf' student.id %}?start={{ start|date:'Y-m-d' }}&end={{ end|date:'Y-m-d' }}"
+            class="rounded-lg bg-twilight/10 px-3 py-2 hover:bg-twilight/20">PDF</a>
+    </div>
+</div>
+
+<form method="get" class="mb-6 flex flex-wrap items-end gap-2 text-sm">
+    <label class="flex flex-col gap-1">From
+        <input type="date" name="start" value="{{ start|date:'Y-m-d' }}" class="min-h-[44px] rounded-xl border border-twilight/20 px-3">
+    </label>
+    <label class="flex flex-col gap-1">To
+        <input type="date" name="end" value="{{ end|date:'Y-m-d' }}" class="min-h-[44px] rounded-xl border border-twilight/20 px-3">
+    </label>
+    <button type="submit" class="min-h-[44px] rounded-xl bg-midnight px-4 font-semibold text-mist">Apply</button>
+</form>
+
+<div class="mb-6 grid gap-4 sm:grid-cols-3">
+    <div class="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-twilight/10">
+        <div class="text-xs font-semibold uppercase tracking-wide text-twilight/60">Attendance</div>
+        <div class="text-2xl font-bold">{% if attendance.pct is not None %}{{ attendance.pct }}%{% else %}—{% endif %}</div>
+        <div class="text-sm text-twilight/70">{{ attendance.present }} present · {{ attendance.late }} late · {{ attendance.absent }} absent</div>
+    </div>
+    <div class="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-twilight/10">
+        <div class="text-xs font-semibold uppercase tracking-wide text-twilight/60">Paper homework</div>
+        <div class="text-2xl font-bold">{% if homework.pct is not None %}{{ homework.pct }}%{% else %}—{% endif %}</div>
+        <div class="text-sm text-twilight/70">{{ homework.done }} done · {{ homework.partial }} partial · {{ homework.not_done }} not done</div>
+    </div>
+    <div class="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-twilight/10">
+        <div class="text-xs font-semibold uppercase tracking-wide text-twilight/60">NumScoil activity</div>
+        <div class="text-2xl font-bold">{{ active_days }} active day{{ active_days|pluralize }}</div>
+        <div class="text-sm text-twilight/70">
+            {% if activity_totals.questions %}{{ activity_totals.questions }} questions · {% endif %}
+            {% if activity_totals.homework_tasks %}{{ activity_totals.homework_tasks }} homework tasks · {% endif %}
+            {% if activity_totals.flashcards %}{{ activity_totals.flashcards }} flashcards · {% endif %}
+            {% if activity_totals.quickkicks %}{{ activity_totals.quickkicks }} quickkicks · {% endif %}
+            {% if activity_totals.exams %}{{ activity_totals.exams }} exam attempts{% endif %}
+            {% if not activity_totals %}No recorded activity{% endif %}
+        </div>
+    </div>
+</div>
+
+<div class="mb-6 rounded-2xl bg-white p-4 shadow-sm ring-1 ring-twilight/10">
+    <h2 class="mb-3 text-sm font-semibold text-twilight/80">Daily NumScoil activity</h2>
+    <div class="flex flex-wrap gap-1">
+        {% for day in strip %}
+        <span title="{{ day.date|date:'D j M' }}: {{ day.total }} item{{ day.total|pluralize }}"
+            class="h-3.5 w-3.5 rounded-[3px]
+            {% if day.level == 0 %}bg-twilight/10{% elif day.level == 1 %}bg-lime-glow/30{% elif day.level == 2 %}bg-lime-glow/55{% elif day.level == 3 %}bg-lime-glow/80{% else %}bg-lime-glow{% endif %}"></span>
+        {% endfor %}
+    </div>
+    <p class="mt-2 text-xs text-twilight/60">One square per day, darker green = more work.</p>
+</div>
+
+<div class="mb-6 rounded-2xl bg-white p-4 shadow-sm ring-1 ring-twilight/10">
+    <h2 class="mb-3 text-sm font-semibold text-twilight/80">Tests</h2>
+    {% if test_results %}
+    <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+            <thead>
+                <tr class="border-b border-twilight/10 text-left text-xs text-twilight/70">
+                    <th class="py-2 pr-3">Date</th><th class="py-2 pr-3">Test</th>
+                    <th class="py-2 pr-3">Score</th><th class="py-2 pr-3">%</th><th class="py-2">Comment</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for result in test_results %}
+                <tr class="border-b border-twilight/5">
+                    <td class="whitespace-nowrap py-2 pr-3">{{ result.test.date|date:"j M" }}</td>
+                    <td class="py-2 pr-3 font-medium">{{ result.test.name }}</td>
+                    <td class="whitespace-nowrap py-2 pr-3">{% if result.score is not None %}{{ result.score|floatformat:"-1" }}/{{ result.test.max_marks }}{% else %}Absent{% endif %}</td>
+                    <td class="py-2 pr-3">{% if result.percentage is not None %}{{ result.percentage|floatformat:"-1" }}%{% else %}—{% endif %}</td>
+                    <td class="py-2 text-twilight/80">{% if result.comment_preset %}{{ result.comment_preset.text }}{% endif %}{% if result.comment_text %} {{ result.comment_text }}{% endif %}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <p class="text-sm text-twilight/70">No tests in this period.</p>
+    {% endif %}
+</div>
+
+<div class="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-twilight/10">
+    <h2 class="mb-3 text-sm font-semibold text-twilight/80">Comments</h2>
+    {% if comments %}
+    <ul class="space-y-2">
+        {% for comment in comments %}
+        <li class="flex items-start gap-3 text-sm">
+            <span class="mt-1 inline-block h-2.5 w-2.5 shrink-0 rounded-full
+                {% if comment.preset.tone == 'positive' %}bg-lime-glow{% elif comment.preset.tone == 'concern' %}bg-rose-pop{% else %}bg-twilight/40{% endif %}"></span>
+            <div>
+                <span class="text-xs text-twilight/60">{{ comment.date|date:"j M" }} · {{ comment.context }}</span>
+                <div>{% if comment.preset %}{{ comment.preset.text }}{% endif %}{% if comment.text %} <span class="text-twilight/80">{{ comment.text }}</span>{% endif %}</div>
+            </div>
+        </li>
+        {% endfor %}
+    </ul>
+    {% else %}
+    <p class="text-sm text-twilight/70">No comments in this period.</p>
+    {% endif %}
+</div>
+{% endblock %}
