@@ -9,7 +9,9 @@ document.addEventListener("DOMContentLoaded", () => {
   document.querySelectorAll("math-field").forEach(mf => {
     mf.smartMode = false;
     mf.inlineShortcuts = {};
-    mf.mathVirtualKeyboardPolicy = "manual";
+    // "auto": virtual keyboard appears on focus for touch devices only;
+    // desktop users keep typing on their physical keyboard
+    mf.mathVirtualKeyboardPolicy = "auto";
     mf.keypressSound = null;
     mf.plonkSound = null;
   });
