@@ -14,6 +14,18 @@ OPENAI_CHAT_MODEL = os.getenv("OPENAI_CHAT_MODEL", "gpt-4o-mini")
 OPENAI_VISION_MODEL = os.getenv("OPENAI_VISION_MODEL", "gpt-4o")  # For exam marking with vision
 FAQ_MATCH_THRESHOLD = float(os.getenv("FAQ_MATCH_THRESHOLD", 0.7))
 
+# NumSkull "site help" matching (pure retrieval, no GPT call — see chat/views.py).
+# Above SITE_HELP_MATCH_THRESHOLD: show the matched note confidently.
+# Between the floor and the threshold: show it with a hedging preface.
+# Below SITE_HELP_MIN_CONFIDENCE: treat as no match and fall back to the
+# general maths-tutor behavior instead of showing an irrelevant note.
+# Calibrated empirically against real site-help note embeddings: well-phrased
+# "how do I..." questions score ~0.5-0.65 against their matching note, while
+# genuine maths questions and unrelated text score ~0.2-0.3 (see git history
+# for the sample queries used to calibrate this).
+SITE_HELP_MATCH_THRESHOLD = float(os.getenv("SITE_HELP_MATCH_THRESHOLD", 0.55))
+SITE_HELP_MIN_CONFIDENCE = float(os.getenv("SITE_HELP_MIN_CONFIDENCE", 0.35))
+
 
 # ------------------------------------------------------------
 # Paths & Environment

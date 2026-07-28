@@ -14,7 +14,8 @@ class SearchForm(forms.Form):
 # ---------- Basic NoteAdmin ----------
 @admin.register(Note)
 class NoteAdmin(admin.ModelAdmin):
-    list_display = ("title", "topic")
+    list_display = ("title", "topic", "content_type", "audience")
+    list_filter = ("content_type", "audience")
     search_fields = ("title", "content")
     exclude = ("embedding",)
 

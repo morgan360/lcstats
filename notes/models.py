@@ -14,6 +14,13 @@ class Note(models.Model):
         ('general', 'General Note'),
         ('exam_paper', 'Exam Paper'),
         ('marking_scheme', 'Marking Scheme'),
+        ('site_help', 'Site Help'),
+    ]
+
+    AUDIENCE_CHOICES = [
+        ('all', 'Everyone'),
+        ('student', 'Students'),
+        ('teacher', 'Teachers'),
     ]
 
     PAPER_TYPE_CHOICES = [
@@ -71,6 +78,12 @@ class Note(models.Model):
         blank=True,
         null=True,
         help_text="Public link to Google Drive file"
+    )
+    audience = models.CharField(
+        max_length=10,
+        choices=AUDIENCE_CHOICES,
+        default='all',
+        help_text="Only used for Site Help notes: who this note is written for"
     )
 
     def _clean_content_for_embedding(self, content):

@@ -341,6 +341,10 @@ context. Otherwise it falls back to a general AI question (no topic/question con
         if (contextType) {
             msg.textContent = "Ask me anything about this question — I've got the context.";
             if (tip) tip.textContent = 'Ask AI about this question';
+        } else {
+            msg.textContent = "Ask me how to use NumScoil — homework, flashcards, reports, and more.";
+            queryInput.placeholder = 'e.g., How do I mark homework as done?';
+            if (tip) tip.textContent = 'Ask AI for help using the site';
         }
 
         function currentPartId() {
