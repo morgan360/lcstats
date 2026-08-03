@@ -210,7 +210,7 @@ AUTH_PASSWORD_VALIDATORS = [
 # Internationalization
 # ------------------------------------------------------------
 LANGUAGE_CODE = 'en-us'
-TIME_ZONE = 'UTC'
+TIME_ZONE = 'Europe/Dublin'
 USE_I18N = True
 USE_TZ = True
 
@@ -240,14 +240,17 @@ LOGOUT_REDIRECT_URL = '/'
 EMAIL_BACKEND = os.getenv('EMAIL_BACKEND', 'django.core.mail.backends.console.EmailBackend')
 
 # SMTP settings (only needed if using SMTP backend in production)
-EMAIL_HOST = os.getenv('EMAIL_HOST', 'smtp.gmail.com')
+# Brevo SMTP relay: EMAIL_HOST_USER is the Brevo account login,
+# EMAIL_HOST_PASSWORD is an SMTP key (not the account password)
+EMAIL_HOST = os.getenv('EMAIL_HOST', 'smtp-relay.brevo.com')
 EMAIL_PORT = int(os.getenv('EMAIL_PORT', 587))
 EMAIL_USE_TLS = os.getenv('EMAIL_USE_TLS', 'True') == 'True'
 EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER', '')
 EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD', '')
 
 # Default email addresses
-DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', 'noreply@lcaimaths.com')
+DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', 'NumScoil <admin@numscoil.ie>')
+SERVER_EMAIL = os.getenv('SERVER_EMAIL', 'admin@numscoil.ie')
 TEACHER_EMAIL = os.getenv('TEACHER_EMAIL', 'morganmcknight@gmail.com')
 
 # ------------------------------------------------------------

@@ -103,12 +103,13 @@
                                 {% endif %}
                             </div>
 
-                            {% if item.task.instructions %}
+                            {% if item.task.instructions and item.task.task_type != 'custom' %}
                             <p class="mt-2 text-sm italic text-indigo-deep/80">
                                 {{ item.task.instructions }}
                             </p>
                             {% endif %}
 
+                            {% if item.task.task_type != 'custom' %}
                             <a href="{{ item.content_url }}"
                                class="mt-3 inline-flex items-center gap-2 rounded-lg bg-gradient-03 px-4 py-2 text-sm font-semibold text-mist shadow-[0_12px_24px_rgba(148,72,176,0.28)] transition hover:-translate-y-0.5 hover:shadow-[0_16px_30px_rgba(148,72,176,0.34)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-royal">
                                 {% if item.task.task_type == 'section' %}
@@ -117,8 +118,11 @@
                                 Practice Question →
                                 {% elif item.task.task_type == 'quickkick' %}
                                 Watch Video →
+                                {% elif item.task.task_type == 'flashcard' %}
+                                Study Flashcards →
                                 {% endif %}
                             </a>
+                            {% endif %}
                         </div>
                     </div>
                 </div>

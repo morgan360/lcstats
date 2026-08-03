@@ -258,6 +258,7 @@ class HomeworkTask(models.Model):
         ('exam_question', 'Exam Question'),
         ('quickkick', 'QuickFlicks Video/Applet'),
         ('flashcard', 'Flashcard Set'),
+        ('custom', 'Written Exercise'),
     ]
 
     assignment = models.ForeignKey(
@@ -345,6 +346,8 @@ class HomeworkTask(models.Model):
             subject = self.flashcard_set.topic.subject.name if self.flashcard_set.topic and self.flashcard_set.topic.subject else "No Subject"
             card_count = self.flashcard_set.cards.count()
             return f"Flashcards: {self.flashcard_set.topic.name} > {self.flashcard_set.title} ({card_count} cards, {subject})"
+        elif self.task_type == 'custom' and self.instructions:
+            return self.instructions
         return "Unknown task"
 
     def get_content_url(self):
@@ -380,6 +383,8 @@ class HomeworkTask(models.Model):
             raise ValidationError({'quickkick': 'QuickFlicks is required when task type is "quickkick"'})
         elif self.task_type == 'flashcard' and not self.flashcard_set:
             raise ValidationError({'flashcard_set': 'Flashcard set is required when task type is "flashcard"'})
+        elif self.task_type == 'custom' and not self.instructions.strip():
+            raise ValidationError({'instructions': 'Exercise text is required for a written exercise'})
 
         # Ensure only the correct FK is set
         if self.task_type != 'section':

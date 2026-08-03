@@ -13,6 +13,9 @@ urlpatterns = [
     # Notification views
     path('snooze-notification/', views.snooze_homework_notification, name='snooze_notification'),
 
+    # Admin helper API
+    path('api/topic-content/<int:topic_id>/', views.topic_content_options, name='topic_content_options'),
+
     # Teacher views
     path('teacher/', views.teacher_dashboard, name='teacher_dashboard'),
     path('teacher/class/<int:class_id>/', views.class_detail, name='class_detail'),

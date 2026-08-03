@@ -1,4 +1,8 @@
+from datetime import timedelta
+
+from django import forms
 from django.contrib import admin
+from django.db import models
 from django.utils.html import format_html
 from django.urls import reverse
 from django.utils import timezone
@@ -15,7 +19,8 @@ from .forms import (
     PracticeQuestionsTaskForm,
     ExamQuestionsTaskForm,
     QuickKicksTaskForm,
-    FlashcardsTaskForm
+    FlashcardsTaskForm,
+    CustomTaskForm
 )
 from interactive_lessons.models import Section
 from exam_papers.models import ExamQuestion
@@ -108,7 +113,7 @@ class BaseHomeworkTaskInline(admin.StackedInline):
     extra = 1
 
     # Common fields for all task types
-    fields = ('is_required', 'order')
+    fields = ()
 
     class Media:
         css = {
@@ -142,7 +147,7 @@ class PracticeQuestionsTaskInline(BaseHomeworkTaskInline):
     verbose_name = "Practice Questions Task"
     verbose_name_plural = "📚 Practice Questions"
 
-    fields = ('section', 'is_required', 'order')
+    fields = ('section',)
 
     def get_queryset(self, request):
         qs = super().get_queryset(request)
@@ -154,7 +159,7 @@ class ExamQuestionsTaskInline(BaseHomeworkTaskInline):
     verbose_name = "Exam Question Task"
     verbose_name_plural = "📝 Exam Questions"
 
-    fields = ('exam_question', 'is_required', 'order')
+    fields = ('exam_question',)
 
     def get_queryset(self, request):
         qs = super().get_queryset(request)
@@ -166,7 +171,7 @@ class QuickKicksTaskInline(BaseHomeworkTaskInline):
     verbose_name = "QuickKick Task"
     verbose_name_plural = "⚡ QuickKicks"
 
-    fields = ('quickkick', 'is_required', 'order')
+    fields = ('quickkick',)
 
     def get_queryset(self, request):
         qs = super().get_queryset(request)
@@ -178,11 +183,23 @@ class FlashcardsTaskInline(BaseHomeworkTaskInline):
     verbose_name = "Flashcards Task"
     verbose_name_plural = "🎴 Flashcards"
 
-    fields = ('flashcard_set', 'is_required', 'order')
+    fields = ('flashcard_set',)
 
     def get_queryset(self, request):
         qs = super().get_queryset(request)
         return qs.filter(task_type='flashcard')
+
+
+class CustomTaskInline(BaseHomeworkTaskInline):
+    form = CustomTaskForm
+    verbose_name = "Written Exercise"
+    verbose_name_plural = "✏️ Written Exercises (textbook, worksheets...)"
+
+    fields = ('instructions',)
+
+    def get_queryset(self, request):
+        qs = super().get_queryset(request)
+        return qs.filter(task_type='custom')
 
 
 @admin.register(HomeworkAssignment)
@@ -200,28 +217,45 @@ class HomeworkAssignmentAdmin(admin.ModelAdmin):
     )
     list_filter = ('teacher', 'topic__subject', 'topic', 'is_published', 'due_date', 'assigned_date')
     search_fields = ('title', 'description', 'teacher__display_name', 'topic__name')
-    filter_horizontal = ('assigned_classes', 'assigned_students')
+    filter_horizontal = ('assigned_students',)
     readonly_fields = ('created_at', 'updated_at', 'progress_summary', 'notification_sent')
     inlines = [
         PracticeQuestionsTaskInline,
         ExamQuestionsTaskInline,
         QuickKicksTaskInline,
-        FlashcardsTaskInline
+        FlashcardsTaskInline,
+        CustomTaskInline
     ]
     date_hierarchy = 'due_date'
+
+    class Media:
+        js = ('admin/js/homework_topic_filter.js',)
+
+    formfield_overrides = {
+        models.TextField: {'widget': forms.Textarea(attrs={'rows': 3})},
+    }
+
+    def get_changeform_initial_data(self, request):
+        initial = super().get_changeform_initial_data(request)
+        # Due date defaults to the next school day (skips weekends), end of day
+        due = timezone.localtime() + timedelta(days=1)
+        while due.weekday() >= 5:  # 5 = Saturday, 6 = Sunday
+            due += timedelta(days=1)
+        initial.setdefault('due_date', due.replace(hour=23, minute=59, second=0, microsecond=0))
+        return initial
 
     fieldsets = (
         ('Assignment Details', {
             'fields': ('teacher', 'topic', 'title', 'description', 'assigned_date', 'due_date')
         }),
-        ('Assignment Targets', {
-            'fields': ('assigned_classes', 'assigned_students'),
-            'description': (
-                '<strong>Step 1:</strong> Select classes above<br>'
-                '<strong>Step 2:</strong> Save the form<br>'
-                '<strong>Step 3:</strong> Students from selected classes will be automatically added below<br>'
-                '<em>You can also manually add/remove individual students</em>'
-            )
+        ('Assign To', {
+            'fields': ('assigned_classes',),
+            'description': 'Tick the class(es) this homework is for. All current members of a ticked class see the assignment automatically.'
+        }),
+        ('Individual Students (optional)', {
+            'fields': ('assigned_students',),
+            'classes': ('collapse',),
+            'description': 'Rarely needed — assign to specific students outside of (or in addition to) the classes above.'
         }),
         ('Status', {
             'fields': ('is_published', 'notification_sent', 'progress_summary')
@@ -318,6 +352,10 @@ class HomeworkAssignmentAdmin(admin.ModelAdmin):
 
     def formfield_for_manytomany(self, db_field, request, **kwargs):
         """Filter classes and students by school - teachers can only assign to their school"""
+        # Classes are few per teacher, so a checkbox list beats the dual-listbox widget
+        if db_field.name == "assigned_classes":
+            kwargs["widget"] = forms.CheckboxSelectMultiple
+
         if not request.user.is_superuser and hasattr(request.user, 'teacher_profile'):
             teacher_profile = request.user.teacher_profile
 
@@ -333,6 +371,14 @@ class HomeworkAssignmentAdmin(admin.ModelAdmin):
                         studentprofile__school=teacher_profile.school
                     )
         return super().formfield_for_manytomany(db_field, request, **kwargs)
+
+    def save_related(self, request, form, formsets, change):
+        """Auto-number task order (field is hidden from the form)."""
+        super().save_related(request, form, formsets, change)
+        for i, task in enumerate(form.instance.tasks.order_by('order', 'id')):
+            if task.order != i:
+                task.order = i
+                task.save(update_fields=['order'])
 
     def save_model(self, request, obj, form, change):
         """Detect when is_published transitions to True and send email notifications."""
@@ -366,33 +412,6 @@ class HomeworkAssignmentAdmin(admin.ModelAdmin):
                     f"Failed to send {result['failed']} email(s). Check logs for details.",
                     level='WARNING'
                 )
-
-    def save_related(self, request, form, formsets, change):
-        """
-        Auto-populate assigned_students with all students from assigned_classes.
-        This runs after the main object is saved but before M2M fields are saved.
-        """
-        super().save_related(request, form, formsets, change)
-
-        # Get the assignment instance
-        obj = form.instance
-
-        # Get all students from assigned classes
-        students_from_classes = set()
-        for teacher_class in obj.assigned_classes.all():
-            students_from_classes.update(teacher_class.students.all())
-
-        # Add these students to assigned_students (if not already there)
-        if students_from_classes:
-            obj.assigned_students.add(*students_from_classes)
-
-            # Show message to user
-            num_added = len(students_from_classes)
-            self.message_user(
-                request,
-                f"Automatically added {num_added} student(s) from selected class(es).",
-                level='INFO'
-            )
 
 
 @admin.register(HomeworkTask)

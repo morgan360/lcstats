@@ -1,5 +1,6 @@
 
 from django.shortcuts import render, redirect, get_object_or_404
+from django.contrib.admin.views.decorators import staff_member_required
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
 from django.http import JsonResponse
@@ -700,3 +701,56 @@ def weekly_student_homework_report(request, student_id):
     }
 
     return render(request, 'homework/weekly_student_report.html', context)
+
+
+@staff_member_required
+def topic_content_options(request, topic_id):
+    """JSON options for the admin assignment form: content filtered by topic.
+
+    Used by admin/js/homework_topic_filter.js to repopulate the task inline
+    dropdowns when the teacher picks a topic, avoiding the save-first step.
+    """
+    from interactive_lessons.models import Section
+    from exam_papers.models import ExamQuestion
+    from quickkicks.models import QuickKick
+    from flashcards.models import FlashcardSet
+
+    # Optional ?classes=1,2 — mark content already assigned to those classes
+    class_ids = [c for c in request.GET.get('classes', '').split(',') if c.isdigit()]
+
+    def previously_assigned_ids(content_field):
+        if not class_ids:
+            return set()
+        return set(
+            HomeworkTask.objects.filter(
+                assignment__assigned_classes__in=class_ids,
+                **{f'{content_field}__isnull': False},
+            ).values_list(f'{content_field}_id', flat=True)
+        )
+
+    def options(qs, content_field, label=str):
+        seen = previously_assigned_ids(content_field)
+        return [
+            {
+                'id': obj.pk,
+                'label': label(obj) + (' ✓ assigned before' if obj.pk in seen else ''),
+            }
+            for obj in qs
+        ]
+
+    def exam_question_label(obj):
+        subject = obj.exam_paper.subject.name if obj.exam_paper and obj.exam_paper.subject else "No Subject"
+        year = obj.exam_paper.year if obj.exam_paper else "Unknown"
+        topic = obj.topic.name if obj.topic else "No Topic"
+        return f"[{subject}] {year} - Q{obj.question_number} - {topic}"
+
+    return JsonResponse({
+        'section': options(Section.objects.filter(topic_id=topic_id), 'section'),
+        'exam_question': options(
+            ExamQuestion.objects.filter(topic_id=topic_id).select_related('exam_paper__subject', 'topic'),
+            'exam_question',
+            exam_question_label,
+        ),
+        'quickkick': options(QuickKick.objects.filter(topic_id=topic_id), 'quickkick'),
+        'flashcard_set': options(FlashcardSet.objects.filter(topic_id=topic_id), 'flashcard_set'),
+    })

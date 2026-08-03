@@ -36,25 +36,24 @@ class BaseHomeworkTaskForm(forms.ModelForm):
         # Get topic from assignment
         topic = None
 
-        # 1. Try to get from parent_assignment kwarg (Django admin inline context)
-        if parent_assignment and hasattr(parent_assignment, 'topic'):
+        # 1. Submitted parent form data — wins so a brand-new assignment (or a
+        #    topic change) filters and validates in a single save
+        if self.data and self.data.get('topic'):
+            try:
+                from interactive_lessons.models import Topic
+                topic = Topic.objects.get(pk=self.data['topic'])
+            except (ValueError, Topic.DoesNotExist):
+                pass
+        # 2. Parent assignment instance (GET on an existing assignment)
+        elif parent_assignment is not None and getattr(parent_assignment, 'topic', None):
             topic = parent_assignment.topic
-        # 2. Check if editing existing task
+        # 3. Existing task's own assignment
         elif self.instance and self.instance.assignment_id:
             try:
                 assignment = self.instance.assignment
                 if assignment and assignment.topic:
                     topic = assignment.topic
-            except:
-                pass
-        # 3. Check POST data for assignment (form submission)
-        elif self.data.get('assignment'):
-            try:
-                from homework.models import HomeworkAssignment
-                assignment = HomeworkAssignment.objects.get(pk=self.data['assignment'])
-                if assignment and assignment.topic:
-                    topic = assignment.topic
-            except (ValueError, HomeworkAssignment.DoesNotExist):
+            except Exception:
                 pass
 
         # Store topic for use by subclasses
@@ -79,7 +78,7 @@ class PracticeQuestionsTaskForm(BaseHomeworkTaskForm):
             self.fields['section'].queryset = Section.objects.filter(topic=self.topic)
             self.fields['section'].help_text = f"Practice questions for {self.topic.name}"
         else:
-            self.fields['section'].help_text = "Save assignment first to see filtered options"
+            self.fields['section'].help_text = "Select a topic above to filter these options"
 
     def clean(self):
         cleaned_data = super().clean()
@@ -118,7 +117,7 @@ class ExamQuestionsTaskForm(BaseHomeworkTaskForm):
             self.fields['exam_question'].queryset = ExamQuestion.objects.filter(topic=self.topic)
             self.fields['exam_question'].help_text = f"Exam questions for {self.topic.name}"
         else:
-            self.fields['exam_question'].help_text = "Save assignment first to see filtered options"
+            self.fields['exam_question'].help_text = "Select a topic above to filter these options"
 
     def clean(self):
         cleaned_data = super().clean()
@@ -151,7 +150,7 @@ class QuickKicksTaskForm(BaseHomeworkTaskForm):
             self.fields['quickkick'].queryset = QuickKick.objects.filter(topic=self.topic)
             self.fields['quickkick'].help_text = f"QuickKicks for {self.topic.name}"
         else:
-            self.fields['quickkick'].help_text = "Save assignment first to see filtered options"
+            self.fields['quickkick'].help_text = "Select a topic above to filter these options"
 
     def clean(self):
         cleaned_data = super().clean()
@@ -184,7 +183,7 @@ class FlashcardsTaskForm(BaseHomeworkTaskForm):
             self.fields['flashcard_set'].queryset = FlashcardSet.objects.filter(topic=self.topic)
             self.fields['flashcard_set'].help_text = f"Flashcard sets for {self.topic.name}"
         else:
-            self.fields['flashcard_set'].help_text = "Save assignment first to see filtered options"
+            self.fields['flashcard_set'].help_text = "Select a topic above to filter these options"
 
     def clean(self):
         cleaned_data = super().clean()
@@ -195,5 +194,33 @@ class FlashcardsTaskForm(BaseHomeworkTaskForm):
 
         # Ensure task_type is set (already set in __init__, but confirm in cleaned_data)
         cleaned_data['task_type'] = 'flashcard'
+
+        return cleaned_data
+
+class CustomTaskForm(BaseHomeworkTaskForm):
+    """Form for free-text written exercises, e.g. 'Maths 2 pg 56 Q1 - Q12'"""
+
+    class Meta:
+        model = HomeworkTask
+        fields = ['assignment', 'task_type', 'instructions', 'is_required']
+        widgets = {
+            'instructions': forms.TextInput(attrs={'size': 60, 'placeholder': 'e.g. Maths 2 pg 56 Q1 - Q12'}),
+        }
+        labels = {
+            'instructions': 'Exercise',
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.instance.task_type = 'custom'
+        self.fields['instructions'].help_text = "Textbook exercise, worksheet, or anything else done outside NumScoil"
+
+    def clean(self):
+        cleaned_data = super().clean()
+
+        if not (cleaned_data.get('instructions') or '').strip():
+            raise forms.ValidationError("Please enter the exercise text")
+
+        cleaned_data['task_type'] = 'custom'
 
         return cleaned_data
