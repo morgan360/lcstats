@@ -157,8 +157,24 @@ def info_bot(request, topic_slug):
         "- DO NOT work through examples unless asked",
         "- ALWAYS wrap ALL math expressions in $ delimiters (e.g., $x^2$, $\\frac{1}{x}$, $x^{-2}$)",
         "- Use $$ for display math on its own line",
-        "- NEVER use parentheses for math - always use $ delimiters",
+        # This rule is about delimiters only. Worded as "never use parentheses
+        # for math" it read as a ban on brackets: the model substituted thin
+        # spaces and emitted $-\int_0^3 x \, x - 3 \, dx$ for x(x-3).
+        "- Delimit math with $ ... $, never with \\( ... \\) or \\[ ... \\]",
+        "- Keep brackets that belong to the maths itself: write $x(x-3)$, "
+        "$-\\int_0^3 x(x-3)\\,dx$, $\\sin(2\\theta)$ - never drop them",
         "- Be concise and helpful, but don't do their homework",
+        # A student asked about part (ii), then followed up with "but how do I
+        # integrate that?" and got an answer about part (i)'s function: their
+        # cursor sat in part (i)'s answer box, and the "currently working on"
+        # marker outranked what the conversation was actually about.
+        "- The \"currently working on\" marker below only records which answer "
+        "box the cursor is in. It is a weak hint: if the student names a part, "
+        "or the conversation is already about one, that part wins",
+        "- On a follow-up like \"but how do I integrate that?\", keep to the "
+        "part the previous answer was about unless the student says otherwise",
+        "- Take every expression from the question below, never from memory - "
+        "and check you have the one belonging to the part you are answering",
         "- The question and all its parts are given below. NEVER ask the student "
         "to type out or resend the question, an expression, or a part - you can "
         "already see them, and they are hard to type on a phone. If a student "
