@@ -1,0 +1,783 @@
+{# Floating scientific calculator. Self-contained: no external JS/CSS, no Tailwind classes. #}
+<button type="button" id="calc-launch" class="calc-launch" title="Open calculator (Alt+C)" aria-expanded="false"
+    aria-controls="calc-panel">
+    <span class="calc-launch__icon" aria-hidden="true">🧮</span>
+    <span class="calc-launch__label">Calculator</span>
+</button>
+
+<div id="calc-panel" class="calc" role="dialog" aria-label="Scientific calculator" hidden>
+    <div class="calc__bar" id="calc-drag">
+        <span class="calc__title">Calculator</span>
+        <div class="calc__bar-actions">
+            <button type="button" class="calc__mode" id="calc-mode" title="Switch between degrees and radians">DEG</button>
+            <button type="button" class="calc__close" id="calc-close" aria-label="Close calculator">✕</button>
+        </div>
+    </div>
+
+    <div class="calc__screen">
+        <div class="calc__history" id="calc-history" aria-live="polite"></div>
+        <input type="text" id="calc-input" class="calc__input" spellcheck="false" autocomplete="off"
+            autocapitalize="off" aria-label="Expression" placeholder="0">
+        <div class="calc__result" id="calc-result">0</div>
+        <div class="calc__extra" id="calc-extra"></div>
+    </div>
+
+    <div class="calc__keys">
+        <button type="button" class="calc__key calc__key--fn" data-ins="!">x!</button>
+        <button type="button" class="calc__key calc__key--fn" data-ins="C">nCr</button>
+        <button type="button" class="calc__key calc__key--fn" data-ins="P">nPr</button>
+        <button type="button" class="calc__key calc__key--fn" data-ins="Ans">Ans</button>
+        <button type="button" class="calc__key calc__key--warn" data-act="del">DEL</button>
+
+        <button type="button" class="calc__key calc__key--fn" data-ins="sin(">sin</button>
+        <button type="button" class="calc__key calc__key--fn" data-ins="cos(">cos</button>
+        <button type="button" class="calc__key calc__key--fn" data-ins="tan(">tan</button>
+        <button type="button" class="calc__key calc__key--fn" data-ins="(">(</button>
+        <button type="button" class="calc__key calc__key--fn" data-ins=")">)</button>
+
+        <button type="button" class="calc__key calc__key--fn" data-ins="asin(">sin⁻¹</button>
+        <button type="button" class="calc__key calc__key--fn" data-ins="acos(">cos⁻¹</button>
+        <button type="button" class="calc__key calc__key--fn" data-ins="atan(">tan⁻¹</button>
+        <button type="button" class="calc__key calc__key--fn" data-ins="^2">x²</button>
+        <button type="button" class="calc__key calc__key--fn" data-ins="^">xʸ</button>
+
+        <button type="button" class="calc__key calc__key--fn" data-ins="√(">√</button>
+        <button type="button" class="calc__key calc__key--fn" data-ins="ln(">ln</button>
+        <button type="button" class="calc__key calc__key--fn" data-ins="log(">log</button>
+        <button type="button" class="calc__key calc__key--fn" data-ins="π">π</button>
+        <button type="button" class="calc__key calc__key--fn" data-ins="e">e</button>
+
+        <button type="button" class="calc__key" data-ins="7">7</button>
+        <button type="button" class="calc__key" data-ins="8">8</button>
+        <button type="button" class="calc__key" data-ins="9">9</button>
+        <button type="button" class="calc__key calc__key--op" data-ins="×">×</button>
+        <button type="button" class="calc__key calc__key--op" data-ins="÷">÷</button>
+
+        <button type="button" class="calc__key" data-ins="4">4</button>
+        <button type="button" class="calc__key" data-ins="5">5</button>
+        <button type="button" class="calc__key" data-ins="6">6</button>
+        <button type="button" class="calc__key calc__key--op" data-ins="+">+</button>
+        <button type="button" class="calc__key calc__key--op" data-ins="−">−</button>
+
+        <button type="button" class="calc__key" data-ins="1">1</button>
+        <button type="button" class="calc__key" data-ins="2">2</button>
+        <button type="button" class="calc__key" data-ins="3">3</button>
+        <button type="button" class="calc__key calc__key--fn" data-ins="%">%</button>
+        <button type="button" class="calc__key calc__key--eq" data-act="eq">=</button>
+
+        <button type="button" class="calc__key" data-ins="0">0</button>
+        <button type="button" class="calc__key" data-ins=".">.</button>
+        <button type="button" class="calc__key calc__key--fn" data-ins="(-)">(−)</button>
+        <button type="button" class="calc__key calc__key--warn" data-act="ac">AC</button>
+        <button type="button" class="calc__key calc__key--fn" id="calc-stats-toggle">STAT</button>
+    </div>
+
+    <div class="calc__stats" id="calc-stats" hidden>
+        <p class="calc__stats-hint">Enter a list, e.g. <code>mean(4, 7, 9)</code></p>
+        <div class="calc__stats-keys">
+            <button type="button" class="calc__key calc__key--fn" data-ins="mean(">mean</button>
+            <button type="button" class="calc__key calc__key--fn" data-ins="sd(">σ</button>
+            <button type="button" class="calc__key calc__key--fn" data-ins="s(">s</button>
+            <button type="button" class="calc__key calc__key--fn" data-ins="sum(">Σx</button>
+            <button type="button" class="calc__key calc__key--fn" data-ins=", ">,</button>
+        </div>
+    </div>
+</div>
+
+<style>
+    .calc-launch {
+        position: fixed;
+        left: 1.25rem;
+        bottom: 1.25rem;
+        z-index: 1150;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.7rem 1rem;
+        border: 1px solid rgba(216, 248, 120, 0.35);
+        border-radius: 999px;
+        background: linear-gradient(180deg, #9448B0 0%, #332277 100%);
+        color: #F0EFEB;
+        font: inherit;
+        font-size: 0.85rem;
+        font-weight: 700;
+        cursor: pointer;
+        box-shadow: 0 10px 24px rgba(0, 0, 0, 0.35);
+        transition: transform 0.15s ease, box-shadow 0.15s ease;
+    }
+    .calc-launch:hover { transform: translateY(-2px); box-shadow: 0 14px 28px rgba(0, 0, 0, 0.42); }
+    .calc-launch[hidden] { display: none; }
+    .calc-launch__icon { font-size: 1.1rem; line-height: 1; }
+
+    .calc {
+        position: fixed;
+        right: 1.25rem;
+        bottom: 5.5rem;
+        z-index: 1160;
+        width: 320px;
+        max-width: calc(100vw - 2rem);
+        max-height: calc(100vh - 7rem);
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        border: 1px solid rgba(240, 239, 235, 0.18);
+        border-radius: 16px;
+        background: #001C3D;
+        color: #F0EFEB;
+        font-family: inherit;
+        box-shadow: 0 20px 50px rgba(0, 0, 0, 0.55);
+    }
+    .calc[hidden] { display: none; }
+
+    .calc__bar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.5rem;
+        padding: 0.55rem 0.75rem;
+        background: #173251;
+        cursor: grab;
+        user-select: none;
+        touch-action: none;
+    }
+    .calc__bar:active { cursor: grabbing; }
+    .calc__title { font-size: 0.8rem; font-weight: 700; letter-spacing: 0.04em; }
+    .calc__bar-actions { display: flex; align-items: center; gap: 0.4rem; }
+
+    .calc__mode {
+        padding: 0.2rem 0.55rem;
+        border: 1px solid rgba(216, 248, 120, 0.5);
+        border-radius: 999px;
+        background: rgba(216, 248, 120, 0.14);
+        color: #D8F878;
+        font: inherit;
+        font-size: 0.7rem;
+        font-weight: 800;
+        letter-spacing: 0.06em;
+        cursor: pointer;
+    }
+    .calc__close {
+        width: 26px;
+        height: 26px;
+        border: none;
+        border-radius: 8px;
+        background: rgba(240, 239, 235, 0.1);
+        color: #F0EFEB;
+        font-size: 0.8rem;
+        line-height: 1;
+        cursor: pointer;
+    }
+    .calc__close:hover { background: rgba(228, 124, 184, 0.35); }
+
+    .calc__screen { padding: 0.6rem 0.75rem 0.7rem; background: rgba(23, 50, 81, 0.45); }
+    .calc__history {
+        min-height: 1rem;
+        margin-bottom: 0.3rem;
+        font-size: 0.68rem;
+        color: rgba(240, 239, 235, 0.55);
+        text-align: right;
+        white-space: nowrap;
+        overflow-x: auto;
+    }
+    .calc__history button {
+        border: none;
+        background: none;
+        color: inherit;
+        font: inherit;
+        cursor: pointer;
+        padding: 0 0.2rem;
+    }
+    .calc__history button:hover { color: #D8F878; }
+
+    .calc__input {
+        width: 100%;
+        padding: 0.25rem 0;
+        border: none;
+        border-bottom: 1px solid rgba(240, 239, 235, 0.2);
+        background: transparent;
+        color: #F0EFEB;
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+        font-size: 1.05rem;
+        text-align: right;
+        outline: none;
+    }
+    .calc__input::placeholder { color: rgba(240, 239, 235, 0.3); }
+
+    .calc__result {
+        padding-top: 0.3rem;
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: #D8F878;
+        text-align: right;
+        overflow-x: auto;
+        white-space: nowrap;
+    }
+    .calc__result--error { color: #E47CB8; font-size: 1rem; }
+    .calc__extra {
+        min-height: 0.9rem;
+        font-size: 0.7rem;
+        color: rgba(240, 239, 235, 0.6);
+        text-align: right;
+    }
+
+    .calc__keys {
+        display: grid;
+        grid-template-columns: repeat(5, 1fr);
+        gap: 4px;
+        padding: 0.6rem;
+        overflow-y: auto;
+    }
+    .calc__key {
+        padding: 0.6rem 0.2rem;
+        border: 1px solid rgba(240, 239, 235, 0.12);
+        border-radius: 9px;
+        background: rgba(240, 239, 235, 0.08);
+        color: #F0EFEB;
+        font: inherit;
+        font-size: 0.9rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: background 0.12s ease;
+    }
+    .calc__key:hover { background: rgba(240, 239, 235, 0.2); }
+    .calc__key:active { background: rgba(216, 248, 120, 0.3); }
+    .calc__key--fn { font-size: 0.78rem; background: rgba(148, 72, 176, 0.3); }
+    .calc__key--op { background: rgba(23, 50, 81, 0.9); font-size: 1rem; }
+    .calc__key--warn { background: rgba(228, 124, 184, 0.28); font-size: 0.75rem; }
+    .calc__key--eq { background: #D8F878; color: #001C3D; font-size: 1.1rem; font-weight: 800; }
+    .calc__key--eq:hover { background: #e4ff9a; }
+
+    .calc__stats { padding: 0 0.6rem 0.6rem; }
+    .calc__stats[hidden] { display: none; }
+    .calc__stats-hint { margin: 0 0 0.4rem; font-size: 0.68rem; color: rgba(240, 239, 235, 0.6); }
+    .calc__stats-hint code { color: #D8F878; }
+    .calc__stats-keys { display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; }
+
+    @media (max-width: 640px) {
+        .calc {
+            right: 0.5rem;
+            left: 0.5rem;
+            bottom: 0.5rem;
+            width: auto;
+            max-height: 82vh;
+        }
+        .calc-launch__label { display: none; }
+        .calc-launch { padding: 0.75rem; }
+    }
+
+    @media print {
+        .calc, .calc-launch { display: none !important; }
+    }
+</style>
+
+<script>
+(function () {
+    "use strict";
+
+    var panel = document.getElementById('calc-panel');
+    if (!panel) { return; }
+
+    var launch = document.getElementById('calc-launch');
+    var input = document.getElementById('calc-input');
+    var resultEl = document.getElementById('calc-result');
+    var extraEl = document.getElementById('calc-extra');
+    var historyEl = document.getElementById('calc-history');
+    var modeBtn = document.getElementById('calc-mode');
+    var statsPanel = document.getElementById('calc-stats');
+    var dragBar = document.getElementById('calc-drag');
+
+    var degrees = localStorage.getItem('numscoil-calc-mode') !== 'rad';
+    var ans = 0;
+    var history = [];
+
+    /* ---------------------------------------------------------------
+       Expression evaluation.
+       Hand-written scanner + recursive-descent parser: student input is
+       never passed to eval()/Function().
+       --------------------------------------------------------------- */
+
+    var FUNCS = {
+        sin: 1, cos: 1, tan: 1, asin: 1, acos: 1, atan: 1,
+        sinh: 1, cosh: 1, tanh: 1,
+        ln: 1, log: -1, sqrt: 1, cbrt: 1, abs: 1, exp: 1,
+        mean: -1, sd: -1, s: -1, sum: -1, min: -1, max: -1
+    };
+    // Longest name first so "asin" wins over "a", "cos" over "c", "exp" over "e".
+    var NAMES = Object.keys(FUNCS).concat(['ans', 'pi']).sort(function (a, b) {
+        return b.length - a.length;
+    });
+
+    function scan(src) {
+        var toks = [];
+        var i = 0;
+        while (i < src.length) {
+            var ch = src[i];
+
+            if (ch === ' ' || ch === '\t' || ch === ',') {
+                if (ch === ',') { toks.push({ t: ',' }); }
+                i++;
+                continue;
+            }
+
+            if (ch >= '0' && ch <= '9' || ch === '.') {
+                var start = i;
+                while (i < src.length && (src[i] >= '0' && src[i] <= '9' || src[i] === '.')) { i++; }
+                // Scientific notation, but only when an exponent really follows:
+                // "1e5" is 100000, while a bare "2e" stays 2 × Euler's number.
+                var expMatch = /^[eE][+-]?\d+/.exec(src.slice(i));
+                if (expMatch) { i += expMatch[0].length; }
+                var raw = src.slice(start, i);
+                var num = parseFloat(raw);
+                if (isNaN(num)) { throw new Error('Bad number "' + raw + '"'); }
+                toks.push({ t: 'num', v: num });
+                continue;
+            }
+
+            if (ch === '√' || ch === '∛') {
+                toks.push({ t: 'name', v: ch === '√' ? 'sqrt' : 'cbrt' });
+                i++;
+                continue;
+            }
+            if (ch === 'π') { toks.push({ t: 'name', v: 'pi' }); i++; continue; }
+            if (ch === '×' || ch === '*') { toks.push({ t: '*' }); i++; continue; }
+            if (ch === '÷' || ch === '/') { toks.push({ t: '/' }); i++; continue; }
+            if (ch === '−' || ch === '-') { toks.push({ t: '-' }); i++; continue; }
+            if (ch === '²') { toks.push({ t: '^' }); toks.push({ t: 'num', v: 2 }); i++; continue; }
+            if (ch === '³') { toks.push({ t: '^' }); toks.push({ t: 'num', v: 3 }); i++; continue; }
+            if ('+^()!%'.indexOf(ch) !== -1) { toks.push({ t: ch }); i++; continue; }
+
+            if (/[A-Za-z]/.test(ch)) {
+                var matched = null;
+                for (var n = 0; n < NAMES.length; n++) {
+                    var name = NAMES[n];
+                    if (src.substr(i, name.length).toLowerCase() === name) {
+                        // "e" must not swallow the "e" of a longer word we don't know.
+                        matched = name;
+                        break;
+                    }
+                }
+                if (matched) {
+                    toks.push({ t: 'name', v: matched });
+                    i += matched.length;
+                    continue;
+                }
+                if (ch === 'C' || ch === 'c') { toks.push({ t: 'C' }); i++; continue; }
+                if (ch === 'P' || ch === 'p') { toks.push({ t: 'P' }); i++; continue; }
+                if (ch === 'e' || ch === 'E') { toks.push({ t: 'name', v: 'euler' }); i++; continue; }
+                throw new Error('Unknown "' + ch + '"');
+            }
+
+            throw new Error('Unexpected "' + ch + '"');
+        }
+        return toks;
+    }
+
+    function factorial(n) {
+        if (n < 0 || Math.abs(n - Math.round(n)) > 1e-9) { throw new Error('x! needs a whole number ≥ 0'); }
+        n = Math.round(n);
+        if (n > 170) { return Infinity; }
+        var out = 1;
+        for (var k = 2; k <= n; k++) { out *= k; }
+        return out;
+    }
+
+    function nPr(n, r) {
+        if (n < 0 || r < 0 || Math.abs(n - Math.round(n)) > 1e-9 || Math.abs(r - Math.round(r)) > 1e-9) {
+            throw new Error('nPr needs whole numbers');
+        }
+        n = Math.round(n); r = Math.round(r);
+        if (r > n) { return 0; }
+        var out = 1;
+        for (var k = 0; k < r; k++) { out *= (n - k); }
+        return out;
+    }
+
+    function nCr(n, r) {
+        if (n < 0 || r < 0 || Math.abs(n - Math.round(n)) > 1e-9 || Math.abs(r - Math.round(r)) > 1e-9) {
+            throw new Error('nCr needs whole numbers');
+        }
+        n = Math.round(n); r = Math.round(r);
+        if (r > n) { return 0; }
+        r = Math.min(r, n - r);
+        var out = 1;
+        for (var k = 1; k <= r; k++) { out = out * (n - r + k) / k; }
+        return Math.round(out);
+    }
+
+    function toRad(x) { return degrees ? x * Math.PI / 180 : x; }
+    function fromRad(x) { return degrees ? x * 180 / Math.PI : x; }
+
+    function applyFunc(name, args) {
+        var x = args[0];
+        switch (name) {
+            case 'sin': return Math.sin(toRad(x));
+            case 'cos': return Math.cos(toRad(x));
+            case 'tan': return Math.tan(toRad(x));
+            case 'asin': return fromRad(Math.asin(x));
+            case 'acos': return fromRad(Math.acos(x));
+            case 'atan': return fromRad(Math.atan(x));
+            case 'sinh': return Math.sinh(x);
+            case 'cosh': return Math.cosh(x);
+            case 'tanh': return Math.tanh(x);
+            case 'ln': return Math.log(x);
+            case 'exp': return Math.exp(x);
+            case 'abs': return Math.abs(x);
+            case 'sqrt': return Math.sqrt(x);
+            case 'cbrt': return Math.cbrt(x);
+            case 'log':
+                // log(x) is base 10; log(b, x) is base b — matches the exam-paper convention.
+                if (args.length === 2) { return Math.log(args[1]) / Math.log(args[0]); }
+                return Math.log10(x);
+            case 'sum': return args.reduce(function (a, b) { return a + b; }, 0);
+            case 'min': return Math.min.apply(null, args);
+            case 'max': return Math.max.apply(null, args);
+            case 'mean': return args.reduce(function (a, b) { return a + b; }, 0) / args.length;
+            case 'sd':
+            case 's': {
+                if (name === 's' && args.length < 2) { throw new Error('s needs at least 2 values'); }
+                var m = args.reduce(function (a, b) { return a + b; }, 0) / args.length;
+                var ss = args.reduce(function (a, b) { return a + (b - m) * (b - m); }, 0);
+                return Math.sqrt(ss / (name === 'sd' ? args.length : args.length - 1));
+            }
+        }
+        throw new Error('Unknown function ' + name);
+    }
+
+    function parse(toks) {
+        var pos = 0;
+
+        function peek() { return toks[pos]; }
+        function next() { return toks[pos++]; }
+        function expect(t) {
+            var tok = next();
+            if (!tok || tok.t !== t) { throw new Error('Missing "' + t + '"'); }
+        }
+        function startsValue(tok) {
+            return tok && (tok.t === 'num' || tok.t === 'name' || tok.t === '(');
+        }
+
+        function expr() {
+            var v = term();
+            for (;;) {
+                var p = peek();
+                if (p && p.t === '+') { next(); v += term(); }
+                else if (p && p.t === '-') { next(); v -= term(); }
+                else { return v; }
+            }
+        }
+
+        function term() {
+            var v = unary();
+            for (;;) {
+                var p = peek();
+                if (!p) { return v; }
+                if (p.t === '*') { next(); v *= unary(); }
+                else if (p.t === '/') { next(); v /= unary(); }
+                else if (startsValue(p)) { v *= unary(); }   // implicit ×: 2π, 3(4+1), 2sin(30)
+                else { return v; }
+            }
+        }
+
+        // Unary minus is looser than nCr/nPr and ^, matching a Casio:
+        // -3C3 is -(3C3), and -2^2 is -(2^2).
+        function unary() {
+            var p = peek();
+            if (p && (p.t === '-' || p.t === '+')) {
+                next();
+                var v = unary();
+                return p.t === '-' ? -v : v;
+            }
+            return comb();
+        }
+
+        function comb() {
+            var v = power();
+            for (;;) {
+                var p = peek();
+                if (p && p.t === 'C') { next(); v = nCr(v, power()); }
+                else if (p && p.t === 'P') { next(); v = nPr(v, power()); }
+                else { return v; }
+            }
+        }
+
+        function power() {
+            var base = postfix();
+            if (peek() && peek().t === '^') {
+                next();
+                return Math.pow(base, signedPower());   // right-associative, so 2^3^2 = 2^9
+            }
+            return base;
+        }
+
+        // Exponent of ^: allows a sign (2^-1) but stops before nCr/nPr,
+        // so 2^3C2 is (2^3)C2, not 2^(3C2).
+        function signedPower() {
+            var p = peek();
+            if (p && (p.t === '-' || p.t === '+')) {
+                next();
+                var v = signedPower();
+                return p.t === '-' ? -v : v;
+            }
+            return power();
+        }
+
+        function postfix() {
+            var v = atom();
+            for (;;) {
+                var p = peek();
+                if (p && p.t === '!') { next(); v = factorial(v); }
+                else if (p && p.t === '%') { next(); v = v / 100; }
+                else { return v; }
+            }
+        }
+
+        function atom() {
+            var tok = next();
+            if (!tok) { throw new Error('Unfinished expression'); }
+            if (tok.t === 'num') { return tok.v; }
+            if (tok.t === '(') {
+                var v = expr();
+                expect(')');
+                return v;
+            }
+            if (tok.t === 'name') {
+                if (tok.v === 'pi') { return Math.PI; }
+                if (tok.v === 'euler') { return Math.E; }
+                if (tok.v === 'ans') { return ans; }
+
+                var args;
+                if (peek() && peek().t === '(') {
+                    next();
+                    args = [expr()];
+                    while (peek() && peek().t === ',') { next(); args.push(expr()); }
+                    expect(')');
+                } else {
+                    args = [unary()];   // bare form: √9, sin30
+                }
+                if (FUNCS[tok.v] === 1 && args.length > 1) {
+                    throw new Error(tok.v + ' takes one value');
+                }
+                return applyFunc(tok.v, args);
+            }
+            throw new Error('Unexpected "' + tok.t + '"');
+        }
+
+        var value = expr();
+        if (pos < toks.length) { throw new Error('Unexpected "' + (toks[pos].v || toks[pos].t) + '"'); }
+        return value;
+    }
+
+    function evaluate(src) {
+        // "(-)" is the calculator-style negation key.
+        return parse(scan(src.replace(/\(-\)/g, '-')));
+    }
+
+    /* --------------------------- formatting --------------------------- */
+
+    function format(x) {
+        if (typeof x !== 'number' || isNaN(x)) { throw new Error('Math error'); }
+        if (!isFinite(x)) { throw new Error('Result too large'); }
+        // 10 significant figures, like a Casio: differential testing showed the
+        // 11th-12th digits can be rounding noise near trig asymptotes.
+        var r = parseFloat(x.toPrecision(10));
+        if (r !== 0 && (Math.abs(r) >= 1e12 || Math.abs(r) < 1e-9)) {
+            return r.toExponential(6).replace(/e([+-])(\d+)/, ' × 10^$1$2').replace('^+', '^');
+        }
+        return String(r);
+    }
+
+    // Continued-fraction search for a tidy fraction, so students can quote exact answers.
+    function asFraction(x) {
+        if (!isFinite(x) || Math.abs(x) > 1e6 || Math.abs(x - Math.round(x)) < 1e-12) { return null; }
+        var sign = x < 0 ? -1 : 1;
+        var v = Math.abs(x);
+        var h1 = 1, h0 = 0, k1 = 0, k0 = 1, b = v;
+        for (var i = 0; i < 25; i++) {
+            var a = Math.floor(b);
+            var h2 = a * h1 + h0, k2 = a * k1 + k0;
+            h0 = h1; h1 = h2; k0 = k1; k1 = k2;
+            if (k1 > 1000) { return null; }
+            if (Math.abs(v - h1 / k1) < 1e-10) {
+                return (sign * h1) + '/' + k1;
+            }
+            var frac = b - a;
+            if (frac < 1e-12) { return null; }
+            b = 1 / frac;
+        }
+        return null;
+    }
+
+    /* ------------------------------- UI ------------------------------- */
+
+    function setResult(text, isError) {
+        resultEl.textContent = text;
+        resultEl.classList.toggle('calc__result--error', !!isError);
+    }
+
+    function renderHistory() {
+        historyEl.innerHTML = '';
+        history.slice(-3).forEach(function (item) {
+            var btn = document.createElement('button');
+            btn.type = 'button';
+            btn.textContent = item.expr + ' = ' + item.value;
+            btn.title = 'Insert this result';
+            btn.addEventListener('click', function () { insert(item.value); });
+            historyEl.appendChild(btn);
+        });
+        historyEl.scrollLeft = historyEl.scrollWidth;
+    }
+
+    function insert(text) {
+        var start = input.selectionStart;
+        var end = input.selectionEnd;
+        if (start === null || start === undefined) { start = end = input.value.length; }
+        input.value = input.value.slice(0, start) + text + input.value.slice(end);
+        var caret = start + text.length;
+        input.focus();
+        input.setSelectionRange(caret, caret);
+    }
+
+    function del() {
+        var start = input.selectionStart;
+        var end = input.selectionEnd;
+        if (start === null || start === undefined) { return; }
+        if (start === end && start > 0) { start -= 1; }
+        input.value = input.value.slice(0, start) + input.value.slice(end);
+        input.focus();
+        input.setSelectionRange(start, start);
+    }
+
+    function clearAll() {
+        input.value = '';
+        setResult('0', false);
+        extraEl.textContent = '';
+        input.focus();
+    }
+
+    function compute() {
+        var src = input.value.trim();
+        extraEl.textContent = '';
+        if (!src) { setResult('0', false); return; }
+        try {
+            var value = evaluate(src);
+            var text = format(value);
+            setResult(text, false);
+            ans = value;
+            var frac = asFraction(value);
+            extraEl.textContent = frac ? '= ' + frac : '';
+            history.push({ expr: src, value: text });
+            if (history.length > 10) { history.shift(); }
+            renderHistory();
+        } catch (err) {
+            setResult(err.message || 'Error', true);
+        }
+    }
+
+    function setMode(isDeg) {
+        degrees = isDeg;
+        modeBtn.textContent = degrees ? 'DEG' : 'RAD';
+        localStorage.setItem('numscoil-calc-mode', degrees ? 'deg' : 'rad');
+    }
+
+    function open() {
+        panel.hidden = false;
+        launch.hidden = true;
+        launch.setAttribute('aria-expanded', 'true');
+        sessionStorage.setItem('numscoil-calc-open', '1');
+        input.focus();
+    }
+
+    function close() {
+        panel.hidden = true;
+        launch.hidden = false;
+        launch.setAttribute('aria-expanded', 'false');
+        sessionStorage.removeItem('numscoil-calc-open');
+    }
+
+    panel.addEventListener('click', function (event) {
+        var btn = event.target.closest('button[data-ins], button[data-act]');
+        if (!btn) { return; }
+        var ins = btn.getAttribute('data-ins');
+        if (ins !== null) { insert(ins); return; }
+        var act = btn.getAttribute('data-act');
+        if (act === 'eq') { compute(); }
+        else if (act === 'del') { del(); }
+        else if (act === 'ac') { clearAll(); }
+    });
+
+    input.addEventListener('keydown', function (event) {
+        if (event.key === 'Enter') { event.preventDefault(); compute(); }
+        if (event.key === 'Escape') { event.preventDefault(); close(); }
+    });
+
+    launch.addEventListener('click', open);
+    document.getElementById('calc-close').addEventListener('click', close);
+    modeBtn.addEventListener('click', function () { setMode(!degrees); compute(); });
+    document.getElementById('calc-stats-toggle').addEventListener('click', function () {
+        statsPanel.hidden = !statsPanel.hidden;
+    });
+
+    document.addEventListener('keydown', function (event) {
+        if (event.altKey && (event.key === 'c' || event.key === 'C')) {
+            event.preventDefault();
+            if (panel.hidden) { open(); } else { close(); }
+        }
+    });
+
+    /* ----------------------------- dragging ----------------------------- */
+
+    var drag = null;
+
+    dragBar.addEventListener('pointerdown', function (event) {
+        if (event.target.closest('button')) { return; }
+        var rect = panel.getBoundingClientRect();
+        drag = { dx: event.clientX - rect.left, dy: event.clientY - rect.top, w: rect.width, h: rect.height };
+        panel.style.right = 'auto';
+        panel.style.bottom = 'auto';
+        panel.style.left = rect.left + 'px';
+        panel.style.top = rect.top + 'px';
+        dragBar.setPointerCapture(event.pointerId);
+    });
+
+    dragBar.addEventListener('pointermove', function (event) {
+        if (!drag) { return; }
+        var x = Math.min(Math.max(0, event.clientX - drag.dx), window.innerWidth - drag.w);
+        var y = Math.min(Math.max(0, event.clientY - drag.dy), window.innerHeight - 40);
+        panel.style.left = x + 'px';
+        panel.style.top = y + 'px';
+    });
+
+    function endDrag(event) {
+        if (!drag) { return; }
+        drag = null;
+        try { dragBar.releasePointerCapture(event.pointerId); } catch (e) { /* already released */ }
+        localStorage.setItem('numscoil-calc-pos', JSON.stringify({
+            left: panel.style.left, top: panel.style.top
+        }));
+    }
+    dragBar.addEventListener('pointerup', endDrag);
+    dragBar.addEventListener('pointercancel', endDrag);
+
+    function restorePosition() {
+        if (window.innerWidth <= 640) { return; }
+        var saved = localStorage.getItem('numscoil-calc-pos');
+        if (!saved) { return; }
+        try {
+            var pos = JSON.parse(saved);
+            if (!pos.left || !pos.top) { return; }
+            // Ignore a stored position that is off-screen on this display.
+            if (parseInt(pos.left, 10) > window.innerWidth - 120) { return; }
+            if (parseInt(pos.top, 10) > window.innerHeight - 60) { return; }
+            panel.style.right = 'auto';
+            panel.style.bottom = 'auto';
+            panel.style.left = pos.left;
+            panel.style.top = pos.top;
+        } catch (e) { /* ignore malformed value */ }
+    }
+
+    setMode(degrees);
+    restorePosition();
+    if (sessionStorage.getItem('numscoil-calc-open') === '1') { open(); }
+})();
+</script>

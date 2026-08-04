@@ -304,6 +304,11 @@
     {% block mascot %}{% include "includes/numskull_mascot.html" %}{% endblock %}
     {% endif %}
 
+    {# Floating scientific calculator. Child templates can override the block to hide it. #}
+    {% if user.is_authenticated %}
+    {% block calculator %}{% include "includes/calculator.html" %}{% endblock %}
+    {% endif %}
+
     <footer class="bg-indigo-deep/80 text-mist shadow-2xl backdrop-blur-xl py-4 text-center text-sm text-mist">
         &copy; 2025/26 NumScoil. All rights reserved.
     </footer>
