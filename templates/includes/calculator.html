@@ -116,7 +116,9 @@
         z-index: 1160;
         width: 320px;
         max-width: calc(100vw - 2rem);
-        max-height: calc(100vh - 7rem);
+        /* Anchored to the bottom, so this cap is what stops a tall panel from
+           growing up over the sticky nav. */
+        max-height: calc(100vh - 11rem);
         display: flex;
         flex-direction: column;
         overflow: hidden;
@@ -171,21 +173,25 @@
 
     .calc__screen { padding: 0.6rem 0.75rem 0.7rem; background: rgba(23, 50, 81, 0.45); }
     .calc__history {
+        display: flex;
+        justify-content: flex-end;
         min-height: 1rem;
-        margin-bottom: 0.3rem;
+        margin-bottom: 0.25rem;
         font-size: 0.68rem;
         color: rgba(240, 239, 235, 0.55);
-        text-align: right;
-        white-space: nowrap;
-        overflow-x: auto;
+        overflow: hidden;
     }
     .calc__history button {
+        max-width: 100%;
         border: none;
         background: none;
         color: inherit;
         font: inherit;
         cursor: pointer;
-        padding: 0 0.2rem;
+        padding: 0;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
     }
     .calc__history button:hover { color: #D8F878; }
 
@@ -204,9 +210,9 @@
     .calc__input::placeholder { color: rgba(240, 239, 235, 0.3); }
 
     .calc__result {
-        padding-top: 0.3rem;
+        padding-top: 0.25rem;
         font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-        font-size: 1.5rem;
+        font-size: 1.35rem;
         font-weight: 700;
         color: #D8F878;
         text-align: right;
@@ -225,27 +231,35 @@
         display: grid;
         grid-template-columns: repeat(5, 1fr);
         gap: 4px;
-        padding: 0.6rem;
+        padding: 0.5rem;
         overflow-y: auto;
+        scrollbar-width: thin;
+        scrollbar-color: rgba(240, 239, 235, 0.25) transparent;
+    }
+    .calc__keys::-webkit-scrollbar { width: 6px; }
+    .calc__keys::-webkit-scrollbar-track { background: transparent; }
+    .calc__keys::-webkit-scrollbar-thumb {
+        background: rgba(240, 239, 235, 0.22);
+        border-radius: 3px;
     }
     .calc__key {
-        padding: 0.6rem 0.2rem;
+        padding: 0.45rem 0.2rem;
         border: 1px solid rgba(240, 239, 235, 0.12);
         border-radius: 9px;
         background: rgba(240, 239, 235, 0.08);
         color: #F0EFEB;
         font: inherit;
-        font-size: 0.9rem;
+        font-size: 0.85rem;
         font-weight: 600;
         cursor: pointer;
         transition: background 0.12s ease;
     }
     .calc__key:hover { background: rgba(240, 239, 235, 0.2); }
     .calc__key:active { background: rgba(216, 248, 120, 0.3); }
-    .calc__key--fn { font-size: 0.78rem; background: rgba(148, 72, 176, 0.3); }
-    .calc__key--op { background: rgba(23, 50, 81, 0.9); font-size: 1rem; }
-    .calc__key--warn { background: rgba(228, 124, 184, 0.28); font-size: 0.75rem; }
-    .calc__key--eq { background: #D8F878; color: #001C3D; font-size: 1.1rem; font-weight: 800; }
+    .calc__key--fn { font-size: 0.72rem; background: rgba(148, 72, 176, 0.3); }
+    .calc__key--op { background: rgba(23, 50, 81, 0.9); font-size: 0.95rem; }
+    .calc__key--warn { background: rgba(228, 124, 184, 0.28); font-size: 0.7rem; }
+    .calc__key--eq { background: #D8F878; color: #001C3D; font-size: 1.05rem; font-weight: 800; }
     .calc__key--eq:hover { background: #e4ff9a; }
 
     .calc__stats { padding: 0 0.6rem 0.6rem; }
@@ -260,7 +274,7 @@
             left: 0.5rem;
             bottom: 0.5rem;
             width: auto;
-            max-height: 82vh;
+            max-height: calc(100vh - 8rem);
         }
         .calc-launch__label { display: none; }
         .calc-launch { padding: 0.75rem; }
@@ -290,6 +304,7 @@
     var degrees = localStorage.getItem('numscoil-calc-mode') !== 'rad';
     var ans = 0;
     var history = [];
+    var justEvaluated = false;
 
     /* ---------------------------------------------------------------
        Expression evaluation.
@@ -615,20 +630,36 @@
         resultEl.classList.toggle('calc__result--error', !!isError);
     }
 
+    // One line only: several entries side by side overflowed and put a scrollbar
+    // across the display.
     function renderHistory() {
         historyEl.innerHTML = '';
-        history.slice(-3).forEach(function (item) {
-            var btn = document.createElement('button');
-            btn.type = 'button';
-            btn.textContent = item.expr + ' = ' + item.value;
-            btn.title = 'Insert this result';
-            btn.addEventListener('click', function () { insert(item.value); });
-            historyEl.appendChild(btn);
-        });
-        historyEl.scrollLeft = historyEl.scrollWidth;
+        var item = history[history.length - 1];
+        if (!item) { return; }
+        var btn = document.createElement('button');
+        btn.type = 'button';
+        btn.textContent = item.expr + ' = ' + item.value;
+        btn.title = 'Insert this result';
+        // insert() handles the fresh-entry rule, so this replaces a finished
+        // expression rather than appending to it.
+        btn.addEventListener('click', function () { insert(item.value); });
+        historyEl.appendChild(btn);
+    }
+
+    // Keys that continue a finished calculation (5+3= then ×2 means Ans×2).
+    // Anything else starts a fresh entry, as on a Casio - without this, pressing
+    // mean(...) after a result appends and implicit × silently multiplies them.
+    var CHAINS = ['+', '−', '×', '÷', '^', '^2', '%', '!', 'C', 'P'];
+
+    function startFreshIfNeeded(text) {
+        if (!justEvaluated) { return; }
+        justEvaluated = false;
+        input.value = CHAINS.indexOf(text) !== -1 ? 'Ans' : '';
+        input.setSelectionRange(input.value.length, input.value.length);
     }
 
     function insert(text) {
+        startFreshIfNeeded(text);
         var start = input.selectionStart;
         var end = input.selectionEnd;
         if (start === null || start === undefined) { start = end = input.value.length; }
@@ -650,6 +681,7 @@
 
     function clearAll() {
         input.value = '';
+        justEvaluated = false;
         setResult('0', false);
         extraEl.textContent = '';
         input.focus();
@@ -669,6 +701,7 @@
             history.push({ expr: src, value: text });
             if (history.length > 10) { history.shift(); }
             renderHistory();
+            justEvaluated = true;
         } catch (err) {
             setResult(err.message || 'Error', true);
         }
@@ -707,8 +740,13 @@
     });
 
     input.addEventListener('keydown', function (event) {
-        if (event.key === 'Enter') { event.preventDefault(); compute(); }
-        if (event.key === 'Escape') { event.preventDefault(); close(); }
+        if (event.key === 'Enter') { event.preventDefault(); compute(); return; }
+        if (event.key === 'Escape') { event.preventDefault(); close(); return; }
+        // A printable key after "=" starts a new entry; Backspace and the arrows
+        // fall through so the previous expression stays editable.
+        if (justEvaluated && event.key.length === 1 && !event.ctrlKey && !event.metaKey) {
+            startFreshIfNeeded('+-*/^!%'.indexOf(event.key) !== -1 ? '+' : event.key);
+        }
     });
 
     launch.addEventListener('click', open);
@@ -728,6 +766,7 @@
     /* ----------------------------- dragging ----------------------------- */
 
     var drag = null;
+    var NAV_CLEARANCE = 72;   // keep the panel clear of the sticky nav
 
     dragBar.addEventListener('pointerdown', function (event) {
         if (event.target.closest('button')) { return; }
@@ -743,7 +782,7 @@
     dragBar.addEventListener('pointermove', function (event) {
         if (!drag) { return; }
         var x = Math.min(Math.max(0, event.clientX - drag.dx), window.innerWidth - drag.w);
-        var y = Math.min(Math.max(0, event.clientY - drag.dy), window.innerHeight - 40);
+        var y = Math.min(Math.max(NAV_CLEARANCE, event.clientY - drag.dy), window.innerHeight - 40);
         panel.style.left = x + 'px';
         panel.style.top = y + 'px';
     });
@@ -772,7 +811,7 @@
             panel.style.right = 'auto';
             panel.style.bottom = 'auto';
             panel.style.left = pos.left;
-            panel.style.top = pos.top;
+            panel.style.top = Math.max(NAV_CLEARANCE, parseInt(pos.top, 10)) + 'px';
         } catch (e) { /* ignore malformed value */ }
     }
 
