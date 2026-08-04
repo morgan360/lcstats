@@ -11,6 +11,33 @@ from django.conf import settings
 logger = logging.getLogger(__name__)
 client = OpenAI()
 
+# Models that take the older completion parameters. Newer models reject
+# max_tokens (they want max_completion_tokens) and reject any temperature
+# other than the default, so the call has to be shaped per model.
+LEGACY_PARAM_MODELS = {'gpt-4o', 'gpt-4o-mini', 'gpt-4', 'gpt-4-turbo'}
+
+# Reasoning models spend part of their completion budget thinking before any
+# visible output, so a budget sized for the answer alone comes back empty.
+REASONING_TOKEN_BUDGET = 4000
+
+
+def vision_model():
+    return getattr(settings, 'OPENAI_VISION_MODEL', 'gpt-4o')
+
+
+def _vision_completion(messages, max_tokens, temperature, **extra):
+    """Call the configured vision model with parameters it accepts."""
+    model = vision_model()
+    kwargs = {'model': model, 'messages': messages, **extra}
+
+    if model in LEGACY_PARAM_MODELS:
+        kwargs['max_tokens'] = max_tokens
+        kwargs['temperature'] = temperature
+    else:
+        kwargs['max_completion_tokens'] = max(max_tokens, REASONING_TOKEN_BUDGET)
+
+    return client.chat.completions.create(**kwargs)
+
 
 def encode_image_from_file(image_field):
     """
@@ -54,8 +81,7 @@ def extract_max_marks_from_scheme(marking_scheme_image, question_part_label):
         if not scheme_b64:
             return None
 
-        response = client.chat.completions.create(
-            model=getattr(settings, 'OPENAI_VISION_MODEL', 'gpt-4o'),
+        response = _vision_completion(
             messages=[
                 {
                     "role": "user",
@@ -251,9 +277,8 @@ Example response:
                     }
                 })
 
-        # Call GPT-4 Vision API
-        response = client.chat.completions.create(
-            model=getattr(settings, 'OPENAI_VISION_MODEL', 'gpt-4o'),
+        # Call the configured vision model
+        response = _vision_completion(
             messages=[
                 {
                     "role": "user",
