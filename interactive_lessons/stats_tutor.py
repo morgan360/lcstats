@@ -1,9 +1,15 @@
 from openai import OpenAI
 from fractions import Fraction
 import json, re, math
+from django.conf import settings
 from interactive_lessons.services.utils_math import compare_algebraic
 
 client = OpenAI()
+
+
+def grading_model():
+    """Model used for GPT answer grading (OPENAI_GRADING_MODEL in .env)."""
+    return getattr(settings, "OPENAI_GRADING_MODEL", "gpt-4o-mini")
 
 def parse_interval(answer):
     """
@@ -216,6 +222,15 @@ def gpt_grade(question_text, student_answer, correct_answer):
     - Accept algebraically equivalent expressions
     - Award partial credit for correct approach or partially correct work
 
+    SCORING RULES (apply strictly — only the final answer is captured, never
+    the student's working, so do not infer method that is not visible):
+    - Blank, placeholder or meaningless input (e.g. "-", "\\cdot", empty LaTeX
+      placeholders such as \\frac{{\\placeholder{{}}}}{{\\placeholder{{}}}}): score 0
+    - Numerically equivalent to the correct answer, including rounding or
+      decimal-versus-surd form (e.g. 2.8 for $2\\sqrt{{2}}$): score 90-100
+    - Correct final answer expressed differently (equivalent algebraic form,
+      solutions in another order): score 90-100
+
     FEEDBACK REQUIREMENTS:
     When the answer is INCORRECT, your feedback must be:
     1. SPECIFIC - Identify exactly what went wrong (calculation error, wrong formula, sign error, etc.)
@@ -241,7 +256,7 @@ def gpt_grade(question_text, student_answer, correct_answer):
 
     try:
         response = client.chat.completions.create(
-            model="gpt-4o-mini",
+            model=grading_model(),
             messages=[{"role": "user", "content": prompt}],
             temperature=0.3,
             response_format={"type": "json_object"}
