@@ -88,7 +88,9 @@ document.addEventListener("DOMContentLoaded", () => {
             `;
           } else {
             // Incorrect answer - show detailed feedback
-            const hintText = tidy(data.hint);
+            // Already rendered HTML from the server (Markdown + KaTeX), so it
+            // must not go through tidy(), which would mangle the markup.
+            const hintText = data.hint || "";
             feedbackBox.innerHTML = `
               <div class="rounded-md bg-red-50 border border-red-300 px-4 py-3 mt-2">
                 <div class="flex items-start">

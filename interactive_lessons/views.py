@@ -457,6 +457,12 @@ def section_question_view(request, topic_slug, section_slug, number):
                     if teacher_hint and not result.get("is_correct", False):
                         hint = teacher_hint
 
+                    # Hints are Markdown - numbered steps and bullet lists. The
+                    # static hint on the page already goes through this; sending
+                    # raw Markdown over JSON collapsed "1. ... 2. ..." and "- ..."
+                    # into a single run-on paragraph.
+                    hint = render_math_markdown(hint)
+
                     return JsonResponse({
                         "is_correct": result.get("is_correct", False),
                         "score": result.get("score", 0),
@@ -645,6 +651,12 @@ def question_view(request, topic_id, number):
                     teacher_hint = part.question.hint
                     if teacher_hint and not result.get("is_correct", False):
                         hint = teacher_hint
+
+                    # Hints are Markdown - numbered steps and bullet lists. The
+                    # static hint on the page already goes through this; sending
+                    # raw Markdown over JSON collapsed "1. ... 2. ..." and "- ..."
+                    # into a single run-on paragraph.
+                    hint = render_math_markdown(hint)
 
                     return JsonResponse({
                         "is_correct": result.get("is_correct", False),
