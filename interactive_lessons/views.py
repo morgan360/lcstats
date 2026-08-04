@@ -20,8 +20,14 @@ from .forms import QuestionContactForm
 # ----------------------------------------------------------------------
 # InfoBot (Notes / GPT QA)
 # ----------------------------------------------------------------------
+@login_required
 def info_bot(request, topic_slug):
-    """Answer a student's free-text question using Notes or GPT fallback with question context."""
+    """Answer a student's free-text question using Notes or GPT fallback with question context.
+
+    Login required: this endpoint spends OpenAI credits on every call, including
+    vision calls on question diagrams. It was the only AI-spending view without
+    the decorator its siblings (chat_view, infobot_feedback) already carry.
+    """
     query = request.GET.get("query", "").strip()
     if not query:
         return JsonResponse({"answer": ""})
