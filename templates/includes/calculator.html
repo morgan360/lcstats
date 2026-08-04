@@ -172,28 +172,46 @@
     .calc__close:hover { background: rgba(228, 124, 184, 0.35); }
 
     .calc__screen { padding: 0.6rem 0.75rem 0.7rem; background: rgba(23, 50, 81, 0.45); }
+    /* Fixed height on purpose: the tape scrolls internally but can never grow
+       and push the keypad down, which is how the panel covered the nav before. */
     .calc__history {
-        display: flex;
-        justify-content: flex-end;
-        min-height: 1rem;
-        margin-bottom: 0.25rem;
+        height: 3.4rem;
+        margin-bottom: 0.3rem;
+        padding-right: 2px;
+        overflow-y: auto;
         font-size: 0.68rem;
         color: rgba(240, 239, 235, 0.55);
-        overflow: hidden;
+        scrollbar-width: thin;
+        scrollbar-color: rgba(240, 239, 235, 0.25) transparent;
     }
-    .calc__history button {
-        max-width: 100%;
+    .calc__history:empty { height: 0; margin-bottom: 0; }
+    .calc__history::-webkit-scrollbar { width: 5px; }
+    .calc__history::-webkit-scrollbar-thumb {
+        background: rgba(240, 239, 235, 0.22);
+        border-radius: 3px;
+    }
+    .calc__hrow {
+        display: flex;
+        align-items: baseline;
+        justify-content: flex-end;
+        gap: 0.35rem;
+        line-height: 1.55;
+    }
+    .calc__hrow button {
         border: none;
         background: none;
         color: inherit;
         font: inherit;
-        cursor: pointer;
         padding: 0;
+        cursor: pointer;
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
     }
-    .calc__history button:hover { color: #D8F878; }
+    .calc__hexpr { min-width: 0; opacity: 0.75; }
+    .calc__hexpr:hover { opacity: 1; color: #E47CB8; }
+    .calc__hval { flex: 0 0 auto; font-weight: 700; color: rgba(216, 248, 120, 0.75); }
+    .calc__hval:hover { color: #D8F878; }
 
     .calc__input {
         width: 100%;
@@ -630,20 +648,42 @@
         resultEl.classList.toggle('calc__result--error', !!isError);
     }
 
-    // One line only: several entries side by side overflowed and put a scrollbar
-    // across the display.
+    // A running tape, newest at the bottom. Multi-step work (a mean feeding a
+    // standard deviation) means the earlier lines are the point, and it also
+    // makes Ans self-documenting.
     function renderHistory() {
         historyEl.innerHTML = '';
-        var item = history[history.length - 1];
-        if (!item) { return; }
-        var btn = document.createElement('button');
-        btn.type = 'button';
-        btn.textContent = item.expr + ' = ' + item.value;
-        btn.title = 'Insert this result';
-        // insert() handles the fresh-entry rule, so this replaces a finished
-        // expression rather than appending to it.
-        btn.addEventListener('click', function () { insert(item.value); });
-        historyEl.appendChild(btn);
+        history.forEach(function (item) {
+            var row = document.createElement('div');
+            row.className = 'calc__hrow';
+
+            var expr = document.createElement('button');
+            expr.type = 'button';
+            expr.className = 'calc__hexpr';
+            expr.textContent = item.expr;
+            expr.title = 'Edit this calculation';
+            expr.addEventListener('click', function () {
+                justEvaluated = false;
+                input.value = item.expr;
+                input.focus();
+                input.setSelectionRange(item.expr.length, item.expr.length);
+            });
+
+            var val = document.createElement('button');
+            val.type = 'button';
+            val.className = 'calc__hval';
+            val.textContent = '= ' + item.value;
+            val.title = 'Use this result';
+            // insert() applies the fresh-entry rule, so this replaces a
+            // finished expression rather than appending to it.
+            val.addEventListener('click', function () { insert(item.value); });
+
+            row.appendChild(expr);
+            row.appendChild(val);
+            historyEl.appendChild(row);
+        });
+        historyEl.scrollTop = historyEl.scrollHeight;
+        saveHistory();
     }
 
     // Keys that continue a finished calculation (5+3= then ×2 means Ans×2).
@@ -698,13 +738,37 @@
             ans = value;
             var frac = asFraction(value);
             extraEl.textContent = frac ? '= ' + frac : '';
-            history.push({ expr: src, value: text });
+            history.push({ expr: src, value: text, raw: value });
             if (history.length > 10) { history.shift(); }
             renderHistory();
             justEvaluated = true;
         } catch (err) {
             setResult(err.message || 'Error', true);
         }
+    }
+
+    // Students move between questions mid-problem, so the tape survives
+    // navigation. Per-tab and per-session: it should not come back tomorrow.
+    function saveHistory() {
+        try {
+            sessionStorage.setItem('numscoil-calc-history', JSON.stringify(history));
+        } catch (e) { /* private mode or quota: the tape is not worth failing over */ }
+    }
+
+    function loadHistory() {
+        try {
+            var stored = JSON.parse(sessionStorage.getItem('numscoil-calc-history') || '[]');
+            if (!Array.isArray(stored)) { return; }
+            history = stored.filter(function (item) {
+                return item && typeof item.expr === 'string' && typeof item.value === 'string';
+            }).slice(-10);
+            if (history.length) {
+                // Keep Ans consistent with the last visible line.
+                var last = history[history.length - 1];
+                if (typeof last.raw === 'number' && isFinite(last.raw)) { ans = last.raw; }
+                renderHistory();
+            }
+        } catch (e) { /* malformed value: start with an empty tape */ }
     }
 
     function setMode(isDeg) {
@@ -816,6 +880,7 @@
     }
 
     setMode(degrees);
+    loadHistory();
     restorePosition();
     if (sessionStorage.getItem('numscoil-calc-open') === '1') { open(); }
 })();
