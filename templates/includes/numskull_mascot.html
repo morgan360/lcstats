@@ -181,8 +181,11 @@ context. Otherwise it falls back to a general AI question (no topic/question con
         width: 26rem;
         max-width: calc(100vw - 2rem);
         /* One scroll region only. The transcript scrolls; the panel does not,
-           so there is no scrollbar inside a scrollbar. */
-        height: min(34rem, calc(100vh - 9rem));
+           so there is no scrollbar inside a scrollbar.
+           The panel sits ~11rem down the viewport (mascot offset + its own top),
+           so the viewport term has to subtract that plus a bottom margin, or a
+           tall panel runs off the bottom of the screen. */
+        height: min(40rem, calc(100vh - 13rem));
         display: flex;
         flex-direction: column;
         overflow: hidden;
@@ -383,7 +386,7 @@ context. Otherwise it falls back to a general AI question (no topic/question con
         .numskull__panel {
             width: calc(100vw - 2.5rem);
             top: 72px;
-            height: min(30rem, calc(100vh - 8rem));
+            height: min(32rem, calc(100vh - 12rem));
         }
     }
 </style>
