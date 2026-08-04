@@ -21,9 +21,11 @@ context. Otherwise it falls back to a general AI question (no topic/question con
         </div>
         <p class="numskull__msg" id="numskull-msg">I'm the AI tutor. A bit imaginary, but I can help for real.</p>
 
-        {# Which part the question is about: previously guessed from whichever
-           answer box had text, which defaulted to part (a) and silently reset
-           the conversation when a student started typing. #}
+        {% comment %}
+        Which part the question is about: previously guessed from whichever
+        answer box had text, which defaulted to part (a) and silently reset
+        the conversation when a student started typing.
+        {% endcomment %}
         <div class="numskull__scope" id="numskull-scope" hidden>
             <label for="numskull-part">Asking about</label>
             <select id="numskull-part" class="numskull__select"></select>
