@@ -51,18 +51,27 @@ def info_bot(request, topic_slug):
                 image_url = request.build_absolute_uri(question_image)
                 question_image_urls.append({"url": image_url, "description": "Practice question diagram"})
 
-            # If specific part is mentioned, include it
-            if question_part_id:
-                try:
-                    part = QuestionPart.objects.get(id=question_part_id)
-                    question_context_parts.append(f"Question part ({part.label}): {part.prompt[:300]}")
-                    # Collect part image if available
+            # Include EVERY part, not just the one the student happens to be
+            # typing in: they routinely ask "how do I do part (b)?" while the
+            # cursor is still in part (a), and a bot that can only see (a) has
+            # to ask them to type the expression back to it.
+            parts = list(practice_q.parts.all().order_by('order'))
+            if parts:
+                lines = []
+                for part in parts:
+                    marker = " <-- the student is currently working on this part" \
+                        if question_part_id and str(part.id) == str(question_part_id) else ""
+                    lines.append(f"({part.label}) {(part.prompt or '')[:400]}{marker}")
+                question_context_parts.append("Full question, all parts:\n" + "\n".join(lines))
+
+                # Diagrams for whichever parts have them
+                for part in parts:
                     if part.image:
                         question_context_parts.append(f"Part {part.label} includes a diagram (see image)")
-                        part_image_url = request.build_absolute_uri(part.image.url)
-                        question_image_urls.append({"url": part_image_url, "description": f"Part {part.label} diagram"})
-                except QuestionPart.DoesNotExist:
-                    pass
+                        question_image_urls.append({
+                            "url": request.build_absolute_uri(part.image.url),
+                            "description": f"Part {part.label} diagram",
+                        })
         except Question.DoesNotExist:
             pass
 
@@ -88,19 +97,24 @@ def info_bot(request, topic_slug):
                 image_url = request.build_absolute_uri(exam_q.image.url)
                 question_image_urls.append({"url": image_url, "description": f"Question {exam_q.question_number} diagram"})
 
-            # If specific part is mentioned, include it
+            # Exam parts carry no text of their own — the wording lives in the
+            # question image above — so list the labels that exist and flag
+            # which one the student is on, and rely on vision for the rest.
+            labels = list(exam_q.parts.all().order_by('order').values_list('label', flat=True))
+            if labels:
+                question_context_parts.append(
+                    "This question has parts: " + ", ".join(labels) +
+                    ". Their wording is in the question image."
+                )
             if question_part_id:
                 try:
                     part = ExamQuestionPart.objects.get(id=question_part_id)
-                    question_context_parts.append(f"Question part {part.label}")
-                    # Collect part image if available
-                    if part.image:
-                        question_context_parts.append(f"Part {part.label} includes a diagram (see image)")
-                        part_image_url = request.build_absolute_uri(part.image.url)
-                        question_image_urls.append({"url": part_image_url, "description": f"Part {part.label} diagram"})
+                    question_context_parts.append(
+                        f"The student is currently working on part {part.label}"
+                    )
                 except ExamQuestionPart.DoesNotExist:
                     pass
-        except:
+        except Exception:
             pass
 
     question_context_str = "\n".join(question_context_parts)
@@ -144,7 +158,11 @@ def info_bot(request, topic_slug):
         "- ALWAYS wrap ALL math expressions in $ delimiters (e.g., $x^2$, $\\frac{1}{x}$, $x^{-2}$)",
         "- Use $$ for display math on its own line",
         "- NEVER use parentheses for math - always use $ delimiters",
-        "- Be concise and helpful, but don't do their homework"
+        "- Be concise and helpful, but don't do their homework",
+        "- The question and all its parts are given below. NEVER ask the student "
+        "to type out or resend the question, an expression, or a part - you can "
+        "already see them, and they are hard to type on a phone. If a student "
+        "asks about part (b), answer about part (b) directly.",
     ]
 
     if question_context_str:
