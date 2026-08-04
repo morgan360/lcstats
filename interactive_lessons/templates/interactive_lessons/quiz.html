@@ -35,7 +35,7 @@
 
     <!-- Each QuestionPart -->
     {% for part in parts %}
-    <div id="part-{{ part.id }}" data-part-id="{{ part.id }}"
+    <div id="part-{{ part.id }}" data-part-id="{{ part.id }}" data-part-label="{{ part.label }}"
         class="text-lg mt-6 md:mt-8 rounded-lg border border-indigo-deep/10 bg-mist px-5 py-8 md:px-6 md:py-10 space-y-4 md:space-y-5 text-left leading-relaxed">
 
         <!-- Inline label + question prompt -->

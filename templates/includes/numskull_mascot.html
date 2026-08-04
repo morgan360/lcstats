@@ -14,21 +14,29 @@ context. Otherwise it falls back to a general AI question (no topic/question con
     </button>
 
     <div id="numskull-panel" class="numskull__panel" role="dialog" aria-label="NumSkull helper" hidden>
-        <div class="numskull__panel-head">
+        <div class="numskull__panel-head" id="numskull-drag" title="Drag to move">
             <span class="numskull__name">NumSkull</span>
             <span class="numskull__tag">AI · unreal</span>
             <button type="button" class="numskull__close" id="numskull-close" aria-label="Close NumSkull">×</button>
         </div>
         <p class="numskull__msg" id="numskull-msg">I'm the AI tutor. A bit imaginary, but I can help for real.</p>
 
+        {# Which part the question is about: previously guessed from whichever
+           answer box had text, which defaulted to part (a) and silently reset
+           the conversation when a student started typing. #}
+        <div class="numskull__scope" id="numskull-scope" hidden>
+            <label for="numskull-part">Asking about</label>
+            <select id="numskull-part" class="numskull__select"></select>
+        </div>
+
         <div class="numskull__ask">
             <input type="text" id="numskull-query" placeholder="e.g., What is the quadratic formula?" class="numskull__input">
             <button type="button" id="numskull-ask-btn" class="numskull__btn numskull__btn--primary">Ask</button>
         </div>
 
-        <div id="numskull-loading" class="numskull__loading" hidden>🔄 Thinking...</div>
+        <div id="numskull-thread" class="numskull__thread" aria-live="polite"></div>
 
-        <div id="numskull-answer" class="numskull__answer" hidden></div>
+        <div id="numskull-loading" class="numskull__loading" hidden>🔄 Thinking...</div>
 
         <div id="numskull-feedback" class="numskull__feedback" hidden>
             <p class="numskull__feedback-q">Was this helpful?</p>
@@ -168,9 +176,14 @@ context. Otherwise it falls back to a general AI question (no topic/question con
         position: absolute;
         left: 0;
         top: 80px;
-        width: 22rem;
-        max-height: 75vh;
-        overflow-y: auto;
+        width: 26rem;
+        max-width: calc(100vw - 2rem);
+        /* One scroll region only. The transcript scrolls; the panel does not,
+           so there is no scrollbar inside a scrollbar. */
+        height: min(34rem, calc(100vh - 9rem));
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
         padding: 0.9rem 1rem 1rem;
         border-radius: 14px;
         background: rgba(18, 22, 48, 0.96);
@@ -197,7 +210,14 @@ context. Otherwise it falls back to a general AI question (no topic/question con
         align-items: center;
         gap: 0.5rem;
         margin-bottom: 0.4rem;
+        flex: 0 0 auto;
+        cursor: grab;
+        touch-action: none;
+        user-select: none;
     }
+    .numskull__panel-head:active { cursor: grabbing; }
+    /* The little pointer aims at the mascot, so it lies once the panel moves. */
+    .numskull__panel--moved::after { display: none; }
     .numskull__name { font-weight: 700; font-size: 0.95rem; }
     .numskull__tag {
         font-size: 0.7rem;
@@ -218,9 +238,9 @@ context. Otherwise it falls back to a general AI question (no topic/question con
         cursor: pointer;
         padding: 0 4px;
     }
-    .numskull__msg { margin: 0 0 0.75rem; font-size: 0.9rem; line-height: 1.35; }
+    .numskull__msg { margin: 0 0 0.75rem; font-size: 0.9rem; line-height: 1.35; flex: 0 0 auto; }
 
-    .numskull__ask { display: flex; gap: 0.4rem; margin-bottom: 0.6rem; }
+    .numskull__ask { display: flex; gap: 0.4rem; margin-bottom: 0.6rem; flex: 0 0 auto; }
     .numskull__input {
         flex: 1;
         min-width: 0;
@@ -237,23 +257,87 @@ context. Otherwise it falls back to a general AI question (no topic/question con
         outline-offset: 1px;
     }
 
-    .numskull__loading { font-size: 0.85rem; margin-bottom: 0.6rem; }
+    .numskull__loading { font-size: 0.85rem; margin-bottom: 0.6rem; flex: 0 0 auto; }
 
-    .numskull__answer {
+    /* The transcript: the one scrolling region in the panel. */
+    .numskull__thread {
+        flex: 1 1 auto;
+        min-height: 0;
+        overflow-y: auto;
         margin-bottom: 0.6rem;
+        scrollbar-width: thin;
+        scrollbar-color: rgba(191, 243, 255, 0.3) transparent;
+    }
+    .numskull__thread:empty { display: none; }
+    .numskull__thread::-webkit-scrollbar { width: 6px; }
+    .numskull__thread::-webkit-scrollbar-thumb {
+        background: rgba(191, 243, 255, 0.28);
+        border-radius: 3px;
+    }
+
+    .numskull__q {
+        margin: 0 0 0.3rem;
+        padding: 0.35rem 0.6rem;
+        border-radius: 8px 8px 8px 2px;
+        background: rgba(191, 243, 255, 0.14);
+        color: #dff6ff;
+        font-size: 0.8rem;
+        font-weight: 600;
+    }
+    .numskull__answer {
+        margin: 0 0 0.7rem;
         padding: 0.6rem 0.7rem;
         border-radius: 8px;
         background: rgba(255, 255, 255, 0.92);
         color: #14172b;
         font-size: 0.85rem;
         line-height: 1.4;
-        max-height: 16rem;
-        overflow-y: auto;
     }
     .numskull__answer :first-child { margin-top: 0; }
     .numskull__answer :last-child { margin-bottom: 0; }
 
-    .numskull__feedback { margin-bottom: 0.6rem; }
+    /* Turns above this line have dropped out of the model's memory. */
+    .numskull__mark {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        margin: 0.2rem 0 0.6rem;
+        font-size: 0.68rem;
+        color: rgba(240, 246, 255, 0.55);
+        text-align: center;
+    }
+    .numskull__mark::before,
+    .numskull__mark::after {
+        content: "";
+        flex: 1;
+        height: 1px;
+        background: rgba(191, 243, 255, 0.2);
+    }
+    .numskull__forgotten { opacity: 0.45; }
+
+    .numskull__scope {
+        display: flex;
+        align-items: center;
+        gap: 0.4rem;
+        margin-bottom: 0.5rem;
+        font-size: 0.75rem;
+        color: rgba(240, 246, 255, 0.75);
+        flex: 0 0 auto;
+    }
+    .numskull__scope[hidden] { display: none; }
+    .numskull__select {
+        flex: 1;
+        min-width: 0;
+        padding: 0.25rem 0.4rem;
+        border-radius: 6px;
+        border: 1px solid rgba(191, 243, 255, 0.35);
+        background: rgba(255, 255, 255, 0.08);
+        color: #f0f6ff;
+        font-size: 0.78rem;
+    }
+    .numskull__select option { background: #12162f; color: #f0f6ff; }
+
+    .numskull__feedback { margin-bottom: 0.6rem; flex: 0 0 auto; }
     .numskull__feedback-q { margin: 0 0 0.35rem; font-size: 0.8rem; color: rgba(240, 246, 255, 0.8); }
     .numskull__feedback-row { display: flex; align-items: center; gap: 0.4rem; }
     .numskull__fbtn {
@@ -270,7 +354,7 @@ context. Otherwise it falls back to a general AI question (no topic/question con
     .numskull__fbtn--no:hover { background: rgba(255, 93, 143, 0.2); }
     .numskull__feedback-msg { font-size: 0.78rem; color: #8ef0b0; font-weight: 600; }
 
-    .numskull__actions { display: flex; gap: 0.5rem; }
+    .numskull__actions { display: flex; gap: 0.5rem; flex: 0 0 auto; }
     .numskull__btn {
         flex: 1;
         text-align: center;
@@ -294,7 +378,11 @@ context. Otherwise it falls back to a general AI question (no topic/question con
     @media (max-width: 480px) {
         .numskull { left: calc(0.75rem + 0.5cm); top: calc(4.25rem + 0.5cm); }
         .numskull__toggle { width: 56px; height: 56px; }
-        .numskull__panel { width: calc(100vw - 2.5rem); top: 72px; }
+        .numskull__panel {
+            width: calc(100vw - 2.5rem);
+            top: 72px;
+            height: min(30rem, calc(100vh - 8rem));
+        }
     }
 </style>
 
@@ -326,9 +414,18 @@ context. Otherwise it falls back to a general AI question (no topic/question con
         var queryInput = document.getElementById('numskull-query');
         var askBtn = document.getElementById('numskull-ask-btn');
         var loading = document.getElementById('numskull-loading');
-        var answer = document.getElementById('numskull-answer');
+        var thread = document.getElementById('numskull-thread');
+        var scopeRow = document.getElementById('numskull-scope');
+        var partSelect = document.getElementById('numskull-part');
+        var dragBar = document.getElementById('numskull-drag');
         var feedback = document.getElementById('numskull-feedback');
         var feedbackMessage = document.getElementById('numskull-feedback-message');
+
+        // Mirrors MAX_TURNS in notes/helpers/numskull.py. Turns past this have
+        // dropped out of the model's memory and the transcript says so, rather
+        // than showing history it can no longer see.
+        var REMEMBERED_TURNS = 3;
+        var NAV_CLEARANCE = 72;
 
         // Question-aware context, if this page provides it:
         //   data-numskull-context="practice"  (interactive_lessons quiz template)
@@ -347,40 +444,52 @@ context. Otherwise it falls back to a general AI question (no topic/question con
             if (tip) tip.textContent = 'Ask AI for help using the site';
         }
 
+        // Every part on the page, as {id, label}. The old code inferred the
+        // part from whichever answer box had text in it, which meant a student
+        // who asked before writing anything was always labelled as working on
+        // part (a) - and starting to type silently reset the conversation.
+        function pageParts() {
+            var nodes = contextType === 'exam'
+                ? document.querySelectorAll('.part-container')
+                : document.querySelectorAll('[data-part-id]');
+            var out = [];
+            for (var i = 0; i < nodes.length; i++) {
+                var el = nodes[i];
+                var id = el.dataset.partId || (el.id || '').replace('part-', '');
+                if (!id) { continue; }
+                var label = el.dataset.partLabel;
+                if (!label) {
+                    var heading = el.querySelector('.part-header h3');
+                    label = heading ? heading.textContent.trim() : '(' + (i + 1) + ')';
+                }
+                out.push({ id: id, label: label });
+            }
+            return out;
+        }
+
+        var parts = contextType ? pageParts() : [];
+
+        function buildPartSelector() {
+            if (!parts.length) { return; }
+            parts.forEach(function (p) {
+                var opt = document.createElement('option');
+                opt.value = p.id;
+                opt.textContent = 'part ' + p.label;
+                partSelect.appendChild(opt);
+            });
+            scopeRow.hidden = false;
+        }
+
         function currentPartId() {
-            if (contextType === 'exam') {
-                var containers = document.querySelectorAll('.part-container');
-                if (!containers.length) return '';
-                var partId = containers[0].id.replace('part-', '');
-                for (var i = 0; i < containers.length; i++) {
-                    var id = containers[i].id.replace('part-', '');
-                    var field = document.getElementById('answer-' + id);
-                    if (field && field.value && field.value.trim()) {
-                        partId = id;
-                        break;
-                    }
-                }
-                return partId;
-            }
+            if (!parts.length) { return ''; }
+            return partSelect.value || parts[0].id;
+        }
 
-            if (contextType === 'practice') {
-                var parts = document.querySelectorAll('[data-part-id]');
-                if (!parts.length) return '';
-                var current = parts[0].dataset.partId;
-                for (var j = 0; j < parts.length; j++) {
-                    var pid = parts[j].dataset.partId;
-                    var textInput = document.getElementById('answer-' + pid);
-                    var mathField = document.getElementById('mf-' + pid);
-                    var hasContent = (textInput && textInput.value.trim()) ||
-                        (mathField && mathField.getValue && mathField.getValue('latex').trim());
-                    if (hasContent) {
-                        current = pid;
-                        break;
-                    }
-                }
-                return current;
+        function currentPartLabel() {
+            var id = currentPartId();
+            for (var i = 0; i < parts.length; i++) {
+                if (parts[i].id === id) { return parts[i].label; }
             }
-
             return '';
         }
 
@@ -396,9 +505,9 @@ context. Otherwise it falls back to a general AI question (no topic/question con
             return null;
         }
 
-        function renderMath() {
+        function renderMath(target) {
             if (window.renderMathInElement) {
-                renderMathInElement(answer, {
+                renderMathInElement(target, {
                     delimiters: [
                         {left: "$$", right: "$$", display: true},
                         {left: "\\[", right: "\\]", display: true},
@@ -410,10 +519,78 @@ context. Otherwise it falls back to a general AI question (no topic/question con
             }
         }
 
+        // The server scopes conversation memory to this key (see numskull.py).
+        // When it changes, the model starts from nothing - so the transcript
+        // has to say so instead of leaving the student to guess.
+        function contextKey() {
+            if (!contextType) { return 'general'; }
+            var practiceId = contextType === 'practice' ? (questionId || '') : '';
+            var examId = contextType === 'exam' ? (questionId || '') : '';
+            return topicSlug + ':' + practiceId + ':' + examId + ':' + currentPartId();
+        }
+
+        var lastKey = null;
+
+        function addMark(text) {
+            var mark = document.createElement('div');
+            mark.className = 'numskull__mark';
+            mark.textContent = text;
+            thread.appendChild(mark);
+        }
+
+        // Fades the turns the model can no longer see and marks the boundary.
+        function markMemoryBoundary() {
+            var old = thread.querySelector('.numskull__mark--memory');
+            if (old) { old.remove(); }
+            var turns = thread.querySelectorAll('.numskull__q');
+            thread.querySelectorAll('.numskull__forgotten').forEach(function (el) {
+                el.classList.remove('numskull__forgotten');
+            });
+            if (turns.length <= REMEMBERED_TURNS) { return; }
+
+            var boundary = turns[turns.length - REMEMBERED_TURNS];
+            var mark = document.createElement('div');
+            mark.className = 'numskull__mark numskull__mark--memory';
+            mark.textContent = "NumSkull no longer remembers above here";
+            thread.insertBefore(mark, boundary);
+            for (var node = thread.firstChild; node && node !== mark; node = node.nextSibling) {
+                if (node.classList) { node.classList.add('numskull__forgotten'); }
+            }
+        }
+
+        // A changed key means the server has thrown the history away, so the
+        // transcript starts over too: what is on screen is always exactly the
+        // conversation NumSkull is actually in.
+        function syncThreadToKey() {
+            var key = contextKey();
+            if (lastKey !== null && key !== lastKey && thread.children.length) {
+                var label = currentPartLabel();
+                thread.innerHTML = '';
+                addMark(label
+                    ? 'New conversation - now about part ' + label
+                    : 'New conversation');
+                feedback.hidden = true;
+            }
+            lastKey = key;
+        }
+
+        function addQuestion(text) {
+            var el = document.createElement('div');
+            el.className = 'numskull__q';
+            el.textContent = text;
+            thread.appendChild(el);
+            thread.scrollTop = thread.scrollHeight;
+            return el;
+        }
+
         function showAnswer(html) {
-            answer.innerHTML = html;
-            answer.hidden = false;
-            renderMath();
+            var el = document.createElement('div');
+            el.className = 'numskull__answer';
+            el.innerHTML = html;
+            thread.appendChild(el);
+            renderMath(el);
+            markMemoryBoundary();
+            thread.scrollTop = thread.scrollHeight;
         }
 
         function askQuestion() {
@@ -423,9 +600,11 @@ context. Otherwise it falls back to a general AI question (no topic/question con
                 return;
             }
 
+            syncThreadToKey();
+            addQuestion(query);
+            queryInput.value = '';
+
             loading.hidden = false;
-            answer.hidden = true;
-            answer.innerHTML = '';
             feedback.hidden = true;
             window.currentInfoBotQueryId = null;
 
@@ -462,7 +641,6 @@ context. Otherwise it falls back to a general AI question (no topic/question con
                             btn.style.display = 'inline-flex';
                         });
                     }
-                    answer.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
                 } else {
                     showAnswer('<div style="color:#c0392b;">Sorry, I couldn\'t find an answer to that question.</div>');
                 }
@@ -473,6 +651,13 @@ context. Otherwise it falls back to a general AI question (no topic/question con
                 showAnswer('<div style="color:#c0392b;">Error: unable to get an answer. Please try again.</div>');
             });
         }
+
+        buildPartSelector();
+        lastKey = contextKey();
+
+        // Switching part starts a new conversation server-side, so say so at
+        // the moment it happens rather than on the next answer.
+        partSelect.addEventListener('change', syncThreadToKey);
 
         askBtn.addEventListener('click', askQuestion);
         queryInput.addEventListener('keypress', function (e) {
@@ -525,6 +710,58 @@ context. Otherwise it falls back to a general AI question (no topic/question con
         document.addEventListener('keydown', function (e) {
             if (e.key === 'Escape' && !panel.hidden) setOpen(false);
         });
+
+        /* --- dragging: same handle-and-clamp approach as the calculator --- */
+
+        var drag = null;
+
+        function placeAt(left, top) {
+            panel.style.position = 'fixed';
+            panel.style.left = left + 'px';
+            panel.style.top = top + 'px';
+            panel.classList.add('numskull__panel--moved');
+        }
+
+        dragBar.addEventListener('pointerdown', function (event) {
+            if (event.target.closest('button')) { return; }
+            var rect = panel.getBoundingClientRect();
+            drag = { dx: event.clientX - rect.left, dy: event.clientY - rect.top, w: rect.width };
+            placeAt(rect.left, rect.top);
+            dragBar.setPointerCapture(event.pointerId);
+        });
+
+        dragBar.addEventListener('pointermove', function (event) {
+            if (!drag) { return; }
+            var x = Math.min(Math.max(0, event.clientX - drag.dx), window.innerWidth - drag.w);
+            var y = Math.min(Math.max(NAV_CLEARANCE, event.clientY - drag.dy), window.innerHeight - 40);
+            placeAt(x, y);
+        });
+
+        function endDrag(event) {
+            if (!drag) { return; }
+            drag = null;
+            try { dragBar.releasePointerCapture(event.pointerId); } catch (e) { /* already released */ }
+            localStorage.setItem('numskull-panel-pos', JSON.stringify({
+                left: panel.style.left, top: panel.style.top
+            }));
+        }
+        dragBar.addEventListener('pointerup', endDrag);
+        dragBar.addEventListener('pointercancel', endDrag);
+
+        (function restorePanelPosition() {
+            if (window.innerWidth <= 480) { return; }
+            var saved = localStorage.getItem('numskull-panel-pos');
+            if (!saved) { return; }
+            try {
+                var pos = JSON.parse(saved);
+                var left = parseInt(pos.left, 10);
+                var top = parseInt(pos.top, 10);
+                if (isNaN(left) || isNaN(top)) { return; }
+                // Ignore a position saved on a bigger display.
+                if (left > window.innerWidth - 120 || top > window.innerHeight - 60) { return; }
+                placeAt(left, Math.max(NAV_CLEARANCE, top));
+            } catch (e) { /* ignore malformed value */ }
+        })();
 
         // Show the "Need help?" tip briefly on first load so the affordance is discoverable.
         if (!sessionStorage.getItem('numskull-tip-shown')) {

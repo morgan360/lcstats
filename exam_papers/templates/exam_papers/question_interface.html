@@ -147,7 +147,7 @@
     <!-- Question Parts -->
     <div class="question-parts">
         {% for part_data in parts_with_attempts %}
-        <div class="part-container" id="part-{{ part_data.part.id }}">
+        <div class="part-container" id="part-{{ part_data.part.id }}" data-part-label="{{ part_data.part.label }}">
             <div class="part-header">
                 <h3>{{ part_data.part.label }}</h3>
                 <span class="part-marks">{{ part_data.part.max_marks }} marks</span>
