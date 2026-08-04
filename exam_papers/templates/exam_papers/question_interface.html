@@ -864,11 +864,18 @@ function submitAnswer(partId, attemptId) {
             let html = '<strong>' + (data.is_correct ? '✓ Correct!' : '✗ Incorrect') + '</strong><br>';
             html += 'Marks: ' + Math.round(data.marks_awarded * 10) / 10 + '/' + data.max_marks;
 
-            // Display detailed feedback from GPT-4 Vision
+            // Display detailed feedback from the vision marker. The grader is
+            // told to return plain prose with $...$ maths, but model output is
+            // never guaranteed: render stray Markdown emphasis rather than
+            // showing the student literal asterisks.
             if (data.feedback) {
+                const tidy = (t) => (t || '')
+                    .replace(/\*\*\*(.+?)\*\*\*/g, '<strong><em>$1</em></strong>')
+                    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+                    .replace(/(^|[\s(])\*([^*\n]+?)\*(?=[\s.,;:)]|$)/g, '$1<em>$2</em>');
                 html += '<div style="margin-top: 12px; padding: 10px; background: rgba(255,255,255,0.5); border-radius: 4px; line-height: 1.6;">';
                 html += '<strong>📝 Feedback:</strong><br>';
-                html += data.feedback;
+                html += tidy(data.feedback);
                 html += '</div>';
             }
 
@@ -881,6 +888,20 @@ function submitAnswer(partId, attemptId) {
                 solutionBtn.setAttribute('onclick', `toggleSolution(${partId}, ${attemptId}, true)`);
             }
             feedbackArea.innerHTML = html;
+
+            // Feedback is injected after page load, so the base template's
+            // KaTeX pass has already run - render maths in it explicitly.
+            if (window.renderMathInElement) {
+                renderMathInElement(feedbackArea, {
+                    delimiters: [
+                        {left: "$$", right: "$$", display: true},
+                        {left: "\\[", right: "\\]", display: true},
+                        {left: "\\(", right: "\\)", display: false},
+                        {left: "$", right: "$", display: false}
+                    ],
+                    throwOnError: false
+                });
+            }
 
             // Clear the answer field for next attempt
             answerField.value = '';

@@ -240,17 +240,23 @@ def grade_with_vision_marking_scheme(
 5. Accept algebraically equivalent expressions
 6. For numerical answers, accept answers within ±0.02 tolerance
 
+**Formatting** (the student sees this rendered in a web page - follow exactly):
+- Wrap EVERY mathematical expression in single dollar delimiters, e.g. $\\frac{{3}}{{5}}$, $m = \\pm 6$
+- This includes fractions, symbols and values standing alone in a sentence.
+  LaTeX left outside $...$ displays to the student as raw code.
+- Do NOT use \\( \\) or \\[ \\] delimiters. Only $...$ and $$...$$.
+- Write plain prose sentences. Do NOT use Markdown: no **bold**, no headings,
+  no bullet points, no numbered lists.
+
 **Important:** Return ONLY a JSON object with these exact fields:
 - "marks_awarded": number between 0 and {max_marks} (use decimals for partial credit, e.g., 3.5)
-- "feedback": string with detailed explanation including:
-  * What the student got correct (if anything)
-  * What was incorrect or missing
-  * Specific reference to marking scheme criteria
-  * Constructive guidance for improvement
+- "feedback": 2-4 plain sentences covering what the student got right (if
+  anything), what was wrong or missing, the marking scheme criterion that
+  applies, and what to do differently next time
 - "is_correct": boolean (true if marks_awarded >= {max_marks * 0.95}, false otherwise)
 
 Example response:
-{{"marks_awarded": 7, "feedback": "You correctly identified that m = ±6. However, the marking scheme awards 10 marks for showing all three steps: using b²-4ac=0, substituting values, and solving for m. You showed the final answer but not the full working. Award 7/10 for correct final answer without complete method.", "is_correct": false}}"""
+{{"marks_awarded": 7, "feedback": "You correctly identified that $m = \\pm 6$. The marking scheme awards full marks for showing all three steps: using $b^2 - 4ac = 0$, substituting the values, and solving for $m$. You gave the correct final answer without the working, so this earns high partial credit. Next time set out the substitution before solving.", "is_correct": false}}"""
             },
             {
                 "type": "image_url",
