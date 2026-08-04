@@ -63,6 +63,14 @@ document.addEventListener("DOMContentLoaded", () => {
         // --- Parse JSON response ---
         const data = await res.json();
 
+        // The grader is told to return plain prose with $...$ maths, but model
+        // output is never guaranteed: render any stray Markdown emphasis rather
+        // than showing the student literal asterisks.
+        const tidy = (t) => (t || "")
+          .replace(/\*\*\*(.+?)\*\*\*/g, "<strong><em>$1</em></strong>")
+          .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
+          .replace(/(^|[\s(])\*([^*\n]+?)\*(?=[\s.,;:)]|$)/g, "$1<em>$2</em>");
+
         if (data.feedback) {
           if (data.is_correct) {
             // Correct answer - show success message
@@ -72,7 +80,7 @@ document.addEventListener("DOMContentLoaded", () => {
                   <span class="text-2xl mr-2">✅</span>
                   <div class="flex-1">
                     <div class="font-semibold text-green-800">Correct!</div>
-                    <div class="text-sm text-green-700 mt-1">${data.feedback}</div>
+                    <div class="text-sm text-green-700 mt-1">${tidy(data.feedback)}</div>
                     <div class="text-xs text-green-600 mt-1">Score: ${data.score}/100</div>
                   </div>
                 </div>
@@ -80,14 +88,14 @@ document.addEventListener("DOMContentLoaded", () => {
             `;
           } else {
             // Incorrect answer - show detailed feedback
-            const hintText = data.hint || "";
+            const hintText = tidy(data.hint);
             feedbackBox.innerHTML = `
               <div class="rounded-md bg-red-50 border border-red-300 px-4 py-3 mt-2">
                 <div class="flex items-start">
                   <span class="text-2xl mr-2">❌</span>
                   <div class="flex-1">
                     <div class="font-semibold text-red-800">Not quite right</div>
-                    <div class="text-sm text-red-700 mt-2 leading-relaxed">${data.feedback}</div>
+                    <div class="text-sm text-red-700 mt-2 leading-relaxed">${tidy(data.feedback)}</div>
                     ${hintText ? `
                       <div class="mt-3 rounded bg-amber-50 border-l-4 border-amber-400 px-3 py-2">
                         <div class="flex items-start">

@@ -238,10 +238,23 @@ def gpt_grade(question_text, student_answer, correct_answer):
     3. CONSTRUCTIVE - Give a clear next step or hint about what to try
     4. ENCOURAGING - Acknowledge any correct elements even if final answer is wrong
 
+    FORMATTING (the student sees this rendered in a web page - follow exactly):
+    - Wrap EVERY mathematical expression in single dollar delimiters: $\\frac{{3}}{{5}}$
+    - This includes fractions, probabilities and symbols standing alone in a
+      sentence. Never leave LaTeX such as \\frac{{3}}{{5}} outside $...$ - it
+      shows to the student as raw code.
+    - Do NOT use \\( \\) or \\[ \\] delimiters. Only $...$ and $$...$$.
+    - Write plain prose sentences. Do NOT use Markdown: no **bold**, no
+      headings, no bullet points, no numbered step lists.
+
     Output strict JSON with these fields:
     - "score": integer 0–100 (award partial credit generously for correct approach)
     - "feedback": 2-3 sentences explaining what's wrong and why
-    - "hint": Specific actionable hint for what to do next (e.g., "Check your sign when expanding the brackets" or "Remember to convert to radians before using the formula")
+    - "hint": ONE or TWO sentences nudging them toward the next step. It is a
+      hint, not a worked solution: name the idea or rule to apply, never lay out
+      the full method or do the steps for them. (e.g., "Check your sign when
+      expanding the brackets" or "Remember to convert to radians before using
+      the formula")
     - "common_mistake": (optional) If this is a common error, name it (e.g., "Sign error", "Wrong formula", "Calculation mistake")
 
     EXAMPLES OF GOOD FEEDBACK:
