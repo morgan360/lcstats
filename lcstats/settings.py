@@ -6,6 +6,11 @@ from pathlib import Path
 import os
 from dotenv import load_dotenv
 
+BASE_DIR = Path(__file__).resolve().parent.parent
+
+# Must happen before any os.getenv() below, or .env values are silently ignored
+load_dotenv(BASE_DIR / ".env")
+
 # Now you can use them like this:
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 OPENAI_PROJECT = os.getenv("OPENAI_PROJECT")
@@ -26,14 +31,11 @@ FAQ_MATCH_THRESHOLD = float(os.getenv("FAQ_MATCH_THRESHOLD", 0.7))
 SITE_HELP_MATCH_THRESHOLD = float(os.getenv("SITE_HELP_MATCH_THRESHOLD", 0.55))
 SITE_HELP_MIN_CONFIDENCE = float(os.getenv("SITE_HELP_MIN_CONFIDENCE", 0.35))
 
+# Floor for injecting notes as background context into a NumSkull prompt.
+# Below this a note is not actually about the question (a slope query matching
+# "The Mean" at 0.29, say), so passing it to the model adds noise, not grounding.
+RAG_CONTEXT_MIN_SCORE = float(os.getenv("RAG_CONTEXT_MIN_SCORE", 0.45))
 
-# ------------------------------------------------------------
-# Paths & Environment
-# ------------------------------------------------------------
-BASE_DIR = Path(__file__).resolve().parent.parent
-
-# Load environment variables from .env in the project root
-load_dotenv(BASE_DIR / ".env")
 
 # ------------------------------------------------------------
 # OpenAI Configuration

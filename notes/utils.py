@@ -26,7 +26,13 @@ def search_similar(query, topic=None, top_n=5, content_type=None, audience=None)
     unchanged.
     """
     # --- 1️⃣ Create embedding for the query ---
-    query_vec = get_query_embedding(query)
+    # A provider outage here must not take the page down: without an embedding
+    # we simply retrieve nothing and the caller falls back to a plain answer.
+    try:
+        query_vec = get_query_embedding(query)
+    except Exception as e:
+        print(f"⚠️ Embedding unavailable, skipping retrieval: {e}")
+        return []
 
     # --- 2️⃣ Get candidate notes ---
     notes = Note.objects.exclude(embedding__isnull=True)
@@ -72,12 +78,8 @@ def search_similar(query, topic=None, top_n=5, content_type=None, audience=None)
     # --- 4️⃣ Sort by relevance and apply fallback if needed ---
     scored.sort(reverse=True, key=lambda x: x[0])
 
-    if not scored and not content_type:
-        # This fallback is maths-specific and not valid for a scoped search
-        # (e.g. content_type='site_help') — those should just return [].
-        print("⚠️ No topic match found — falling back to general statistics notes.")
-        fallback = Note.objects.filter(topic__icontains="statistics")[:3]
-        scored = [(0.0, n) for n in fallback]
+    # No relevant notes is a valid answer: returning unrelated ones (the old
+    # "fall back to statistics notes" behaviour) only fed the model noise.
 
     # --- 5️⃣ Debug log ---
     if scored:

@@ -7,16 +7,14 @@ from django.conf import settings
 from django.contrib import messages
 import markdown
 from markdown_katex import KatexExtension
-from openai import OpenAI
 
 from .models import Topic, Question, QuestionPart, StudentInquiry
 from students.models import QuestionAttempt
 from interactive_lessons.services.marking import grade_submission
 from notes.models import InfoBotQuery
 from notes.helpers.match_note import match_note
+from notes.helpers.numskull import append_turn, ask_openai, get_history, relevant_context
 from .forms import QuestionContactForm
-
-client = OpenAI()
 
 
 # ----------------------------------------------------------------------
@@ -130,10 +128,13 @@ def info_bot(request, topic_slug):
         return JsonResponse({"answer": html_answer, "query_id": query_obj.id})
 
     # Build enhanced prompt with question context
-    context_text = "\n\n".join([n.content for _, n in scored[:3]])
+    context_text = "\n\n".join(relevant_context(scored))
+
+    current_subject = getattr(request, 'current_subject', None)
+    subject_name = current_subject.name if current_subject else "Maths"
 
     prompt_parts = [
-        "You are NumSkull, a Leaving Cert Honours Maths tutor.",
+        f"You are NumSkull, a Leaving Cert Honours {subject_name} tutor.",
         "",
         "IMPORTANT INSTRUCTIONS:",
         "- Answer ONLY what the student asks - do not solve their problem for them",
@@ -172,17 +173,21 @@ def info_bot(request, topic_slug):
                 }
             })
 
-        messages = [{"role": "user", "content": message_content}]
+        current_message = {"role": "user", "content": message_content}
     else:
         # Text-only message
-        messages = [{"role": "user", "content": prompt}]
+        current_message = {"role": "user", "content": prompt}
 
-    response = client.chat.completions.create(
-        model="gpt-4o-mini",
-        messages=messages,
-        temperature=0.3,
-    )
-    raw_answer = response.choices[0].message.content
+    # Prepend recent turns so follow-ups like "where did the 0.5 come from?"
+    # can refer back to what NumSkull just said.
+    context_key = f"{topic_slug}:{practice_question_id or ''}:{exam_question_id or ''}:{question_part_id or ''}"
+    messages = get_history(request, context_key) + [current_message]
+
+    raw_answer, error = ask_openai(messages)
+    if error:
+        return JsonResponse({"answer": f"<p>{error}</p>", "query_id": None})
+
+    append_turn(request, context_key, query, raw_answer)
 
     html_answer = markdown.markdown(
         raw_answer,

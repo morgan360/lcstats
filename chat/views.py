@@ -6,13 +6,11 @@ from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
 from django.shortcuts import render
 from django.utils.safestring import mark_safe
-from openai import OpenAI
 
+from notes.helpers.numskull import append_turn, ask_openai, get_history, relevant_context
 from notes.helpers.site_help import match_site_help
 from notes.models import InfoBotQuery
 from notes.utils import search_similar
-
-client = OpenAI()
 
 
 def _markdown_to_html(raw_text):
@@ -71,13 +69,18 @@ def chat_view(request):
             # Tier 3: no usable site-help match — fall back to the existing
             # general maths-tutor behavior, unchanged.
             retrieved = search_similar(query)
-            retrieved_notes = [note.content for _, note in retrieved]
+            retrieved_notes = relevant_context(retrieved)
             context_text = "\n\n".join(retrieved_notes)
 
+            # The site serves several subjects — don't hand a Physics student
+            # a maths tutor.
+            current_subject = getattr(request, 'current_subject', None)
+            subject_name = current_subject.name if current_subject else "Maths"
+
             prompt = f"""
-            You are a Leaving Cert Honours Maths tutor.
-            Explain or solve the following question clearly and step-by-step.
-            Use LaTeX for any maths formulas (use $...$ for inline and $$...$$ for display).
+            You are NumSkull, a Leaving Cert Honours {subject_name} tutor.
+            Explain the following question clearly.
+            Use LaTeX for any formulas (use $...$ for inline and $$...$$ for display).
 
             Question:
             {query}
@@ -86,12 +89,21 @@ def chat_view(request):
             {context_text}
             """
 
-            response = client.chat.completions.create(
-                model="gpt-4o-mini",
-                messages=[{"role": "user", "content": prompt}],
-                temperature=0.3,
-            )
-            raw_answer = response.choices[0].message.content.strip()
+            context_key = f"chat:{subject_name}"
+            messages = get_history(request, context_key) + [
+                {"role": "user", "content": prompt}
+            ]
+
+            raw_answer, error = ask_openai(messages)
+            if error:
+                answer = mark_safe(f"<p>{error}</p>")
+                if is_ajax:
+                    return JsonResponse({"answer": answer, "query_id": None})
+                return render(request, "chat/chat.html", {"query": query, "answer": answer, "notes": []})
+
+            raw_answer = raw_answer.strip()
+            append_turn(request, context_key, query, raw_answer)
+
             answer_html = _markdown_to_html(raw_answer)
             answer = mark_safe(answer_html)
 
