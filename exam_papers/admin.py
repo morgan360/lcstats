@@ -48,6 +48,7 @@ class ExamQuestionInline(admin.TabularInline):
     model = ExamQuestion
     extra = 1
     fields = ('question_number', 'topic', 'title', 'total_marks', 'suggested_time_minutes', 'order')
+    readonly_fields = ('suggested_time_minutes',)
     ordering = ['order']
     show_change_link = True  # Allow clicking through to edit full question
 
@@ -249,11 +250,12 @@ class ExamQuestionAdmin(admin.ModelAdmin):
             'fields': ('topic', 'title', 'image', 'image_preview')
         }),
         ('Marking & Timing', {
-            'fields': ('total_marks', 'suggested_time_minutes')
+            'fields': ('total_marks', 'suggested_time_minutes'),
+            'description': 'Suggested time is half a minute per mark, derived from the total.',
         }),
     )
 
-    readonly_fields = ('image_preview',)
+    readonly_fields = ('image_preview', 'suggested_time_minutes')
     inlines = [ExamQuestionPartInline]
 
     def get_urls(self):

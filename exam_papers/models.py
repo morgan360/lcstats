@@ -139,13 +139,6 @@ class ExamQuestion(models.Model):
         help_text="Diagram or image for the question stem"
     )
 
-    # Timing (optional per-question timer)
-    suggested_time_minutes = models.IntegerField(
-        null=True,
-        blank=True,
-        help_text="Suggested time for this question in minutes"
-    )
-
     # Marks
     total_marks = models.IntegerField(
         help_text="Total marks for this question (sum of all parts)"
@@ -163,6 +156,30 @@ class ExamQuestion(models.Model):
 
     def __str__(self):
         return f"{self.exam_paper} - Q{self.question_number}"
+
+    # Timing is not stored: a question is worth half a minute per mark, so a
+    # 30-mark question suggests 15 minutes and a 25-mark one 12.5. Questions
+    # whose marks are not filled in yet return None, which hides the timer.
+    @property
+    def suggested_time_seconds(self):
+        """Suggested time in seconds - exact, so 25 marks gives 12:30."""
+        return self.total_marks * 30 if self.total_marks else None
+
+    @property
+    def suggested_time_minutes(self):
+        """Suggested time in minutes, whole where it divides evenly."""
+        if not self.total_marks:
+            return None
+        minutes = self.total_marks / 2
+        return int(minutes) if minutes.is_integer() else minutes
+
+    @property
+    def suggested_time_display(self):
+        """Suggested time as a m:ss clock, matching the countdown format."""
+        seconds = self.suggested_time_seconds
+        if not seconds:
+            return None
+        return f"{seconds // 60}:{seconds % 60:02d}"
 
     def solution_images_status(self):
         """Returns a tuple of (parts_with_images, total_parts)"""

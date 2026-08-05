@@ -58,7 +58,7 @@
     <div class="suggested-timer-bar" id="suggested-timer-bar" style="{% if time_remaining is not None %}top: 60px;{% endif %}">
         <div class="timer-content">
             <span class="timer-label">⏱️ Question Suggested Time:</span>
-            <span class="timer-display" id="suggested-timer-display">{{ question.suggested_time_minutes }}:00</span>
+            <span class="timer-display" id="suggested-timer-display">{{ question.suggested_time_display }}</span>
             {% if time_remaining is None %}
             <div style="display: flex; gap: 8px; margin-left: 20px;">
                 <button id="suggested-pause-btn" onclick="toggleSuggestedPause()" style="
@@ -756,10 +756,10 @@ if (!isPaused) {
 
 {% if question.suggested_time_minutes %}
 // Suggested time countdown (for practice mode)
-let suggestedTimeRemaining = {{ question.suggested_time_minutes }} * 60; // Convert to seconds
+let suggestedTimeRemaining = {{ question.suggested_time_seconds }};
 const suggestedTimerDisplay = document.getElementById('suggested-timer-display');
 const suggestedTimerProgress = document.getElementById('suggested-timer-progress');
-const totalSuggestedTime = {{ question.suggested_time_minutes }} * 60;
+const totalSuggestedTime = {{ question.suggested_time_seconds }};
 let suggestedTimerPaused = false;
 let suggestedTimerInterval = null;
 window.suggestedTimerPaused = false;
