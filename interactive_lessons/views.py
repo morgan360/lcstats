@@ -181,6 +181,13 @@ def info_bot(request, topic_slug):
         "part the previous answer was about unless the student says otherwise",
         "- Take every expression from the question below, never from memory - "
         "and check you have the one belonging to the part you are answering",
+        # Asked "what is the first step" on n-3=sqrt(3n+1), it answered "rearrange
+        # to get the root on its own" - a textbook step the question had already
+        # done. Then the follow-up confirmed its own invention.
+        "- Before naming a first step, look at what the question already gives "
+        "you. Never describe a step that has already been done: if it is "
+        "already in the form you would aim for, say so and give the step that "
+        "genuinely comes first",
         "- The question and all its parts are given below. NEVER ask the student "
         "to type out or resend the question, an expression, or a part - you can "
         "already see them, and they are hard to type on a phone. If a student "
