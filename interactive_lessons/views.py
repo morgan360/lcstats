@@ -13,7 +13,9 @@ from students.models import QuestionAttempt
 from interactive_lessons.services.marking import grade_submission
 from notes.models import InfoBotQuery
 from notes.helpers.match_note import match_note
-from notes.helpers.numskull import append_turn, ask_openai, get_history, relevant_context
+from notes.helpers.numskull import (
+    append_turn, ask_openai, get_history, relevant_context, vision_model,
+)
 from .forms import QuestionContactForm
 
 
@@ -230,7 +232,14 @@ def info_bot(request, topic_slug):
     context_key = f"{topic_slug}:{practice_question_id or ''}:{exam_question_id or ''}:{question_part_id or ''}"
     messages = get_history(request, context_key) + [current_message]
 
-    raw_answer, error = ask_openai(messages)
+    # When the question's wording only exists in an image - always the case for
+    # exam questions - the small chat model has to read the maths off a picture
+    # and reason about it at once, and it pattern-matched to a textbook step the
+    # question had already done. Send those to the vision model.
+    raw_answer, error = ask_openai(
+        messages,
+        model=vision_model() if question_image_urls else None,
+    )
     if error:
         return JsonResponse({"answer": f"<p>{error}</p>", "query_id": None})
 

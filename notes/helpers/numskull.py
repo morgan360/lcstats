@@ -30,6 +30,17 @@ def chat_model():
     return getattr(settings, "OPENAI_CHAT_MODEL", "gpt-4o-mini")
 
 
+def vision_model():
+    """The configured vision model (OPENAI_VISION_MODEL in .env).
+
+    Exam questions carry no text in the prompt - their wording exists only in
+    the question image - so image-bearing calls go here rather than to the
+    small chat model, which read an already-isolated equation and still
+    described the step to isolate it.
+    """
+    return getattr(settings, "OPENAI_VISION_MODEL", "gpt-4o")
+
+
 def relevant_context(scored, limit=3):
     """Note contents worth putting in a prompt, best first.
 
@@ -74,18 +85,27 @@ def clear_history(request):
     request.session.modified = True
 
 
-def ask_openai(messages, temperature=0.3):
-    """Call the chat model, returning (answer, error_message).
+def ask_openai(messages, temperature=0.3, model=None):
+    """Call the model, returning (answer, error_message).
 
     Never raises: a provider outage, an expired key or an exhausted balance
     should show students a friendly note, not a 500 page.
     """
+    model = model or chat_model()
+
+    def _create(**extra):
+        return client.chat.completions.create(model=model, messages=messages, **extra)
+
     try:
-        response = client.chat.completions.create(
-            model=chat_model(),
-            messages=messages,
-            temperature=temperature,
-        )
+        try:
+            response = _create(temperature=temperature)
+        except Exception as exc:
+            # Some models accept only the default temperature (gpt-5.5 rejects
+            # 0.3, gpt-5.4-mini takes it). Retrying without beats keeping a
+            # list of which model is which and getting it wrong later.
+            if "temperature" not in str(exc):
+                raise
+            response = _create()
         return response.choices[0].message.content, None
     except Exception as exc:
         logger.exception("NumSkull chat completion failed: %s", exc)
