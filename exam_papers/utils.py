@@ -6,6 +6,7 @@ import fitz  # PyMuPDF
 from PIL import Image
 import io
 import os
+import re
 from django.core.files.base import ContentFile
 
 
@@ -189,3 +190,81 @@ def get_pdf_info(pdf_path):
 
     doc.close()
     return info
+
+
+# Structure detection --------------------------------------------------------
+#
+# LC papers carry a real text layer, so the page each question starts on, its
+# mark value and its part labels can be read straight out of the PDF instead of
+# being worked out by eye and passed as --page-ranges.
+#
+# The maths itself does NOT come out reliably (radical extents are lost, math
+# italics are doubled, fractions collapse into separate lines), so this reads
+# structure only - the question images stay the source of truth for wording.
+
+_Q_HEADER = re.compile(r"^\s*Question\s+(\d+)\s*$", re.M)
+_MARKS = re.compile(r"\((\d+)\s*marks?\)", re.I)
+# A part label starts a line, but the wording may follow on the same line or on
+# the next one - both happen within a single paper. Restricting to a-h excludes
+# the roman sub-parts (i), (v), (x) for free; LC parts have never reached (g).
+_PART = re.compile(r"^\s*\(([a-h])\)(?=\s|$)", re.M)
+_BLANK_HINT = re.compile(r"do not write on this page", re.I)
+
+
+def detect_question_layout(pdf_path):
+    """Read question structure from an exam paper's text layer.
+
+    Returns a list of dicts, ordered by page:
+
+        [{"question": 1, "start_page": 4, "end_page": 5,
+          "marks": 30, "parts": ["a", "b", "c"]}, ...]
+
+    Pages are 1-indexed, matching extract_pdf_page_ranges(). Returns [] for
+    papers that do not use the "Question N" heading - papers before 2012 Paper 2
+    use a different layout and still need --page-ranges by hand.
+    """
+    doc = fitz.open(pdf_path)
+    try:
+        pages = [doc[i].get_text() for i in range(doc.page_count)]
+        page_count = doc.page_count
+    finally:
+        doc.close()
+
+    # First sighting of each question number, in page order
+    seen, ordered = set(), []
+    for i, text in enumerate(pages):
+        for match in _Q_HEADER.finditer(text):
+            num = int(match.group(1))
+            if num not in seen:
+                seen.add(num)
+                ordered.append((num, i))
+
+    layout = []
+    for idx, (num, start) in enumerate(ordered):
+        end = ordered[idx + 1][1] - 1 if idx + 1 < len(ordered) else page_count - 1
+
+        # Trim trailing blank / "do not write on this page" sheets so a question
+        # does not absorb the filler pages before the next one.
+        while end > start:
+            tail = pages[end].strip()
+            if len(tail) < 120 or _BLANK_HINT.search(tail):
+                end -= 1
+            else:
+                break
+
+        body = "\n".join(pages[start:end + 1])
+        marks = _MARKS.search(body)
+        parts = []
+        for match in _PART.finditer(body):
+            if match.group(1) not in parts:
+                parts.append(match.group(1))
+
+        layout.append({
+            "question": num,
+            "start_page": start + 1,
+            "end_page": end + 1,
+            "marks": int(marks.group(1)) if marks else None,
+            "parts": parts,
+        })
+
+    return layout

@@ -5,8 +5,11 @@ Creates ExamQuestion records with images for manual completion.
 """
 from django.core.management.base import BaseCommand, CommandError
 from django.core.files.base import ContentFile
-from exam_papers.models import ExamPaper, ExamQuestion
-from exam_papers.utils import extract_pdf_page_ranges, split_pdf_into_questions, get_pdf_info
+from exam_papers.models import ExamPaper, ExamQuestion, ExamQuestionPart
+from exam_papers.utils import (
+    detect_question_layout, extract_pdf_page_ranges, split_pdf_into_questions,
+    get_pdf_info,
+)
 import os
 
 
@@ -34,12 +37,24 @@ class Command(BaseCommand):
             action='store_true',
             help='Preview PDF info without extracting'
         )
+        parser.add_argument(
+            '--auto',
+            action='store_true',
+            help="Read page ranges, marks and part labels from the PDF's text "
+                 "layer instead of passing --page-ranges by hand"
+        )
+        parser.add_argument(
+            '--dry-run',
+            action='store_true',
+            help='Show what --auto detected without writing anything'
+        )
 
     def handle(self, *args, **options):
         paper_id = options['paper_id']
         num_questions = options.get('num_questions')
         page_ranges_str = options.get('page_ranges')
         preview = options.get('preview', False)
+        dry_run = options.get('dry_run', False)
 
         # Get the exam paper
         try:
@@ -66,8 +81,37 @@ class Command(BaseCommand):
 
         # Extract questions
         question_images = []
+        layout = []
 
-        if page_ranges_str:
+        if options.get('auto'):
+            layout = detect_question_layout(pdf_path)
+            if not layout:
+                raise CommandError(
+                    'No "Question N" headings found in the PDF text layer. '
+                    'Papers before 2012 Paper 2 use a different layout - use '
+                    '--page-ranges for those.'
+                )
+
+            self.stdout.write(self.style.SUCCESS(f'\n=== Detected structure for {paper} ==='))
+            for item in layout:
+                parts = ', '.join(f"({p})" for p in item['parts']) or '(none found)'
+                marks = item['marks'] if item['marks'] is not None else '?'
+                self.stdout.write(
+                    f"  Question {item['question']:<3} pages "
+                    f"{item['start_page']}-{item['end_page']}  "
+                    f"{marks} marks  parts: {parts}"
+                )
+
+            if dry_run:
+                self.stdout.write(self.style.WARNING(
+                    '\nDry run: nothing written. Re-run without --dry-run to apply.'
+                ))
+                return
+
+            page_ranges = [(i['question'], i['start_page'], i['end_page']) for i in layout]
+            question_images = extract_pdf_page_ranges(pdf_path, page_ranges)
+
+        elif page_ranges_str:
             # Parse page ranges
             # Format: "1:1-1,2:2-3,3:4-4"
             page_ranges = []
@@ -86,13 +130,15 @@ class Command(BaseCommand):
 
         else:
             raise CommandError(
-                'Must specify either --num-questions or --page-ranges. '
-                'Use --preview to see PDF structure first.'
+                'Must specify --auto, --num-questions or --page-ranges. '
+                'Use --preview to see PDF structure first, or --auto --dry-run '
+                'to see what can be detected automatically.'
             )
 
         # Create ExamQuestion records with images
         created_count = 0
         updated_count = 0
+        parts_created = 0
 
         for question_num, img_data in question_images:
             # Check if question already exists
@@ -110,6 +156,26 @@ class Command(BaseCommand):
             image_filename = f'{paper.slug}_q{question_num}.png'
             question.image.save(image_filename, ContentFile(img_data), save=True)
 
+            # Fill in what the text layer told us, but never overwrite work
+            # already done by hand.
+            detected = next((i for i in layout if i['question'] == question_num), None)
+            if detected:
+                if detected['marks'] and not question.total_marks:
+                    question.total_marks = detected['marks']
+                    question.save(update_fields=['total_marks'])
+                    self.stdout.write(f'    marks: {detected["marks"]}')
+
+                for order, letter in enumerate(detected['parts'], start=1):
+                    label = f'({letter})'
+                    _, part_created = ExamQuestionPart.objects.get_or_create(
+                        question=question,
+                        label=label,
+                        defaults={'order': order, 'max_marks': 0},
+                    )
+                    if part_created:
+                        parts_created += 1
+                        self.stdout.write(f'    part {label}')
+
             if created:
                 created_count += 1
                 self.stdout.write(
@@ -125,6 +191,7 @@ class Command(BaseCommand):
         self.stdout.write(self.style.SUCCESS(f'\n=== Extraction Complete ==='))
         self.stdout.write(f'Exam Paper: {paper}')
         self.stdout.write(f'Created: {created_count} questions')
+        self.stdout.write(f'Parts created: {parts_created}')
         self.stdout.write(f'Updated: {updated_count} questions')
         self.stdout.write(
             self.style.SUCCESS(
