@@ -347,6 +347,27 @@ def detect_legacy_question_layout(pdf_path, top_padding=14, gap=8, footer_margin
     return layout
 
 
+def question_text(pdf_path, item, legacy=False):
+    """Return the text layer for one question from a detected layout item.
+
+    The maths does not survive extraction - radicals lose their extent and
+    fractions collapse into separate lines - so this is no use for wording. The
+    prose around it comes out cleanly enough to tell what a question is *about*,
+    which is what topic classification needs.
+    """
+    doc = fitz.open(pdf_path)
+    try:
+        if legacy:
+            page = doc[item["start_page"] - 1]
+            return page.get_text(clip=fitz.Rect(*item["clip"]))
+        return "\n".join(
+            doc[i].get_text()
+            for i in range(item["start_page"] - 1, item["end_page"])
+        )
+    finally:
+        doc.close()
+
+
 def extract_pdf_regions(pdf_path, regions, output_dir=None, dpi=200):
     """Render each region from detect_legacy_question_layout() as an image.
 
