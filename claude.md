@@ -223,8 +223,13 @@ Tailwind input lives at `static/src/input.css`; run `watch:css` alongside `runse
 python manage.py download_lc_papers
 
 # Extract questions from exam PDFs (--auto reads structure from the text layer,
-# --dry-run shows what was detected without writing)
+# --dry-run shows what was detected without writing). Both paths fill only
+# blanks, so re-running never disturbs work done by hand.
 python manage.py extract_exam_questions <paper_id> --auto
+
+# Papers before 2012 Paper 2 number questions "1." and fit two to a page, so
+# they need --legacy, which crops each question out of the page by position.
+python manage.py extract_exam_questions <paper_id> --legacy --dry-run
 
 # Fill in question part max_marks from their marking scheme images.
 # Reads the "Scale 10C (0, 3, 7, 10)" notation; fills blanks only unless
