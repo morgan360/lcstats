@@ -48,6 +48,12 @@ class Command(BaseCommand):
             action='store_true',
             help='Show what --auto detected without writing anything'
         )
+        parser.add_argument(
+            '--refresh-images',
+            action='store_true',
+            help='Re-render question images that are already set (default: only '
+                 'fill in questions that have no image)'
+        )
 
     def handle(self, *args, **options):
         paper_id = options['paper_id']
@@ -55,6 +61,7 @@ class Command(BaseCommand):
         page_ranges_str = options.get('page_ranges')
         preview = options.get('preview', False)
         dry_run = options.get('dry_run', False)
+        refresh_images = options.get('refresh_images', False)
 
         # Get the exam paper
         try:
@@ -139,6 +146,7 @@ class Command(BaseCommand):
         created_count = 0
         updated_count = 0
         parts_created = 0
+        left_alone = 0
 
         for question_num, img_data in question_images:
             # Check if question already exists
@@ -152,9 +160,14 @@ class Command(BaseCommand):
                 }
             )
 
-            # Save the image
-            image_filename = f'{paper.slug}_q{question_num}.png'
-            question.image.save(image_filename, ContentFile(img_data), save=True)
+            # An image already there may have been cropped or replaced by hand,
+            # so only fill a gap unless asked to refresh.
+            if not question.image or refresh_images:
+                image_filename = f'{paper.slug}_q{question_num}.png'
+                question.image.save(image_filename, ContentFile(img_data), save=True)
+                image_note = 'image' if created else 'image refreshed'
+            else:
+                image_note = 'image kept'
 
             # Fill in what the text layer told us, but never overwrite work
             # already done by hand.
@@ -165,26 +178,37 @@ class Command(BaseCommand):
                     question.save(update_fields=['total_marks'])
                     self.stdout.write(f'    marks: {detected["marks"]}')
 
-                for order, letter in enumerate(detected['parts'], start=1):
-                    label = f'({letter})'
-                    _, part_created = ExamQuestionPart.objects.get_or_create(
-                        question=question,
-                        label=label,
-                        defaults={'order': order, 'max_marks': 0},
+                # Detection only sees top-level labels - (a), (b), (c). Parts
+                # entered by hand are often finer, like "(b) (i)" and "(b) (ii)",
+                # and matching on label alone would not recognise those as the
+                # same part: it would add a spurious "(b)" beside them. So a
+                # question that already has any parts is left entirely alone.
+                if question.parts.exists():
+                    left_alone += 1
+                    self.stdout.write(
+                        f'    parts: {question.parts.count()} already entered, skipping'
                     )
-                    if part_created:
-                        parts_created += 1
-                        self.stdout.write(f'    part {label}')
+                else:
+                    for order, letter in enumerate(detected['parts'], start=1):
+                        label = f'({letter})'
+                        _, part_created = ExamQuestionPart.objects.get_or_create(
+                            question=question,
+                            label=label,
+                            defaults={'order': order, 'max_marks': 0},
+                        )
+                        if part_created:
+                            parts_created += 1
+                            self.stdout.write(f'    part {label}')
 
             if created:
                 created_count += 1
                 self.stdout.write(
-                    self.style.SUCCESS(f'✓ Created Question {question_num}')
+                    self.style.SUCCESS(f'✓ Created Question {question_num} ({image_note})')
                 )
             else:
                 updated_count += 1
                 self.stdout.write(
-                    self.style.WARNING(f'⟳ Updated image for Question {question_num}')
+                    self.style.WARNING(f'⟳ Question {question_num} ({image_note})')
                 )
 
         # Summary
@@ -193,15 +217,13 @@ class Command(BaseCommand):
         self.stdout.write(f'Created: {created_count} questions')
         self.stdout.write(f'Parts created: {parts_created}')
         self.stdout.write(f'Updated: {updated_count} questions')
+        self.stdout.write(f'Left alone (parts already entered): {left_alone} questions')
         self.stdout.write(
             self.style.SUCCESS(
-                f'\nNext steps:\n'
-                f'1. Go to Django admin: /admin/exam_papers/examquestion/\n'
-                f'2. Edit each question to add:\n'
-                f'   - Stem text (if needed)\n'
-                f'   - Topic classification\n'
-                f'   - Total marks\n'
-                f'   - Suggested time\n'
-                f'   - Question parts (a), (b), (c) with answers and solutions\n'
+                f'\nNext steps in /admin/exam_papers/examquestion/:\n'
+                f'   - Topic classification (not detectable from the PDF)\n'
+                f'   - Split any part that has sub-parts, e.g. (b) into (b) (i) and (b) (ii)\n'
+                f'   - Marking scheme crop into each part\'s solution image, then\n'
+                f'     auto_extract_marking_info to fill in per-part marks\n'
             )
         )
