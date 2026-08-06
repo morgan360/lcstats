@@ -203,6 +203,11 @@ def get_pdf_info(pdf_path):
 # structure only - the question images stay the source of truth for wording.
 
 _Q_HEADER = re.compile(r"^\s*Question\s+(\d+)\s*$", re.M)
+# Papers before 2012 Paper 2 number questions "1." on a line of their own, and
+# fit two to a page - so they are located by position, not by page.
+_LEGACY_Q = re.compile(r"^(\d{1,2})\.$")
+_LEGACY_PART = re.compile(r"^\(([a-h])\)$")
+_MARKS_EACH = re.compile(r"\((\d+)\s*marks?\s+each\)", re.I)
 _MARKS = re.compile(r"\((\d+)\s*marks?\)", re.I)
 # A part label starts a line, but the wording may follow on the same line or on
 # the next one - both happen within a single paper. Restricting to a-h excludes
@@ -268,3 +273,110 @@ def detect_question_layout(pdf_path):
         })
 
     return layout
+
+
+def _text_lines(page):
+    """Yield (text, bbox) for each line of text on a page."""
+    for block in page.get_text("dict")["blocks"]:
+        for line in block.get("lines", []):
+            text = "".join(span["text"] for span in line["spans"]).strip()
+            if text:
+                yield text, line["bbox"]
+
+
+def detect_legacy_question_layout(pdf_path, top_padding=14, gap=8, footer_margin=56):
+    """Read question structure from a pre-2012-Paper-2 exam paper.
+
+    These papers fit two questions to a page and number them "1." rather than
+    "Question 1", so a question is a *region* of a page, not a page range:
+
+        [{"question": 1, "start_page": 2, "end_page": 2,
+          "clip": (0, 43, 595, 378), "marks": 50, "parts": ["a", "b", "c"]}, ...]
+
+    The clip is a rectangle in PDF points, running from just above the question
+    number down to just above the next one - or to the foot of the text on the
+    last question of a page. Pass the result to extract_pdf_regions().
+
+    Marks come from the front page, which on these papers gives one figure for
+    every question ("Attempt SIX QUESTIONS (50 marks each)") rather than
+    printing a value per question.
+    """
+    doc = fitz.open(pdf_path)
+    try:
+        marks_each = _MARKS_EACH.search(doc[0].get_text()) if doc.page_count else None
+        marks = int(marks_each.group(1)) if marks_each else None
+
+        layout = []
+        for page_index in range(doc.page_count):
+            page = doc[page_index]
+            lines = list(_text_lines(page))
+
+            headings = []
+            for text, bbox in lines:
+                match = _LEGACY_Q.match(text)
+                if match:
+                    headings.append((int(match.group(1)), bbox[1]))
+            headings.sort(key=lambda h: h[1])
+
+            for i, (num, top) in enumerate(headings):
+                bottom = (
+                    headings[i + 1][1] - gap if i + 1 < len(headings)
+                    else page.rect.height - footer_margin
+                )
+                y0 = max(0, top - top_padding)
+
+                parts = []
+                for text, bbox in lines:
+                    part = _LEGACY_PART.match(text)
+                    if part and y0 <= bbox[1] < bottom and part.group(1) not in parts:
+                        parts.append(part.group(1))
+                parts.sort()
+
+                layout.append({
+                    "question": num,
+                    "start_page": page_index + 1,
+                    "end_page": page_index + 1,
+                    "clip": (0, y0, page.rect.width, bottom),
+                    "marks": marks,
+                    "parts": parts,
+                })
+    finally:
+        doc.close()
+
+    layout.sort(key=lambda item: item["question"])
+    return layout
+
+
+def extract_pdf_regions(pdf_path, regions, output_dir=None, dpi=200):
+    """Render each region from detect_legacy_question_layout() as an image.
+
+    Args:
+        pdf_path: Path to the PDF file
+        regions: List of dicts with "question", "start_page" and "clip"
+        output_dir: Directory to save images (optional)
+        dpi: Resolution for image extraction (default 200)
+
+    Returns:
+        List of tuples (question_number, image_bytes)
+    """
+    doc = fitz.open(pdf_path)
+    mat = fitz.Matrix(dpi / 72, dpi / 72)
+    images = []
+
+    try:
+        for region in regions:
+            page = doc[region["start_page"] - 1]
+            pix = page.get_pixmap(matrix=mat, clip=fitz.Rect(*region["clip"]))
+            img_data = pix.tobytes("png")
+
+            if output_dir:
+                os.makedirs(output_dir, exist_ok=True)
+                filename = f"question_{region['question']}.png"
+                with open(os.path.join(output_dir, filename), 'wb') as f:
+                    f.write(img_data)
+
+            images.append((region["question"], img_data))
+    finally:
+        doc.close()
+
+    return images

@@ -7,8 +7,8 @@ from django.core.management.base import BaseCommand, CommandError
 from django.core.files.base import ContentFile
 from exam_papers.models import ExamPaper, ExamQuestion, ExamQuestionPart
 from exam_papers.utils import (
-    detect_question_layout, extract_pdf_page_ranges, split_pdf_into_questions,
-    get_pdf_info,
+    detect_question_layout, detect_legacy_question_layout, extract_pdf_regions,
+    extract_pdf_page_ranges, split_pdf_into_questions, get_pdf_info,
 )
 import os
 
@@ -47,6 +47,13 @@ class Command(BaseCommand):
             '--dry-run',
             action='store_true',
             help='Show what --auto detected without writing anything'
+        )
+        parser.add_argument(
+            '--legacy',
+            action='store_true',
+            help='For papers before 2012 Paper 2, which number questions "1." '
+                 'and fit two to a page: detect each question as a region of a '
+                 'page and crop it out, instead of using whole pages'
         )
         parser.add_argument(
             '--refresh-images',
@@ -90,22 +97,37 @@ class Command(BaseCommand):
         question_images = []
         layout = []
 
-        if options.get('auto'):
-            layout = detect_question_layout(pdf_path)
-            if not layout:
-                raise CommandError(
-                    'No "Question N" headings found in the PDF text layer. '
-                    'Papers before 2012 Paper 2 use a different layout - use '
-                    '--page-ranges for those.'
-                )
+        if options.get('auto') or options.get('legacy'):
+            legacy = options.get('legacy', False)
+
+            if legacy:
+                layout = detect_legacy_question_layout(pdf_path)
+                if not layout:
+                    raise CommandError(
+                        'No "1." style question numbers found in the PDF text '
+                        'layer. Try --auto, which reads the "Question N" '
+                        'headings used from 2012 Paper 2 onwards.'
+                    )
+            else:
+                layout = detect_question_layout(pdf_path)
+                if not layout:
+                    raise CommandError(
+                        'No "Question N" headings found in the PDF text layer. '
+                        'Papers before 2012 Paper 2 use a different layout - '
+                        'try --legacy, or --page-ranges to place them by hand.'
+                    )
 
             self.stdout.write(self.style.SUCCESS(f'\n=== Detected structure for {paper} ==='))
             for item in layout:
                 parts = ', '.join(f"({p})" for p in item['parts']) or '(none found)'
                 marks = item['marks'] if item['marks'] is not None else '?'
+                if legacy:
+                    where = (f"page {item['start_page']} "
+                             f"y {item['clip'][1]:.0f}-{item['clip'][3]:.0f}")
+                else:
+                    where = f"pages {item['start_page']}-{item['end_page']}"
                 self.stdout.write(
-                    f"  Question {item['question']:<3} pages "
-                    f"{item['start_page']}-{item['end_page']}  "
+                    f"  Question {item['question']:<3} {where}  "
                     f"{marks} marks  parts: {parts}"
                 )
 
@@ -115,8 +137,11 @@ class Command(BaseCommand):
                 ))
                 return
 
-            page_ranges = [(i['question'], i['start_page'], i['end_page']) for i in layout]
-            question_images = extract_pdf_page_ranges(pdf_path, page_ranges)
+            if legacy:
+                question_images = extract_pdf_regions(pdf_path, layout)
+            else:
+                page_ranges = [(i['question'], i['start_page'], i['end_page']) for i in layout]
+                question_images = extract_pdf_page_ranges(pdf_path, page_ranges)
 
         elif page_ranges_str:
             # Parse page ranges
@@ -137,9 +162,10 @@ class Command(BaseCommand):
 
         else:
             raise CommandError(
-                'Must specify --auto, --num-questions or --page-ranges. '
+                'Must specify --auto, --legacy, --num-questions or --page-ranges. '
                 'Use --preview to see PDF structure first, or --auto --dry-run '
-                'to see what can be detected automatically.'
+                'to see what can be detected automatically. Papers before 2012 '
+                'Paper 2 need --legacy.'
             )
 
         # Create ExamQuestion records with images
