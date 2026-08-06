@@ -8,7 +8,9 @@ to reviewing a proposal rather than reading every question cold.
 """
 import json
 import re
+from pathlib import Path
 
+from django.conf import settings
 from django.core.management.base import BaseCommand, CommandError
 
 from exam_papers.models import ExamPaper
@@ -25,16 +27,20 @@ Choose exactly one topic from this list, copying the name character for characte
 
 {topics}
 
-Rules:
+{examples}Rules:
 - Many questions touch more than one topic. Pick the DOMINANT one - the topic
   carrying the most marks, not one that merely appears in passing.
-- Judge by what the student must actually DO, not by the objects mentioned. A
-  question that differentiates the equation of a circle is calculus, not "The
-  Circle".
+- Where the examples above show how a topic is used, follow them. Several topic
+  names are a filing convention rather than a piece of mathematics, and the
+  examples are the only guide to which side of a split a question belongs on.
+- A question set in an applied context keeps that context's topic even when the
+  technique needed comes from elsewhere: a mortgage question that requires
+  differentiation is still Finance.
 - Only pick "Random" if the question genuinely fits nothing else.
-- Confidence: "high" if the question is squarely one topic, "medium" if you had
-  to choose between two reasonable topics, "low" if the text is too sparse or
-  garbled to tell.
+- Confidence: "high" only if the question is squarely one topic AND matches the
+  examples for it. Use "medium" whenever you chose between two plausible topics,
+  and "low" if the text is too sparse or garbled to tell. Most questions that
+  span two topics deserve "medium" - do not default to "high".
 
 The text below came out of a PDF, so the mathematical notation is mangled -
 fractions collapse, radicals lose their extent. Read the prose for intent.
@@ -46,6 +52,35 @@ QUESTION {number}:
 
 Respond with JSON only:
 {{"topic": "<exact name from the list>", "confidence": "high|medium|low", "reason": "<at most 12 words>"}}"""
+
+EXAMPLES_PATH = Path(settings.BASE_DIR) / 'exam_papers' / 'data' / 'topic_examples.json'
+
+
+def load_examples(topics):
+    """Render worked examples for the prompt, if build_topic_examples has run."""
+    if not EXAMPLES_PATH.exists():
+        return ''
+    try:
+        data = json.loads(EXAMPLES_PATH.read_text())
+    except (json.JSONDecodeError, OSError):
+        return ''
+
+    names = {t.name for t in topics}
+    blocks = []
+    for name in sorted(data):
+        if name not in names or not data[name]:
+            continue
+        shown = '\n'.join(f'  * {excerpt}' for excerpt in data[name])
+        blocks.append(f'{name}:\n{shown}')
+
+    if not blocks:
+        return ''
+    return (
+        'Here is how questions already on file were classified. These show the '
+        'filing conventions in use - match them.\n\n'
+        + '\n\n'.join(blocks)
+        + '\n\n'
+    )
 
 
 class Command(BaseCommand):
@@ -93,6 +128,15 @@ class Command(BaseCommand):
             raise CommandError(f'No topics defined for {paper.subject}')
         by_name = {t.name.lower(): t for t in topics}
 
+        examples = load_examples(topics)
+        if examples:
+            self.stdout.write(f'Using worked examples from {EXAMPLES_PATH.name}')
+        else:
+            self.stdout.write(self.style.WARNING(
+                'No worked examples found - run build_topic_examples first for '
+                'markedly better accuracy on the split topics'
+            ))
+
         pdf_path = paper.source_pdf.path
         layout = (detect_legacy_question_layout(pdf_path) if legacy
                   else detect_question_layout(pdf_path))
@@ -133,6 +177,7 @@ class Command(BaseCommand):
 
             prompt = PROMPT.format(
                 topics='\n'.join(f'- {t.name}' for t in topics),
+                examples=examples,
                 number=question.question_number,
                 text=text[:6000],
             )
