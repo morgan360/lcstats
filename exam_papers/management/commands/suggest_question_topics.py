@@ -36,6 +36,15 @@ Choose exactly one topic from this list, copying the name character for characte
 - A question set in an applied context keeps that context's topic even when the
   technique needed comes from elsewhere: a mortgage question that requires
   differentiation is still Finance.
+- Inequalities are algebra. A question whose real work is solving or
+  manipulating an inequality goes to an Algebra topic - use
+  "Algebra-Inequalities and Factorisation" for inequalities and factorising,
+  and "Algebra (1)" for other algebraic manipulation. Never file an inequality
+  under Functions because it happens to mention f(x).
+- Integration and differentiation are mixed together constantly. When a question
+  uses both and neither plainly dominates, choose "Differential Calculus".
+  Reserve "Integration" for questions that are substantially about integrating -
+  areas under curves, definite integrals as the point of the exercise.
 - Only pick "Random" if the question genuinely fits nothing else.
 - Confidence: "high" only if the question is squarely one topic AND matches the
   examples for it. Use "medium" whenever you chose between two plausible topics,
