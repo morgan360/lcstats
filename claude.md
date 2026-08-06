@@ -188,6 +188,33 @@ python manage.py shell
 python manage.py collectstatic
 ```
 
+### Testing
+```bash
+# Run the full test suite
+python manage.py test
+
+# Run tests for a single app
+python manage.py test exam_papers
+
+# Run a single test case or method
+python manage.py test interactive_lessons.tests.SomeTestCase
+python manage.py test interactive_lessons.tests.SomeTestCase.test_something
+```
+Note: most apps currently have only stub `tests.py` files (`# Create your tests here.`); coverage is thin, so don't assume existing behavior is regression-tested.
+
+### Frontend (Tailwind CSS)
+```bash
+# Install JS dependencies
+npm install
+
+# One-off production build (minified) -> static/css/tailwind.css
+npm run build:css
+
+# Rebuild on file changes during development
+npm run watch:css
+```
+Tailwind input lives at `static/src/input.css`; run `watch:css` alongside `runserver` when editing templates/styles.
+
 ### Custom Management Commands
 
 **Exam Papers:**
@@ -195,14 +222,14 @@ python manage.py collectstatic
 # Download LC exam papers
 python manage.py download_lc_papers
 
-# Extract questions from exam PDFs
-python manage.py extract_exam_questions
+# Extract questions from exam PDFs (--auto reads structure from the text layer,
+# --dry-run shows what was detected without writing)
+python manage.py extract_exam_questions <paper_id> --auto
 
-# Extract marking scheme information
-python manage.py extract_marking_scheme
-
-# Auto-extract marking info from PDFs
-python manage.py auto_extract_marking_info
+# Fill in question part max_marks from their marking scheme images.
+# Reads the "Scale 10C (0, 3, 7, 10)" notation; fills blanks only unless
+# --overwrite. Needs solution_image set on the parts.
+python manage.py auto_extract_marking_info <paper_id> --dry-run
 
 # Populate answer format fields
 python manage.py populate_answer_formats

@@ -371,7 +371,6 @@ python manage.py extract_exam_questions 1 --page-ranges \
 - **Exam Papers**: `/admin/exam_papers/exampaper/`
 - **Questions**: `/admin/exam_papers/examquestion/`
 - **Question Parts**: `/admin/exam_papers/examquestionpart/`
-- **Marking Schemes**: `/admin/exam_papers/markingscheme/`
 - **Attempts**: `/admin/exam_papers/examattempt/`
 
 ---

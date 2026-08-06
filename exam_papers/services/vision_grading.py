@@ -92,14 +92,23 @@ def extract_max_marks_from_scheme(marking_scheme_image, question_part_label):
 
 **Task:** Extract the maximum marks available for part {question_part_label}.
 
+**How marks are written in these schemes:** the Marking Notes column gives a
+scale, not a mark count - "Scale 10C (0, 3, 7, 10)" means the part is worth 10
+marks, awarded at 0, 3, 7 or 10. The number in the scale name is the maximum,
+and it is always the last number in the bracketed list. Read the maximum from
+there.
+
+**Do not** use the "Model Solution - N Marks" heading: that is the total for the
+whole question, not for this part.
+
 **Instructions:**
-1. Look carefully at the marking scheme image
-2. Find the marks allocation for part {question_part_label}
+1. Find the scale for part {question_part_label}
+2. Take its maximum as described above
 3. Return ONLY a JSON object with one field: "max_marks" (integer)
 
-Example response: {{"max_marks": 10}}
+Example: for "Scale 10C (0, 3, 7, 10)" respond {{"max_marks": 10}}
 
-If you cannot find the marks, return: {{"max_marks": 0}}"""
+If there is no scale for this part, return: {{"max_marks": 0}}"""
                         },
                         {
                             "type": "image_url",

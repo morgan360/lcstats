@@ -2,250 +2,88 @@
 
 ## Overview
 
-Marking schemes are uploaded **separately** from exam papers and provide:
-- Detailed breakdown of how marks are allocated
-- Common errors students make
-- Partial credit guidelines
-- Enhanced feedback during grading
+Marking schemes reach students in two forms, both of them images or PDFs. There
+is no structured marking-scheme record in the database: a `MarkingScheme` model
+with a JSON breakdown, examiner notes and national averages was designed on
+2025-11-28 and deleted the next day (migration `0003_delete_markingscheme`) in
+favour of the PDF upload added in `0002`. Do not reintroduce it — exam content is
+deliberately not stored as text. See the CLAUDE.md note "Upload solution images
+to question parts, marking scheme PDFs to papers (not JSON marking schemes)".
+
+| What | Field | Who sees it |
+|---|---|---|
+| Full scheme for a paper | `ExamPaper.marking_scheme_pdf` | Students, as a download link on the paper list and papers-and-solutions pages |
+| Per-part scheme crop | `ExamQuestionPart.solution_image` | Students, as the solution after unlock; also the reference image for vision grading |
 
 ## Workflow
 
-### 1. Upload Marking Scheme PDF
-
-In Django admin (`/admin/exam_papers/exampaper/`):
-1. Navigate to the exam paper you want to add a marking scheme for
-2. Scroll to the **"Marking scheme PDF"** field
-3. Upload the official marking scheme PDF
-4. Save the exam paper
-
-### 2. Extract Marking Scheme Pages
-
-Run the management command to extract pages per question:
+### 1. Download the official PDFs
 
 ```bash
-python manage.py extract_marking_scheme <paper_id> --page-ranges "1:1-2,2:3-4,3:5-6"
+python manage.py download_lc_papers --start-year 2026 --end-year 2026 --schemes-only
 ```
 
-**Format:** `question_number:start_page-end_page`
+Files land in `media/exam_papers/lc_downloads/` as `LC_HL_maths_<year>_MS.pdf`.
+Existing files are skipped, so re-running is safe. The command defaults to
+`--end-year 2025`, so a new year needs the flag explicitly.
 
-**Example:**
-```bash
-python manage.py extract_marking_scheme 1 --page-ranges "1:1-2,2:3-4,3:5-6,4:7-8"
-```
+### 2. Attach the paper-level PDF
 
-This creates `MarkingScheme` objects for each question part.
+In `/admin/exam_papers/exampaper/`, upload the scheme into the **Marking scheme
+PDF** field under "Resources" and save. That alone gives students the download
+link.
 
-### 3. Add Detailed Marking Breakdown
+### 3. Attach per-part crops
 
-In Django admin (`/admin/exam_papers/markingscheme/`):
+For each `ExamQuestionPart`, upload the relevant slice of the scheme into
+**Solution image**. This is the part that matters for grading: it is what
+`grade_with_vision_marking_scheme()` shows the model when marking an answer.
+A part with no crop still grades, but without a scheme to mark against.
 
-Edit each marking scheme and fill in the **"Marking breakdown"** JSON field:
+Solutions unlock for a student after a correct answer, or once attempts reach
+`solution_unlock_after_attempts` (default 2; set 0 for always visible).
 
-```json
-{
-  "steps": [
-    {
-      "description": "Correctly identify the sine rule formula",
-      "marks": 1
-    },
-    {
-      "description": "Substitute values correctly into formula",
-      "marks": 2
-    },
-    {
-      "description": "Simplify to find final answer",
-      "marks": 2
-    }
-  ],
-  "common_errors": [
-    "Forgetting to convert degrees to radians",
-    "Sign error when determining quadrant",
-    "Using cosine rule instead of sine rule"
-  ],
-  "partial_credit_notes": "Award 1 mark for correct approach even if arithmetic error occurs"
-}
-```
-
-### 4. Optional: Add Examiner Notes
-
-In the **"Examiner notes"** field, add any additional guidance:
-
-```
-Students often struggle with identifying which rule to apply.
-Accept alternative methods using triangulation.
-```
-
-### 5. Optional: Add National Statistics
-
-If available, add the **national mean score** (as a percentage):
-
-```
-45.2
-```
-
-## How Marking Schemes Enhance Student Experience
-
-### During Answer Submission
-
-When a student submits an **incorrect or partially correct** answer:
-
-1. **Base feedback** from automated grading
-2. **Plus:** Common errors (first 2)
-3. **Plus:** Mark breakdown steps (first 3)
-4. **Plus:** Partial credit notes (if applicable)
-
-**Example feedback:**
-```
-Partially correct — one element of your answer matches.
-
-Common mistakes to avoid:
-• Forgetting to convert degrees to radians
-• Sign error when determining quadrant
-
-Marking breakdown:
-• Correctly identify the sine rule formula (1 mark)
-• Substitute values correctly into formula (2 marks)
-• Simplify to find final answer (2 marks)
-
-Note: Award 1 mark for correct approach even if arithmetic error occurs
-```
-
-### In Results View
-
-Students can expand each question part to see:
-
-1. ✅ **Correct Answer**
-2. 📋 **Full Marking Scheme** including:
-   - Mark allocation per step
-   - All common errors
-   - Partial credit guidelines
-   - Examiner notes
-   - National average (if available)
-3. 📖 **Worked Solution** (text and/or image)
-
-## JSON Structure Reference
-
-```json
-{
-  "steps": [
-    {"description": "Step description", "marks": 1},
-    {"description": "Another step", "marks": 2}
-  ],
-  "common_errors": [
-    "Error 1",
-    "Error 2",
-    "Error 3"
-  ],
-  "partial_credit_notes": "Text describing partial credit rules"
-}
-```
-
-**Fields:**
-- `steps` (array): List of marking steps, each with:
-  - `description` (string): What the student needs to do
-  - `marks` (number): Marks allocated for this step
-
-- `common_errors` (array of strings): Common mistakes students make
-
-- `partial_credit_notes` (string): Guidelines for awarding partial credit
-
-## Preview Mode
-
-To preview PDF structure before extracting:
+### 4. Fill in per-part marks
 
 ```bash
-python manage.py extract_marking_scheme <paper_id> --preview
+python manage.py auto_extract_marking_info <paper_id> --dry-run
 ```
 
-This shows:
-- Total pages
-- Metadata
-- Page dimensions
+Reads `max_marks` off each part's scheme crop with the vision model. Drop
+`--dry-run` to save; add `--overwrite` to replace marks that are already set
+(the default is to fill blanks only), and `--question N` to limit the run.
 
-## Tips for Best Results
+**How marks appear in LC schemes:** not as a mark count but as a scale —
+`Scale 10C (0, 3, 7, 10)` means the part is worth 10, awarded at 0, 3, 7 or 10.
+The `Model Solution – 30 Marks` heading is the total for the whole question, not
+the part, and must not be used. The extraction prompt in
+`exam_papers/services/vision_grading.py` explains both points to the model;
+if extraction starts returning zeros, check that prompt first.
 
-1. **Separate marking scheme PDFs**
-   - Upload marking schemes separately from question papers
-   - Use clear page ranges for each question
+Vision misreads scales often enough that the marks want checking in admin before
+the paper is published.
 
-2. **Detailed marking breakdowns**
-   - Break down marks into clear steps
-   - Include all possible approaches
-   - Note where alternative methods are acceptable
+## Coverage
 
-3. **Common errors**
-   - List the most frequent mistakes
-   - Help students learn from typical pitfalls
-   - Based on examiner reports if available
-
-4. **Partial credit**
-   - Clearly state when partial marks apply
-   - Helps students understand grading
-   - Encourages showing working
-
-5. **National statistics**
-   - Add if available from SEC reports
-   - Helps students gauge difficulty
-   - Provides context for their performance
-
-## Example: Complete Workflow
-
-```bash
-# 1. Upload PDFs in admin
-# - Exam paper PDF
-# - Marking scheme PDF
-
-# 2. Extract exam questions
-python manage.py extract_exam_questions 5 --page-ranges "1:1-2,2:3-4,3:5-6"
-
-# 3. Extract marking schemes
-python manage.py extract_marking_scheme 5 --page-ranges "1:1-2,2:3-4,3:5-6"
-
-# 4. In admin, for each question part, add JSON marking breakdown
-# 5. Fill in question prompts, answers, solutions
-# 6. Publish the paper
-```
-
-## Database Structure
-
-```
-ExamPaper
-  └─ marking_scheme_pdf (FileField)
-
-ExamQuestionPart
-  └─ MarkingScheme (OneToOne)
-       ├─ marking_breakdown (JSONField)
-       ├─ examiner_notes (TextField)
-       └─ national_mean_score (FloatField)
-```
+Schemes are published per year, covering both papers in one PDF. As of
+2026-08-06 the archive is complete except **2018, 2022 and 2026** — 2026 is not
+yet released by the SEC.
 
 ## Troubleshooting
 
-**Q: Marking scheme extraction fails**
-- Check PDF is valid and not corrupted
-- Verify page numbers are correct (1-indexed)
-- Ensure question exists in database first
+**Extraction reports "could not read marks" for every part**
+The crops may not include the Marking Notes column, which is where the scale
+lives. A crop of the model-solution column alone has no marks in it.
 
-**Q: JSON validation error**
-- Verify JSON structure matches example above
-- Check for missing commas, quotes
-- Use JSON validator online
+**Marks come back wrong**
+Check the crop is the right part's row. A crop showing `(a)` attached to part
+`(c) (ii)` yields `(a)`'s marks, and nothing downstream will notice.
 
-**Q: Marking scheme not showing in results**
-- Check marking scheme exists for question part
-- Verify marking_breakdown has valid JSON
-- Ensure student has completed the attempt
-
-**Q: National average not displaying**
-- Must be a number (not percentage symbol)
-- Example: `45.2` not `45.2%`
+**A marking scheme download link 404s**
+The `marking_scheme_pdf` field points at a path under `MEDIA_ROOT`. If the row
+was created on another machine, the file may not have been copied across.
 
 ## Admin URLs
 
-- Exam Papers: `/admin/exam_papers/exampaper/`
-- Marking Schemes: `/admin/exam_papers/markingscheme/`
-- Question Parts: `/admin/exam_papers/examquestionpart/`
-
----
-
-**Summary**: Marking schemes provide rich educational feedback, helping students learn from mistakes and understand how marks are allocated. Upload separately from exam papers and structure as detailed JSON for best results.
+- Exam papers: `/admin/exam_papers/exampaper/`
+- Question parts: `/admin/exam_papers/examquestionpart/`

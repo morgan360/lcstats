@@ -121,65 +121,9 @@
                     <!-- Show correct answer and solution -->
                     <div class="correct-answer-section">
                         <button class="btn-expand" onclick="toggleSolution({{ part_data.part.id }})">
-                            View Solution & Marking Scheme ▼
+                            View Solution ▼
                         </button>
                         <div class="solution-content" id="solution-{{ part_data.part.id }}" style="display: none;">
-                            <div class="correct-answer">
-                                <strong>Correct Answer:</strong> {{ part_data.part.answer }}
-                            </div>
-
-                            {% if part_data.part.marking_scheme %}
-                            <div class="marking-scheme-section">
-                                <h5>📋 Marking Scheme</h5>
-
-                                {% if part_data.part.marking_scheme.marking_breakdown.steps %}
-                                <div class="marking-steps">
-                                    <strong>Mark allocation:</strong>
-                                    <ul>
-                                    {% for step in part_data.part.marking_scheme.marking_breakdown.steps %}
-                                        <li>{{ step.description }} — <strong>{{ step.marks }} mark{{ step.marks|pluralize }}</strong></li>
-                                    {% endfor %}
-                                    </ul>
-                                </div>
-                                {% endif %}
-
-                                {% if part_data.part.marking_scheme.marking_breakdown.common_errors %}
-                                <div class="common-errors">
-                                    <strong>Common errors to avoid:</strong>
-                                    <ul>
-                                    {% for error in part_data.part.marking_scheme.marking_breakdown.common_errors %}
-                                        <li>{{ error }}</li>
-                                    {% endfor %}
-                                    </ul>
-                                </div>
-                                {% endif %}
-
-                                {% if part_data.part.marking_scheme.marking_breakdown.partial_credit_notes %}
-                                <div class="partial-credit">
-                                    <strong>Partial credit:</strong> {{ part_data.part.marking_scheme.marking_breakdown.partial_credit_notes }}
-                                </div>
-                                {% endif %}
-
-                                {% if part_data.part.marking_scheme.examiner_notes %}
-                                <div class="examiner-notes">
-                                    <strong>Examiner notes:</strong> {{ part_data.part.marking_scheme.examiner_notes }}
-                                </div>
-                                {% endif %}
-
-                                {% if part_data.part.marking_scheme.national_mean_score %}
-                                <div class="national-stats">
-                                    <strong>National average:</strong> {{ part_data.part.marking_scheme.national_mean_score }}%
-                                </div>
-                                {% endif %}
-                            </div>
-                            {% endif %}
-
-                            {% if part_data.part.solution %}
-                            <div class="solution">
-                                <strong>Worked Solution:</strong>
-                                <div class="solution-text">{{ part_data.part.solution|safe }}</div>
-                            </div>
-                            {% endif %}
                             {% if part_data.part.solution_image %}
                             <div class="solution-image">
                                 <img src="{{ part_data.part.solution_image.url }}" alt="Solution">

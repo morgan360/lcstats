@@ -52,47 +52,31 @@ The exam papers feature has been fully implemented with all requested functional
    - Upload alongside the exam paper PDF
    - Use `marking_scheme_pdf` field
 
-2. **Extract marking scheme pages**:
+2. **Attach per-part crops**: upload the relevant slice of the scheme into each
+   `ExamQuestionPart.solution_image`. This is the field grading reads.
+
+3. **Fill in per-part marks**:
    ```bash
-   python manage.py extract_marking_scheme <paper_id> --page-ranges "1:1-2,2:3-4,..."
+   python manage.py auto_extract_marking_info <paper_id> --dry-run
    ```
 
-3. **Add detailed marking breakdown** in admin (`/admin/exam_papers/markingscheme/`):
-   ```json
-   {
-     "steps": [
-       {"description": "Identify correct formula", "marks": 1},
-       {"description": "Substitute values correctly", "marks": 2}
-     ],
-     "common_errors": [
-       "Forgetting to convert degrees to radians"
-     ],
-     "partial_credit_notes": "Award 1 mark for correct approach"
-   }
-   ```
+There is no structured marking-scheme record — the `MarkingScheme` model was
+deleted in migration `0003`. See `docs/MARKING_SCHEMES_GUIDE.md`.
 
 ### How Marking Schemes Are Used
 
 1. **During Grading** (`views.py:submit_answer`):
-   - Base grading from `mark_student_answer()` function
-   - Enhanced feedback includes:
-     - Common errors from marking scheme
-     - Step-by-step mark breakdown
-     - Partial credit notes
+   - `grade_with_vision_marking_scheme()` shows the vision model the student's
+     answer alongside the part's `solution_image`, and marks against it
+   - `extract_max_marks_from_scheme()` reads the scale (e.g. `Scale 10C
+     (0, 3, 7, 10)`) to establish what the part is out of
 
 2. **In Results View** (`results.html`):
-   - Expandable marking scheme section shows:
-     - Mark allocation per step
-     - Common errors to avoid
-     - Partial credit guidelines
-     - Examiner notes
-     - National average score (if available)
+   - Each part expands to show its solution image once unlocked
 
 3. **Student Benefits**:
-   - Learn from common mistakes
-   - Understand how marks are allocated
-   - See where partial credit applies
-   - Compare with national performance
+   - See the official scheme for the part they just attempted
+   - Marks awarded against the same scheme an examiner would use
 
 ## Key Features
 
