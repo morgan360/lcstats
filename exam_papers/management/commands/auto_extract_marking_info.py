@@ -35,10 +35,74 @@ class Command(BaseCommand):
             action='store_true',
             help='Also replace marks that are already set (default: fill blanks only)'
         )
+        parser.add_argument(
+            '--verify-total',
+            action='store_true',
+            help="Check each question's parts against its total before saving, "
+                 "retrying once and skipping the question if they still disagree"
+        )
+
+    def _read_question(self, question, dry_run, overwrite, read, skipped, saved):
+        """Read a whole question's marks, keeping them only if they add up.
+
+        A question's total is known independently, from the paper itself, so it
+        is a free check on the vision model: parts that do not sum to it contain
+        at least one misread, and writing them would put a wrong denominator
+        under a student's grade.
+        """
+        parts = list(question.parts.all().order_by('order'))
+        wanted = [p for p in parts
+                  if p.solution_image and (overwrite or not p.max_marks)]
+        if not wanted:
+            skipped += len(parts)
+            self.stdout.write('  nothing to read')
+            return read, skipped, saved
+
+        fixed = sum(p.max_marks or 0 for p in parts if p not in wanted)
+        proposal = {}
+
+        for attempt in (1, 2):
+            proposal = {}
+            for part in wanted:
+                marks = extract_max_marks_from_scheme(part.solution_image, part.label)
+                if marks is not None:
+                    proposal[part.pk] = marks
+            total = fixed + sum(proposal.values())
+
+            if not question.total_marks or total == question.total_marks:
+                break
+            self.stdout.write(self.style.WARNING(
+                f'  parts sum to {total}, question is {question.total_marks}'
+                + ('  - re-reading' if attempt == 1 else '')
+            ))
+
+        total = fixed + sum(proposal.values())
+        if question.total_marks and total != question.total_marks:
+            self.stdout.write(self.style.ERROR(
+                f'  still {total} against {question.total_marks} - '
+                f'left alone, needs entering by hand'
+            ))
+            skipped += len(parts)
+            return read, skipped, saved
+
+        for part in wanted:
+            if part.pk not in proposal:
+                continue
+            read += 1
+            self.stdout.write(self.style.SUCCESS(
+                f'  {part.label}: {proposal[part.pk]} marks'
+            ))
+            if not dry_run:
+                part.max_marks = proposal[part.pk]
+                part.save(update_fields=['max_marks'])
+                saved += 1
+
+        return read, skipped, saved
 
     def handle(self, *args, **options):
         dry_run = options['dry_run']
         overwrite = options['overwrite']
+        verify_total = options['verify_total']
 
         try:
             paper = ExamPaper.objects.get(id=options['paper_id'])
@@ -57,6 +121,12 @@ class Command(BaseCommand):
 
         for question in questions.order_by('order'):
             self.stdout.write(f'\n--- Question {question.question_number} ---')
+
+            if verify_total:
+                read, skipped, saved = self._read_question(
+                    question, dry_run, overwrite, read, skipped, saved
+                )
+                continue
 
             for part in question.parts.all().order_by('order'):
                 # The marking scheme crop lives on the part; without one there
