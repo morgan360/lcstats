@@ -519,6 +519,31 @@ def render_marking_scheme_region(pdf_path, region, dpi=200):
         doc.close()
 
 
+_PART_LABEL_LETTER = re.compile(r'([a-h])', re.I)
+_PART_LABEL_ROMAN = re.compile(r'\b(i{1,3}|iv|v|vi{1,3})\b', re.I)
+
+
+def parse_part_label(label):
+    """Reduce a hand-entered part label to (letter, roman or None).
+
+    Labels have been typed in eighty different shapes - "(b), (i)", "(b),(i)",
+    "b(ii)", "a)", and the unclosed "(b, (ii)" - so anything that compares them
+    has to work from what they mean rather than how they were written.
+    """
+    if not label:
+        return None
+    text = label.strip().lower()
+
+    letter = _PART_LABEL_LETTER.search(text)
+    if not letter:
+        return None
+
+    # Only look for a roman numeral after the letter, so the "i" of a bare "(i)"
+    # is not mistaken for the part letter itself.
+    roman = _PART_LABEL_ROMAN.search(text[letter.end():])
+    return letter.group(1), (roman.group(1) if roman else None)
+
+
 def question_text(pdf_path, item, legacy=False):
     """Return the text layer for one question from a detected layout item.
 

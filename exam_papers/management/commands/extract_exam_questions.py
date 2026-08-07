@@ -9,6 +9,7 @@ from exam_papers.models import ExamPaper, ExamQuestion, ExamQuestionPart
 from exam_papers.utils import (
     detect_question_layout, detect_legacy_question_layout, extract_pdf_regions,
     extract_pdf_page_ranges, split_pdf_into_questions, get_pdf_info,
+    parse_part_label,
 )
 import os
 
@@ -204,27 +205,37 @@ class Command(BaseCommand):
                     question.save(update_fields=['total_marks'])
                     self.stdout.write(f'    marks: {detected["marks"]}')
 
-                # Detection only sees top-level labels - (a), (b), (c). Parts
-                # entered by hand are often finer, like "(b) (i)" and "(b) (ii)",
-                # and matching on label alone would not recognise those as the
-                # same part: it would add a spurious "(b)" beside them. So a
-                # question that already has any parts is left entirely alone.
-                if question.parts.exists():
+                # Detection only sees top-level labels - (a), (b), (c) - while
+                # parts entered by hand are often finer, like "(b) (i)" and
+                # "(b) (ii)". Comparing the written label would not recognise
+                # those as the same part and would add a spurious "(b)" beside
+                # them, so compare the letter each label means. That skips
+                # letters already covered without skipping the whole question,
+                # which would leave a half-entered question half-entered.
+                existing = set()
+                for part in question.parts.all():
+                    parsed = parse_part_label(part.label)
+                    if parsed:
+                        existing.add(parsed[0])
+
+                if existing:
                     left_alone += 1
                     self.stdout.write(
-                        f'    parts: {question.parts.count()} already entered, skipping'
+                        f'    parts: ({"), (".join(sorted(existing))}) already entered'
                     )
-                else:
-                    for order, letter in enumerate(detected['parts'], start=1):
-                        label = f'({letter})'
-                        _, part_created = ExamQuestionPart.objects.get_or_create(
-                            question=question,
-                            label=label,
-                            defaults={'order': order, 'max_marks': 0},
-                        )
-                        if part_created:
-                            parts_created += 1
-                            self.stdout.write(f'    part {label}')
+
+                for order, letter in enumerate(detected['parts'], start=1):
+                    if letter in existing:
+                        continue
+                    label = f'({letter})'
+                    _, part_created = ExamQuestionPart.objects.get_or_create(
+                        question=question,
+                        label=label,
+                        defaults={'order': order, 'max_marks': 0},
+                    )
+                    if part_created:
+                        parts_created += 1
+                        self.stdout.write(f'    part {label}')
 
             if created:
                 created_count += 1

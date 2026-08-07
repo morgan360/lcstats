@@ -20,31 +20,10 @@ from django.core.management.base import BaseCommand, CommandError
 
 from exam_papers.models import ExamPaper
 from exam_papers.utils import (
-    detect_marking_scheme_layout, render_marking_scheme_region,
+    detect_marking_scheme_layout, render_marking_scheme_region, parse_part_label,
 )
 
-# Tolerant of the punctuation actually found in the data, including an unclosed
-# bracket in "(b, (ii)".
-_LETTER = re.compile(r'([a-h])', re.I)
-_ROMAN = re.compile(r'\b(i{1,3}|iv|v|vi{1,3})\b', re.I)
-
-
-def parse_label(label):
-    """Reduce a hand-entered part label to (letter, roman or None)."""
-    if not label:
-        return None
-    text = label.strip().lower()
-
-    letter_match = _LETTER.search(text)
-    if not letter_match:
-        return None
-    letter = letter_match.group(1)
-
-    # Look for a roman numeral only after the letter, so the "i" in a label like
-    # "(i)" alone is not mistaken for the part letter itself.
-    rest = text[letter_match.end():]
-    roman_match = _ROMAN.search(rest)
-    return letter, (roman_match.group(1) if roman_match else None)
+parse_label = parse_part_label
 
 
 class Command(BaseCommand):
