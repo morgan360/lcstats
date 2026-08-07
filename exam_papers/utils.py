@@ -413,6 +413,12 @@ def detect_marking_scheme_layout(pdf_path, paper_number, top_padding=12,
         later = [p for n, p in starts.items() if p > first]
         last = (min(later) - 1) if later else doc.page_count - 1
 
+        # The page before the next paper's section is its cover sheet, and the
+        # end of the PDF is usually blank. Either would be swallowed whole by
+        # the final part's region, so trim back to real content first.
+        while last > first and len(doc[last].get_text().strip()) < 250:
+            last -= 1
+
         markers = _marking_scheme_markers(doc, first, last)
         if not markers:
             return {}
