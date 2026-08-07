@@ -3,6 +3,12 @@ from django.contrib.auth.models import User
 from django.utils import timezone
 from interactive_lessons.models import Topic
 import random
+import uuid
+
+
+def new_external_id():
+    """Stable identity for a card, carried across databases by import/export."""
+    return str(uuid.uuid4())
 
 
 class FlashcardSet(models.Model):
@@ -112,6 +118,17 @@ class Flashcard(models.Model):
     order = models.PositiveIntegerField(
         default=0,
         help_text="Display order within set"
+    )
+
+    # Identity that survives export/import. A card's primary key differs
+    # between databases, so this is what import matches on to decide whether
+    # to update an existing card or create a new one. Never change it by hand.
+    external_id = models.CharField(
+        max_length=36,
+        unique=True,
+        default=new_external_id,
+        editable=False,
+        help_text="Stable cross-database identifier, used to sync cards"
     )
 
     # Metadata

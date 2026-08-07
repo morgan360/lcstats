@@ -34,17 +34,38 @@ def preview_flashcard_import(data: dict) -> list[dict]:
         topic_name = topic_data.get('name', 'Unknown')
 
         topic_exists = Topic.objects.filter(slug=topic_slug).exists()
-        is_duplicate = FlashcardSet.objects.filter(
+        existing_set = FlashcardSet.objects.filter(
             title=title,
             topic__slug=topic_slug,
-        ).exists()
+        ).first()
+
+        # An existing set is updated rather than skipped, so report how the
+        # cards themselves split between new and updated.
+        cards = set_data.get('cards', [])
+        new_cards = updated_cards = 0
+        for card_data in cards:
+            external_id = card_data.get('external_id')
+            if external_id:
+                exists = Flashcard.objects.filter(external_id=external_id).exists()
+            elif existing_set is not None:
+                exists = Flashcard.objects.filter(
+                    flashcard_set=existing_set,
+                    front_text=card_data.get('front_text', '')).exists()
+            else:
+                exists = False
+            if exists:
+                updated_cards += 1
+            else:
+                new_cards += 1
 
         previews.append({
             'title': title,
             'topic_name': topic_name,
             'topic_slug': topic_slug,
-            'card_count': len(set_data.get('cards', [])),
-            'is_duplicate': is_duplicate,
+            'card_count': len(cards),
+            'is_duplicate': existing_set is not None,
+            'new_cards': new_cards,
+            'updated_cards': updated_cards,
             'topic_exists': topic_exists,
         })
 
@@ -64,6 +85,7 @@ def import_flashcards_from_data(data: dict) -> dict:
     result = {
         'sets_created': 0,
         'cards_created': 0,
+        'cards_updated': 0,
         'sets_skipped': 0,
         'errors': [],
     }
@@ -85,33 +107,54 @@ def import_flashcards_from_data(data: dict) -> dict:
                     defaults={'name': topic_data['name']},
                 )
 
-                # Duplicate detection
-                if FlashcardSet.objects.filter(title=title, topic=topic).exists():
-                    result['sets_skipped'] += 1
-                    continue
-
-                # Create flashcard set
-                flashcard_set = FlashcardSet.objects.create(
-                    topic=topic,
-                    title=title,
-                    description=set_info.get('description', ''),
-                    order=set_info.get('order', 0),
-                    is_published=set_info.get('is_published', True),
-                )
-                result['sets_created'] += 1
-
-                # Create flashcards
-                for card_data in set_data['cards']:
-                    card = Flashcard(
-                        flashcard_set=flashcard_set,
-                        order=card_data.get('order', 0),
-                        front_text=card_data['front_text'],
-                        back_text=card_data['back_text'],
-                        distractor_1=card_data['distractor_1'],
-                        distractor_2=card_data['distractor_2'],
-                        distractor_3=card_data['distractor_3'],
-                        explanation=card_data.get('explanation', ''),
+                # An existing set is reused rather than skipped, so that edits
+                # and added cards reach a database that already has the set.
+                # is_published is deliberately only applied on creation: an
+                # import must never silently re-publish a set that was hidden
+                # on purpose here.
+                flashcard_set = FlashcardSet.objects.filter(
+                    title=title, topic=topic).first()
+                if flashcard_set is None:
+                    flashcard_set = FlashcardSet.objects.create(
+                        topic=topic,
+                        title=title,
+                        description=set_info.get('description', ''),
+                        order=set_info.get('order', 0),
+                        is_published=set_info.get('is_published', True),
                     )
+                    result['sets_created'] += 1
+                else:
+                    result['sets_skipped'] += 1
+
+                # Create or update flashcards
+                for card_data in set_data['cards']:
+                    # external_id is the identity that survives export/import;
+                    # payloads written before it existed fall back to matching
+                    # on question text within the set.
+                    external_id = card_data.get('external_id')
+                    card = None
+                    if external_id:
+                        card = Flashcard.objects.filter(
+                            external_id=external_id).first()
+                    else:
+                        card = Flashcard.objects.filter(
+                            flashcard_set=flashcard_set,
+                            front_text=card_data['front_text']).first()
+
+                    updating = card is not None
+                    if not updating:
+                        card = Flashcard()
+                        if external_id:
+                            card.external_id = external_id
+
+                    card.flashcard_set = flashcard_set
+                    card.order = card_data.get('order', 0)
+                    card.front_text = card_data['front_text']
+                    card.back_text = card_data['back_text']
+                    card.distractor_1 = card_data['distractor_1']
+                    card.distractor_2 = card_data['distractor_2']
+                    card.distractor_3 = card_data['distractor_3']
+                    card.explanation = card_data.get('explanation', '')
 
                     # Handle front image
                     if card_data.get('front_image'):
@@ -134,7 +177,10 @@ def import_flashcards_from_data(data: dict) -> dict:
                             logger.warning("Failed to decode back image: %s", e)
 
                     card.save()
-                    result['cards_created'] += 1
+                    if updating:
+                        result['cards_updated'] += 1
+                    else:
+                        result['cards_created'] += 1
 
             except Exception as e:
                 title = set_data.get('set', {}).get('title', 'unknown')

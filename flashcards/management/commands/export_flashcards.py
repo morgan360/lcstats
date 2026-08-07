@@ -108,6 +108,9 @@ class Command(BaseCommand):
 
             for card in cards:
                 card_data = {
+                    # Identity the importer matches on, so re-importing
+                    # updates these cards instead of duplicating them.
+                    'external_id': card.external_id,
                     'order': card.order,
                     'front_text': card.front_text,
                     'back_text': card.back_text,

@@ -401,8 +401,10 @@ def import_flashcards_view(request):
                 else:
                     messages.success(
                         request,
-                        f"Imported {result['sets_created']} set(s) with {result['cards_created']} card(s). "
-                        f"{result['sets_skipped']} duplicate(s) skipped."
+                        f"Imported {result['sets_created']} new set(s), "
+                        f"{result['cards_created']} new card(s), "
+                        f"{result['cards_updated']} card(s) updated "
+                        f"in {result['sets_skipped']} existing set(s)."
                     )
             except Exception as e:
                 messages.error(request, f'Import failed: {e}')

@@ -60,7 +60,8 @@ class Command(BaseCommand):
         self.stdout.write(self.style.SUCCESS(f"\nImport complete!"))
         self.stdout.write(f"  Flashcard sets created: {result['sets_created']}")
         self.stdout.write(f"  Flashcards created: {result['cards_created']}")
-        self.stdout.write(f"  Sets skipped (duplicates): {result['sets_skipped']}")
+        self.stdout.write(f"  Cards updated: {result['cards_updated']}")
+        self.stdout.write(f"  Existing sets reused: {result['sets_skipped']}")
 
         if result['errors']:
             self.stdout.write(self.style.WARNING(f"\n{len(result['errors'])} errors occurred:"))

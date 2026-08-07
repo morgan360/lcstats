@@ -110,7 +110,7 @@
     <div style="background: rgba(255,255,255,0.05); border-radius: 0.75rem; padding: 1.5rem; border: 1px solid rgba(255,255,255,0.1); margin-bottom: 1.5rem;">
         <h2 style="font-size: 1.25rem; font-weight: 600; color: #e8e0f0; margin-bottom: 1rem;">Import Results</h2>
 
-        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-bottom: 1rem;">
+        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin-bottom: 1rem;">
             <div style="background: rgba(34, 197, 94, 0.1); border-radius: 0.5rem; padding: 1rem; text-align: center;">
                 <div style="font-size: 1.5rem; font-weight: 700; color: #86efac;">{{ result.sets_created }}</div>
                 <div style="font-size: 0.85rem; color: #b0a8c0;">Sets Created</div>
@@ -119,9 +119,13 @@
                 <div style="font-size: 1.5rem; font-weight: 700; color: #a5b4fc;">{{ result.cards_created }}</div>
                 <div style="font-size: 0.85rem; color: #b0a8c0;">Cards Created</div>
             </div>
+            <div style="background: rgba(56, 189, 248, 0.1); border-radius: 0.5rem; padding: 1rem; text-align: center;">
+                <div style="font-size: 1.5rem; font-weight: 700; color: #7dd3fc;">{{ result.cards_updated }}</div>
+                <div style="font-size: 0.85rem; color: #b0a8c0;">Cards Updated</div>
+            </div>
             <div style="background: rgba(245, 158, 11, 0.1); border-radius: 0.5rem; padding: 1rem; text-align: center;">
                 <div style="font-size: 1.5rem; font-weight: 700; color: #fcd34d;">{{ result.sets_skipped }}</div>
-                <div style="font-size: 0.85rem; color: #b0a8c0;">Duplicates Skipped</div>
+                <div style="font-size: 0.85rem; color: #b0a8c0;">Existing Sets</div>
             </div>
         </div>
 
