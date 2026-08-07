@@ -360,6 +360,7 @@ _MS_PART = re.compile(r"^\(?([a-h])\)$")
 _MS_SUBPART = re.compile(r"^\(?(i{1,3}|iv|v|vi{1,3})\)$")
 _LABEL_COLUMN_X = 110
 _CONTINUATION_TOP = 52
+_SAME_LINE = 6
 
 
 def _marking_scheme_markers(doc, first_page, last_page):
@@ -401,17 +402,25 @@ def detect_marking_scheme_layout(pdf_path, paper_number, top_padding=12,
     doc = fitz.open(pdf_path)
     try:
         # The scheme holds both papers; find where the wanted one starts and ends.
-        starts = {}
+        # Sections are taken in the order they appear rather than by the number
+        # printed on them: the 2018 scheme heads BOTH of its sections "Marking
+        # Scheme - Paper 1", so trusting the printed number loses Paper 2
+        # entirely. A scheme split into one file per paper carries no such
+        # heading at all, in which case the whole file is the section.
+        breaks = []
         for i in range(doc.page_count):
-            match = _MS_PAPER_BREAK.search(doc[i].get_text())
-            if match:
-                starts.setdefault(int(match.group(1)), i)
-        if paper_number not in starts:
-            return {}
+            if _MS_PAPER_BREAK.search(doc[i].get_text()):
+                if not breaks or i > breaks[-1] + 1:
+                    breaks.append(i)
 
-        first = starts[paper_number]
-        later = [p for n, p in starts.items() if p > first]
-        last = (min(later) - 1) if later else doc.page_count - 1
+        if not breaks:
+            first, last = 0, doc.page_count - 1
+        elif paper_number <= len(breaks):
+            first = breaks[paper_number - 1]
+            last = (breaks[paper_number] - 1 if paper_number < len(breaks)
+                    else doc.page_count - 1)
+        else:
+            return {}
 
         # The page before the next paper's section is its cover sheet, and the
         # end of the PDF is usually blank. Either would be swallowed whole by
@@ -451,8 +460,16 @@ def detect_marking_scheme_layout(pdf_path, paper_number, top_padding=12,
             # Run to the next marker at the same level or higher. A letter's
             # region therefore swallows its own roman sub-parts, which is what a
             # database part labelled just "(b)" needs.
+            # Labels routinely share a line - "(a)" beside "(i)" - and a label is
+            # sometimes picked up twice at the same position. Either would end a
+            # region where it starts, collapsing it to nothing, so anything level
+            # with the start is not a boundary.
             end = None
             for following in markers[index + 1:]:
+                same_line = (following['page'] == marker['page']
+                             and abs(following['y'] - marker['y']) < _SAME_LINE)
+                if same_line:
+                    continue
                 if rank[following['kind']] <= rank[marker['kind']]:
                     end = following
                     break
