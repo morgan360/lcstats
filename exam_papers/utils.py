@@ -347,6 +347,172 @@ def detect_legacy_question_layout(pdf_path, top_padding=14, gap=8, footer_margin
     return layout
 
 
+# Marking scheme layout ------------------------------------------------------
+#
+# A scheme covers both papers in one PDF, laid out as a table per question: a
+# "Q<n>" header, then a row per part carrying the model solution and the marking
+# notes. Labels sit in a narrow left-hand column, so a part is the slice of page
+# between its own label and the next one.
+
+_MS_PAPER_BREAK = re.compile(r"Marking Scheme\s*[-–]\s*Paper\s*(\d)", re.I)
+_MS_QUESTION = re.compile(r"^Q\s*(\d{1,2})$")
+_MS_PART = re.compile(r"^\(?([a-h])\)$")
+_MS_SUBPART = re.compile(r"^\(?(i{1,3}|iv|v|vi{1,3})\)$")
+_LABEL_COLUMN_X = 110
+_CONTINUATION_TOP = 52
+
+
+def _marking_scheme_markers(doc, first_page, last_page):
+    """Collect question and part labels, in reading order, with their positions."""
+    markers = []
+    for page_index in range(first_page, last_page + 1):
+        page = doc[page_index]
+        found = []
+        for text, bbox in _text_lines(page):
+            if bbox[0] > _LABEL_COLUMN_X:
+                continue
+            question = _MS_QUESTION.match(text)
+            part = _MS_PART.match(text)
+            sub = _MS_SUBPART.match(text)
+            if question:
+                found.append((bbox[1], 'question', int(question.group(1))))
+            elif part:
+                found.append((bbox[1], 'part', part.group(1)))
+            elif sub:
+                found.append((bbox[1], 'subpart', sub.group(1).lower()))
+        for y, kind, value in sorted(found):
+            markers.append({'page': page_index, 'y': y, 'kind': kind, 'value': value})
+    return markers
+
+
+def detect_marking_scheme_layout(pdf_path, paper_number, top_padding=12,
+                                 footer_margin=40):
+    """Locate each question part's region within a marking scheme PDF.
+
+    Returns a dict keyed by (question, part_letter, subpart_or_None):
+
+        {(1, 'a', None): {"slices": [(page_index, y0, y1), ...]}, ...}
+
+    A region runs from a label down to the next label of the same or higher
+    level, and may continue across a page break - hence a list of slices rather
+    than one rectangle. Both a letter and each of its roman sub-parts get an
+    entry, so a caller can match whichever granularity the database uses.
+    """
+    doc = fitz.open(pdf_path)
+    try:
+        # The scheme holds both papers; find where the wanted one starts and ends.
+        starts = {}
+        for i in range(doc.page_count):
+            match = _MS_PAPER_BREAK.search(doc[i].get_text())
+            if match:
+                starts.setdefault(int(match.group(1)), i)
+        if paper_number not in starts:
+            return {}
+
+        first = starts[paper_number]
+        later = [p for n, p in starts.items() if p > first]
+        last = (min(later) - 1) if later else doc.page_count - 1
+
+        markers = _marking_scheme_markers(doc, first, last)
+        if not markers:
+            return {}
+
+        page_bottoms = {
+            i: doc[i].rect.height - footer_margin for i in range(first, last + 1)
+        }
+        width = doc[first].rect.width
+
+        rank = {'question': 0, 'part': 1, 'subpart': 2}
+        regions = {}
+        question = None
+        letter = None
+
+        for index, marker in enumerate(markers):
+            if marker['kind'] == 'question':
+                question = marker['value']
+                letter = None
+                continue
+            if question is None:
+                continue
+            if marker['kind'] == 'part':
+                letter = marker['value']
+                key = (question, letter, None)
+            else:
+                if letter is None:
+                    continue
+                key = (question, letter, marker['value'])
+
+            # Run to the next marker at the same level or higher. A letter's
+            # region therefore swallows its own roman sub-parts, which is what a
+            # database part labelled just "(b)" needs.
+            end = None
+            for following in markers[index + 1:]:
+                if rank[following['kind']] <= rank[marker['kind']]:
+                    end = following
+                    break
+
+            slices = []
+            start_page, start_y = marker['page'], max(0, marker['y'] - top_padding)
+            end_page = end['page'] if end else last
+            end_y = (end['y'] - 4) if end else page_bottoms[last]
+
+            for page_index in range(start_page, end_page + 1):
+                # Continuations start below the page number rather than at the
+                # very top, which also reduces the leftover strip on the page
+                # where the next question begins to nothing worth keeping.
+                y0 = start_y if page_index == start_page else _CONTINUATION_TOP
+                y1 = end_y if page_index == end_page else page_bottoms[page_index]
+                if y1 - y0 > 24:
+                    slices.append((page_index, y0, y1))
+
+            if not slices:
+                continue
+            # The scheme repeats a parent label before each of its sub-parts -
+            # "(b)", "(i)", "(b)", "(ii)" - and again after a page break. Those
+            # are continuations of one part, so extend rather than replace, or a
+            # letter's region would shrink to whatever followed its last repeat.
+            if key in regions:
+                regions[key]['slices'].extend(slices)
+            else:
+                regions[key] = {'slices': slices, 'width': width}
+    finally:
+        doc.close()
+
+    return regions
+
+
+def render_marking_scheme_region(pdf_path, region, dpi=200):
+    """Render one region from detect_marking_scheme_layout() as PNG bytes."""
+    doc = fitz.open(pdf_path)
+    mat = fitz.Matrix(dpi / 72, dpi / 72)
+    try:
+        images = []
+        for page_index, y0, y1 in region['slices']:
+            page = doc[page_index]
+            clip = fitz.Rect(0, y0, region['width'], y1)
+            pix = page.get_pixmap(matrix=mat, clip=clip)
+            images.append(Image.open(io.BytesIO(pix.tobytes("png"))))
+
+        if len(images) == 1:
+            combined = images[0]
+        else:
+            combined = Image.new(
+                'RGB',
+                (max(i.width for i in images), sum(i.height for i in images)),
+                'white',
+            )
+            offset = 0
+            for image in images:
+                combined.paste(image, (0, offset))
+                offset += image.height
+
+        buffer = io.BytesIO()
+        combined.convert('RGB').save(buffer, format='PNG')
+        return buffer.getvalue()
+    finally:
+        doc.close()
+
+
 def question_text(pdf_path, item, legacy=False):
     """Return the text layer for one question from a detected layout item.
 
