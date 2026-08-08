@@ -85,14 +85,13 @@
                         class="block rounded-lg px-3 py-2 text-sm font-semibold text-mist hover:bg-rose-pop/20">QuickFlicks</a>
                     <a href="{% url 'cheatsheets:cheatsheets_index' %}"
                         class="block rounded-lg px-3 py-2 text-sm font-semibold text-mist hover:bg-rose-pop/20">Cheatsheets</a>
+                    <a href="{% url 'flashcards:flashcard_sets_index' %}"
+                        class="block rounded-lg px-3 py-2 text-sm font-semibold text-mist hover:bg-rose-pop/20">Flashcards</a>
                     <a href="{% url 'stats_simulator:index' %}"
                         class="block rounded-lg px-3 py-2 text-sm font-semibold text-mist hover:bg-rose-pop/20">Stats
                         Simulator</a>
                 </div>
             </div>
-
-                    <a href="{% url 'module_list' %}"
-                        class="rounded-lg px-2 py-2 text-mist transition hover:bg-mist/15">Revision</a>
 
                     {% if user.is_authenticated %}
                     <a href="{% url 'homework:student_dashboard' %}"
@@ -104,16 +103,31 @@
                             {{ homework_badge_count }}</span>
                         {% endif %}
                     </a>
-                    <a href="{% url 'contact_teacher' %}"
-                        class="rounded-lg bg-lime-glow px-3 py-2 font-semibold text-midnight shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
-                        Contact Teacher</a>
                     {% endif %}
 
                     {% if request.user.is_staff %}
-                    <a href="{% url 'homework:teacher_dashboard' %}" class="rounded-lg px-2 py-2 text-rose-pop transition hover:bg-mist/15">Teacher</a>
-                    <a href="{% url 'reports:dashboard' %}" class="rounded-lg px-2 py-2 text-rose-pop transition hover:bg-mist/15">Reports</a>
-                    <a href="{% url 'flashcards:import_flashcards' %}" class="rounded-lg px-2 py-2 text-rose-pop transition hover:bg-mist/15">Import Flashcards</a>
-                    <a href="/admin/" class="rounded-lg px-2 py-2 text-rose-pop transition hover:bg-mist/15">Admin</a>
+                    <div class="relative group">
+                        <button type="button" class="desktop-dropdown-toggle flex items-center gap-1 rounded-lg px-2 py-2 text-rose-pop transition hover:bg-mist/15 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-mist">
+                            <span>Staff</span>
+                            <svg class="h-4 w-4 text-rose-pop/80" xmlns="http://www.w3.org/2000/svg" fill="none"
+                                viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M19 9l-7 7-7-7" />
+                            </svg>
+                        </button>
+                        <div
+                            class="desktop-dropdown absolute right-0 top-full z-40 mt-2 min-w-[13rem] space-y-1 rounded-xl bg-twilight p-2 text-mist shadow-lg opacity-0 invisible translate-y-1 pointer-events-none transition duration-150">
+                            <a href="{% url 'homework:teacher_dashboard' %}"
+                                class="block rounded-lg px-3 py-2 text-sm font-semibold text-rose-pop hover:bg-rose-pop/20">Teacher</a>
+                            <a href="{% url 'reports:dashboard' %}"
+                                class="block rounded-lg px-3 py-2 text-sm font-semibold text-rose-pop hover:bg-rose-pop/20">Reports</a>
+                            <a href="{% url 'flashcards:import_flashcards' %}"
+                                class="block rounded-lg px-3 py-2 text-sm font-semibold text-rose-pop hover:bg-rose-pop/20">Import
+                                Flashcards</a>
+                            <a href="/admin/"
+                                class="block rounded-lg px-3 py-2 text-sm font-semibold text-rose-pop hover:bg-rose-pop/20">Admin</a>
+                        </div>
+                    </div>
                     {% endif %}
                 </div>
             </div>
@@ -227,14 +241,13 @@
                         class="block rounded-lg px-3 py-2 text-sm font-semibold hover:bg-mist/10">QuickFlicks</a>
                     <a href="{% url 'cheatsheets:cheatsheets_index' %}"
                         class="block rounded-lg px-3 py-2 text-sm font-semibold hover:bg-mist/10">Cheatsheets</a>
+                    <a href="{% url 'flashcards:flashcard_sets_index' %}"
+                        class="block rounded-lg px-3 py-2 text-sm font-semibold hover:bg-mist/10">Flashcards</a>
                     <a href="{% url 'stats_simulator:index' %}"
                         class="block rounded-lg px-3 py-2 text-sm font-semibold hover:bg-mist/10">Stats
                         Simulator</a>
                 </div>
             </div>
-
-            <a href="{% url 'module_list' %}"
-                class="block rounded-lg px-3 py-2 transition hover:bg-mist/10">Revision</a>
 
             {% if user.is_authenticated %}
             <a href="{% url 'homework:student_dashboard' %}"
@@ -246,9 +259,6 @@
                     homework_badge_count }}</span>
                 {% endif %}
             </a>
-            <a href="{% url 'contact_teacher' %}"
-                class="block rounded-lg bg-lime-glow px-3 py-2 text-center font-semibold text-midnight shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
-                Contact Teacher</a>
             {% endif %}
 
             {% if user.is_authenticated %}
@@ -310,6 +320,13 @@
     {% endif %}
 
     <footer class="bg-indigo-deep/80 text-mist shadow-2xl backdrop-blur-xl py-4 text-center text-sm text-mist">
+        {% if user.is_authenticated %}
+        <p class="mb-2">
+            <a href="{% url 'contact_teacher' %}"
+                class="font-semibold text-lime-glow transition hover:underline">Contact
+                Teacher</a>
+        </p>
+        {% endif %}
         &copy; 2025/26 NumScoil. All rights reserved.
     </footer>
 
