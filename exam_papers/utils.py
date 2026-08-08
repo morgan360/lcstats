@@ -362,6 +362,11 @@ _MS_PAPER_BREAK = re.compile(r"Marking Scheme\s*[-–]\s*Paper\s*(\d)", re.I)
 _MS_QUESTION = re.compile(r"^Q\s*(\d{1,2})(?:\s+Model\s+Solution\b.*)?$", re.I)
 _MS_PART = re.compile(r"^\(?([a-h])\)$")
 _MS_SUBPART = re.compile(r"^\(?(i{1,3}|iv|v|vi{1,3})\)$")
+# Some schemes merge the letter and its roman numeral into one span, with or
+# without a space: "(a)(i)" in the 2025 scheme, "(a) (i)" in the 2023 one.
+# Neither of the patterns above matches those, which leaves the question with
+# no part regions at all - the same silent failure as a missed question heading.
+_MS_PART_SUB = re.compile(r"^\(?([a-h])\)\s*\(?(i{1,3}|iv|v|vi{1,3})\)$", re.I)
 _LABEL_COLUMN_X = 110
 _CONTINUATION_TOP = 52
 _SAME_LINE = 6
@@ -377,10 +382,16 @@ def _marking_scheme_markers(doc, first_page, last_page):
             if bbox[0] > _LABEL_COLUMN_X:
                 continue
             question = _MS_QUESTION.match(text)
+            combined = _MS_PART_SUB.match(text)
             part = _MS_PART.match(text)
             sub = _MS_SUBPART.match(text)
             if question:
                 found.append((bbox[1], 'question', int(question.group(1))))
+            elif combined:
+                # One span carrying both levels, e.g. "(a)(i)". Emit a marker
+                # for each; sorting puts 'part' before 'subpart' at equal y.
+                found.append((bbox[1], 'part', combined.group(1).lower()))
+                found.append((bbox[1], 'subpart', combined.group(2).lower()))
             elif part:
                 found.append((bbox[1], 'part', part.group(1)))
             elif sub:
