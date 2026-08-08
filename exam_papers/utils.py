@@ -355,7 +355,11 @@ def detect_legacy_question_layout(pdf_path, top_padding=14, gap=8, footer_margin
 # between its own label and the next one.
 
 _MS_PAPER_BREAK = re.compile(r"Marking Scheme\s*[-–]\s*Paper\s*(\d)", re.I)
-_MS_QUESTION = re.compile(r"^Q\s*(\d{1,2})$")
+# Most schemes put the question number in a span of its own ("Q5"), but some
+# merge it with the heading that follows it ("Q5 Model Solution - 30 Marks").
+# Missing the merged form is silent and damaging: the question gets no region
+# at all, and the previous question's region runs on through its pages.
+_MS_QUESTION = re.compile(r"^Q\s*(\d{1,2})(?:\s+Model\s+Solution\b.*)?$", re.I)
 _MS_PART = re.compile(r"^\(?([a-h])\)$")
 _MS_SUBPART = re.compile(r"^\(?(i{1,3}|iv|v|vi{1,3})\)$")
 _LABEL_COLUMN_X = 110
