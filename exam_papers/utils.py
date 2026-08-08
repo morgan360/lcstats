@@ -401,6 +401,29 @@ def _marking_scheme_markers(doc, first_page, last_page):
     return markers
 
 
+def _question_restart_breaks(doc):
+    """Find each paper's starting page from where question numbering restarts.
+
+    A combined scheme that carries no "Marking Scheme - Paper N" heading still
+    numbers each paper from Q1, so the second paper announces itself by going
+    back to 1 after a higher number. Returns [] when no restart is found, which
+    means the file really does hold a single paper.
+    """
+    highest = 0
+    for page_index in range(doc.page_count):
+        for text, bbox in _text_lines(doc[page_index]):
+            if bbox[0] > _LABEL_COLUMN_X:
+                continue
+            match = _MS_QUESTION.match(text)
+            if not match:
+                continue
+            number = int(match.group(1))
+            if number == 1 and highest >= 2:
+                return [0, page_index]
+            highest = max(highest, number)
+    return []
+
+
 def detect_marking_scheme_layout(pdf_path, paper_number, top_padding=12,
                                  footer_margin=40):
     """Locate each question part's region within a marking scheme PDF.
@@ -427,6 +450,14 @@ def detect_marking_scheme_layout(pdf_path, paper_number, top_padding=12,
             if _MS_PAPER_BREAK.search(doc[i].get_text()):
                 if not breaks or i > breaks[-1] + 1:
                     breaks.append(i)
+
+        if not breaks:
+            # No heading to split on. That is not proof of a single-paper file:
+            # the 2021 and 2022 schemes hold both papers with no such heading,
+            # and both ExamPapers point at the same document. Without this
+            # fallback the whole file becomes one section, so Paper 1's Q3 and
+            # Paper 2's Q3 merge and a student sees both solutions.
+            breaks = _question_restart_breaks(doc)
 
         if not breaks:
             first, last = 0, doc.page_count - 1
