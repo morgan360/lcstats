@@ -20,6 +20,13 @@ OPENAI_CHAT_MODEL = os.getenv("OPENAI_CHAT_MODEL", "gpt-4o-mini")
 # output is a mark on a student's record, not a chat reply.
 OPENAI_GRADING_MODEL = os.getenv("OPENAI_GRADING_MODEL", OPENAI_CHAT_MODEL)
 OPENAI_VISION_MODEL = os.getenv("OPENAI_VISION_MODEL", "gpt-4o")  # For exam marking with vision
+# Vision calls run synchronously inside the request, so an untimed one holds a
+# web worker open for as long as the API takes to give up.
+OPENAI_VISION_TIMEOUT = float(os.getenv("OPENAI_VISION_TIMEOUT", 90))
+# Long edge, in pixels, of the copy of a photo sent to the vision API. The API
+# tiles images at 512px, so past ~1024 you pay linearly more tokens for detail
+# the model does not use.
+WORK_PHOTO_API_MAX_EDGE = int(os.getenv("WORK_PHOTO_API_MAX_EDGE", 1024))
 FAQ_MATCH_THRESHOLD = float(os.getenv("FAQ_MATCH_THRESHOLD", 0.7))
 
 # NumSkull "site help" matching (pure retrieval, no GPT call — see chat/views.py).

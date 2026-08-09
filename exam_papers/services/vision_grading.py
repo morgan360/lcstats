@@ -9,7 +9,18 @@ from django.core.files.storage import default_storage
 from django.conf import settings
 
 logger = logging.getLogger(__name__)
-client = OpenAI()
+
+# Built on first use, not at import. A module-level OpenAI() raises without an
+# API key in the environment, which made this module unimportable in tests --
+# and settings.py says the same thing about not building clients at import time.
+_client = None
+
+
+def get_client():
+    global _client
+    if _client is None:
+        _client = OpenAI()
+    return _client
 
 # Models that take the older completion parameters. Newer models reject
 # max_tokens (they want max_completion_tokens) and reject any temperature
@@ -30,13 +41,17 @@ def _vision_completion(messages, max_tokens, temperature, **extra):
     model = vision_model()
     kwargs = {'model': model, 'messages': messages, **extra}
 
+    # Without this a stalled call holds a web worker open indefinitely: these
+    # run synchronously in the request, and there is no background queue.
+    kwargs.setdefault('timeout', getattr(settings, 'OPENAI_VISION_TIMEOUT', 90))
+
     if model in LEGACY_PARAM_MODELS:
         kwargs['max_tokens'] = max_tokens
         kwargs['temperature'] = temperature
     else:
         kwargs['max_completion_tokens'] = max(max_tokens, REASONING_TOKEN_BUDGET)
 
-    return client.chat.completions.create(**kwargs)
+    return get_client().chat.completions.create(**kwargs)
 
 
 def encode_image_from_file(image_field):
