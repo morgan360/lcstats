@@ -17,6 +17,7 @@ What to look for, on five or so photos taken in ordinary light:
 If those hold it is worth building; if not, stop here.
 """
 import json
+import subprocess
 from pathlib import Path
 
 from django.core.management.base import BaseCommand, CommandError
@@ -33,7 +34,7 @@ class Command(BaseCommand):
     help = "Analyse a photo of handwritten working against a question part (probe)."
 
     def add_arguments(self, parser):
-        parser.add_argument("photo", help="Path to a photo of handwritten working")
+        parser.add_argument("photo", nargs="?", help="Path to a photo of handwritten working")
         parser.add_argument("--part", type=int, help="interactive_lessons QuestionPart id")
         parser.add_argument("--exam-part", type=int, help="exam_papers ExamQuestionPart id")
         parser.add_argument("--raw", action="store_true", help="Dump the unparsed response")
@@ -41,15 +42,31 @@ class Command(BaseCommand):
             "--no-context", action="store_true",
             help="Withhold the answer and marking scheme, to see the analysis unaided",
         )
+        parser.add_argument(
+            "--list", nargs="?", const="", metavar="SEARCH",
+            help="List question parts to answer on paper, optionally matching SEARCH",
+        )
+        parser.add_argument(
+            "--show", action="store_true",
+            help="Print the full question for --part and stop, without calling the model",
+        )
 
     def handle(self, *args, **options):
-        path = Path(options["photo"]).expanduser()
-        if not path.exists():
-            raise CommandError(f"No such photo: {path}")
+        if options["list"] is not None:
+            return self._list_parts(options["list"])
+
         if not (options["part"] or options["exam_part"]):
-            raise CommandError("Give either --part or --exam-part")
+            raise CommandError("Give either --part or --exam-part (or --list to browse)")
 
         part, kwargs = self._resolve_part(options)
+
+        if options["show"]:
+            return self._show_question(part, kwargs)
+
+        if not options["photo"]:
+            raise CommandError("Give the path to a photo (or --show to see the question first)")
+
+        path = self._as_readable_image(Path(options["photo"]).expanduser())
 
         try:
             image_b64 = encode_path_for_api(path)
@@ -70,6 +87,75 @@ class Command(BaseCommand):
             return
 
         self._report(result)
+
+    def _as_readable_image(self, path):
+        """Convert a HEIC straight off an iPhone, so AirDrop-and-run works.
+
+        Only for this probe. Production takes its photos through the browser,
+        where the canvas downscale has already re-encoded them as JPEG, and
+        sips exists only on macOS anyway.
+        """
+        if not path.exists():
+            raise CommandError(f"No such photo: {path}")
+        if path.suffix.lower() not in (".heic", ".heif"):
+            return path
+
+        converted = path.with_suffix(".probe.jpg")
+        result = subprocess.run(
+            ["sips", "-s", "format", "jpeg", str(path), "--out", str(converted)],
+            capture_output=True,
+        )
+        if result.returncode != 0 or not converted.exists():
+            raise CommandError(
+                f"Could not convert {path.name} from HEIC. Convert it by hand with:\n"
+                f"  sips -s format jpeg {path} --out {path.with_suffix('.jpg')}"
+            )
+        self.stdout.write(self.style.NOTICE(f"Converted {path.name} → {converted.name}"))
+        return converted
+
+    def _list_parts(self, search):
+        """Show parts to choose from, so there is something to answer on paper."""
+        qs = (QuestionPart.objects
+              .select_related("question", "question__topic")
+              .order_by("question__topic__name", "question_id", "order"))
+        if search:
+            qs = qs.filter(prompt__icontains=search)
+
+        rows = 0
+        for p in qs[:60]:
+            prompt = " ".join((p.prompt or "").split())
+            if not prompt:
+                continue
+            topic = getattr(getattr(p.question, "topic", None), "name", "?")
+            marker = "  [has answer]" if (p.answer or p.solution) else ""
+            self.stdout.write(
+                self.style.SUCCESS(f"--part {p.id}")
+                + f"  {topic} {p.label or ''}{marker}"
+            )
+            self.stdout.write(f"    {prompt[:150]}")
+            rows += 1
+
+        if not rows:
+            self.stdout.write(self.style.WARNING(f"No question parts matching {search!r}"))
+        else:
+            self.stdout.write(self.style.NOTICE(
+                f"\n{rows} shown. Pick one, then:  "
+                f"python manage.py analyse_work_photo --part <id> --show"
+            ))
+
+    def _show_question(self, part, kwargs):
+        """Print the question in full, to answer on paper before photographing."""
+        out = self.stdout
+        out.write(f"{BAR}\nQUESTION (part id {part.pk})\n{BAR}")
+        out.write(kwargs["question_prompt"])
+        if kwargs.get("part_label"):
+            out.write(f"\nPart: {kwargs['part_label']}")
+        if kwargs.get("question_image"):
+            out.write(self.style.NOTICE(f"\nQuestion image: {kwargs['question_image'].name}"))
+        out.write(self.style.NOTICE(
+            "\nWrite your working for this on paper, photograph it, then:\n"
+            f"  python manage.py analyse_work_photo <photo> --part {part.pk}"
+        ))
 
     def _resolve_part(self, options):
         """Load the part and assemble the context the analyser takes."""
