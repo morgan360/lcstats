@@ -237,7 +237,7 @@ class SolutionImagesFilter(admin.SimpleListFilter):
 
 @admin.register(ExamQuestion)
 class ExamQuestionAdmin(admin.ModelAdmin):
-    list_display = ('__str__', 'question_number', 'topic', 'total_marks', 'suggested_time_minutes', 'has_image', 'solution_progress', 'exam_paper')
+    list_display = ('__str__', 'question_number', 'solution_progress', 'topic', 'total_marks', 'suggested_time_minutes', 'has_image', 'exam_paper')
     list_filter = ('exam_paper__subject', 'exam_paper__year', 'exam_paper__paper_type', 'topic', SolutionImagesFilter)
     search_fields = ('title', 'question_number')
     change_list_template = 'admin/exam_papers/examquestion_change_list.html'
