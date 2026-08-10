@@ -54,7 +54,7 @@ to the stylesheet.
   <h1>Send your working</h1>
   <p class="sub">Photograph the page in your copy for this question.</p>
 
-  <div class="card">
+  <div class="card" id="prompt-card">
     {% if part_label %}<span class="label">{{ part_label }}</span> {% endif %}
     <span class="prompt">{{ prompt|default:"See the question on your computer." }}</span>
   </div>
@@ -88,6 +88,73 @@ to the stylesheet.
   var MAX_EDGE = 1600, blob = null;
   var $ = function (id) { return document.getElementById(id); };
   var show = function (id, on) { $(id).hidden = !on; };
+
+  // --- KaTeX, fetched only when there is maths to show --------------------
+  //
+  // This page keeps KaTeX out of its head on purpose: it is a stylesheet, two
+  // scripts and a set of fonts, and most of the time this page is one button.
+  // But the commentary comes back full of $...$, and without KaTeX a student
+  // reads "$x = 3$" -- which is what happened on the first real run. So it is
+  // loaded on demand: the moment Send is pressed, which puts the download
+  // alongside the vision call the student is already waiting on rather than in
+  // front of them, and on load only if the question prompt itself has maths.
+  var KATEX = "https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/";
+  var katexState = 0;           // 0 untouched, 1 loading, 2 ready, 3 failed
+  var katexWaiting = [];
+
+  function loadScript(src, done) {
+    var s = document.createElement('script');
+    s.src = src;
+    s.onload = function () { done(true); };
+    s.onerror = function () { done(false); };
+    document.head.appendChild(s);
+  }
+
+  function drainKatex() {
+    var queue = katexWaiting;
+    katexWaiting = [];
+    queue.forEach(function (fn) { fn(katexState === 2); });
+  }
+
+  function ensureKatex(done) {
+    if (done) katexWaiting.push(done);
+    if (katexState === 2 || katexState === 3) return drainKatex();
+    if (katexState === 1) return;   // in flight; the drain will pick this up
+    katexState = 1;
+
+    var css = document.createElement('link');
+    css.rel = 'stylesheet';
+    css.href = KATEX + 'katex.min.css';
+    document.head.appendChild(css);
+
+    loadScript(KATEX + 'katex.min.js', function (ok) {
+      if (!ok) { katexState = 3; return drainKatex(); }
+      loadScript(KATEX + 'contrib/auto-render.min.js', function (ok2) {
+        katexState = (ok2 && window.renderMathInElement) ? 2 : 3;
+        drainKatex();
+      });
+    });
+  }
+
+  // The same delimiters as the laptop side in work_capture.js, so one piece of
+  // commentary reads identically on both screens.
+  function typeset(el) {
+    if (!el) return;
+    ensureKatex(function (ready) {
+      if (!ready) return;   // dollars stay visible; the words still make sense
+      try {
+        window.renderMathInElement(el, {
+          delimiters: [
+            { left: "$$", right: "$$", display: true },
+            { left: "$", right: "$", display: false }
+          ],
+          throwOnError: false
+        });
+      } catch (e) {
+        /* leave it as written rather than lose the feedback */
+      }
+    });
+  }
 
   $('pick').addEventListener('click', function () { fileInput.click(); });
   $('retake').addEventListener('click', function () {
@@ -130,6 +197,10 @@ to the stylesheet.
     var button = $('send');
     button.disabled = true;
     button.innerHTML = '<span class="spin"></span>Reading your working…';
+
+    // Start fetching KaTeX now, not when the answer lands. The vision call
+    // takes 15-40s, so it will be long since ready.
+    ensureKatex();
 
     var form = new FormData();
     form.append('photo', blob, 'working.jpg');
@@ -192,7 +263,15 @@ to the stylesheet.
     var box = $('stage-result');
     box.innerHTML = html;
     show('stage-result', true);
+    typeset(box);
     window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  // The prompt is on screen before anything is pressed, so it only earns the
+  // download if it actually contains maths.
+  var promptCard = $('prompt-card');
+  if (promptCard && promptCard.textContent.indexOf('$') !== -1) {
+    typeset(promptCard);
   }
 })();
 </script>
