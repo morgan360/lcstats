@@ -97,6 +97,11 @@ def _analysis_payload(submission):
 @require_POST
 def work_slot(request):
     """Open a slot and return a QR pointing the phone at it."""
+    # Checked here as well as in the template: hiding a button is not access
+    # control, and this endpoint spends money on a vision call.
+    if getattr(settings, "WORK_PHOTO_STAFF_ONLY", True) and not request.user.is_staff:
+        return HttpResponseForbidden("Not available yet.")
+
     student = _student(request)
     if _rate_limited(student):
         return JsonResponse({

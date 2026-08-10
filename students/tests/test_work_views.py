@@ -39,8 +39,13 @@ def photo(name="working.jpg", size=(1200, 900)):
     return SimpleUploadedFile(name, buffer.getvalue(), "image/jpeg")
 
 
-@override_settings(PRIVATE_MEDIA_ROOT=PRIVATE_ROOT)
+@override_settings(PRIVATE_MEDIA_ROOT=PRIVATE_ROOT, WORK_PHOTO_STAFF_ONLY=False)
 class WorkFlowTests(TestCase):
+    """The flow itself, with the staff-only trial gate off.
+
+    The gate is covered separately in StaffOnlyGateTests.
+    """
+
     @classmethod
     def tearDownClass(cls):
         shutil.rmtree(PRIVATE_ROOT, ignore_errors=True)
@@ -208,3 +213,35 @@ class WorkFlowTests(TestCase):
         self.student.refresh_from_db()
         self.assertEqual(self.student.total_score, before)
         self.assertEqual(self.student.attempts.count(), 0)
+
+
+@override_settings(PRIVATE_MEDIA_ROOT=PRIVATE_ROOT, WORK_PHOTO_STAFF_ONLY=True)
+class StaffOnlyGateTests(TestCase):
+    """While the feature is trialled, only staff can open a slot.
+
+    Checked in the view, not just the template: hiding a button is not access
+    control, and this endpoint spends money on a vision call.
+    """
+
+    def setUp(self):
+        self.student = User.objects.create_user("student", password="pw")
+        self.staff = User.objects.create_user("teacher", password="pw", is_staff=True)
+        topic = Topic.objects.create(name="Calculus", slug="calculus-gate")
+        question = Question.objects.create(topic=topic)
+        self.part = QuestionPart.objects.create(question=question, prompt="Find $x$.")
+
+    def open_slot(self, user):
+        self.client.force_login(user)
+        return self.client.post(
+            reverse("work_slot"), {"part_type": "lesson", "part_id": self.part.pk}
+        )
+
+    def test_student_is_refused_while_staff_only(self):
+        self.assertEqual(self.open_slot(self.student).status_code, 403)
+
+    def test_staff_may_open_a_slot(self):
+        self.assertTrue(self.open_slot(self.staff).json()["success"])
+
+    @override_settings(WORK_PHOTO_STAFF_ONLY=False)
+    def test_students_allowed_once_the_flag_is_off(self):
+        self.assertTrue(self.open_slot(self.student).json()["success"])

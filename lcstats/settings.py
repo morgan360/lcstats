@@ -35,6 +35,10 @@ WORK_PHOTO_HOURLY_LIMIT = int(os.getenv("WORK_PHOTO_HOURLY_LIMIT", 20))
 # How long the QR stays good for. Long enough to find your copy and take a
 # photo, short enough that a code left on screen goes stale.
 WORK_UPLOAD_TOKEN_MAX_AGE = int(os.getenv("WORK_UPLOAD_TOKEN_MAX_AGE", 900))
+# While the feature is being trialled, only staff see the camera button and
+# only staff can open an upload slot. Set WORK_PHOTO_STAFF_ONLY=False in the
+# environment to open it to students -- no code change, no redeploy.
+WORK_PHOTO_STAFF_ONLY = os.getenv("WORK_PHOTO_STAFF_ONLY", "True") == "True"
 FAQ_MATCH_THRESHOLD = float(os.getenv("FAQ_MATCH_THRESHOLD", 0.7))
 
 # NumSkull "site help" matching (pure retrieval, no GPT call — see chat/views.py).
