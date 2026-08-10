@@ -1,0 +1,200 @@
+{% load static %}<!doctype html>
+{% comment %}
+The phone's upload page. Deliberately standalone rather than extending
+_base.html: that pulls MathLive and KaTeX from CDNs and a whole navigation
+shell, none of which this page needs, all of it over mobile data on a school
+connection. Styles are inline for the same reason -- one request, no round trip
+to the stylesheet.
+{% endcomment %}
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Send your working — NumScoil</title>
+<style>
+  :root { --blue:#00468c; --ink:#1b2430; --muted:#5b6675; --line:#dfe5ec; }
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  body { margin:0; padding:20px 18px 40px; font:16px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+         color:var(--ink); background:#f6f8fa; }
+  h1 { font-size:20px; margin:0 0 4px; color:var(--blue); }
+  .sub { color:var(--muted); font-size:14px; margin:0 0 20px; }
+  .card { background:#fff; border:1px solid var(--line); border-radius:14px; padding:16px; margin-bottom:16px; }
+  .prompt { font-size:15px; color:var(--ink); }
+  .label { font-weight:600; color:var(--blue); }
+  /* Big enough to hit without looking. This is the whole interface. */
+  button { font:600 17px/1 inherit; border:0; border-radius:12px; padding:18px 20px; width:100%;
+           background:var(--blue); color:#fff; }
+  button[disabled] { opacity:.5; }
+  button.ghost { background:#eef2f7; color:var(--ink); }
+  .row { display:flex; gap:10px; margin-top:10px; }
+  .row button { flex:1; }
+  img#preview { width:100%; border-radius:10px; display:block; border:1px solid var(--line); }
+  .note { font-size:13px; color:var(--muted); margin-top:14px; }
+  .err { background:#fdecec; border:1px solid #f2b8b8; color:#8a1c1c; padding:14px; border-radius:12px; }
+  .warn { background:#fff6e5; border:1px solid #f0d089; color:#7a5200; padding:12px; border-radius:10px; font-size:14px; }
+  .spin { display:inline-block; width:15px; height:15px; border:2px solid #fff6; border-top-color:#fff;
+          border-radius:50%; animation:s .8s linear infinite; vertical-align:-2px; margin-right:8px; }
+  @keyframes s { to { transform:rotate(360deg); } }
+  h2 { font-size:15px; color:var(--blue); margin:18px 0 6px; }
+  details summary { font-size:14px; color:var(--muted); cursor:pointer; }
+  pre.tr { white-space:pre-wrap; font:13px/1.5 ui-monospace,Menlo,monospace; background:#f6f8fa;
+           border:1px solid var(--line); border-radius:8px; padding:10px; margin-top:8px; }
+  .v { font-weight:700; margin-right:6px; }
+  .v.correct { color:#146e2d; } .v.slip { color:#9a6700; } .v.wrong { color:#a11; } .v.unclear { color:var(--muted); }
+  li { margin-bottom:8px; } ul { padding-left:20px; margin:6px 0; }
+</style>
+</head>
+<body>
+
+{% if error %}
+  <h1>Send your working</h1>
+  <div class="err">{{ error }}</div>
+  <p class="note">Go back to NumScoil on your computer and press the camera button again to get a fresh code.</p>
+{% else %}
+  <h1>Send your working</h1>
+  <p class="sub">Photograph the page in your copy for this question.</p>
+
+  <div class="card">
+    {% if part_label %}<span class="label">{{ part_label }}</span> {% endif %}
+    <span class="prompt">{{ prompt|default:"See the question on your computer." }}</span>
+  </div>
+
+  <div id="stage-pick">
+    <button type="button" id="pick">Take a photo</button>
+    <p class="note">
+      Lay the page flat, take it straight on rather than at an angle, and make sure
+      the light is good. Your photo is stored privately, used only to give you
+      feedback, and deleted after 90 days.
+    </p>
+  </div>
+
+  <input type="file" id="file" accept="image/*" hidden>
+
+  <div id="stage-preview" hidden>
+    <div class="card"><img id="preview" alt="Your working"></div>
+    <button type="button" id="send">Send for feedback</button>
+    <div class="row"><button type="button" class="ghost" id="retake">Take a different photo</button></div>
+  </div>
+
+  <div id="stage-result" hidden></div>
+{% endif %}
+
+<script>
+(function () {
+  var fileInput = document.getElementById('file');
+  if (!fileInput) return;
+
+  var uploadUrl = "{% url 'work_mobile_upload' token %}";
+  var MAX_EDGE = 1600, blob = null;
+  var $ = function (id) { return document.getElementById(id); };
+  var show = function (id, on) { $(id).hidden = !on; };
+
+  $('pick').addEventListener('click', function () { fileInput.click(); });
+  $('retake').addEventListener('click', function () {
+    fileInput.value = ''; blob = null;
+    show('stage-preview', false); show('stage-pick', true);
+  });
+
+  fileInput.addEventListener('change', function () {
+    var file = fileInput.files && fileInput.files[0];
+    if (!file) return;
+    downscale(file, function (out) {
+      blob = out;
+      $('preview').src = URL.createObjectURL(out);
+      show('stage-pick', false); show('stage-preview', true);
+    });
+  });
+
+  // Shrink in a canvas before upload. Takes a 4MB photo to a few hundred KB,
+  // which matters on school wifi -- and converts HEIC for free, because Safari
+  // decodes it into the canvas and toBlob gives back JPEG.
+  function downscale(file, done) {
+    var img = new Image();
+    img.onload = function () {
+      var scale = Math.min(1, MAX_EDGE / Math.max(img.width, img.height));
+      var canvas = document.createElement('canvas');
+      canvas.width = Math.round(img.width * scale);
+      canvas.height = Math.round(img.height * scale);
+      canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+      URL.revokeObjectURL(img.src);
+      canvas.toBlob(function (out) { done(out || file); }, 'image/jpeg', 0.8);
+    };
+    // If the browser cannot decode it at all, send the original and let the
+    // server give the proper message.
+    img.onerror = function () { done(file); };
+    img.src = URL.createObjectURL(file);
+  }
+
+  $('send').addEventListener('click', function () {
+    if (!blob) return;
+    var button = $('send');
+    button.disabled = true;
+    button.innerHTML = '<span class="spin"></span>Reading your working…';
+
+    var form = new FormData();
+    form.append('photo', blob, 'working.jpg');
+
+    fetch(uploadUrl, { method: 'POST', body: form })
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        if (!data.success) return fail(data.message || 'Something went wrong.');
+        render(data);
+      })
+      .catch(function () { fail('Could not reach NumScoil. Check your connection and try again.'); });
+  });
+
+  function fail(message) {
+    var button = $('send');
+    button.disabled = false;
+    button.textContent = 'Try again';
+    var box = $('stage-result');
+    box.innerHTML = '<div class="err"></div>';
+    box.firstChild.textContent = message;
+    show('stage-result', true);
+  }
+
+  function esc(s) { var d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; }
+
+  function render(data) {
+    show('stage-preview', false);
+    var html = '';
+
+    if (!data.readable || data.confidence === 'low') {
+      html += '<div class="warn">I couldn\'t read all of this clearly, so take the ' +
+              'feedback below with a pinch of salt. A straight-on photo of a flat ' +
+              'page in good light reads best.</div>';
+    }
+    if (data.transcription) {
+      html += '<details><summary>What I read from your page</summary>' +
+              '<pre class="tr">' + esc(data.transcription) + '</pre></details>';
+    }
+    if (data.method_feedback) {
+      html += '<h2>Your method</h2><div>' + esc(data.method_feedback) + '</div>';
+    }
+    if (data.steps && data.steps.length) {
+      html += '<ul>';
+      data.steps.forEach(function (s) {
+        var v = s.verdict || 'unclear';
+        var mark = { correct: '✓', slip: '~', wrong: '✗' }[v] || '?';
+        html += '<li><span class="v ' + esc(v) + '">' + mark + '</span>' +
+                esc(s.step) + (s.comment ? '<br><small>' + esc(s.comment) + '</small>' : '') + '</li>';
+      });
+      html += '</ul>';
+    }
+    if (data.has_diagram && data.diagram_feedback) {
+      html += '<h2>Your graph</h2><div>' + esc(data.diagram_feedback) + '</div>';
+    }
+    if (data.next_step) {
+      html += '<h2>Next step</h2><div>' + esc(data.next_step) + '</div>';
+    }
+    html += '<p class="note">This is also now showing on your computer.</p>';
+
+    var box = $('stage-result');
+    box.innerHTML = html;
+    show('stage-result', true);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+})();
+</script>
+</body>
+</html>

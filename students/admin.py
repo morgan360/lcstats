@@ -1,5 +1,6 @@
 from django.contrib import admin
 from django.utils.html import format_html
+from django.urls import reverse
 from django.utils import timezone
 from django.http import HttpResponse
 from django.db.models import Count, Avg, Q
@@ -11,7 +12,7 @@ from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.units import inch
 from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, PageBreak
 from reportlab.lib.enums import TA_LEFT, TA_CENTER, TA_RIGHT
-from .models import StudentProfile, QuestionAttempt, RegistrationCode, LoginHistory, UserSession, QuestionFeedback
+from .models import StudentProfile, QuestionAttempt, RegistrationCode, LoginHistory, UserSession, QuestionFeedback, WorkSubmission
 
 
 @admin.register(StudentProfile)
@@ -770,3 +771,46 @@ class QuestionFeedbackAdmin(admin.ModelAdmin):
     def score_awarded(self, obj):
         return f"{obj.attempt.score_awarded}%"
     score_awarded.short_description = "Score"
+
+
+@admin.register(WorkSubmission)
+class WorkSubmissionAdmin(admin.ModelAdmin):
+    """Read-only view of student work photos, for debugging analyses.
+
+    Deliberately offers no add or change: these are created by students through
+    the upload flow, and nothing here should be editable after the fact.
+    Deletion is allowed, so a photo can be removed on request.
+    """
+    list_display = ('id', 'student', 'part_display', 'status', 'confidence',
+                    'has_diagram', 'created_at', 'purge_after')
+    list_filter = ('status', 'confidence', 'has_diagram', 'readable', 'has_working')
+    search_fields = ('student__user__username', 'transcription')
+    date_hierarchy = 'created_at'
+    readonly_fields = ('student', 'question_part', 'exam_question_part', 'photo_preview',
+                       'status', 'transcription', 'method_feedback', 'diagram_feedback',
+                       'next_step', 'has_diagram', 'has_working', 'readable', 'confidence',
+                       'model_used', 'prompt_tokens', 'completion_tokens', 'error_message',
+                       'analysis', 'created_at', 'analysed_at', 'purge_after',
+                       'image_width', 'image_height', 'byte_size')
+    exclude = ('image',)
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def part_display(self, obj):
+        return str(obj.part) if obj.part else '—'
+    part_display.short_description = 'Question part'
+
+    def photo_preview(self, obj):
+        # Through the permission-checked view: these files have no public URL,
+        # and asking for image.url raises by design.
+        if not obj.image:
+            return 'No photo'
+        return format_html(
+            '<img src="{}" style="max-width:520px;border:1px solid #ccc">',
+            reverse('work_photo', args=[obj.pk]),
+        )
+    photo_preview.short_description = 'Photo'

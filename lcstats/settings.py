@@ -27,6 +27,14 @@ OPENAI_VISION_TIMEOUT = float(os.getenv("OPENAI_VISION_TIMEOUT", 90))
 # tiles images at 512px, so past ~1024 you pay linearly more tokens for detail
 # the model does not use.
 WORK_PHOTO_API_MAX_EDGE = int(os.getenv("WORK_PHOTO_API_MAX_EDGE", 1024))
+# Long edge of the copy kept on disk -- what the student sees back.
+WORK_PHOTO_STORE_MAX_EDGE = int(os.getenv("WORK_PHOTO_STORE_MAX_EDGE", 1600))
+WORK_PHOTO_MAX_BYTES = int(os.getenv("WORK_PHOTO_MAX_BYTES", 8 * 1024 * 1024))
+WORK_PHOTO_RETENTION_DAYS = int(os.getenv("WORK_PHOTO_RETENTION_DAYS", 90))
+WORK_PHOTO_HOURLY_LIMIT = int(os.getenv("WORK_PHOTO_HOURLY_LIMIT", 20))
+# How long the QR stays good for. Long enough to find your copy and take a
+# photo, short enough that a code left on screen goes stale.
+WORK_UPLOAD_TOKEN_MAX_AGE = int(os.getenv("WORK_UPLOAD_TOKEN_MAX_AGE", 900))
 FAQ_MATCH_THRESHOLD = float(os.getenv("FAQ_MATCH_THRESHOLD", 0.7))
 
 # NumSkull "site help" matching (pure retrieval, no GPT call — see chat/views.py).
@@ -238,6 +246,14 @@ STATIC_ROOT = BASE_DIR / "staticfiles"  # for production (optional)
 
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
+
+# Student-uploaded photos of their own work. Deliberately NOT under MEDIA_ROOT:
+# in production /media/ is a web-server static mapping served without ever
+# reaching Django, so anything in it is public at a guessable URL and cannot be
+# permission-checked. This directory has no such mapping and is only ever
+# reachable through students.views.work_photo, which checks ownership.
+# DO NOT add a static mapping for it on PythonAnywhere.
+PRIVATE_MEDIA_ROOT = Path(os.getenv("PRIVATE_MEDIA_ROOT", BASE_DIR / "private_media"))
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 

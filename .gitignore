@@ -124,3 +124,6 @@ templates/account/email/unknown_account_subject.txt
 # Scripts
 # =========================
 scripts/intersection_diagrams.py
+
+# Student work photos: private by design, never committed.
+private_media/

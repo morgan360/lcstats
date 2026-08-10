@@ -1,10 +1,15 @@
 from django.db import models
 from django.utils import timezone
+from django.conf import settings
 from django.contrib.auth.models import User
+from django.core.exceptions import ValidationError
 from interactive_lessons.models import Question, QuestionPart
 from django.contrib.sessions.models import Session
 from schools.models import School
+from students.storage import private_storage
+from datetime import timedelta
 import secrets
+import uuid
 
 
 
@@ -279,3 +284,124 @@ class UserSession(models.Model):
             return session.expire_date > timezone.now()
         except Session.DoesNotExist:
             return False
+
+
+# -------------------------------------------------------------------------
+# WORK SUBMISSIONS  (photographs of handwritten working)
+# -------------------------------------------------------------------------
+def work_photo_path(instance, filename):
+    """Per-student directory, random filename.
+
+    The filename is not the security boundary -- these are served by a view
+    that checks ownership -- but there is no reason to make paths guessable.
+    """
+    return f"work/{instance.student_id}/{uuid.uuid4().hex}.jpg"
+
+
+class WorkSubmission(models.Model):
+    """A photo of a student's handwritten working, and what the AI made of it.
+
+    Deliberately not a field on QuestionAttempt. A photo exists before any
+    grading, may be re-analysed, may be deleted on its own for privacy, and in
+    this version never produces a mark at all -- so it does not belong on a row
+    whose purpose is to record a score.
+
+    Two nullable part FKs rather than a GenericForeignKey: there are only ever
+    two kinds of target, and real foreign keys give cascade delete and a
+    workable admin on MySQL.
+    """
+
+    class Status(models.TextChoices):
+        AWAITING_PHOTO = 'awaiting', 'Awaiting photo'
+        ANALYSING = 'analysing', 'Analysing'
+        COMPLETE = 'complete', 'Complete'
+        FAILED = 'failed', 'Failed'
+
+    student = models.ForeignKey(
+        StudentProfile, on_delete=models.CASCADE, related_name='work_submissions'
+    )
+
+    # Exactly one of these is set -- enforced by the constraint below.
+    question_part = models.ForeignKey(
+        QuestionPart, null=True, blank=True,
+        on_delete=models.CASCADE, related_name='work_submissions'
+    )
+    exam_question_part = models.ForeignKey(
+        'exam_papers.ExamQuestionPart', null=True, blank=True,
+        on_delete=models.CASCADE, related_name='work_submissions'
+    )
+
+    image = models.ImageField(
+        upload_to=work_photo_path, storage=private_storage, blank=True,
+        help_text="Private: served only via the work_photo view, never by URL."
+    )
+    image_width = models.PositiveIntegerField(null=True, blank=True)
+    image_height = models.PositiveIntegerField(null=True, blank=True)
+    byte_size = models.PositiveIntegerField(default=0)
+
+    status = models.CharField(
+        max_length=12, choices=Status.choices, default=Status.AWAITING_PHOTO
+    )
+
+    # Raw model output kept alongside the flattened columns: the JSON is for
+    # debugging prompt changes, the columns for rendering and querying without
+    # JSON path expressions on MySQL.
+    analysis = models.JSONField(default=dict, blank=True)
+    transcription = models.TextField(blank=True)
+    method_feedback = models.TextField(blank=True)
+    diagram_feedback = models.TextField(blank=True)
+    next_step = models.TextField(blank=True)
+    has_diagram = models.BooleanField(default=False)
+    has_working = models.BooleanField(default=True)
+    readable = models.BooleanField(default=True)
+    confidence = models.CharField(max_length=8, blank=True)
+
+    model_used = models.CharField(max_length=64, blank=True)
+    prompt_tokens = models.PositiveIntegerField(default=0)
+    completion_tokens = models.PositiveIntegerField(default=0)
+
+    # Internal only. Never rendered to a student -- the existing graders leak
+    # str(e) into feedback and this is the deliberate break from that.
+    error_message = models.TextField(blank=True)
+
+    created_at = models.DateTimeField(default=timezone.now)
+    analysed_at = models.DateTimeField(null=True, blank=True)
+    purge_after = models.DateTimeField(null=True, blank=True, db_index=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['student', '-created_at']),
+            models.Index(fields=['status']),
+        ]
+        constraints = [
+            models.CheckConstraint(
+                condition=(
+                    models.Q(question_part__isnull=False, exam_question_part__isnull=True)
+                    | models.Q(question_part__isnull=True, exam_question_part__isnull=False)
+                ),
+                name='worksubmission_exactly_one_part',
+            )
+        ]
+
+    def __str__(self):
+        return f"Work photo #{self.pk} by {self.student} ({self.status})"
+
+    def clean(self):
+        # Mirrors the constraint, for admin and forms, and because older MySQL
+        # may not enforce CHECK.
+        if bool(self.question_part) == bool(self.exam_question_part):
+            raise ValidationError(
+                "Set exactly one of question_part or exam_question_part."
+            )
+
+    @property
+    def part(self):
+        """Whichever part this belongs to."""
+        return self.question_part or self.exam_question_part
+
+    def save(self, *args, **kwargs):
+        if not self.purge_after:
+            days = getattr(settings, 'WORK_PHOTO_RETENTION_DAYS', 90)
+            self.purge_after = (self.created_at or timezone.now()) + timedelta(days=days)
+        super().save(*args, **kwargs)

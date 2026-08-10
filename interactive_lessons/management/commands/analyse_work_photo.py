@@ -166,7 +166,7 @@ class Command(BaseCommand):
             if not part:
                 raise CommandError(f"No QuestionPart with id {options['part']}")
             return part, {
-                "question_prompt": part.prompt or part.question.text,
+                "question_prompt": part.prompt,
                 "part_label": part.label or "",
                 "question_image": None if bare else (part.image or part.question.image),
                 "marking_scheme_image": None,

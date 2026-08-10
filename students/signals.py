@@ -1,10 +1,10 @@
-from django.db.models.signals import post_save, pre_delete
+from django.db.models.signals import post_save, pre_delete, post_delete
 from django.contrib.auth.models import User, Group
 from django.contrib.auth.signals import user_logged_in, user_logged_out, user_login_failed
 from django.contrib.sessions.models import Session
 from django.dispatch import receiver
 from django.utils import timezone
-from .models import StudentProfile, LoginHistory, UserSession
+from .models import StudentProfile, LoginHistory, UserSession, WorkSubmission
 
 
 @receiver(post_save, sender=User)
@@ -100,3 +100,15 @@ def log_failed_login(sender, credentials, request, **kwargs):
 def cleanup_user_session(sender, instance, **kwargs):
     """Clean up UserSession when Session is deleted"""
     UserSession.objects.filter(session_key=instance.session_key).delete()
+
+
+@receiver(post_delete, sender=WorkSubmission)
+def delete_work_photo_file(sender, instance, **kwargs):
+    """Remove the photo from disk when its row goes.
+
+    Django deletes the row and leaves the file, which for a student's personal
+    photo means "deleted" would not actually delete anything. save=False
+    because the row is already gone.
+    """
+    if instance.image:
+        instance.image.delete(save=False)
