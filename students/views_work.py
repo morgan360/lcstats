@@ -34,6 +34,7 @@ from interactive_lessons.models import QuestionPart
 
 from .models import StudentProfile, WorkSubmission
 from .services.image_intake import ImageIntakeError, encode_for_api, process_upload
+from .work_access import work_capture_visible
 
 logger = logging.getLogger(__name__)
 
@@ -99,7 +100,7 @@ def work_slot(request):
     """Open a slot and return a QR pointing the phone at it."""
     # Checked here as well as in the template: hiding a button is not access
     # control, and this endpoint spends money on a vision call.
-    if getattr(settings, "WORK_PHOTO_STAFF_ONLY", True) and not request.user.is_staff:
+    if not work_capture_visible(request.user):
         return HttpResponseForbidden("Not available yet.")
 
     student = _student(request)

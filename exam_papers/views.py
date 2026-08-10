@@ -12,6 +12,7 @@ from .models import (
     ExamAttempt, ExamQuestionAttempt
 )
 from interactive_lessons.models import Topic
+from students.work_access import work_capture_visible
 from .services.vision_grading import grade_with_vision_marking_scheme
 
 logger = logging.getLogger(__name__)
@@ -222,6 +223,7 @@ def question_interface(request, attempt_id, question_id):
         'question_number': current_index + 1,
         'total_questions': len(all_questions),
         'paper': attempt.exam_paper,
+        'show_work_capture': work_capture_visible(request.user),
     }
     return render(request, 'exam_papers/question_interface.html', context)
 

@@ -185,6 +185,13 @@
 
                 <!-- Solution Area -->
                 <div class="solution-area" id="solution-{{ part_data.part.id }}" style="display: none;"></div>
+
+                <!-- Staff-only while it is trialled -- see WORK_PHOTO_STAFF_ONLY.
+                     Exam parts carry a marking scheme image, which the analysis
+                     passes to the model as a rubric. -->
+                {% if show_work_capture %}
+                {% include "includes/work_capture.html" with part_type="exam" part_id=part_data.part.id %}
+                {% endif %}
             </div>
 
             <!-- Previous Attempts (Hidden - shown in results page) -->
@@ -612,6 +619,7 @@
 {% endblock %}
 
 {% block extra_scripts %}
+{% if show_work_capture %}{% include "includes/work_capture_assets.html" %}{% endif %}
 <script>
 // Timer functionality
 {% if time_remaining is not None %}

@@ -10,6 +10,7 @@ from markdown_katex import KatexExtension
 
 from .models import Topic, Question, QuestionPart, StudentInquiry
 from students.models import QuestionAttempt
+from students.work_access import work_capture_visible
 from interactive_lessons.services.marking import grade_submission
 from notes.models import InfoBotQuery
 from notes.helpers.match_note import match_note
@@ -554,11 +555,7 @@ def section_question_view(request, topic_slug, section_slug, number):
         "results": results,
         "completed_parts": completed_parts,
         "all_parts_answered": all_parts_answered,
-        # Photograph-your-working is staff-only while it is trialled.
-        "show_work_capture": (
-            not getattr(settings, "WORK_PHOTO_STAFF_ONLY", True)
-            or request.user.is_staff
-        ),
+        "show_work_capture": work_capture_visible(request.user),
     }
 
     return render(request, "interactive_lessons/quiz.html", context)
@@ -726,11 +723,7 @@ def question_view(request, topic_id, number):
         "completed_parts": completed_parts,
         # ✅ Include this flag if you only want to show the solution after completion
         "all_parts_answered": all_parts_answered,
-        # Photograph-your-working is staff-only while it is trialled.
-        "show_work_capture": (
-            not getattr(settings, "WORK_PHOTO_STAFF_ONLY", True)
-            or request.user.is_staff
-        ),
+        "show_work_capture": work_capture_visible(request.user),
     }
 
     return render(request, "interactive_lessons/quiz.html", context)

@@ -5,6 +5,7 @@ where the web server publishes them) and the failure path (an exception must
 never reach the student as text).
 """
 import io
+import re
 import shutil
 import tempfile
 from unittest import mock
@@ -17,6 +18,7 @@ from django.test import TestCase, override_settings
 from django.urls import reverse
 from PIL import Image
 
+from exam_papers.models import ExamAttempt, ExamPaper, ExamQuestion, ExamQuestionPart
 from interactive_lessons.models import Question, QuestionPart, Topic
 from students.models import StudentProfile, WorkSubmission
 from students.views_work import TOKEN_SALT
@@ -213,6 +215,97 @@ class WorkFlowTests(TestCase):
         self.student.refresh_from_db()
         self.assertEqual(self.student.total_score, before)
         self.assertEqual(self.student.attempts.count(), 0)
+
+
+@override_settings(PRIVATE_MEDIA_ROOT=PRIVATE_ROOT, WORK_PHOTO_STAFF_ONLY=False)
+class ExamPartTests(TestCase):
+    """The other target type.
+
+    A WorkSubmission points at either a QuestionPart or an ExamQuestionPart,
+    and until the exam surface was wired up only the first was ever exercised.
+    These cover the second: that the branch binds the right FK, and that an
+    exam part reaches the model with its marking scheme as a rubric -- which is
+    the whole reason exam feedback should read better than lesson feedback.
+    """
+
+    @classmethod
+    def tearDownClass(cls):
+        shutil.rmtree(PRIVATE_ROOT, ignore_errors=True)
+        super().tearDownClass()
+
+    def setUp(self):
+        self.user = User.objects.create_user("niamh", password="pw")
+        self.student = StudentProfile.objects.get(user=self.user)
+        self.paper = ExamPaper.objects.create(
+            year=2023, paper_type="paper1", title="2023 Paper 1", total_marks=300
+        )
+        self.question = ExamQuestion.objects.create(
+            exam_paper=self.paper, question_number=4, total_marks=25, order=1
+        )
+        # A second question so the first is not the last one -- see the CSRF
+        # test below, which depends on that distinction.
+        ExamQuestion.objects.create(
+            exam_paper=self.paper, question_number=5, total_marks=25, order=2
+        )
+        self.part = ExamQuestionPart.objects.create(question=self.question, label="(b)")
+
+    def open_slot(self):
+        self.client.force_login(self.user)
+        return self.client.post(
+            reverse("work_slot"), {"part_type": "exam", "part_id": self.part.pk}
+        ).json()
+
+    def test_slot_binds_the_exam_part_and_not_the_lesson_one(self):
+        submission = WorkSubmission.objects.get(pk=self.open_slot()["id"])
+        self.assertEqual(submission.exam_question_part_id, self.part.pk)
+        self.assertIsNone(submission.question_part_id)
+
+    @mock.patch("students.views_work.analyse_student_work", return_value=dict(CANNED))
+    def test_exam_part_is_analysed_without_leaking_an_answer(self, analyse):
+        token = signing.dumps({"sub": self.open_slot()["id"]}, salt=TOKEN_SALT)
+        response = self.client.post(
+            reverse("work_mobile_upload", args=[token]), {"photo": photo()}
+        )
+        self.assertTrue(response.json()["success"], response.json())
+
+        # Exam parts carry no question text -- it exists only as an image -- and
+        # no stored answer, so nothing should be handed to the model as one.
+        kwargs = analyse.call_args.kwargs
+        self.assertIsNone(kwargs["expected_answer"])
+        self.assertEqual(kwargs["part_label"], "(b)")
+
+    def test_the_exam_page_renders_a_capture_block_that_can_actually_post(self):
+        """The block must carry its own CSRF token.
+
+        Deliberately requests a question that is NOT the last one. The exam
+        template only emits {% csrf_token %} inside its "Finish Exam" form,
+        which renders on the last question alone -- so on any other question
+        the DOM lookup in work_capture.js finds nothing, and without the
+        data-csrf attribute every slot POST would come back 403.
+        """
+        # ExamAttempt.student is the User, unlike WorkSubmission.student.
+        attempt = ExamAttempt.objects.create(student=self.user, exam_paper=self.paper)
+        self.client.force_login(self.user)
+        response = self.client.get(
+            reverse("exam_papers:question_interface", args=[attempt.id, self.question.id])
+        )
+        self.assertEqual(response.status_code, 200)
+        html = response.content.decode()
+
+        self.assertIn('data-part-type="exam"', html)
+        self.assertIn(f'data-part-id="{self.part.pk}"', html)
+        self.assertNotIn("csrfmiddlewaretoken", html)   # the trap this guards
+
+        token = re.search(r'data-csrf="([^"]*)"', html)
+        self.assertTrue(token and token.group(1), "capture block carries no CSRF token")
+
+    def test_an_unknown_part_type_is_refused(self):
+        self.client.force_login(self.user)
+        response = self.client.post(
+            reverse("work_slot"), {"part_type": "quickkick", "part_id": self.part.pk}
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(WorkSubmission.objects.count(), 0)
 
 
 @override_settings(PRIVATE_MEDIA_ROOT=PRIVATE_ROOT, WORK_PHOTO_STAFF_ONLY=True)

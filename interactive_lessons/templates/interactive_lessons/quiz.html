@@ -86,36 +86,9 @@
             <div id="feedback-{{ part.id }}" class="hidden text-sm"></div>
         </div>
 
-        <!-- Photograph the working from your copy. Separate from the typed
-             answer above: this comments on method and never awards marks.
-             Staff-only while it is trialled -- see WORK_PHOTO_STAFF_ONLY. -->
+        <!-- Staff-only while it is trialled -- see WORK_PHOTO_STAFF_ONLY. -->
         {% if show_work_capture %}
-        <div class="work-capture mt-4 border-t border-indigo-deep/10 pt-4"
-             data-work-capture data-part-type="lesson" data-part-id="{{ part.id }}">
-            <button type="button" data-action="open"
-                    class="inline-flex items-center gap-2 rounded-md border border-indigo-deep/30 bg-white px-3 py-2 text-sm font-medium text-indigo-deep transition hover:bg-indigo-deep/5">
-                📷 Photograph my working
-            </button>
-            <p class="mt-1 text-xs text-gray-500">
-                Did it in your copy? Send a photo and get feedback on your method.
-                Stored privately, deleted after 90 days.
-            </p>
-
-            <div data-role="panel" hidden class="mt-3 rounded-md border border-indigo-deep/20 bg-indigo-deep/5 p-4">
-                <div class="flex items-start gap-4">
-                    <img data-role="qr" hidden alt="Scan to upload from your phone"
-                         class="h-36 w-36 rounded bg-white p-1">
-                    <div class="text-sm">
-                        <p data-role="status" class="font-medium text-indigo-deep"></p>
-                        <p data-role="link" class="mt-2 break-all text-xs text-gray-500"></p>
-                        <button type="button" data-action="cancel"
-                                class="mt-3 text-xs text-gray-500 underline">Cancel</button>
-                    </div>
-                </div>
-            </div>
-
-            <div data-role="feedback" hidden class="work-feedback mt-3 rounded-md border border-indigo-deep/20 bg-white p-4 text-sm"></div>
-        </div>
+        {% include "includes/work_capture.html" with part_type="lesson" part_id=part.id %}
         {% endif %}
 
         <!-- Feedback buttons for question grading -->
@@ -254,20 +227,5 @@
 {% block extra_scripts %}
 {% load static %}
 <script src="{% static 'interactive_lessons/quiz.js' %}?v=3"></script>
-<script src="{% static 'js/work_capture.js' %}?v=1"></script>
-<style>
-  .work-feedback h4 { color:#00468c; font-weight:600; margin:14px 0 4px; }
-  .work-feedback h4:first-child { margin-top:0; }
-  .work-transcript pre { white-space:pre-wrap; font:12px/1.5 ui-monospace,Menlo,monospace;
-      background:#f6f8fa; border:1px solid #dfe5ec; border-radius:6px; padding:8px; margin-top:6px; }
-  .work-transcript summary { color:#5b6675; cursor:pointer; font-size:13px; }
-  .work-steps { list-style:none; padding-left:0; margin:8px 0; }
-  .work-steps li { margin-bottom:8px; }
-  .work-v { font-weight:700; }
-  .work-v-correct { color:#146e2d; } .work-v-slip { color:#9a6700; }
-  .work-v-wrong { color:#a11; } .work-v-unclear { color:#5b6675; }
-  .work-warn { background:#fff6e5; border:1px solid #f0d089; color:#7a5200;
-      padding:10px; border-radius:8px; margin-bottom:10px; }
-  .work-next { background:#eef5ff; border-left:3px solid #00468c; padding:8px 10px; }
-</style>
+{% if show_work_capture %}{% include "includes/work_capture_assets.html" %}{% endif %}
 {% endblock %}
