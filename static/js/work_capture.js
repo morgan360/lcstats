@@ -70,6 +70,13 @@
       html += '<h4>Next step</h4><p class="work-next">' + esc(data.next_step) + "</p>";
     }
 
+    // The student's own way out. The photo is of their handwriting and it is
+    // kept on the server, so they should not have to wait for the 90-day purge
+    // to be rid of it.
+    html +=
+      '<p class="work-delete"><button type="button" data-action="delete">' +
+      "Delete this photo</button></p>";
+
     return html;
   }
 
@@ -117,8 +124,46 @@
           /* feedback still readable as plain text */
         }
       }
+      var deleteBtn = feedbackEl.querySelector("[data-action=delete]");
+      if (deleteBtn) {
+        deleteBtn.addEventListener("click", function () { removePhoto(deleteBtn); });
+      }
+
       openBtn.disabled = false;
       openBtn.textContent = "Photograph my working again";
+    }
+
+    function removePhoto(button) {
+      if (!submissionId) return;
+      if (!window.confirm("Delete this photo and its feedback? This cannot be undone.")) {
+        return;
+      }
+
+      button.disabled = true;
+      button.textContent = "Deleting…";
+
+      var body = new FormData();
+      body.append("csrfmiddlewaretoken", csrf(root));
+
+      fetch("/students/work/" + submissionId + "/delete/", {
+        method: "POST",
+        body: body,
+        headers: { "X-Requested-With": "XMLHttpRequest" }
+      })
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+          if (!data.success) throw new Error("refused");
+          // Row and file are both gone -- the post_delete signal removes the
+          // file -- so there is nothing left to show.
+          feedbackEl.hidden = true;
+          feedbackEl.innerHTML = "";
+          submissionId = null;
+          openBtn.textContent = "Photograph my working";
+        })
+        .catch(function () {
+          button.disabled = false;
+          button.textContent = "Delete this photo";
+        });
     }
 
     function poll() {

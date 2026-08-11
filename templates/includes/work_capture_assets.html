@@ -5,7 +5,7 @@ place so a second question surface is markup only, which was the point of
 driving the whole thing from data attributes.
 {% endcomment %}
 {% load static %}
-<script src="{% static 'js/work_capture.js' %}?v=1"></script>
+<script src="{% static 'js/work_capture.js' %}?v=2"></script>
 <style>
   .work-feedback h4 { color:#00468c; font-weight:600; margin:14px 0 4px; }
   .work-feedback h4:first-child { margin-top:0; }
@@ -20,4 +20,9 @@ driving the whole thing from data attributes.
   .work-warn { background:#fff6e5; border:1px solid #f0d089; color:#7a5200;
       padding:10px; border-radius:8px; margin-bottom:10px; }
   .work-next { background:#eef5ff; border-left:3px solid #00468c; padding:8px 10px; }
+  .work-delete { margin-top:12px; }
+  .work-delete button { background:none; border:0; padding:0; font:inherit; font-size:12px;
+      color:#5b6675; text-decoration:underline; cursor:pointer; }
+  .work-delete button:hover { color:#a11; }
+  .work-delete button[disabled] { opacity:.5; cursor:default; }
 </style>
