@@ -14,9 +14,21 @@
             <span class="text-3xl lg:text-7xl sm:inline mr-10">NumScoil</span>
         </div>
         <p class="mx-auto max-w-3xl text-lg font-semibold leading-relaxed text-mist/90">
-            Master Leaving Certificate Honours Maths with AI-powered interactive practice questions, instant
-            feedback, and personalized learning.
+            Master Leaving Certificate Honours Maths with AI-marked practice questions, real exam papers, and a
+            tutor that answers your questions while you work.
         </p>
+        {% if not user.is_authenticated %}
+        <div class="mt-7 flex flex-wrap items-center justify-center gap-3">
+            <a href="{% url 'account_signup' %}"
+                class="inline-block rounded-lg bg-gradient-03 px-8 py-3 text-base font-semibold text-mist shadow-[0_18px_45px_rgba(148,72,176,0.35)] transition hover:brightness-110 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-mist">
+                I have an access code →
+            </a>
+            <a href="#contact"
+                class="inline-block rounded-lg border border-mist/50 bg-mist/10 px-8 py-3 text-base font-semibold text-mist transition hover:bg-mist/20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-mist">
+                Talk to us about your class
+            </a>
+        </div>
+        {% endif %}
     </div>
 </div>
 
@@ -109,60 +121,218 @@
     {% endif %}
 
     {% if not user.is_authenticated %}
+    <!-- At a glance: counts come from the database, so they never go stale -->
+    <div class="mb-12 grid grid-cols-2 gap-4 lg:grid-cols-4">
+        <div class="rounded-xl border border-indigo-deep/20 bg-mist p-5 text-center shadow-[0_10px_26px_rgba(0,0,0,0.08)]">
+            <div class="text-3xl font-bold text-violet-royal">{{ total_questions }}</div>
+            <div class="mt-1 text-sm font-semibold text-indigo-deep">Practice questions</div>
+        </div>
+        <div class="rounded-xl border border-indigo-deep/20 bg-mist p-5 text-center shadow-[0_10px_26px_rgba(0,0,0,0.08)]">
+            <div class="text-3xl font-bold text-violet-royal">{{ exam_paper_count }}</div>
+            <div class="mt-1 text-sm font-semibold text-indigo-deep">Past exam papers</div>
+        </div>
+        <div class="rounded-xl border border-indigo-deep/20 bg-mist p-5 text-center shadow-[0_10px_26px_rgba(0,0,0,0.08)]">
+            <div class="text-3xl font-bold text-violet-royal">{{ topic_count }}</div>
+            <div class="mt-1 text-sm font-semibold text-indigo-deep">Topics covered</div>
+        </div>
+        <div class="rounded-xl border border-indigo-deep/20 bg-mist p-5 text-center shadow-[0_10px_26px_rgba(0,0,0,0.08)]">
+            <div class="text-3xl font-bold text-violet-royal">{{ flashcard_count }}</div>
+            <div class="mt-1 text-sm font-semibold text-indigo-deep">Flashcards</div>
+        </div>
+    </div>
+
+    <!-- AI support -->
+    <div
+        class="mb-12 rounded-2xl border border-indigo-deep/20 bg-mist px-8 py-10 shadow-[0_18px_45px_rgba(0,0,0,0.08)]">
+        <h2 class="mb-2 text-center text-2xl font-semibold text-midnight">AI support, right where you get stuck</h2>
+        <p class="mx-auto mb-7 max-w-2xl text-center text-sm leading-relaxed text-indigo-deep">
+            Not a chatbot bolted on the side. The help sits inside the question you are answering, and it knows
+            which question that is.
+        </p>
+
+        <div class="grid grid-cols-1 gap-6 md:grid-cols-3">
+            <div
+                class="rounded-xl border border-indigo-deep/15 bg-gradient-to-b from-mist to-mist/80 p-6 shadow-[0_12px_30px_rgba(0,0,0,0.08)]">
+                <div class="mb-3 text-3xl">✅</div>
+                <h3 class="mb-2 text-lg font-semibold text-midnight">Marking that does the algebra</h3>
+                <p class="text-sm leading-relaxed text-indigo-deep">
+                    Answer with <em>3/4</em>, <em>0.75</em> or <em>2x(x+1)</em> and it is checked as maths, not as
+                    text. Equivalent forms are marked correct; only genuinely different answers are marked wrong.
+                </p>
+            </div>
+
+            <div
+                class="rounded-xl border border-indigo-deep/15 bg-gradient-to-b from-mist to-mist/80 p-6 shadow-[0_12px_30px_rgba(0,0,0,0.08)]">
+                <div class="mb-3 text-3xl">💬</div>
+                <h3 class="mb-2 text-lg font-semibold text-midnight">Ask about this question</h3>
+                <p class="text-sm leading-relaxed text-indigo-deep">
+                    Type what is confusing you and the tutor answers with the question in front of it, drawing on
+                    the site's own notes for that topic — so the reply matches how the topic is taught here.
+                </p>
+            </div>
+
+            <div
+                class="rounded-xl border border-indigo-deep/15 bg-gradient-to-b from-mist to-mist/80 p-6 shadow-[0_12px_30px_rgba(0,0,0,0.08)]">
+                <div class="mb-3 text-3xl">💡</div>
+                <h3 class="mb-2 text-lg font-semibold text-midnight">Hints before answers</h3>
+                <p class="text-sm leading-relaxed text-indigo-deep">
+                    A nudge first, the worked solution after a couple of honest attempts. Hints cost a little of the
+                    mark, so there is a reason to think first — and no reason to stay stuck.
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Photograph your working -->
+    <div
+        class="mb-12 overflow-hidden rounded-2xl border border-indigo-deep/20 bg-gradient-05 px-8 py-10 text-mist shadow-[0_18px_45px_rgba(0,0,0,0.12)]">
+        <div class="mb-3 flex flex-wrap items-center justify-center gap-3">
+            <span class="rounded-md bg-lime-glow px-3 py-1 text-xs font-bold uppercase tracking-wide text-midnight">New</span>
+            <h2 class="text-2xl font-semibold">Photograph your working</h2>
+        </div>
+        <p class="mx-auto mb-8 max-w-2xl text-center text-sm leading-relaxed text-mist/90">
+            Maths happens on paper. Typing one final answer hides the method — and the method is where most marks
+            are won and lost. So show it your page.
+        </p>
+
+        <div class="grid grid-cols-1 gap-5 md:grid-cols-3">
+            <div class="rounded-xl bg-mist/10 p-5 backdrop-blur-sm">
+                <div class="mb-2 text-sm font-bold text-lime-glow">Step 1</div>
+                <h3 class="mb-2 text-base font-semibold">Work it out on paper</h3>
+                <p class="text-sm leading-relaxed text-mist/85">Exactly as you would in the exam hall. Graphs,
+                    diagrams and crossings-out included.</p>
+            </div>
+            <div class="rounded-xl bg-mist/10 p-5 backdrop-blur-sm">
+                <div class="mb-2 text-sm font-bold text-lime-glow">Step 2</div>
+                <h3 class="mb-2 text-base font-semibold">Scan the code with your phone</h3>
+                <p class="text-sm leading-relaxed text-mist/85">The site is on your laptop, the camera is in your
+                    pocket. Scan, snap, send — no logging in again on the phone.</p>
+            </div>
+            <div class="rounded-xl bg-mist/10 p-5 backdrop-blur-sm">
+                <div class="mb-2 text-sm font-bold text-lime-glow">Step 3</div>
+                <h3 class="mb-2 text-base font-semibold">Get comments on your method</h3>
+                <p class="text-sm leading-relaxed text-mist/85">Where the reasoning holds up, where a line does not
+                    follow, whether that sketched graph behaves. Hand-drawn graphs are read too.</p>
+            </div>
+        </div>
+
+        <p class="mx-auto mt-7 max-w-3xl text-center text-xs leading-relaxed text-mist/75">
+            It comments — it never hands over the answer, and it never changes your marks. Photos are private to
+            you, are not published anywhere on the site, can be deleted by you at any time, and are removed
+            automatically after 90 days.
+        </p>
+    </div>
+
     <!-- Features Grid -->
     <div
         class="mb-12 rounded-2xl border border-indigo-deep/20 bg-mist px-8 py-10 shadow-[0_18px_45px_rgba(0,0,0,0.08)]">
-        <h2 class="mb-5 text-center text-2xl font-semibold text-midnight">Why NumScoil?</h2>
+        <h2 class="mb-5 text-center text-2xl font-semibold text-midnight">Everything else in the box</h2>
 
         <div class="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-3">
             <div
                 class="rounded-xl border border-indigo-deep/15 bg-gradient-to-b from-mist to-mist/80 p-6 text-center shadow-[0_12px_30px_rgba(0,0,0,0.08)] transition hover:-translate-y-1 hover:shadow-[0_18px_40px_rgba(148,72,176,0.2)]">
+                <div class="mb-4 text-3xl">⏱️</div>
+                <h3 class="mb-2 text-lg font-semibold text-violet-royal">Sit the paper against the clock</h3>
+                <p class="text-sm leading-relaxed text-indigo-deep">{{ exam_paper_count }} past papers in a timed
+                    150-minute run, or one question at a time with its suggested timing.</p>
+            </div>
+
+            <div
+                class="rounded-xl border border-indigo-deep/15 bg-gradient-to-b from-mist to-mist/80 p-6 text-center shadow-[0_12px_30px_rgba(0,0,0,0.08)] transition hover:-translate-y-1 hover:shadow-[0_18px_40px_rgba(148,72,176,0.2)]">
                 <div class="mb-4 text-3xl">📚</div>
-                <h3 class="mb-2 text-lg font-semibold text-midnight">{{ total_questions }} Practice Questions</h3>
-                <p class="text-sm leading-relaxed text-indigo-deep">Comprehensive coverage of all LC Honours Maths
-                    topics with multi-part questions and exam papers.</p>
+                <h3 class="mb-2 text-lg font-semibold text-midnight">Questions by topic</h3>
+                <p class="text-sm leading-relaxed text-indigo-deep">{{ total_questions }} multi-part questions
+                    across {{ topic_count }} topics, plus {{ exam_question_count }} exam questions filed under the
+                    topic they test.</p>
             </div>
 
             <div
                 class="rounded-xl border border-indigo-deep/15 bg-gradient-to-b from-mist to-mist/80 p-6 text-center shadow-[0_12px_30px_rgba(0,0,0,0.08)] transition hover:-translate-y-1 hover:shadow-[0_18px_40px_rgba(148,72,176,0.2)]">
-                <div class="mb-4 text-3xl">🤖</div>
-                <h3 class="mb-2 text-lg font-semibold text-midnight">AI-Powered Feedback</h3>
-                <p class="text-sm leading-relaxed text-indigo-deep">Instant intelligent grading with detailed
-                    explanations for your mathematical answers.</p>
+                <div class="mb-4 text-3xl">🖨️</div>
+                <h3 class="mb-2 text-lg font-semibold text-midnight">Print your own question sheet</h3>
+                <p class="text-sm leading-relaxed text-indigo-deep">Pick questions by topic and print them as a
+                    worksheet. Papers and full marking schemes download too.</p>
             </div>
 
             <div
                 class="rounded-xl border border-indigo-deep/15 bg-gradient-to-b from-mist to-mist/80 p-6 text-center shadow-[0_12px_30px_rgba(0,0,0,0.08)] transition hover:-translate-y-1 hover:shadow-[0_18px_40px_rgba(148,72,176,0.2)]">
-                <div class="mb-4 text-3xl">💡</div>
-                <h3 class="mb-2 text-lg font-semibold text-violet-royal">Smart Hints &amp; Solutions</h3>
-                <p class="text-sm leading-relaxed text-indigo-deep">Contextual hints and step-by-step solutions to
-                    help you understand the methodology.</p>
+                <div class="mb-4 text-3xl">🃏</div>
+                <h3 class="mb-2 text-lg font-semibold text-violet-royal">{{ flashcard_count }} flashcards that
+                    retire themselves</h3>
+                <p class="text-sm leading-relaxed text-indigo-deep">Cards move from learning to known as you get
+                    them right, and drop out of the deck once they are mastered.</p>
+            </div>
+
+            <div
+                class="rounded-xl border border-indigo-deep/15 bg-gradient-to-b from-mist to-mist/80 p-6 text-center shadow-[0_12px_30px_rgba(0,0,0,0.08)] transition hover:-translate-y-1 hover:shadow-[0_18px_40px_rgba(148,72,176,0.2)]">
+                <div class="mb-4 text-3xl">🎬</div>
+                <h3 class="mb-2 text-lg font-semibold text-midnight">QuickFlicks &amp; interactives</h3>
+                <p class="text-sm leading-relaxed text-indigo-deep">{{ quickkick_count }} short animations and
+                    GeoGebra applets for the ideas that are easier seen moving than read.</p>
+            </div>
+
+            <div
+                class="rounded-xl border border-indigo-deep/15 bg-gradient-to-b from-mist to-mist/80 p-6 text-center shadow-[0_12px_30px_rgba(0,0,0,0.08)] transition hover:-translate-y-1 hover:shadow-[0_18px_40px_rgba(148,72,176,0.2)]">
+                <div class="mb-4 text-3xl">📐</div>
+                <h3 class="mb-2 text-lg font-semibold text-midnight">Log tables on every page</h3>
+                <p class="text-sm leading-relaxed text-indigo-deep">The formulae booklet, cheatsheets and a
+                    calculator are a click away while you work — as they will be in the exam.</p>
             </div>
 
             <div
                 class="rounded-xl border border-indigo-deep/15 bg-gradient-to-b from-mist to-mist/80 p-6 text-center shadow-[0_12px_30px_rgba(0,0,0,0.08)] transition hover:-translate-y-1 hover:shadow-[0_18px_40px_rgba(148,72,176,0.2)]">
                 <div class="mb-4 text-3xl">📊</div>
-                <h3 class="mb-2 text-lg font-semibold text-indigo-deep">Track Your Progress</h3>
-                <p class="text-sm leading-relaxed text-indigo-deep">Detailed analytics across topics with
-                    performance tracking and improvement insights.</p>
+                <h3 class="mb-2 text-lg font-semibold text-indigo-deep">Know where you actually stand</h3>
+                <p class="text-sm leading-relaxed text-indigo-deep">Every attempt is kept, so your dashboard shows
+                    the topics that are solid and the ones quietly costing you marks.</p>
             </div>
 
             <div
                 class="rounded-xl border border-indigo-deep/15 bg-gradient-to-b from-mist to-mist/80 p-6 text-center shadow-[0_12px_30px_rgba(0,0,0,0.08)] transition hover:-translate-y-1 hover:shadow-[0_18px_40px_rgba(148,72,176,0.2)]">
-                <div class="mb-4 text-3xl">⏱️</div>
-                <h3 class="mb-2 text-lg font-semibold text-violet-royal">Timed Exam Practice</h3>
-                <p class="text-sm leading-relaxed text-indigo-deep">Full exam papers with authentic timing to
-                    prepare you for the real experience.</p>
+                <div class="mb-4 text-3xl">🎲</div>
+                <h3 class="mb-2 text-lg font-semibold text-violet-royal">Statistics you can play with</h3>
+                <p class="text-sm leading-relaxed text-indigo-deep">Simulators for sampling and distributions, so
+                    the shape of the theory is something you have watched happen.</p>
             </div>
+        </div>
+    </div>
 
-            <div
-                class="rounded-xl border border-indigo-deep/15 bg-gradient-to-b from-mist to-mist/80 p-6 text-center shadow-[0_12px_30px_rgba(0,0,0,0.08)] transition hover:-translate-y-1 hover:shadow-[0_18px_40px_rgba(148,72,176,0.2)]">
-                <div class="mb-4 text-3xl">👥</div>
-                <h3 class="mb-2 text-lg font-semibold text-midnight">{{ active_users_count }} Active Learners
-                </h3>
-                <p class="text-sm leading-relaxed text-indigo-deep">Join a community of students mastering LC Maths
-                    together.</p>
+    <!-- For teachers & schools -->
+    <div
+        class="mb-12 rounded-2xl border border-indigo-deep/20 bg-mist px-8 py-10 shadow-[0_18px_45px_rgba(0,0,0,0.08)]">
+        <h2 class="mb-2 text-center text-2xl font-semibold text-midnight">For teachers &amp; schools</h2>
+        <p class="mx-auto mb-7 max-w-2xl text-center text-sm leading-relaxed text-indigo-deep">
+            Set work, see who did it, and see where the class went wrong — without collecting a single copybook.
+        </p>
+
+        <div class="grid grid-cols-1 gap-6 md:grid-cols-2">
+            <div class="rounded-xl border-l-4 border-rose-pop bg-mist p-5 shadow-[0_10px_26px_rgba(0,0,0,0.06)]">
+                <h3 class="mb-2 text-base font-semibold text-midnight">📋 Homework in a few clicks</h3>
+                <p class="text-sm leading-relaxed text-indigo-deep">Build an assignment from topics, exam questions
+                    or QuickFlicks, give it a due date, and push it to a whole class at once.</p>
             </div>
+            <div class="rounded-xl border-l-4 border-violet-royal bg-mist p-5 shadow-[0_10px_26px_rgba(0,0,0,0.06)]">
+                <h3 class="mb-2 text-base font-semibold text-midnight">👀 Live progress per student</h3>
+                <p class="text-sm leading-relaxed text-indigo-deep">Completion, scores and overdue work update as
+                    students answer, so Monday morning holds no surprises.</p>
+            </div>
+            <div class="rounded-xl border-l-4 border-lime-glow bg-mist p-5 shadow-[0_10px_26px_rgba(0,0,0,0.06)]">
+                <h3 class="mb-2 text-base font-semibold text-midnight">🏫 Classes set up in minutes</h3>
+                <p class="text-sm leading-relaxed text-indigo-deep">Hand out a class registration code; students who
+                    use it land in your class already enrolled. No spreadsheets of logins.</p>
+            </div>
+            <div class="rounded-xl border-l-4 border-indigo-deep bg-mist p-5 shadow-[0_10px_26px_rgba(0,0,0,0.06)]">
+                <h3 class="mb-2 text-base font-semibold text-midnight">📣 Announcements to your class only</h3>
+                <p class="text-sm leading-relaxed text-indigo-deep">Post a note to one class or to everyone — test
+                    dates, corrections, whatever needs to land before the next lesson.</p>
+            </div>
+        </div>
+
+        <div class="mt-7 text-center">
+            <a href="#contact"
+                class="inline-block rounded-lg bg-gradient-03 px-8 py-3 text-base font-semibold text-mist shadow-[0_18px_45px_rgba(148,72,176,0.35)] transition hover:brightness-110 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-deep">
+                Arrange a trial for your class
+            </a>
         </div>
     </div>
 
@@ -258,16 +428,60 @@
                 </div>
             </div>
             {% else %}
-            <h2 class="mb-3 text-3xl font-semibold text-midnight">Ready to Master LC Maths?</h2>
-            <p class="mb-6 text-lg text-indigo-deep">Join thousands of students improving their maths skills with
-                AI-powered practice.</p>
-            <a href="{% url 'select_topic' %}"
-                class="inline-block rounded-lg bg-gradient-03 px-10 py-4 text-lg font-semibold text-mist shadow-[0_18px_45px_rgba(148,72,176,0.35)] transition hover:brightness-105 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-mist">
-                Start Learning →
-            </a>
+            <h2 class="mb-3 text-3xl font-semibold text-midnight">Ready to master LC Maths?</h2>
+            <p class="mb-6 text-lg text-indigo-deep">Accounts open with a registration code from your teacher or
+                from us — so your work stays inside your own class.</p>
+            <div class="flex flex-wrap items-center justify-center gap-3">
+                <a href="{% url 'account_signup' %}"
+                    class="inline-block rounded-lg bg-gradient-03 px-10 py-4 text-lg font-semibold text-mist shadow-[0_18px_45px_rgba(148,72,176,0.35)] transition hover:brightness-105 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-mist">
+                    Sign up with a code →
+                </a>
+                <a href="#contact"
+                    class="inline-block rounded-lg border border-indigo-deep/50 bg-mist px-10 py-4 text-lg font-semibold text-midnight shadow-[0_8px_20px_rgba(0,0,0,0.08)] transition hover:-translate-y-0.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-deep">
+                    Ask for a code
+                </a>
+            </div>
             {% endif %}
         </div>
     </div>
+
+    {% if not user.is_authenticated %}
+    <!-- Contact -->
+    <div id="contact" class="mb-12 scroll-mt-24">
+        <div
+            class="mx-auto max-w-4xl rounded-2xl border border-indigo-deep/20 bg-mist px-8 py-10 shadow-[0_18px_45px_rgba(0,0,0,0.08)]">
+            <h2 class="mb-2 text-center text-2xl font-semibold text-midnight">Get in touch</h2>
+            <p class="mx-auto mb-8 max-w-2xl text-center text-sm leading-relaxed text-indigo-deep">
+                Questions about the site, a trial for your class, or a registration code for your students — a real
+                teacher answers, usually the same day.
+            </p>
+
+            <div class="grid grid-cols-1 gap-5 sm:grid-cols-2">
+                <a href="mailto:admin@numscoil.ie"
+                    class="flex flex-col items-center rounded-xl border border-indigo-deep/15 bg-gradient-to-b from-mist to-mist/80 p-6 text-center shadow-[0_12px_30px_rgba(0,0,0,0.08)] transition hover:-translate-y-1 hover:shadow-[0_18px_40px_rgba(148,72,176,0.2)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-deep">
+                    <div class="mb-3 text-3xl">✉️</div>
+                    <div class="mb-1 text-sm font-semibold uppercase tracking-wide text-indigo-deep/70">Email</div>
+                    <div class="text-lg font-semibold text-violet-royal">admin@numscoil.ie</div>
+                </a>
+
+                <a href="tel:+353851742218"
+                    class="flex flex-col items-center rounded-xl border border-indigo-deep/15 bg-gradient-to-b from-mist to-mist/80 p-6 text-center shadow-[0_12px_30px_rgba(0,0,0,0.08)] transition hover:-translate-y-1 hover:shadow-[0_18px_40px_rgba(148,72,176,0.2)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-deep">
+                    <div class="mb-3 text-3xl">📞</div>
+                    <div class="mb-1 text-sm font-semibold uppercase tracking-wide text-indigo-deep/70">Phone</div>
+                    <div class="text-lg font-semibold text-violet-royal">085 174 2218</div>
+                </a>
+            </div>
+
+            <p class="mt-6 text-center text-sm text-indigo-deep">
+                Prefer to write it down?
+                <a href="{% url 'contact' %}"
+                    class="font-semibold text-violet-royal underline transition hover:text-rose-pop">Send us a
+                    message</a>
+                and we will come back to you.
+            </p>
+        </div>
+    </div>
+    {% endif %}
 
 </div>
 {% endblock %}

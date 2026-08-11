@@ -5,14 +5,14 @@ from django.core.mail import send_mail
 from django.conf import settings
 from django.db.models import Count
 from django.http import JsonResponse
-from django.utils import timezone
 from django.utils.safestring import mark_safe
-from datetime import timedelta
 import markdown
 from .forms import ContactForm
 from .models import NewsItem
 from interactive_lessons.models import Topic, Question
-from students.models import UserSession
+from exam_papers.models import ExamPaper, ExamQuestion
+from flashcards.models import Flashcard
+from quickkicks.models import QuickKick
 from core.models import Subject
 
 
@@ -30,13 +30,6 @@ def home(request):
     topics_with_counts = Topic.objects.annotate(
         question_count=Count('questions')
     ).filter(question_count__gt=0).order_by('-question_count')
-
-    # Count active logged-in students
-    # Consider a user "active" if they had activity in the last 3 hours
-    activity_threshold = timezone.now() - timedelta(hours=3)
-    active_users_count = UserSession.objects.filter(
-        last_activity__gte=activity_threshold
-    ).values('user').distinct().count()
 
     # Get active news items and render their markdown content
     news_items = NewsItem.get_active_for_user(request.user if request.user.is_authenticated else None)
@@ -64,9 +57,21 @@ def home(request):
         'subjects': subjects,
         'total_questions': total_questions,
         'topics_with_counts': topics_with_counts,
-        'active_users_count': active_users_count,
         'news_items': news_items,
     }
+
+    # The marketing page quotes how much content is here, so the numbers come
+    # from the database rather than a copywriter's guess. Only visitors see
+    # that section, so only they pay for the counts.
+    if not request.user.is_authenticated:
+        context.update({
+            'exam_paper_count': ExamPaper.objects.count(),
+            'exam_question_count': ExamQuestion.objects.count(),
+            'topic_count': topics_with_counts.count(),
+            'flashcard_count': Flashcard.objects.count(),
+            'quickkick_count': QuickKick.objects.count(),
+        })
+
     return render(request, "home/home.html", context)
 
 
