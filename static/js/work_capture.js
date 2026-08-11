@@ -111,19 +111,7 @@
       feedbackEl.hidden = false;
       // The base template's KaTeX pass has already run by now, so anything
       // injected here has to be rendered explicitly.
-      if (window.renderMathInElement) {
-        try {
-          window.renderMathInElement(feedbackEl, {
-            delimiters: [
-              { left: "$$", right: "$$", display: true },
-              { left: "$", right: "$", display: false }
-            ],
-            throwOnError: false
-          });
-        } catch (e) {
-          /* feedback still readable as plain text */
-        }
-      }
+      Feedback.renderMaths(feedbackEl);
       var deleteBtn = feedbackEl.querySelector("[data-action=delete]");
       if (deleteBtn) {
         deleteBtn.addEventListener("click", function () { removePhoto(deleteBtn); });

@@ -136,8 +136,10 @@ to the stylesheet.
     });
   }
 
-  // The same delimiters as the laptop side in work_capture.js, so one piece of
-  // commentary reads identically on both screens.
+  // The same delimiters as Feedback.DELIMITERS in static/js/feedback_render.js,
+  // so one piece of commentary reads identically on both screens. Repeated here
+  // rather than shared because this page does not extend _base.html and so does
+  // not load that file -- see the comment at the top of the template.
   function typeset(el) {
     if (!el) return;
     ensureKatex(function (ready) {
@@ -146,6 +148,8 @@ to the stylesheet.
         window.renderMathInElement(el, {
           delimiters: [
             { left: "$$", right: "$$", display: true },
+            { left: "\\[", right: "\\]", display: true },
+            { left: "\\(", right: "\\)", display: false },
             { left: "$", right: "$", display: false }
           ],
           throwOnError: false

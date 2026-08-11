@@ -63,13 +63,8 @@ document.addEventListener("DOMContentLoaded", () => {
         // --- Parse JSON response ---
         const data = await res.json();
 
-        // The grader is told to return plain prose with $...$ maths, but model
-        // output is never guaranteed: render any stray Markdown emphasis rather
-        // than showing the student literal asterisks.
-        const tidy = (t) => (t || "")
-          .replace(/\*\*\*(.+?)\*\*\*/g, "<strong><em>$1</em></strong>")
-          .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
-          .replace(/(^|[\s(])\*([^*\n]+?)\*(?=[\s.,;:)]|$)/g, "$1<em>$2</em>");
+        // See static/js/feedback_render.js, loaded by _base.html.
+        const tidy = Feedback.tidy;
 
         if (data.feedback) {
           if (data.is_correct) {
@@ -117,17 +112,7 @@ document.addEventListener("DOMContentLoaded", () => {
           }
 
           // Re-render KaTeX in dynamically inserted feedback
-          if (window.renderMathInElement) {
-            renderMathInElement(feedbackBox, {
-              delimiters: [
-                {left: "$$", right: "$$", display: true},
-                {left: "\\[", right: "\\]", display: true},
-                {left: "\\(", right: "\\)", display: false},
-                {left: "$", right: "$", display: false}
-              ],
-              throwOnError: false
-            });
-          }
+          Feedback.renderMaths(feedbackBox);
 
           // Store attempt ID and show feedback buttons
           if (data.attempt_id) {
@@ -312,17 +297,7 @@ async function fetchAndDisplaySolution(partId) {
         lockedBox.parentElement.replaceChild(solutionContainer, lockedBox);
 
         // Render KaTeX math in the solution
-        if (window.renderMathInElement) {
-          renderMathInElement(solutionContainer, {
-            delimiters: [
-              {left: "$$", right: "$$", display: true},
-              {left: "\\[", right: "\\]", display: true},
-              {left: "\\(", right: "\\)", display: false},
-              {left: "$", right: "$", display: false}
-            ],
-            throwOnError: false
-          });
-        }
+        Feedback.renderMaths(solutionContainer);
       }
     } else {
       console.error('Failed to fetch solution:', data.error || 'Unknown error');

@@ -511,17 +511,7 @@ context. Otherwise it falls back to a general AI question (no topic/question con
         }
 
         function renderMath(target) {
-            if (window.renderMathInElement) {
-                renderMathInElement(target, {
-                    delimiters: [
-                        {left: "$$", right: "$$", display: true},
-                        {left: "\\[", right: "\\]", display: true},
-                        {left: "\\(", right: "\\)", display: false},
-                        {left: "$", right: "$", display: false}
-                    ],
-                    throwOnError: false
-                });
-            }
+            Feedback.renderMaths(target);
         }
 
         // The server scopes conversation memory to this key (see numskull.py).

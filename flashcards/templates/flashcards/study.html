@@ -268,17 +268,7 @@ function displayCard() {
     document.getElementById('next-btn').disabled = true;
 
     // Render KaTeX in the front content and options
-    if (window.renderMathInElement) {
-        renderMathInElement(document.getElementById('card-front'), {
-            delimiters: [
-                { left: "$$", right: "$$", display: true },
-                { left: "\\[", right: "\\]", display: true },
-                { left: "\\(", right: "\\)", display: false },
-                { left: "$", right: "$", display: false }
-            ],
-            throwOnError: false
-        });
-    }
+    Feedback.renderMaths(document.getElementById('card-front'));
 }
 
 // Self-assessment: Reveal the answer
@@ -308,17 +298,7 @@ function revealAnswer() {
     selfAssessContainer.insertBefore(backContentPreview, document.getElementById('self-assess-buttons'));
 
     // Render KaTeX in the revealed content
-    if (window.renderMathInElement) {
-        renderMathInElement(backContentPreview, {
-            delimiters: [
-                { left: "$$", right: "$$", display: true },
-                { left: "\\[", right: "\\]", display: true },
-                { left: "\\(", right: "\\)", display: false },
-                { left: "$", right: "$", display: false }
-            ],
-            throwOnError: false
-        });
-    }
+    Feedback.renderMaths(backContentPreview);
 }
 
 // Self-assessment: Handle "Got it!" or "Didn't get it"
@@ -575,17 +555,7 @@ function showCardBack(isCorrect) {
     document.getElementById('next-btn').disabled = false;
 
     // Render KaTeX in the back content and explanation
-    if (window.renderMathInElement) {
-        renderMathInElement(document.getElementById('card-back-face'), {
-            delimiters: [
-                { left: "$$", right: "$$", display: true },
-                { left: "\\[", right: "\\]", display: true },
-                { left: "\\(", right: "\\)", display: false },
-                { left: "$", right: "$", display: false }
-            ],
-            throwOnError: false
-        });
-    }
+    Feedback.renderMaths(document.getElementById('card-back-face'));
 }
 
 // Update mastery badge

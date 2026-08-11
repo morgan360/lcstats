@@ -334,19 +334,18 @@
     <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
 
+    <!-- Feedback.tidy / Feedback.renderMaths, shared by every page that
+         injects server feedback after load. Must come before the page's own
+         scripts in extra_scripts. -->
+    <script src="{% static 'js/feedback_render.js' %}?v=1"></script>
+
     <script>
         // Run KaTeX after everything is loaded
         function renderKaTeX() {
             if (window.renderMathInElement) {
-                renderMathInElement(document.body, {
-                    delimiters: [
-                        { left: "$$", right: "$$", display: true },
-                        { left: "\\[", right: "\\]", display: true },
-                        { left: "\\(", right: "\\)", display: false },
-                        { left: "$", right: "$", display: false }
-                    ],
-                    throwOnError: false
-                });
+                // Same delimiter list the injected fragments use, so a piece of
+                // maths looks the same whether it came with the page or after.
+                Feedback.renderMaths(document.body);
                 console.log("✅ KaTeX rendered successfully");
             } else {
                 console.error("❌ KaTeX failed to load");

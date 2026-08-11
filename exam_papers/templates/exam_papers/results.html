@@ -483,15 +483,7 @@ function toggleSolution(partId) {
     if (solutionDiv.style.display === 'none') {
         solutionDiv.style.display = 'block';
         // Re-render KaTeX
-        if (window.renderMathInElement) {
-            renderMathInElement(solutionDiv, {
-                delimiters: [
-                    {left: "$$", right: "$$", display: true},
-                    {left: "$", right: "$", display: false}
-                ],
-                throwOnError: false
-            });
-        }
+        Feedback.renderMaths(solutionDiv);
     } else {
         solutionDiv.style.display = 'none';
     }
