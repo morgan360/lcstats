@@ -54,14 +54,6 @@
                                 class="block rounded-lg px-3 py-2 text-sm font-semibold hover:bg-rose-pop/20">
                                 Exam Papers
                             </a>
-                            <a href="{% url 'exam_papers:papers_and_solutions' %}"
-                                class="block rounded-lg px-3 py-2 text-sm font-semibold hover:bg-rose-pop/20">
-                                Papers & Marking Schemes
-                            </a>
-                            <a href="{% url 'exam_papers:worksheet_generator' %}"
-                                class="block rounded-lg px-3 py-2 text-sm font-semibold hover:bg-rose-pop/20">
-                                Print Exam Questions
-                            </a>
                         </div>
                     </div>
 
@@ -92,6 +84,26 @@
                         Simulator</a>
                 </div>
             </div>
+
+                    <div class="relative group">
+                        <button type="button" class="desktop-dropdown-toggle flex items-center gap-1 rounded-lg px-2 py-2 transition hover:bg-twilight focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-mist">
+                            <span>Downloads</span>
+                            <svg class="h-4 w-4 text-mist/80" xmlns="http://www.w3.org/2000/svg" fill="none"
+                                viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M19 9l-7 7-7-7" />
+                            </svg>
+                        </button>
+                        <div
+                            class="desktop-dropdown absolute left-0 top-full z-40 mt-2 min-w-[13rem] space-y-1 rounded-xl bg-twilight p-2 text-mist shadow-lg opacity-0 invisible translate-y-1 pointer-events-none transition duration-150">
+                            <a href="{% url 'exam_papers:papers_and_solutions' %}"
+                                class="block rounded-lg px-3 py-2 text-sm font-semibold text-mist hover:bg-rose-pop/20">Papers
+                                & Marking Schemes</a>
+                            <a href="{% url 'exam_papers:worksheet_generator' %}"
+                                class="block rounded-lg px-3 py-2 text-sm font-semibold text-mist hover:bg-rose-pop/20">Print
+                                Exam Questions</a>
+                        </div>
+                    </div>
 
                     {% if user.is_authenticated %}
                     <a href="{% url 'homework:student_dashboard' %}"
@@ -215,10 +227,6 @@
                         Questions</a>
                     <a href="{% url 'exam_papers:paper_list' %}"
                         class="block rounded-lg px-3 py-2 text-sm font-semibold hover:bg-mist/10">Exam Papers</a>
-                    <a href="{% url 'exam_papers:papers_and_solutions' %}"
-                        class="block rounded-lg px-3 py-2 text-sm font-semibold hover:bg-mist/10">Papers & Marking Schemes</a>
-                    <a href="{% url 'exam_papers:worksheet_generator' %}"
-                        class="block rounded-lg px-3 py-2 text-sm font-semibold hover:bg-mist/10">Print Exam Questions</a>
                 </div>
             </div>
 
@@ -246,6 +254,23 @@
                     <a href="{% url 'stats_simulator:index' %}"
                         class="block rounded-lg px-3 py-2 text-sm font-semibold hover:bg-mist/10">Stats
                         Simulator</a>
+                </div>
+            </div>
+
+            <div>
+                <button type="button"
+                    class="mobile-dropdown-toggle flex w-full items-center justify-between rounded-lg px-3 py-2 transition hover:bg-mist/10">
+                    <span>Downloads</span>
+                    <svg class="h-4 w-4 text-mist/80" xmlns="http://www.w3.org/2000/svg" fill="none"
+                        viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                    </svg>
+                </button>
+                <div class="mobile-dropdown hidden space-y-1 rounded-lg bg-indigo-deep/80 p-1">
+                    <a href="{% url 'exam_papers:papers_and_solutions' %}"
+                        class="block rounded-lg px-3 py-2 text-sm font-semibold hover:bg-mist/10">Papers & Marking Schemes</a>
+                    <a href="{% url 'exam_papers:worksheet_generator' %}"
+                        class="block rounded-lg px-3 py-2 text-sm font-semibold hover:bg-mist/10">Print Exam Questions</a>
                 </div>
             </div>
 
