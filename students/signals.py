@@ -21,7 +21,15 @@ def create_or_update_student_profile(sender, instance, created, **kwargs):
         students_group, _ = Group.objects.get_or_create(name='Students')
         instance.groups.add(students_group)
     else:
-        instance.studentprofile.save()
+        # Not every existing user has a profile - accounts predating this
+        # signal, or ones whose profile was removed by hand. Reaching through
+        # the descriptor raised RelatedObjectDoesNotExist and turned *any*
+        # User.save() into a 500, including the one allauth performs when it
+        # wipes the password while connecting a Google account. Heal it here
+        # instead, the way dashboard_view already get_or_creates.
+        profile, profile_created = StudentProfile.objects.get_or_create(user=instance)
+        if not profile_created:
+            profile.save()
 
 
 # -------------------------------------------------------------------------
