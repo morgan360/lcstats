@@ -336,6 +336,9 @@
         ln: 1, log: -1, sqrt: 1, cbrt: 1, abs: 1, exp: 1,
         mean: -1, sd: -1, s: -1, sum: -1, min: -1, max: -1
     };
+    var SUPER_DIGITS = '⁰¹²³⁴⁵⁶⁷⁸⁹';
+    var SUPERS = SUPER_DIGITS + '⁻⁺';
+
     // Longest name first so "asin" wins over "a", "cos" over "c", "exp" over "e".
     var NAMES = Object.keys(FUNCS).concat(['ans', 'pi']).sort(function (a, b) {
         return b.length - a.length;
@@ -376,8 +379,23 @@
             if (ch === '×' || ch === '*') { toks.push({ t: '*' }); i++; continue; }
             if (ch === '÷' || ch === '/') { toks.push({ t: '/' }); i++; continue; }
             if (ch === '−' || ch === '-') { toks.push({ t: '-' }); i++; continue; }
-            if (ch === '²') { toks.push({ t: '^' }); toks.push({ t: 'num', v: 2 }); i++; continue; }
-            if (ch === '³') { toks.push({ t: '^' }); toks.push({ t: 'num', v: 3 }); i++; continue; }
+            // Any superscript run is an exponent: 5², x⁻¹, and the 10⁻¹⁶ of a
+            // displayed result all scan as ^ …, so a result can be sent back
+            // into the input from the tape and still parse.
+            if (SUPERS.indexOf(ch) !== -1) {
+                var negExp = ch === '⁻';
+                if (negExp || ch === '⁺') { i++; }
+                var digits = '';
+                for (var d = SUPER_DIGITS.indexOf(src[i]); d !== -1; d = SUPER_DIGITS.indexOf(src[i])) {
+                    digits += String(d);
+                    i++;
+                }
+                if (!digits) { throw new Error('Unexpected "' + ch + '"'); }
+                toks.push({ t: '^' });
+                if (negExp) { toks.push({ t: '-' }); }
+                toks.push({ t: 'num', v: parseInt(digits, 10) });
+                continue;
+            }
             if ('+^()!%'.indexOf(ch) !== -1) { toks.push({ t: ch }); i++; continue; }
 
             if (/[A-Za-z]/.test(ch)) {
@@ -441,12 +459,47 @@
     function toRad(x) { return degrees ? x * Math.PI / 180 : x; }
     function fromRad(x) { return degrees ? x * 180 / Math.PI : x; }
 
+    // How many quarter turns the angle is, or null if it is not sitting exactly
+    // on one. Keyed off the angle rather than the answer, so a genuinely tiny
+    // result (sin of a tiny angle) is left alone while sin(180) snaps to 0.
+    function quarterTurns(x) {
+        var q = degrees ? x / 90 : x / (Math.PI / 2);
+        // Beyond this the float has lost the quarter turns anyway; better to
+        // return trig noise than a confident, wrong 0.
+        if (!isFinite(q) || Math.abs(q) > 1e9) { return null; }
+        var n = Math.round(q);
+        if (Math.abs(q - n) > 1e-12 * Math.max(1, Math.abs(q))) { return null; }
+        return ((n % 4) + 4) % 4;
+    }
+
+    var EXACT_SIN = [0, 1, 0, -1];   // indexed by quarter turn: 0, 90, 180, 270
+    var EXACT_COS = [1, 0, -1, 0];
+
+    // Math.sin(Math.PI) is 1.22 × 10^-16, so sin(180) needs the exact values
+    // spelled out - a Casio shows 0, and so should we. tan of a quarter turn is
+    // undefined, which a Casio reports as an error rather than 1.6 × 10^16.
+    function trig(name, x) {
+        var q = quarterTurns(x);
+        if (q === null) {
+            var r = toRad(x);
+            if (name === 'sin') { return Math.sin(r); }
+            if (name === 'cos') { return Math.cos(r); }
+            return Math.tan(r);
+        }
+        if (name === 'sin') { return EXACT_SIN[q]; }
+        if (name === 'cos') { return EXACT_COS[q]; }
+        if (q % 2 === 1) {
+            throw new Error(degrees ? 'tan undefined at 90°, 270°, …' : 'tan undefined at π/2, 3π/2, …');
+        }
+        return 0;
+    }
+
     function applyFunc(name, args) {
         var x = args[0];
         switch (name) {
-            case 'sin': return Math.sin(toRad(x));
-            case 'cos': return Math.cos(toRad(x));
-            case 'tan': return Math.tan(toRad(x));
+            case 'sin':
+            case 'cos':
+            case 'tan': return trig(name, x);
             case 'asin': return fromRad(Math.asin(x));
             case 'acos': return fromRad(Math.acos(x));
             case 'atan': return fromRad(Math.atan(x));
@@ -608,16 +661,29 @@
 
     /* --------------------------- formatting --------------------------- */
 
+    function toSuperscript(digits) {
+        return digits.replace(/[-\d]/g, function (c) {
+            return c === '-' ? '⁻' : SUPER_DIGITS[Number(c)];
+        });
+    }
+
     function format(x) {
         if (typeof x !== 'number' || isNaN(x)) { throw new Error('Math error'); }
         if (!isFinite(x)) { throw new Error('Result too large'); }
         // 10 significant figures, like a Casio: differential testing showed the
         // 11th-12th digits can be rounding noise near trig asymptotes.
         var r = parseFloat(x.toPrecision(10));
-        if (r !== 0 && (Math.abs(r) >= 1e12 || Math.abs(r) < 1e-9)) {
-            return r.toExponential(6).replace(/e([+-])(\d+)/, ' × 10^$1$2').replace('^+', '^');
+        // Take over wherever String() would reach for exponent notation itself
+        // (below 1e-6), otherwise a stray "1.745e-9" slips out unformatted.
+        var plain = String(r);
+        if (r !== 0 && (Math.abs(r) >= 1e12 || plain.indexOf('e') !== -1)) {
+            // Same 10 figures in exponent form, trailing zeros dropped, and a
+            // typeset superscript rather than a literal "^-16".
+            var parts = r.toExponential(9).split('e');
+            var mantissa = parts[0].replace(/(\.\d*?)0+$/, '$1').replace(/\.$/, '');
+            return mantissa + ' × 10' + toSuperscript(parts[1].replace('+', ''));
         }
-        return String(r);
+        return plain;
     }
 
     // Continued-fraction search for a tidy fraction, so students can quote exact answers.
