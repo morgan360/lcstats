@@ -187,6 +187,35 @@ python manage.py export_flashcards --topic "Topic Name"
   - Greek letters: `$\mu$`, `$\sigma$`
   - Equations: `$$y = mx + c$$`
 
+### CRITICAL: Python String Escape Pitfalls
+When creating flashcards via `manage.py shell` or Python scripts, LaTeX backslash commands can be destroyed by Python string escape sequences. **These are real bugs that have broken cards in production:**
+
+| LaTeX | Python sees | Result on screen |
+|-------|------------|-----------------|
+| `\binom` | `\b` = backspace | broken/missing text |
+| `\times` | `\t` = tab | `imes` instead of `×` |
+| `\newline` | `\n` = newline | broken formatting |
+| `\euro` | not a Python escape but KaTeX doesn't support it | raw `\euro` shown |
+
+**Rules to prevent this:**
+1. **Always use raw strings** (`r'...'`) for any text containing LaTeX backslashes
+2. **Or double-escape**: `\\binom`, `\\times`, `\\frac` etc.
+3. **Never use `\text{\euro}`** — KaTeX doesn't support it. Use the Unicode `€` character directly instead
+4. **After creating cards, verify** by printing `repr(card.field)` to check for `\x08`, `\t`, `\n` etc.
+5. **When using shell -c with quotes**, be extra careful — the shell adds another layer of escape processing
+
+**Safe example:**
+```python
+# GOOD - raw string
+card.distractor_3 = r'$\binom{m+n}{2}$'
+
+# GOOD - double escaped
+card.distractor_3 = '$\\binom{m+n}{2}$'
+
+# BAD - \b becomes backspace
+card.distractor_3 = '$\binom{m+n}{2}$'
+```
+
 ## Database Models Reference
 
 ```python
