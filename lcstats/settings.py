@@ -142,6 +142,7 @@ INSTALLED_APPS = [
     'allauth',
     'allauth.account',
     'allauth.socialaccount',
+    'allauth.socialaccount.providers.google',
     # Third-party apps
     'django_select2',  # Searchable dropdowns
     # My Apps
@@ -306,6 +307,46 @@ ACCOUNT_LOGIN_ON_EMAIL_CONFIRMATION = True
 ACCOUNT_FORMS = {
     'signup': 'students.forms.SignupFormWithCode',
 }
+
+# ------------------------------------------------------------
+# Google sign-in (allauth socialaccount)
+# ------------------------------------------------------------
+# Credentials come from the environment rather than a SocialApp row in the
+# database, so they live alongside every other secret and deploy with the
+# environment. Note that allauth accepts only one source: if a SocialApp row
+# also exists, get_app() raises MultipleObjectsReturned and the login page
+# 500s. students/checks.py guards against that combination.
+GOOGLE_CLIENT_ID = os.getenv('GOOGLE_OAUTH_CLIENT_ID', '')
+GOOGLE_CLIENT_SECRET = os.getenv('GOOGLE_OAUTH_CLIENT_SECRET', '')
+
+# The APPS entry is only added when a key is actually present. An app with a
+# blank client_id would still be advertised by {% get_providers %}, giving a
+# "Continue with Google" button that fails on click; leaving it out means the
+# login page quietly falls back to password-only.
+SOCIALACCOUNT_PROVIDERS = {
+    'google': {
+        'SCOPE': ['profile', 'email'],
+        'AUTH_PARAMS': {'access_type': 'online'},
+    }
+}
+if GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET:
+    SOCIALACCOUNT_PROVIDERS['google']['APPS'] = [{
+        'client_id': GOOGLE_CLIENT_ID,
+        'secret': GOOGLE_CLIENT_SECRET,
+        'key': '',
+    }]
+
+# Signing up with Google still requires a registration code: auto-signup is off
+# so allauth always renders the intermediate form below, which asks for one.
+SOCIALACCOUNT_AUTO_SIGNUP = False
+SOCIALACCOUNT_FORMS = {
+    'signup': 'students.forms.SocialSignupFormWithCode',
+}
+
+# Let existing students sign in with Google on the email they registered with,
+# instead of dead-ending on "email already taken" at the signup form.
+SOCIALACCOUNT_EMAIL_AUTHENTICATION = True
+SOCIALACCOUNT_EMAIL_AUTHENTICATION_AUTO_CONNECT = True
 
 # Email confirmation and verification
 ACCOUNT_EMAIL_REQUIRED = True  # Email is required during signup

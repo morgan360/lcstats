@@ -6,4 +6,5 @@ class StudentsConfig(AppConfig):
 
     def ready(self):
         import students.signals
+        import students.checks  # noqa: F401  (registers the Google config check)
 

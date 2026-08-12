@@ -1,7 +1,7 @@
 # students/urls.py
 from django.urls import path
+from django.views.generic import RedirectView
 from .views import LogoutViewAllowGet
-from django.contrib.auth import views as auth_views
 from . import views
 from . import views_work
 
@@ -15,8 +15,13 @@ urlpatterns = [
     path('work/m/<str:token>/', views_work.work_mobile, name='work_mobile'),
     path('work/m/<str:token>/upload/', views_work.work_mobile_upload, name='work_mobile_upload'),
 
-    path('signup/', views.signup_view, name='signup'),
-    path('login/', auth_views.LoginView.as_view(template_name='students/login.html'), name='login'),
+    # These used to be a second, parallel auth flow with their own templates.
+    # They had no "Continue with Google" button and never would have: allauth
+    # only renders social logins on its own views. Redirected rather than
+    # deleted so existing links and bookmarks keep working; the names are kept
+    # for the same reason.
+    path('signup/', RedirectView.as_view(pattern_name='account_signup', permanent=False), name='signup'),
+    path('login/', RedirectView.as_view(pattern_name='account_login', permanent=False), name='login'),
     path('logout/', LogoutViewAllowGet.as_view(next_page='/'), name='logout'),
     path('dashboard/', views.dashboard_view, name='dashboard'),
     path('question-attempt/<int:attempt_id>/feedback/', views.question_attempt_feedback, name='question_attempt_feedback'),

@@ -1,15 +1,22 @@
 {% extends "_base.html" %}
-{% load account %}
 
-{% block title %}Sign Up | NumSocil{% endblock %}
+{% comment %}
+Shown after Google returns but before the account exists, because
+SOCIALACCOUNT_AUTO_SIGNUP is off. This is where the registration code is
+collected, so a Google account cannot be created without one.
+{% endcomment %}
+
+{% block title %}Finish Signing Up | NumScoil{% endblock %}
 
 {% block content %}
 <div class="min-h-screen py-12">
     <div class="mx-auto w-1/2 max-w-2xl px-4 py-8 sm:max-w-3xl sm:px-6 lg:max-w-4xl lg:px-8">
         <div class="rounded-2xl border border-indigo-deep/10 bg-white/90 p-8 shadow-[0_12px_28px_rgba(0,0,0,0.08)]">
             <div class="mb-6 text-center">
-                <h1 class="text-2xl font-semibold text-indigo-deep mb-1">Create Your Account</h1>
-                <p class="text-sm text-violet-royal/80">Join thousands of students mastering LC Maths</p>
+                <h1 class="text-2xl font-semibold text-indigo-deep mb-1">Almost There!</h1>
+                <p class="text-sm text-violet-royal/80">
+                    Confirm your details and enter your registration code to finish creating your account.
+                </p>
             </div>
 
             {% if messages %}
@@ -21,7 +28,7 @@
             {% endfor %}
             {% endif %}
 
-            <form method="POST" action="{% url 'account_signup' %}" class="space-y-5">
+            <form method="POST" action="{% url 'socialaccount_signup' %}" class="space-y-5">
                 {% csrf_token %}
 
                 {% if form.non_field_errors %}
@@ -42,11 +49,6 @@
                         {{ form.username.errors }}
                     </div>
                     {% endif %}
-                    {% if form.username.help_text %}
-                    <div class="text-xs text-indigo-deep/70">
-                        {{ form.username.help_text }}
-                    </div>
-                    {% endif %}
                 </div>
 
                 <div class="space-y-2">
@@ -59,11 +61,6 @@
                     {% if form.email.errors %}
                     <div class="text-sm text-rose-pop">
                         {{ form.email.errors }}
-                    </div>
-                    {% endif %}
-                    {% if form.email.help_text %}
-                    <div class="text-xs text-indigo-deep/70">
-                        {{ form.email.help_text }}
                     </div>
                     {% endif %}
                 </div>
@@ -88,50 +85,13 @@
                     {% endif %}
                 </div>
 
-                <div class="space-y-2">
-                    <label for="{{ form.password1.id_for_label }}" class="text-sm font-semibold text-midnight">
-                        Password *
-                    </label>
-                    <input type="password" name="{{ form.password1.name }}" id="{{ form.password1.id_for_label }}"
-                        placeholder="Create a strong password" required
-                        class="w-full rounded-lg border border-indigo-deep/20 bg-white px-3 py-2 text-midnight shadow-inner focus:border-indigo-deep/50 focus:outline-none focus:ring-2 focus:ring-indigo-deep/20">
-                    {% if form.password1.errors %}
-                    <div class="text-sm text-rose-pop">
-                        {{ form.password1.errors }}
-                    </div>
-                    {% endif %}
-                    {% if form.password1.help_text %}
-                    <div class="text-xs text-indigo-deep/70">
-                        {{ form.password1.help_text|safe }}
-                    </div>
-                    {% endif %}
-                </div>
-
-                <div class="space-y-2">
-                    <label for="{{ form.password2.id_for_label }}" class="text-sm font-semibold text-midnight">
-                        Confirm Password *
-                    </label>
-                    <input type="password" name="{{ form.password2.name }}" id="{{ form.password2.id_for_label }}"
-                        placeholder="Re-enter your password" required
-                        class="w-full rounded-lg border border-indigo-deep/20 bg-white px-3 py-2 text-midnight shadow-inner focus:border-indigo-deep/50 focus:outline-none focus:ring-2 focus:ring-indigo-deep/20">
-                    {% if form.password2.errors %}
-                    <div class="text-sm text-rose-pop">
-                        {{ form.password2.errors }}
-                    </div>
-                    {% endif %}
-                </div>
-
-                {% if redirect_field_value %}
-                <input type="hidden" name="{{ redirect_field_name }}" value="{{ redirect_field_value }}">
-                {% endif %}
+                {{ redirect_field }}
 
                 <button type="submit"
                     class="w-full inline-flex items-center justify-center rounded-lg bg-gradient-to-r from-lime-glow to-violet-royal px-4 py-3 text-sm font-bold text-midnight shadow-[0_12px_24px_rgba(148,72,176,0.28)] transition hover:-translate-y-0.5 hover:shadow-[0_16px_30px_rgba(148,72,176,0.34)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-royal">
                     Create Account
                 </button>
             </form>
-
-            {% include "account/_google_button.html" %}
 
             <div class="mt-6 border-t border-indigo-deep/10 pt-4 text-center">
                 <p class="text-sm text-indigo-deep/80">
