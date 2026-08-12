@@ -126,6 +126,107 @@ class GoogleSignupCodeEffectsTests(TestCase):
         return request
 
 
+class PasswordSignupStillWorksTests(TestCase):
+    """The password signup form shares its code handling with the Google one.
+
+    Both draw the registration_code field and its side effects from
+    RegistrationCodeMixin, so a change made for the Google path can break
+    password signup without touching its code. This walks the real view.
+    """
+
+    def test_password_signup_creates_an_account_and_uses_the_code(self):
+        code = RegistrationCode.objects.create(
+            code="STU-PASSWORD", code_type="student", max_uses=5
+        )
+        response = self.client.post(
+            "/accounts/signup/",
+            {
+                "username": "pwstudent",
+                "email": "pwstudent@example.com",
+                "password1": "sufficiently-long-pw-42",
+                "password2": "sufficiently-long-pw-42",
+                "registration_code": "STU-PASSWORD",
+            },
+        )
+        self.assertIn(response.status_code, (200, 302))
+        user = User.objects.filter(username="pwstudent").first()
+        self.assertIsNotNone(user, "password signup did not create the user")
+        self.assertTrue(user.has_usable_password())
+
+        code.refresh_from_db()
+        self.assertEqual(code.times_used, 1)
+
+    def test_password_signup_is_rejected_without_a_code(self):
+        self.client.post(
+            "/accounts/signup/",
+            {
+                "username": "nocode",
+                "email": "nocode@example.com",
+                "password1": "sufficiently-long-pw-42",
+                "password2": "sufficiently-long-pw-42",
+            },
+        )
+        self.assertFalse(User.objects.filter(username="nocode").exists())
+
+
+class GoogleDoesNotCreateASecondAccountTests(TestCase):
+    """Signing in with Google on an existing account must not fork it.
+
+    SOCIALACCOUNT_EMAIL_AUTHENTICATION connects the Google identity to the
+    account that already owns that email instead of starting a new signup.
+    Note the deliberate side effect: allauth wipes the password when the
+    existing email was never verified, to lock out anyone who might have
+    pre-registered with someone else's address.
+    """
+
+    def test_existing_email_is_connected_not_duplicated(self):
+        from allauth.account.models import EmailAddress
+        from allauth.socialaccount.internal.flows.email_authentication import (
+            wipe_password,
+        )
+
+        existing = User.objects.create_user(
+            "existing", email="existing@example.com", password="original-password"
+        )
+        EmailAddress.objects.create(
+            user=existing, email="existing@example.com", verified=False, primary=True
+        )
+        before = User.objects.count()
+
+        # The connect step allauth performs once it matches the email.
+        wipe_password(None, existing, "existing@example.com")
+        SocialAccount.objects.create(
+            user=existing, provider="google", uid="google-existing"
+        )
+
+        self.assertEqual(User.objects.count(), before, "a second account was created")
+        self.assertEqual(SocialAccount.objects.get(uid="google-existing").user, existing)
+
+        existing.refresh_from_db()
+        self.assertFalse(
+            existing.has_usable_password(),
+            "unverified email should have its password wiped on connect",
+        )
+
+    def test_verified_email_keeps_its_password(self):
+        from allauth.account.models import EmailAddress
+        from allauth.socialaccount.internal.flows.email_authentication import (
+            wipe_password,
+        )
+
+        user = User.objects.create_user(
+            "verified", email="verified@example.com", password="original-password"
+        )
+        EmailAddress.objects.create(
+            user=user, email="verified@example.com", verified=True, primary=True
+        )
+
+        wipe_password(None, user, "verified@example.com")
+
+        user.refresh_from_db()
+        self.assertTrue(user.has_usable_password())
+
+
 class GoogleSignupUsernameSuggestionTests(TestCase):
     """Google never sends a username, so the form suggests one.
 
