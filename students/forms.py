@@ -1,6 +1,7 @@
 from django import forms
 from allauth.account.forms import SignupForm
 from allauth.socialaccount.forms import SignupForm as SocialSignupForm
+from allauth.utils import generate_unique_username
 from .models import RegistrationCode
 
 
@@ -101,6 +102,28 @@ class SocialSignupFormWithCode(RegistrationCodeMixin, SocialSignupForm):
     Reached only when SOCIALACCOUNT_AUTO_SIGNUP is off, so a Google account
     cannot be created without a valid code any more than a password one can.
     """
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        # Google supplies email and first/last name but never a username, and
+        # allauth only auto-generates one at save time - which this form never
+        # reaches, because it stops to ask for a registration code. Left alone
+        # the field renders empty and every student has to invent something.
+        # Email first: a school address gives a far more recognisable username
+        # than a bare first name, and generate_unique_username drops the domain
+        # and resolves collisions against existing users.
+        if not self.initial.get('username'):
+            user = self.sociallogin.user
+            full_name = '{}{}'.format(
+                user.first_name or '', user.last_name or ''
+            ).strip()
+            self.initial['username'] = generate_unique_username([
+                self.initial.get('email'),
+                full_name,
+                user.first_name,
+                'user',
+            ])
 
     def save(self, request):
         user = super().save(request)

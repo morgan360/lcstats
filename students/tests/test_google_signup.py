@@ -124,3 +124,55 @@ class GoogleSignupCodeEffectsTests(TestCase):
         MessageMiddleware(lambda r: None).process_request(request)
         request.session.save()
         return request
+
+
+class GoogleSignupUsernameSuggestionTests(TestCase):
+    """Google never sends a username, so the form suggests one.
+
+    allauth only auto-generates a username inside save_user(), which this flow
+    never reaches unprompted - it stops at the registration-code form first.
+    Without a suggestion the field renders empty for every student.
+    """
+
+    def unbound(self, email="morganmcknight@rosarycollege.ie", first="Morgan", last="McKnight"):
+        login = sociallogin(email=email, username="")
+        login.user.first_name = first
+        login.user.last_name = last
+        login.email_addresses = []
+        return SocialSignupFormWithCode(sociallogin=login)
+
+    def test_username_is_suggested_from_the_email_local_part(self):
+        form = self.unbound()
+        self.assertEqual(form.initial["username"], "morganmcknight")
+
+    def test_suggestion_never_contains_the_domain(self):
+        form = self.unbound()
+        self.assertNotIn("@", form.initial["username"])
+        self.assertNotIn("rosarycollege", form.initial["username"].replace("morganmcknight", ""))
+
+    def test_suggestion_avoids_an_existing_username(self):
+        User.objects.create_user("morganmcknight", password="x")
+        form = self.unbound()
+        self.assertNotEqual(form.initial["username"], "morganmcknight")
+        self.assertTrue(form.initial["username"].startswith("morganmcknight"))
+
+    def test_falls_back_to_the_name_when_email_is_unusable(self):
+        form = self.unbound(email="")
+        self.assertEqual(form.initial["username"], "morganmcknight")
+
+    def test_suggestion_does_not_override_what_the_student_typed(self):
+        login = sociallogin(email="morganmcknight@rosarycollege.ie", username="")
+        login.email_addresses = []
+        form = SocialSignupFormWithCode(
+            data={
+                "username": "chosen_by_hand",
+                "email": "morganmcknight@rosarycollege.ie",
+                "registration_code": "STU-PREFILL",
+            },
+            sociallogin=login,
+        )
+        RegistrationCode.objects.create(
+            code="STU-PREFILL", code_type="student", max_uses=5
+        )
+        self.assertTrue(form.is_valid(), form.errors)
+        self.assertEqual(form.cleaned_data["username"], "chosen_by_hand")
