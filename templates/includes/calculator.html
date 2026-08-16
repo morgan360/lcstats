@@ -16,8 +16,14 @@
 
     <div class="calc__screen">
         <div class="calc__history" id="calc-history" aria-live="polite"></div>
+        {% comment %}
+        inputmode="none" keeps the phone's keyboard down: the keypad below is the input method, and
+        open() plus every insert()/del() call focuses this field, which iOS otherwise treats as a
+        request for the keyboard. The field stays focusable so the caret and setSelectionRange still
+        work, and a physical keyboard still types normally.
+        {% endcomment %}
         <input type="text" id="calc-input" class="calc__input" spellcheck="false" autocomplete="off"
-            autocapitalize="off" aria-label="Expression" placeholder="0">
+            autocapitalize="off" inputmode="none" aria-label="Expression" placeholder="0">
         <div class="calc__result" id="calc-result">0</div>
         <div class="calc__extra" id="calc-extra"></div>
     </div>
