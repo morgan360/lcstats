@@ -14,8 +14,27 @@ class Topic(models.Model):
         blank=True,
         help_text="Subject this topic belongs to (Maths, Physics, etc.)"
     )
+    PAPER_CHOICES = [
+        ('p1', 'Paper 1'),
+        ('p2', 'Paper 2'),
+    ]
+
     name = models.CharField(max_length=100)
     slug = models.SlugField(unique=True, blank=True)
+    paper = models.CharField(
+        max_length=2,
+        choices=PAPER_CHOICES,
+        blank=True,
+        help_text="Which exam paper this topic sits on. Leave blank for "
+                  "subjects without a paper split, or until it is decided - "
+                  "blank topics are still listed, under 'Other topics'."
+    )
+    order = models.PositiveIntegerField(
+        default=0,
+        help_text="Position within its paper. Equal values fall back to "
+                  "alphabetical, so leaving these all at 0 is the same as "
+                  "sorting by name."
+    )
 
     def save(self, *args, **kwargs):
         if not self.slug:
@@ -26,7 +45,9 @@ class Topic(models.Model):
         return self.name
 
     class Meta:
-        ordering = ("name",)
+        # order first, then name. Every existing row is 0, so this is
+        # alphabetical until someone actually sets an order.
+        ordering = ("order", "name")
 
 
 class Section(models.Model):

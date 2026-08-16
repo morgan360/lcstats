@@ -12,14 +12,25 @@ from .models import Topic, Section, Question, QuestionPart, StudentInquiry
 
 @admin.register(Topic)
 class TopicAdmin(admin.ModelAdmin):
-    list_display = ["name", "subject", "slug"]
-    list_filter = ["subject"]
+    # paper and order are list_editable so the whole running order can be set
+    # from the changelist in one save, rather than opening 21 topics one by one.
+    list_display = ["name", "subject", "paper", "order", "slug"]
+    list_editable = ["paper", "order"]
+    list_filter = ["subject", "paper"]
     search_fields = ["name"]
     readonly_fields = ["slug"]
+    ordering = ["subject", "paper", "order", "name"]
 
     fieldsets = (
         ("Basic Information", {
             "fields": ("subject", "name", "slug")
+        }),
+        ("Placement", {
+            "fields": ("paper", "order"),
+            "description": "Which paper the topic appears under on the "
+                           "student's topic list, and its position within "
+                           "that paper. Topics sharing an order fall back to "
+                           "alphabetical.",
         }),
     )
 

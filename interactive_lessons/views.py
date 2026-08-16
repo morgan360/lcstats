@@ -272,10 +272,13 @@ def select_topic(request):
     # Filter topics by current subject from middleware
     current_subject = getattr(request, 'current_subject', None)
     if current_subject:
-        topics = Topic.objects.filter(subject=current_subject).order_by("name")
+        topics = Topic.objects.filter(subject=current_subject)
     else:
         # Fallback to all topics if no subject set
-        topics = Topic.objects.all().order_by("name")
+        topics = Topic.objects.all()
+    # Model Meta orders by (order, name), so an unset order falls back to
+    # alphabetical. Ordering here explicitly would discard the manual order.
+    topics = topics.order_by("order", "name")
     # Annotate topics with note counts, question counts, cheat sheet counts, and revision module info
     topics_with_notes = []
     for topic in topics:
@@ -310,9 +313,29 @@ def select_topic(request):
             'has_revision': revision_module is not None,
             'revision_module': revision_module
         })
+    # Grouped by exam paper, with anything unassigned kept visible at the end
+    # rather than dropped -- Physics has no paper split, and a newly added
+    # Maths topic would otherwise be invisible to students until someone
+    # remembered to set its paper. Groups are built in display order and empty
+    # ones are omitted, so a single-paper subject shows no headings at all.
+    grouped = {'p1': [], 'p2': [], '': []}
+    for item in topics_with_notes:
+        grouped[item['topic'].paper or ''].append(item)
+
+    topic_groups = [
+        {'label': label, 'items': grouped[key]}
+        for key, label in (('p1', 'Paper 1'), ('p2', 'Paper 2'), ('', 'Other topics'))
+        if grouped[key]
+    ]
+    # One unlabelled group means there is nothing to divide, so the template
+    # drops the headings and renders exactly what it did before.
+    show_group_headings = len(topic_groups) > 1
+
     return render(request, "interactive_lessons/select_topic.html", {
         "topics": topics,
-        "topics_with_notes": topics_with_notes
+        "topics_with_notes": topics_with_notes,
+        "topic_groups": topic_groups,
+        "show_group_headings": show_group_headings,
     })
 
 

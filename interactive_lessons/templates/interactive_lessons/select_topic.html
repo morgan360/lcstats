@@ -4,7 +4,17 @@
 
 <h1 class="mb-8 mt-6 text-2xl font-semibold text-mist text-center">Choose a Topic</h1>
 
-<div class="w-full overflow-hidden rounded-xl border border-indigo-deep/15 bg-mist/90 shadow-[0_10px_30px_rgba(0,0,0,0.08)] text-center">
+{% comment %}
+One table per exam paper. show_group_headings is false when everything falls in
+a single group -- a subject with no paper split, such as Physics -- so that case
+renders exactly as it did before, with no stray heading over one table.
+{% endcomment %}
+{% for group in topic_groups %}
+{% if show_group_headings %}
+<h2 class="mb-3 mt-8 text-lg font-semibold text-mist first:mt-0">{{ group.label }}</h2>
+{% endif %}
+
+<div class="mb-8 w-full overflow-hidden rounded-xl border border-indigo-deep/15 bg-mist/90 shadow-[0_10px_30px_rgba(0,0,0,0.08)] text-center">
     <div class="hidden gap-4 bg-[linear-gradient(135deg,#667eea_0%,#764ba2_100%)] px-5 py-4 text-sm font-semibold text-white md:grid md:grid-cols-5">
         <div>Topic</div>
         <div class="text-center">Interactive Quiz</div>
@@ -13,7 +23,7 @@
         <div class="text-center">Flashcards</div>
     </div>
 
-    {% for item in topics_with_notes %}
+    {% for item in group.items %}
     <div class="grid grid-cols-1 items-center gap-3 border-b border-indigo-deep/15 px-5 py-5 transition hover:bg-mist/80 last:border-b-0 md:grid md:grid-cols-5 md:gap-4">
         <div class="text-center font-semibold text-midnight md:mb-0 md:border-0 mb-2 lg:ml-6 lg:text-left border-b border-indigo-deep/15 pb-2">
             <div class="md:hidden mb-1 text-xs font-semibold uppercase tracking-wide text-indigo-deep/70">Topic</div>
@@ -89,5 +99,6 @@
     </div>
     {% endfor %}
 </div>
+{% endfor %}
 
 {% endblock %}
