@@ -346,6 +346,33 @@
     margin-bottom: 30px;
 }
 
+/* Keep the question on screen while the student works down the parts.
+   Without this they scroll away from the question by part (c) and have to keep
+   jumping back, which is the whole complaint.
+
+   Only where there is room for it: on a short viewport a pinned half-screen of
+   question leaves nothing to answer in, so phones keep the normal flow. The
+   offsets match .progress-header's existing 80/140, which are what this page
+   already treats as "clear of the fixed timer bars"; .dual-timer is set on
+   .progress-header, a preceding sibling, so the same signal drives both.
+
+   max-height + overflow-y means a tall question scrolls inside its own panel
+   rather than filling the screen. z-index stays well under the site nav's
+   1000 so it tucks underneath rather than over it. */
+@media (min-width: 768px) and (min-height: 700px) {
+    .question-display {
+        position: sticky;
+        top: 80px;
+        max-height: 45vh;
+        overflow-y: auto;
+        z-index: 5;
+    }
+
+    .progress-header.dual-timer ~ .question-display {
+        top: 140px;
+    }
+}
+
 .question-header {
     display: flex;
     justify-content: space-between;
