@@ -71,7 +71,9 @@ def _parse_json_response(raw):
     raise ValueError(f"Could not parse JSON from response: {raw[:500]}")
 
 
-def _build_prompt(question_prompt, part_label, expected_answer, has_scheme):
+def _build_prompt(question_prompt, part_label, expected_answer, has_scheme,
+                  max_marks=None):
+    estimating = bool(has_scheme and max_marks)
     label = f" part {part_label}" if part_label else ""
     lines = [
         "You are an experienced Leaving Certificate Higher Level Maths teacher, "
@@ -84,7 +86,16 @@ def _build_prompt(question_prompt, part_label, expected_answer, has_scheme):
 
     if expected_answer:
         lines += ["", f"**The correct answer:** {expected_answer}"]
-    if has_scheme:
+    if estimating:
+        lines += [
+            "",
+            "**Marking scheme:** an image of the official marking scheme is "
+            f"included, and this part is worth {max_marks} marks. Use the "
+            "scheme's own breakdown -- its attempt marks, its partial-credit "
+            "scale, what it requires for full marks -- to estimate what this "
+            "student's work would earn.",
+        ]
+    elif has_scheme:
         lines += [
             "",
             "**Marking scheme:** an image of the official marking scheme is "
@@ -94,7 +105,7 @@ def _build_prompt(question_prompt, part_label, expected_answer, has_scheme):
 
     lines += [
         "",
-        "**Work through these three stages in order.**",
+        "**Work through these %s stages in order.**" % ("four" if estimating else "three"),
         "",
         "STAGE 1 - Read the page.",
         "Write down what is on the page, line by line, exactly as the student "
@@ -115,6 +126,39 @@ def _build_prompt(question_prompt, part_label, expected_answer, has_scheme):
         "STAGE 3 - The diagram, if there is one.",
         DIAGRAM_CHECKLIST,
         "",
+    ]
+
+    if estimating:
+        lines += [
+            f"STAGE 4 - Estimate the mark, out of {max_marks}.",
+            "Mark the work in front of you the way an examiner would, against "
+            "the scheme in the image. Credit a sound method that suffered an "
+            "arithmetic slip the way the scheme does -- attempt marks are "
+            "earned by the approach, not by the final number. Do not deduct "
+            "for untidiness, for skipped lines you can still follow, or for "
+            "anything the scheme does not ask for.",
+            "",
+            f'Put the number in "estimated_mark" as a whole number between 0 '
+            f"and {max_marks}, and explain it in \"mark_reasoning\" -- one or "
+            "two sentences naming which marks were earned and which were not.",
+            "",
+            "**The reasoning must not hand over the missing work.** Say "
+            '"the scheme wants the discriminant evaluated before you can '
+            'claim there are no real roots, and that step is not on your '
+            'page" -- not what the discriminant comes to. The same rule that '
+            "forbids giving the answer away applies here in full.",
+            "",
+            "**Withhold the mark rather than guess at one.** If the page is "
+            "unreadable, if your confidence is low, if there is no working, or "
+            "if you cannot see enough of the page to mark it fairly, set "
+            '"estimated_mark" to null and say plainly in "mark_reasoning" '
+            "that you could not mark it. A wrong mark from a bad photo is far "
+            "worse than no mark: the student is told this is an estimate, and "
+            "they will still believe it.",
+            "",
+        ]
+
+    lines += [
         "**Be honest about what you cannot see.** Never state anything about "
         "working you cannot actually read. If the photo is blurry, angled, cut "
         "off, or the handwriting is ambiguous, say so plainly, set \"readable\" "
@@ -139,8 +183,15 @@ def _build_prompt(question_prompt, part_label, expected_answer, has_scheme):
         "and leave \"next_step\" as an encouragement to attempt it -- with no "
         "hint as to how.",
         "",
-        "**Do not award marks or a score.** This is formative feedback only.",
-        "",
+    ]
+
+    if not estimating:
+        lines += [
+            "**Do not award marks or a score.** This is formative feedback only.",
+            "",
+        ]
+
+    lines += [
         FORMATTING_RULES,
         "",
         "**Return ONLY a JSON object** with these exact fields:",
@@ -158,12 +209,64 @@ def _build_prompt(question_prompt, part_label, expected_answer, has_scheme):
         '- "strengths": array of short strings, things they did well',
         '- "next_step": one concrete thing to do next',
     ]
+
+    if estimating:
+        lines += [
+            f'- "estimated_mark": whole number 0-{max_marks}, or null if you '
+            'could not mark it',
+            '- "mark_reasoning": one or two sentences justifying that mark, '
+            'naming no missing working',
+        ]
+
     return "\n".join(lines)
+
+
+def _sanitise_mark(result, max_marks):
+    """Decide the estimated mark in code, not on the model's say-so.
+
+    The prompt asks for all of this, but a mark is the one output a student
+    will take literally, so none of it is left to the model honouring an
+    instruction. Anything doubtful becomes no mark at all.
+    """
+    result["estimated_max_marks"] = max_marks or None
+
+    if not max_marks:
+        result["estimated_mark"] = None
+        result["mark_reasoning"] = ""
+        return
+
+    # A mark read off a page we could not read is the failure this feature was
+    # held back for. Refuse it here as well as in the prompt.
+    if (not result.get("readable", True)
+            or not result.get("has_working", True)
+            or (result.get("confidence") or "").lower() == "low"):
+        result["estimated_mark"] = None
+        return
+
+    raw = result.get("estimated_mark")
+    if raw is None or isinstance(raw, bool):
+        result["estimated_mark"] = None
+        return
+
+    try:
+        # Accept "7", 7 and 7.0; a scheme mark is always a whole number.
+        mark = int(round(float(raw)))
+    except (TypeError, ValueError):
+        logger.warning("Discarded unparseable estimated_mark %r", raw)
+        result["estimated_mark"] = None
+        return
+
+    if not 0 <= mark <= max_marks:
+        logger.warning("Discarded out-of-range estimated_mark %r (max %s)", raw, max_marks)
+        result["estimated_mark"] = None
+        return
+
+    result["estimated_mark"] = mark
 
 
 def analyse_student_work(work_image_b64, question_prompt, part_label="",
                          question_image=None, marking_scheme_image=None,
-                         expected_answer=None):
+                         expected_answer=None, max_marks=None):
     """Analyse a photo of handwritten working.
 
     Args:
@@ -172,6 +275,10 @@ def analyse_student_work(work_image_b64, question_prompt, part_label="",
         part_label: e.g. "(b)", for context only.
         question_image / marking_scheme_image: optional ImageFields for context.
         expected_answer: the known answer, if the part has one.
+        max_marks: marks this part is worth. Supplied only for exam parts, and
+            only alongside a marking scheme -- together they are what switches
+            on the estimated mark. Without both, behaviour is unchanged and no
+            mark is produced.
 
     Returns the parsed dict plus 'model_used', 'usage' and a flattened
     'feedback' string. Raises on failure -- the caller decides what the student
@@ -179,10 +286,15 @@ def analyse_student_work(work_image_b64, question_prompt, part_label="",
     """
     scheme_b64 = encode_image_from_file(marking_scheme_image) if marking_scheme_image else None
 
+    # No scheme means nothing to mark against, whatever the caller passed.
+    if not scheme_b64:
+        max_marks = None
+
     content = [
         {
             "type": "text",
-            "text": _build_prompt(question_prompt, part_label, expected_answer, bool(scheme_b64)),
+            "text": _build_prompt(question_prompt, part_label, expected_answer,
+                                  bool(scheme_b64), max_marks),
         },
         {"type": "text", "text": "**The student's handwritten work:**"},
         {
@@ -228,12 +340,15 @@ def analyse_student_work(work_image_b64, question_prompt, part_label="",
         "prompt_tokens": getattr(usage, "prompt_tokens", 0) or 0,
         "completion_tokens": getattr(usage, "completion_tokens", 0) or 0,
     }
+    _sanitise_mark(result, max_marks)
     result["feedback"] = compose_feedback(result)
 
     logger.info(
-        "Analysed work photo (%s): readable=%s confidence=%s diagram=%s tokens=%s/%s",
+        "Analysed work photo (%s): readable=%s confidence=%s diagram=%s "
+        "mark=%s/%s tokens=%s/%s",
         vision_model(), result.get("readable"), result.get("confidence"),
-        result.get("has_diagram"), result["usage"]["prompt_tokens"],
+        result.get("has_diagram"), result.get("estimated_mark"),
+        result.get("estimated_max_marks"), result["usage"]["prompt_tokens"],
         result["usage"]["completion_tokens"],
     )
     return result

@@ -782,13 +782,14 @@ class WorkSubmissionAdmin(admin.ModelAdmin):
     Deletion is allowed, so a photo can be removed on request.
     """
     list_display = ('id', 'student', 'part_display', 'status', 'confidence',
-                    'has_diagram', 'created_at', 'purge_after')
+                    'mark_display', 'has_diagram', 'created_at', 'purge_after')
     list_filter = ('status', 'confidence', 'has_diagram', 'readable', 'has_working')
     search_fields = ('student__user__username', 'transcription')
     date_hierarchy = 'created_at'
     readonly_fields = ('student', 'question_part', 'exam_question_part', 'photo_preview',
                        'status', 'transcription', 'method_feedback', 'diagram_feedback',
                        'next_step', 'has_diagram', 'has_working', 'readable', 'confidence',
+                       'estimated_mark', 'estimated_max_marks', 'mark_reasoning',
                        'model_used', 'prompt_tokens', 'completion_tokens', 'error_message',
                        'analysis', 'created_at', 'analysed_at', 'purge_after',
                        'image_width', 'image_height', 'byte_size')
@@ -803,6 +804,14 @@ class WorkSubmissionAdmin(admin.ModelAdmin):
     def part_display(self, obj):
         return str(obj.part) if obj.part else '—'
     part_display.short_description = 'Question part'
+
+    def mark_display(self, obj):
+        # Blank for practice questions and for anything the model declined to
+        # mark, which is most of what is worth spotting in this list.
+        if obj.estimated_mark is None:
+            return '—'
+        return f'{obj.estimated_mark}/{obj.estimated_max_marks}'
+    mark_display.short_description = 'Est. mark'
 
     def photo_preview(self, obj):
         # Through the permission-checked view: these files have no public URL,

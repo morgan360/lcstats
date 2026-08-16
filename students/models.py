@@ -356,6 +356,14 @@ class WorkSubmission(models.Model):
     readable = models.BooleanField(default=True)
     confidence = models.CharField(max_length=8, blank=True)
 
+    # Exam parts only, and only where the part has both a marking scheme image
+    # and max_marks. Advisory: shown to the student as an estimate, never
+    # written to a QuestionAttempt and never counted in total_score. Null means
+    # no mark was given -- unmarkable photo, no scheme, or no working.
+    estimated_mark = models.PositiveSmallIntegerField(null=True, blank=True)
+    estimated_max_marks = models.PositiveSmallIntegerField(null=True, blank=True)
+    mark_reasoning = models.TextField(blank=True)
+
     model_used = models.CharField(max_length=64, blank=True)
     prompt_tokens = models.PositiveIntegerField(default=0)
     completion_tokens = models.PositiveIntegerField(default=0)

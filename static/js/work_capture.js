@@ -44,6 +44,20 @@
         '<pre>' + esc(data.transcription) + "</pre></details>";
     }
 
+    // Exam parts with a marking scheme only, and null whenever the page could
+    // not be marked fairly. Labelled hard as an estimate: it is not recorded
+    // anywhere and it is not what the examiner will give them.
+    if (data.estimated_mark !== null && data.estimated_mark !== undefined) {
+      html +=
+        '<div class="work-mark"><span class="work-mark-value">' +
+        esc(String(data.estimated_mark)) + " / " + esc(String(data.estimated_max_marks)) +
+        '</span><span class="work-mark-label">estimated &mdash; a guide, not an official mark</span>' +
+        (data.mark_reasoning
+          ? '<p class="work-mark-why">' + esc(data.mark_reasoning) + "</p>"
+          : "") +
+        "</div>";
+    }
+
     if (data.method_feedback) {
       html += "<h4>Your method</h4><p>" + esc(data.method_feedback) + "</p>";
     }

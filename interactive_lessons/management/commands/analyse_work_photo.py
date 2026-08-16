@@ -171,6 +171,8 @@ class Command(BaseCommand):
                 "question_image": None if bare else (part.image or part.question.image),
                 "marking_scheme_image": None,
                 "expected_answer": None if bare else (part.answer or part.solution),
+                # Practice questions are never marked -- no official scheme.
+                "max_marks": None,
             }
 
         part = ExamQuestionPart.objects.filter(pk=options["exam_part"]).select_related("question").first()
@@ -186,6 +188,9 @@ class Command(BaseCommand):
             "question_image": getattr(part.question, "image", None),
             "marking_scheme_image": None if bare else part.solution_image,
             "expected_answer": None,
+            # Mirrors production: the mark needs both the scheme and the marks,
+            # so --no-context suppresses the estimate along with the scheme.
+            "max_marks": None if bare else part.max_marks,
         }
 
     def _report(self, result):
@@ -200,6 +205,19 @@ class Command(BaseCommand):
 
         out.write(f"\n{BAR}\nWHAT IT READ\n{BAR}")
         out.write(result.get("transcription", "") or "(nothing)")
+
+        # Exam parts with a scheme and max_marks only. "withheld" is the
+        # interesting case when tuning the prompt: it means the guards fired.
+        max_marks = result.get("estimated_max_marks")
+        if max_marks:
+            mark = result.get("estimated_mark")
+            out.write(f"\n{BAR}\nESTIMATED MARK\n{BAR}")
+            if mark is None:
+                out.write(style.WARNING(f"  withheld (out of {max_marks})"))
+            else:
+                out.write(style.SUCCESS(f"  {mark} / {max_marks}"))
+            if result.get("mark_reasoning"):
+                out.write(f"  {result['mark_reasoning']}")
 
         steps = result.get("steps") or []
         if steps:

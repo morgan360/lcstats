@@ -84,6 +84,9 @@ def _analysis_payload(submission):
         "method_feedback": submission.method_feedback,
         "diagram_feedback": submission.diagram_feedback,
         "next_step": submission.next_step,
+        "estimated_mark": submission.estimated_mark,
+        "estimated_max_marks": submission.estimated_max_marks,
+        "mark_reasoning": submission.mark_reasoning,
         "steps": (submission.analysis or {}).get("steps", []),
         "strengths": (submission.analysis or {}).get("strengths", []),
         "photo_url": reverse("work_photo", args=[submission.pk]),
@@ -291,12 +294,18 @@ def _analyse(submission):
         question_image = part.image or part.question.image
         marking_scheme = None
         expected = part.answer or part.solution
+        # Practice questions get commentary only. There is no official scheme
+        # behind them to mark against, so there is nothing to estimate from.
+        max_marks = None
     else:
         # Exam parts carry no question text -- it exists only as an image.
         prompt = "Shown in the question image below."
         question_image = getattr(part.question, "image", None)
         marking_scheme = part.solution_image
         expected = None
+        # Roughly a quarter of exam parts have neither scheme nor marks yet;
+        # those simply fall back to commentary with no estimate.
+        max_marks = part.max_marks
 
     result = analyse_student_work(
         encode_for_api(submission.image),
@@ -305,6 +314,7 @@ def _analyse(submission):
         question_image=question_image,
         marking_scheme_image=marking_scheme,
         expected_answer=expected,
+        max_marks=max_marks,
     )
 
     submission.analysis = result
@@ -316,6 +326,9 @@ def _analyse(submission):
     submission.has_working = bool(result.get("has_working", True))
     submission.readable = bool(result.get("readable", True))
     submission.confidence = (result.get("confidence") or "")[:8]
+    submission.estimated_mark = result.get("estimated_mark")
+    submission.estimated_max_marks = result.get("estimated_max_marks")
+    submission.mark_reasoning = result.get("mark_reasoning", "") or ""
     submission.model_used = (result.get("model_used") or "")[:64]
     usage = result.get("usage", {})
     submission.prompt_tokens = usage.get("prompt_tokens", 0)
