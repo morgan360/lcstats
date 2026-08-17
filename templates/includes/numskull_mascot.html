@@ -7,7 +7,8 @@ plus data-topic-slug/data-question-id, NumSkull asks the topic-aware info-bot en
 context. Otherwise it falls back to a general AI question (no topic/question context).
 {% endcomment %}
 <div id="numskull" class="numskull" data-state="idle" aria-live="polite">
-    <button type="button" id="numskull-toggle" class="numskull__toggle" aria-label="Get AI help from NumSkull" aria-expanded="false">
+    <button type="button" id="numskull-toggle" class="numskull__toggle" aria-label="Get AI help from NumSkull"
+        title="Ask NumSkull (Alt+N)" aria-expanded="false">
         <span class="numskull__badge" aria-hidden="true">AI</span>
         <span class="numskull__tip" id="numskull-tip" aria-hidden="true">AI help — ask me</span>
         <img class="numskull__char" src="{% static 'images/numskull_character.jpg' %}" alt="" aria-hidden="true">
@@ -704,6 +705,22 @@ context. Otherwise it falls back to a general AI question (no topic/question con
 
         document.addEventListener('keydown', function (e) {
             if (e.key === 'Escape' && !panel.hidden) setOpen(false);
+
+            /* Alt+N toggles the helper, matching Alt+C for the calculator. It also
+               un-hides the mascot, so the shortcut still works after "Hide for now".
+               Matched on e.code because macOS composes Option+N into a dead key,
+               which no e.key comparison would catch. */
+            if (e.altKey && (e.code === 'KeyN' || e.key === 'n' || e.key === 'N')) {
+                e.preventDefault();
+                if (root.hidden) {
+                    sessionStorage.removeItem('numskull-hidden');
+                    root.hidden = false;
+                    if (restoreBtn) restoreBtn.hidden = true;
+                    setOpen(true);
+                    return;
+                }
+                setOpen(panel.hidden);
+            }
         });
 
         /* --- dragging: same handle-and-clamp approach as the calculator --- */

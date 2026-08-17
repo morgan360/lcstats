@@ -224,6 +224,11 @@
 </div>
 {% endblock %}
 
+{% block log_tables_button %}
+{% load log_tables %}
+{% log_tables_panel %}
+{% endblock %}
+
 {% block extra_scripts %}
 {% load static %}
 <script src="{% static 'interactive_lessons/quiz.js' %}?v=4"></script>

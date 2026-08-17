@@ -1,0 +1,402 @@
+{% load static %}
+{% if pdf_url %}
+{% comment %}
+Floating log tables for question pages: the booklet stays a click away without
+losing the question. Included via {% log_tables_panel %} (cheatsheets template
+tag), which supplies the context and renders nothing if the booklet has not been
+uploaded.
+
+Follows the same conventions as the calculator and mascot includes: self-contained
+CSS, a launch button that can be dismissed, and a small restore pill in its place
+so a hidden button is never lost.
+{% endcomment %}
+
+<button type="button" id="lt-launch" class="lt-launch" aria-expanded="false" aria-controls="lt-panel"
+        title="Open the log tables (Alt+L)">
+    <span class="lt-launch__icon" aria-hidden="true">📊</span>
+    <span class="lt-launch__label">Log Tables</span>
+    <span class="lt-launch__dismiss" id="lt-dismiss" role="button" tabindex="0"
+          aria-label="Hide the log tables button" title="Hide this button">✕</span>
+</button>
+
+<button type="button" id="lt-restore" class="lt-restore" hidden>📊 Show log tables</button>
+
+<div id="lt-panel" class="lt-panel" role="dialog" aria-label="Log tables" hidden>
+    <div class="lt-panel__bar" id="lt-drag">
+        <span class="lt-panel__title">Log Tables</span>
+        <div class="lt-panel__bar-actions">
+            <a class="lt-panel__link" href="{% url 'cheatsheets:log_tables' %}" target="_blank" rel="noopener"
+               title="Open in a full tab">⤢</a>
+            <button type="button" class="lt-panel__close" id="lt-close" aria-label="Close the log tables">✕</button>
+        </div>
+    </div>
+
+    <div class="lt-panel__tools">
+        <button type="button" data-lt="contents" class="lt-btn lt-btn--primary">Contents</button>
+        <button type="button" data-lt="prev" class="lt-btn" title="Previous page">&larr;</button>
+        <input type="number" data-lt="page" class="lt-pageinput" inputmode="numeric"
+               min="{{ first_printed_page }}" max="{{ last_printed_page }}" aria-label="Booklet page number">
+        <button type="button" data-lt="next" class="lt-btn" title="Next page">&rarr;</button>
+        <span class="lt-panel__spacer"></span>
+        <button type="button" data-lt="zoom-out" class="lt-btn" title="Zoom out">&minus;</button>
+        <button type="button" data-lt="zoom-reset" class="lt-btn lt-btn--small" title="Fit to width">Fit</button>
+        <button type="button" data-lt="zoom-in" class="lt-btn" title="Zoom in">+</button>
+    </div>
+
+    <div data-lt="scroll" class="lt-panel__scroll">
+        <div data-lt="stage" class="lt-stage">
+            <canvas data-lt="canvas" class="lt-canvas"></canvas>
+            <div data-lt="overlay" class="lt-overlay" hidden></div>
+        </div>
+        <p data-lt="status" class="lt-panel__note">Loading the log tables&hellip;</p>
+        <div data-lt="fallback" class="lt-panel__note" hidden>
+            <p>The built-in viewer could not load here.</p>
+            <a data-lt="fallback-link" href="{{ pdf_url }}" target="_blank" rel="noopener">Open the PDF</a>
+        </div>
+    </div>
+</div>
+
+<style>
+    .lt-launch {
+        position: fixed;
+        right: 1.25rem;
+        bottom: 1.25rem;
+        z-index: 1150;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.7rem 1rem;
+        border: 1px solid rgba(216, 248, 120, 0.35);
+        border-radius: 999px;
+        background: linear-gradient(180deg, #9448B0 0%, #332277 100%);
+        color: #F0EFEB;
+        font: inherit;
+        font-size: 0.85rem;
+        font-weight: 700;
+        cursor: pointer;
+        box-shadow: 0 10px 24px rgba(0, 0, 0, 0.35);
+        transition: transform 0.15s ease, box-shadow 0.15s ease;
+    }
+    .lt-launch:hover { transform: translateY(-2px); box-shadow: 0 14px 28px rgba(0, 0, 0, 0.42); }
+    .lt-launch[hidden] { display: none; }
+    .lt-launch__icon { font-size: 1.1rem; line-height: 1; }
+    .lt-launch__dismiss {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 1.1rem;
+        height: 1.1rem;
+        margin-left: 0.15rem;
+        border-radius: 999px;
+        background: rgba(0, 0, 0, 0.28);
+        font-size: 0.65rem;
+        line-height: 1;
+    }
+    .lt-launch__dismiss:hover { background: rgba(0, 0, 0, 0.5); }
+
+    .lt-restore {
+        position: fixed;
+        right: 1.25rem;
+        bottom: 1.25rem;
+        z-index: 1150;
+        padding: 0.5rem 0.9rem;
+        border-radius: 999px;
+        border: 1px solid rgba(216, 248, 120, 0.4);
+        background: rgba(18, 22, 48, 0.92);
+        color: #f0f6ff;
+        font: inherit;
+        font-size: 0.8rem;
+        font-weight: 600;
+        cursor: pointer;
+    }
+    .lt-restore[hidden] { display: none; }
+    .lt-restore:hover { background: rgba(18, 22, 48, 1); }
+
+    .lt-panel {
+        position: fixed;
+        /* Opens on the left: the calculator panel already claims bottom-right. */
+        left: 1.25rem;
+        bottom: 5.5rem;
+        z-index: 1160;
+        /* Wide enough for a whole landscape booklet page to be readable at once.
+           The height must be definite, not just a max: the scroll area is flex:1,
+           so with only a max-height the panel collapses to the canvas, the canvas
+           fits itself to that collapsed height, and the page renders tiny. */
+        width: 900px;
+        max-width: calc(100vw - 2.5rem);
+        height: min(760px, calc(100vh - 7rem));
+        max-height: calc(100vh - 7rem);
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        border: 1px solid rgba(240, 239, 235, 0.18);
+        border-radius: 16px;
+        background: #001C3D;
+        color: #F0EFEB;
+        font-family: inherit;
+        box-shadow: 0 24px 48px rgba(0, 0, 0, 0.45);
+    }
+    .lt-panel[hidden] { display: none; }
+
+    .lt-panel__bar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.5rem;
+        padding: 0.55rem 0.75rem;
+        background: #173251;
+        cursor: grab;
+        user-select: none;
+        touch-action: none;
+    }
+    .lt-panel__bar:active { cursor: grabbing; }
+    .lt-panel__title { font-size: 0.85rem; font-weight: 700; }
+    .lt-panel__bar-actions { display: flex; align-items: center; gap: 0.4rem; }
+    .lt-panel__link,
+    .lt-panel__close {
+        border: 0;
+        background: transparent;
+        color: #F0EFEB;
+        font: inherit;
+        font-size: 0.9rem;
+        line-height: 1;
+        padding: 0.25rem 0.4rem;
+        border-radius: 6px;
+        cursor: pointer;
+        text-decoration: none;
+    }
+    .lt-panel__link:hover,
+    .lt-panel__close:hover { background: rgba(240, 239, 235, 0.15); }
+
+    .lt-panel__tools {
+        display: flex;
+        align-items: center;
+        gap: 0.3rem;
+        padding: 0.45rem 0.6rem;
+        border-bottom: 1px solid rgba(240, 239, 235, 0.12);
+    }
+    .lt-panel__spacer { flex: 1; }
+
+    .lt-btn {
+        border: 1px solid rgba(240, 239, 235, 0.2);
+        background: transparent;
+        color: #F0EFEB;
+        font: inherit;
+        font-size: 0.85rem;
+        font-weight: 600;
+        line-height: 1;
+        padding: 0.35rem 0.5rem;
+        border-radius: 8px;
+        cursor: pointer;
+    }
+    .lt-btn:hover:not(:disabled) { background: rgba(240, 239, 235, 0.15); }
+    .lt-btn:disabled { opacity: 0.35; cursor: default; }
+    .lt-btn--primary { background: #9448B0; border-color: transparent; }
+    .lt-btn--small { font-size: 0.72rem; }
+
+    .lt-pageinput {
+        width: 3.2rem;
+        padding: 0.3rem;
+        border-radius: 8px;
+        border: 1px solid rgba(240, 239, 235, 0.2);
+        background: rgba(0, 0, 0, 0.25);
+        color: #F0EFEB;
+        font: inherit;
+        font-size: 0.85rem;
+        text-align: center;
+    }
+
+    .lt-panel__scroll {
+        flex: 1;
+        min-height: 0;   /* let the flex child shrink so overflow works */
+        overflow: auto;
+        padding: 0.5rem;
+        background: #F0EFEB;
+    }
+    .lt-stage { position: relative; margin: 0 auto; }
+    .lt-stage[hidden] { display: none; }
+    .lt-canvas { display: block; border-radius: 4px; box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25); }
+    .lt-panel__note { padding: 1.5rem 1rem; text-align: center; font-size: 0.85rem; color: #332277; }
+    .lt-panel__note[hidden] { display: none; }
+
+    /* Phones only. A booklet page shrunk to a phone screen is unreadable, and the
+       panel would cover the question it is meant to support - so the floating
+       viewer is desktop and tablet only. Phone users still reach the booklet
+       through the Log Tables link in the nav, which opens the full page. */
+    @media (max-width: 767px), (max-height: 500px) {
+        .lt-launch, .lt-restore, .lt-panel { display: none !important; }
+    }
+
+    /* Small tablets: keep the panel on screen rather than at its full width. */
+    @media (min-width: 768px) and (max-width: 1024px) {
+        .lt-panel {
+            left: 0.75rem;
+            right: 0.75rem;
+            bottom: 0.75rem;
+            width: auto;
+            max-height: calc(100vh - 7rem);
+        }
+    }
+
+    @media print {
+        .lt-panel, .lt-launch, .lt-restore { display: none !important; }
+    }
+</style>
+
+<script type="module">
+    import { initLogTablesViewer } from "{% static 'js/log_tables_viewer.js' %}";
+
+    (function () {
+        /* Matches the media query that hides the panel on phones. Bailing out here
+           means a phone never wires up the shortcut or fetches the 2MB booklet. */
+        const TOO_SMALL = "(max-width: 767px), (max-height: 500px)";
+        if (window.matchMedia(TOO_SMALL).matches) return;
+
+        const launch = document.getElementById("lt-launch");
+        const dismiss = document.getElementById("lt-dismiss");
+        const restore = document.getElementById("lt-restore");
+        const panel = document.getElementById("lt-panel");
+        const closeBtn = document.getElementById("lt-close");
+        const dragBar = document.getElementById("lt-drag");
+
+        let viewer = null;
+
+        /* The PDF is ~2MB, so it is only fetched once the student actually opens
+           the panel - a question page that never opens it pays nothing. */
+        function open() {
+            panel.hidden = false;
+            launch.setAttribute("aria-expanded", "true");
+            if (viewer) {
+                /* The window may have been resized while the panel was closed,
+                   so re-fit the page to the panel's current size. */
+                viewer.then((v) => v && v.refresh()).catch(() => {});
+            } else {
+                viewer = initLogTablesViewer(panel, {
+                    pdfUrl: "{{ pdf_url|escapejs }}",
+                    pageOffset: {{ page_offset }},
+                    firstPrinted: {{ first_printed_page }},
+                    lastPrinted: {{ last_printed_page }},
+                    startPage: {{ start_pdf_page }},
+                    contentsPages: {{ contents_pdf_pages|safe }},
+                    contentsLinks: {{ contents_links|safe }},
+                    keyboardNav: false,
+                    syncUrl: false,
+                });
+            }
+        }
+
+        function close() {
+            panel.hidden = true;
+            launch.setAttribute("aria-expanded", "false");
+        }
+
+        launch.addEventListener("click", (event) => {
+            if (event.target === dismiss) return;
+            if (panel.hidden) open(); else close();
+        });
+        closeBtn.addEventListener("click", close);
+
+        /* Hiding lasts for the session, matching the mascot. The restore pill
+           takes the button's place so it can always be brought back. */
+        function setHidden(hidden) {
+            launch.hidden = hidden;
+            restore.hidden = !hidden;
+            if (hidden) close();
+        }
+        dismiss.addEventListener("click", (event) => {
+            event.stopPropagation();
+            sessionStorage.setItem("logtables-hidden", "1");
+            setHidden(true);
+        });
+        dismiss.addEventListener("keydown", (event) => {
+            if (event.key === "Enter" || event.key === " ") {
+                event.preventDefault();
+                dismiss.click();
+            }
+        });
+        restore.addEventListener("click", () => {
+            sessionStorage.removeItem("logtables-hidden");
+            setHidden(false);
+        });
+        if (sessionStorage.getItem("logtables-hidden") === "1") setHidden(true);
+
+        document.addEventListener("keydown", (event) => {
+            if (event.key === "Escape" && !panel.hidden) {
+                close();
+                return;
+            }
+            /* Alt+L toggles the booklet, matching Alt+C for the calculator. It also
+               un-hides the button, so the shortcut still works after dismissing it.
+               Matched on event.code because macOS composes Option+L into "¬", which
+               no event.key comparison would catch. */
+            if (event.altKey && (event.code === "KeyL" || event.key === "l" || event.key === "L")) {
+                event.preventDefault();
+                if (launch.hidden) {
+                    sessionStorage.removeItem("logtables-hidden");
+                    setHidden(false);
+                    open();
+                    return;
+                }
+                if (panel.hidden) open(); else close();
+            }
+        });
+
+        /* Drag by the title bar, remembered like the mascot panel's position. */
+        let dragging = false;
+        let startX = 0;
+        let startY = 0;
+        let originX = 0;
+        let originY = 0;
+
+        function placeAt(left, top) {
+            const maxLeft = window.innerWidth - panel.offsetWidth - 8;
+            const maxTop = window.innerHeight - panel.offsetHeight - 8;
+            panel.style.left = Math.max(8, Math.min(left, maxLeft)) + "px";
+            panel.style.top = Math.max(8, Math.min(top, maxTop)) + "px";
+            panel.style.right = "auto";
+            panel.style.bottom = "auto";
+        }
+
+        dragBar.addEventListener("pointerdown", (event) => {
+            if (event.target.closest("button, a")) return;
+            dragging = true;
+            const rect = panel.getBoundingClientRect();
+            startX = event.clientX;
+            startY = event.clientY;
+            originX = rect.left;
+            originY = rect.top;
+            dragBar.setPointerCapture(event.pointerId);
+        });
+        dragBar.addEventListener("pointermove", (event) => {
+            if (!dragging) return;
+            placeAt(originX + event.clientX - startX, originY + event.clientY - startY);
+        });
+        dragBar.addEventListener("pointerup", (event) => {
+            if (!dragging) return;
+            dragging = false;
+            dragBar.releasePointerCapture(event.pointerId);
+            localStorage.setItem("logtables-panel-pos", JSON.stringify({
+                left: panel.style.left,
+                top: panel.style.top,
+            }));
+        });
+
+        (function restorePanelPosition() {
+            /* Below this the panel is laid out edge-to-edge, so a remembered
+               position would fight the CSS rather than help. */
+            if (window.innerWidth <= 1024) return;
+            try {
+                const saved = JSON.parse(localStorage.getItem("logtables-panel-pos") || "null");
+                if (saved && saved.left && saved.top) {
+                    panel.style.left = saved.left;
+                    panel.style.top = saved.top;
+                    panel.style.right = "auto";
+                    panel.style.bottom = "auto";
+                }
+            } catch (err) {
+                /* A corrupt value just means the panel opens where it always does. */
+            }
+        })();
+    })();
+</script>
+{% endif %}

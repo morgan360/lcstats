@@ -1,0 +1,90 @@
+{% extends "_base.html" %}
+{% load static %}
+
+{% block title %}Log Tables | NumScoil{% endblock %}
+
+{# The viewer wants the whole screen, so keep the floating helpers out of it. #}
+{% block mascot %}{% endblock %}
+{% block calculator %}{% endblock %}
+
+{% block content %}
+<div class="flex flex-col gap-4" id="logTablesPage">
+
+    <div class="flex flex-wrap items-center justify-between gap-3">
+        <div>
+            <h1 class="text-2xl font-semibold text-mist sm:text-3xl">Log Tables</h1>
+            <p class="text-sm text-mist/70">
+                Formulae &amp; Tables. Click a line on the contents page to go to that section.
+            </p>
+        </div>
+        <a href="{{ pdf_url }}" target="_blank" rel="noopener"
+           class="inline-flex items-center gap-2 rounded-lg border border-mist/25 px-3 py-2 text-sm font-semibold text-mist transition hover:bg-mist/10">
+            <span>📄</span> Open the plain PDF
+        </a>
+    </div>
+
+    <section class="flex h-[calc(100vh-14rem)] min-h-[26rem] flex-col overflow-hidden rounded-2xl bg-white/95 shadow-[0_12px_28px_rgba(0,0,0,0.18)]">
+
+        <div class="flex flex-wrap items-center gap-2 border-b border-midnight/10 px-3 py-2">
+            <button type="button" data-lt="contents"
+                    class="rounded-lg bg-violet-royal px-3 py-1.5 text-sm font-semibold text-mist transition hover:brightness-110 disabled:opacity-40">
+                Contents
+            </button>
+
+            <div class="flex items-center gap-1">
+                <button type="button" data-lt="prev" title="Previous page"
+                        class="rounded-lg px-2 py-1.5 text-lg font-semibold text-indigo-deep transition hover:bg-midnight/10 disabled:opacity-30">&larr;</button>
+                <span class="flex items-center gap-1 text-sm text-indigo-deep/80">
+                    <label class="sr-only" for="logTablesPageInput">Booklet page number</label>
+                    <input type="number" id="logTablesPageInput" data-lt="page" inputmode="numeric"
+                           min="{{ first_printed_page }}" max="{{ last_printed_page }}"
+                           class="w-16 rounded-lg border border-midnight/20 px-2 py-1 text-center text-sm text-midnight focus:border-violet-royal focus:outline-none">
+                    <span class="whitespace-nowrap">of {{ last_printed_page }}</span>
+                </span>
+                <button type="button" data-lt="next" title="Next page"
+                        class="rounded-lg px-2 py-1.5 text-lg font-semibold text-indigo-deep transition hover:bg-midnight/10 disabled:opacity-30">&rarr;</button>
+            </div>
+
+            <div class="ml-auto flex items-center gap-1">
+                <button type="button" data-lt="zoom-out" title="Zoom out"
+                        class="rounded-lg px-2.5 py-1.5 text-sm font-semibold text-indigo-deep transition hover:bg-midnight/10">&minus;</button>
+                <button type="button" data-lt="zoom-reset" title="Fit to width"
+                        class="rounded-lg px-2 py-1.5 text-xs font-semibold text-indigo-deep transition hover:bg-midnight/10">Fit</button>
+                <button type="button" data-lt="zoom-in" title="Zoom in"
+                        class="rounded-lg px-2.5 py-1.5 text-sm font-semibold text-indigo-deep transition hover:bg-midnight/10">+</button>
+            </div>
+        </div>
+
+        <div data-lt="scroll" class="flex-1 overflow-auto bg-mist/70 p-2 sm:p-3">
+            <div data-lt="stage" class="relative mx-auto">
+                <canvas data-lt="canvas" class="block rounded shadow-[0_6px_18px_rgba(0,0,0,0.2)]"></canvas>
+                <div data-lt="overlay" class="lt-overlay" hidden></div>
+            </div>
+            <p data-lt="status" class="p-6 text-center text-sm text-indigo-deep/70">Loading the log tables&hellip;</p>
+            <div data-lt="fallback" class="p-6 text-center text-sm text-indigo-deep/80" hidden>
+                <p class="mb-3">The built-in viewer could not load here.</p>
+                <a data-lt="fallback-link" href="{{ pdf_url }}" target="_blank" rel="noopener"
+                   class="inline-flex items-center gap-2 rounded-lg bg-gradient-03 px-4 py-2 font-semibold text-mist">
+                    Open the PDF at this page
+                </a>
+            </div>
+        </div>
+    </section>
+</div>
+
+<script type="module">
+    import { initLogTablesViewer } from "{% static 'js/log_tables_viewer.js' %}";
+
+    initLogTablesViewer(document.getElementById("logTablesPage"), {
+        pdfUrl: "{{ pdf_url|escapejs }}",
+        pageOffset: {{ page_offset }},
+        firstPrinted: {{ first_printed_page }},
+        lastPrinted: {{ last_printed_page }},
+        startPage: {{ start_pdf_page }},
+        contentsPages: {{ contents_pdf_pages|safe }},
+        contentsLinks: {{ contents_links|safe }},
+        keyboardNav: true,
+        syncUrl: true,
+    });
+</script>
+{% endblock %}

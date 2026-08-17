@@ -893,7 +893,9 @@
     });
 
     document.addEventListener('keydown', function (event) {
-        if (event.altKey && (event.key === 'c' || event.key === 'C')) {
+        /* event.code first: macOS composes Option+C into "ç", so the key checks
+           alone never fired the shortcut there. */
+        if (event.altKey && (event.code === 'KeyC' || event.key === 'c' || event.key === 'C')) {
             event.preventDefault();
             if (panel.hidden) { open(); } else { close(); }
         }
