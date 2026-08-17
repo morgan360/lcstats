@@ -1,9 +1,12 @@
-from django.contrib import admin
+from django import forms
+from django.contrib import admin, messages
+from django.contrib.admin import helpers
 from django.utils.html import format_html
 from django.urls import reverse
 from django.http import HttpResponseRedirect
-from django.db import models
+from django.db import models, transaction
 from django.forms import Textarea
+from django.shortcuts import redirect, render
 
 from .models import Topic, Section, Question, QuestionPart, StudentInquiry
 
@@ -37,18 +40,61 @@ class TopicAdmin(admin.ModelAdmin):
 
 # --- Section Admin ------------------------------------------------------------
 
+class MoveSectionsForm(forms.Form):
+    """Target topic for the 'move sections' admin action."""
+    topic = forms.ModelChoiceField(
+        queryset=Topic.objects.select_related("subject"),
+        label="Move to topic",
+    )
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Topic names repeat across subjects, so spell the subject out.
+        self.fields["topic"].label_from_instance = lambda t: (
+            f"{t.subject.name} — {t.name}" if t.subject else t.name
+        )
+
+
+def move_sections_to_topic(sections, topic):
+    """
+    Re-home sections under `topic`, dragging their questions with them.
+
+    A question carries its own topic FK alongside its section, so moving the
+    section on its own would leave the questions listed under the old topic.
+    Returns (sections moved, questions re-pointed).
+    """
+    moved_sections = 0
+    moved_questions = 0
+    with transaction.atomic():
+        for section in sections:
+            if section.topic_id == topic.id:
+                continue
+            section.topic = topic
+            # Slug is left alone on purpose: it is only ever looked up
+            # alongside the topic slug, so an old name in it is cosmetic,
+            # and rewriting it would break existing links and bookmarks.
+            section.save(update_fields=["topic"])
+            moved_sections += 1
+            moved_questions += section.questions.exclude(topic=topic).update(topic=topic)
+    return moved_sections, moved_questions
+
+
 @admin.register(Section)
 class SectionAdmin(admin.ModelAdmin):
-    list_display = ["name", "topic", "order", "question_count"]
+    list_display = ["name", "topic", "subject", "order", "question_count"]
     list_editable = ["order"]
     list_filter = ["topic__subject", "topic"]
     search_fields = ["name", "topic__name"]
     ordering = ["topic__subject", "topic__name", "order"]
     readonly_fields = ["slug", "question_count"]
+    actions = ["move_to_topic"]
 
     fieldsets = (
         ("Basic Information", {
-            "fields": ("name", "slug", "topic", "order")
+            "fields": ("name", "slug", "topic", "order"),
+            "description": "Changing the topic moves the section's questions "
+                           "with it. The slug keeps the old topic's name in "
+                           "it, which is harmless — existing links still work.",
         }),
         ("Statistics", {
             "fields": ("question_count",),
@@ -56,10 +102,72 @@ class SectionAdmin(admin.ModelAdmin):
         }),
     )
 
+    def get_queryset(self, request):
+        return super().get_queryset(request).select_related("topic", "topic__subject")
+
+    def subject(self, obj):
+        return obj.topic.subject.name if obj.topic.subject else "-"
+    subject.short_description = "Subject"
+    subject.admin_order_field = "topic__subject__name"
+
     def question_count(self, obj):
         """Display the number of questions in this section"""
         return obj.questions.count()
     question_count.short_description = "Questions"
+
+    def save_model(self, request, obj, form, change):
+        """Keep the section's questions pointed at whatever topic it now sits under."""
+        super().save_model(request, obj, form, change)
+        if change and "topic" in form.changed_data:
+            moved = obj.questions.exclude(topic=obj.topic).update(topic=obj.topic)
+            if moved:
+                self.message_user(
+                    request,
+                    f"Moved {moved} question(s) to {obj.topic} along with the section.",
+                )
+
+    @admin.action(description="Move selected sections to another topic")
+    def move_to_topic(self, request, queryset):
+        sections = list(queryset.select_related("topic", "topic__subject"))
+        form = None
+
+        if "apply" in request.POST:
+            form = MoveSectionsForm(request.POST)
+            if form.is_valid():
+                target = form.cleaned_data["topic"]
+                # (topic, name) is unique, so a same-named section already in
+                # the target topic would fail at the database.
+                clashes = [
+                    section.name for section in sections
+                    if section.topic_id != target.id
+                    and Section.objects.filter(topic=target, name=section.name).exists()
+                ]
+                if clashes:
+                    self.message_user(
+                        request,
+                        f"{target} already has a section named "
+                        f"{', '.join(clashes)} — rename one side first.",
+                        level=messages.ERROR,
+                    )
+                else:
+                    moved_sections, moved_questions = move_sections_to_topic(sections, target)
+                    self.message_user(
+                        request,
+                        f"Moved {moved_sections} section(s) and "
+                        f"{moved_questions} question(s) to {target}.",
+                    )
+                    return redirect("admin:interactive_lessons_section_changelist")
+
+        context = {
+            **self.admin_site.each_context(request),
+            "title": "Move sections to another topic",
+            "opts": self.model._meta,
+            "sections": sections,
+            "form": form or MoveSectionsForm(),
+            "action_checkbox_name": helpers.ACTION_CHECKBOX_NAME,
+            "selected": [str(section.pk) for section in sections],
+        }
+        return render(request, "admin/interactive_lessons/move_sections.html", context)
 
 
 # --- Inline QuestionPart Admin -------------------------------------------------

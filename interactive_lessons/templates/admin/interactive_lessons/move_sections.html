@@ -1,0 +1,62 @@
+{% extends "admin/base_site.html" %}
+
+{% block title %}Move sections to another topic{% endblock %}
+
+{% block breadcrumbs %}
+<div class="breadcrumbs">
+    <a href="{% url 'admin:index' %}">Home</a>
+    &rsaquo; <a href="{% url 'admin:app_list' app_label='interactive_lessons' %}">Interactive Lessons</a>
+    &rsaquo; <a href="{% url 'admin:interactive_lessons_section_changelist' %}">Sections</a>
+    &rsaquo; Move to another topic
+</div>
+{% endblock %}
+
+{% block content %}
+<div id="content-main">
+    <h1>Move sections to another topic</h1>
+
+    <div class="module">
+        <h2>Sections to move ({{ sections|length }})</h2>
+        <ul>
+            {% for section in sections %}
+                <li>
+                    <strong>{{ section.name }}</strong>
+                    — currently under {{ section.topic }}
+                    ({{ section.questions.count }} question{{ section.questions.count|pluralize }})
+                </li>
+            {% empty %}
+                <li>No sections selected.</li>
+            {% endfor %}
+        </ul>
+        <p class="help">
+            The questions in these sections move with them. Their web addresses
+            keep the old topic's name in the section part of the URL, which is
+            cosmetic — existing links and homework tasks still work.
+        </p>
+    </div>
+
+    {% if sections %}
+    <form method="post">
+        {% csrf_token %}
+        {% for pk in selected %}
+            <input type="hidden" name="{{ action_checkbox_name }}" value="{{ pk }}">
+        {% endfor %}
+        <input type="hidden" name="action" value="move_to_topic">
+
+        <div class="module">
+            <h2>Destination</h2>
+            <div class="form-row">
+                <label for="{{ form.topic.id_for_label }}">{{ form.topic.label }}:</label>
+                {{ form.topic }}
+                {{ form.topic.errors }}
+            </div>
+        </div>
+
+        <div class="submit-row">
+            <input type="submit" name="apply" value="Move sections" class="default">
+            <a href="{% url 'admin:interactive_lessons_section_changelist' %}" class="button cancel-link">Cancel</a>
+        </div>
+    </form>
+    {% endif %}
+</div>
+{% endblock %}
