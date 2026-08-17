@@ -39,34 +39,37 @@ Friday afternoon.
 
 Dear Ms O'Toole,
 
-I teach Leaving Certificate Higher Level Maths and give grinds, and I am writing to propose
-that the Institute offer my platform to its students.
+I teach Leaving Certificate Higher Level Maths, and our company has built a platform we would
+like to offer to the Institute for its students.
 
-NumScoil is an online tutor for Leaving Certificate Maths. Students work through practice
-questions covering the Higher Level course — 516 of them across 21 topics — with hints,
-worked solutions in steps, flashcards, and past papers under timed conditions. Teachers
-assign work to a class and see who has done it and where they are getting stuck.
+NumScoil is an online tutor for Leaving Certificate Higher Level Maths. Students work through
+practice questions covering the full course — 516 of them across 21 topics — with hints,
+worked solutions in steps, flashcards, and past papers under timed conditions. Teachers can
+assign work to a class or to individuals and monitor their progress.
 
-What separates it from a revision website is that it marks. A student types an answer and
-NumScoil marks it against the criteria of the official marking scheme, awards partial credit,
-and explains the mark in seconds. It compares the mathematics directly, so equivalent forms
-are accepted; AI is used for the parts that need judgement, such as written reasoning. As a
-former SEC examiner, you will judge that faster than most.
+What distinguishes it from a revision website is that it marks students' work in real time. A
+student types an answer and NumScoil marks it against the criteria of the official marking
+scheme, awards partial credit, and explains the marking. It compares the mathematics
+directly, so equivalent forms are accepted; AI is used for the parts that need judgement —
+written reasoning, graphs and drawings.
 
-Maths is not typed, though. A student can scan a QR code, photograph their handwritten
-working with their phone, and have the method itself read and commented on.
+Work done on paper can be submitted too. Students scan a QR code, photograph their working
+with their phone, and the platform returns a reasoned analysis of the method, with an
+estimated mark against the official scheme on exam questions. Where the writing cannot be
+read with confidence it declines to put a mark on it rather than guess.
 
-It is built and maintained by [Company] in partnership with me — I author the content — and
-has been trialled with real students and revised on the strength of how they used it.
+It is built and maintained by us, and has been trialled with real students and revised on the
+strength of their feedback.
 
-My proposal is that the Institute offer it, either under your own name or co-branded with a
-share of the revenue. We own, host and maintain it, so you would have the platform without
-building one.
+Our proposal is that the Institute offer it, either under your own name or co-branded with a
+share of the revenue. We would own, host and maintain it, so you would carry none of the
+burden of hosting, maintenance or updates.
 
-Aidan Roantree is the right person to say whether the maths meets your standard, and I would
-welcome his verdict. Could I show it to you both, for twenty minutes, on Leeson Street?
+I would be glad to demonstrate it in Leeson Street — twenty minutes would be enough to judge
+it. Aidan Roantree is the right person to say whether the maths meets your standard, and I
+would welcome his verdict too.
 
-I know term starts next week. That is precisely why I am writing now.
+I know term starts next week. That is why I am writing now.
 
 Kind regards,
 
@@ -75,12 +78,32 @@ Morgan McKnight
 
 ---
 
-*307 words. Do not attach anything.*
+*≈330 words. Do not attach anything.*
 
 If it needs shortening, cut the flashcards and timed papers from paragraph 2 (the marking and
 the phone are what differentiate; breadth of content is not) and the "trialled with real
-students" clause from paragraph 5. Do **not** cut paragraph 2's opening sentence or the QR
-paragraph.
+students" clause from paragraph 5. Do **not** cut paragraph 2's opening sentence, the QR
+paragraph, or the sentence about declining to mark unreadable work.
+
+### The mark-from-a-photo claim is scope-limited — do not widen it
+
+**A photograph returns a mark only on exam questions.** `exam_papers/services/work_analysis.py`
+decides the mark in code rather than trusting the model, and returns `estimated_mark = None`
+when there is no `max_marks` — which is every one of the 516 practice questions. The probe
+puts it plainly: *"Practice questions are never marked — no official scheme."* It also refuses
+a mark when the page is unreadable, shows no working, or confidence is low.
+
+So "the platform returns a reasoned analysis of their work with a mark based on the official
+marking schemes" is an overclaim if it follows two paragraphs about practice questions — the
+reader will assume marks apply there. Worse, it breaks in the demo: photograph working on a
+practice question and no mark appears.
+
+The email therefore says **"an estimated mark against the official scheme on exam questions"**
+and adds that it declines to mark what it cannot read. Both are accurate, and the second is
+the stronger sentence for this reader: an examiner trusts a marker that abstains more than one
+that always produces a number. Do not soften "estimated" either — the field is literally
+`estimated_mark`, and precision about it buys credibility with someone who has marked for the
+SEC.
 
 ---
 
