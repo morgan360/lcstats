@@ -24,9 +24,9 @@ A student types a maths answer. NumScoil marks it against the criteria of the of
 marking scheme, awards partial credit, and explains the mark — in seconds, at any hour, for
 every student at once.
 
-It recognises that `1/2`, `0.5` and `2/4` are the same answer, and that an algebraically
-equivalent rearrangement is correct. Where an answer needs judgement, it reads the student's
-written reasoning.
+It compares the mathematics directly, so `1/2`, `0.5` and `2/4` are the same answer and an
+algebraically equivalent rearrangement is correct. AI is used for the parts that need
+judgement — written reasoning, and reading handwriting — not for the arithmetic.
 
 ### What a student gets
 
@@ -34,7 +34,8 @@ written reasoning.
   — practice to work through, not an archive to browse
 - Worked solutions in steps, and hints that cost marks to use, so the incentive matches the
   exam
-- **Photograph your handwritten working** and have it read and commented on
+- **Photograph your handwritten working.** Scan a QR code, shoot the page on your phone, and
+  have the method itself read and commented on — because maths is not typed
 - 198 flashcards with spaced repetition, and full past papers under timed conditions
 
 ### What a teacher gets
@@ -100,13 +101,23 @@ know it is the first thing tested earns credibility with him specifically.
 
 ### 3. Photograph your working (3 min) — *the differentiator*
 
-Photograph a handwritten solution on your phone. Let it read and comment.
+Show the QR code on screen, scan it with your own phone in front of them, photograph a
+handwritten solution, and let it read and comment.
 
-> "Maths isn't typed. This is where the student's actual method gets seen — the same thing
-> you'd look at over their shoulder."
+> "Maths isn't typed. The student scans that, shoots the page, and the method itself gets
+> read — the same thing you'd look at over their shoulder."
 
-Nothing else in the Irish market does this. Have a **pre-photographed fallback image** ready
-in case the upload is slow; a stall here is worse than skipping it.
+**Scan the QR code in the room.** Doing it live is the whole point: it proves there is no
+app to install, no account on the phone, no friction — which is what makes the difference
+between a feature that exists and one students actually use.
+
+Nothing else in the Irish market does this. Two safeguards: have a **pre-photographed
+fallback image** ready in case the upload is slow, and note the upload link expires after 15
+minutes, so generate it fresh rather than reusing one from the practice run. A stall here is
+worse than skipping the segment.
+
+*Verified live for students on production (`WORK_PHOTO_STAFF_ONLY=False`) — it was
+staff-gated during the trial, so confirm the flag before demoing.*
 
 ### 4. Hints and solutions, priced in marks (1 min)
 
@@ -165,6 +176,33 @@ the marking.
 
 Be straight that LTI is not built. Offering to prove value first is a stronger position than
 overclaiming.
+
+**"Is this AI? Can we trust it to mark our students?"**
+> "The arithmetic and algebra aren't AI — it compares the mathematics directly, so equivalent
+> forms are accepted and the result is the same every time. AI does two things: it reads
+> handwriting, and it judges written reasoning where a marking scheme would want a human to
+> judge it. And the student always sees the worked solution, so they can check the mark
+> against it."
+
+Do not oversell autonomy. The strongest position is that the deterministic parts are
+deterministic and the student can always see the reasoning. If she pushes on error rates, say
+plainly that there is no published accuracy study and offer to make the pilot produce one.
+
+**"Where does student data go?"**
+> "Answers go to OpenAI for the marking steps that need it — they're a sub-processor, and
+> that goes in the agreement. Photographs of working are stored privately, served only to the
+> student who took them and to staff, and deleted after 90 days. Nothing is sold and nothing
+> trains a model."
+
+Say this before she has to ask twice. These are minors, and volunteering it reads as
+competence rather than concession.
+
+⚠️ **Confirm the 90-day purge actually runs before stating it.** `WORK_PHOTO_RETENTION_DAYS`
+defaults to 90 and `students/management/commands/purge_work_photos.py` implements it, but
+production holds only 9 submissions and none is yet older than 90 days — so the deletion has
+never actually had to happen. PythonAnywhere scheduled tasks have been found silently broken
+before. Check the task exists and its output is recent; otherwise this is a policy rather
+than a practice, and it will be written into a DPA as a commitment.
 
 **"Whose exam papers are those?"**
 > "A licensing request is with the SEC and is being processed. The practice questions are

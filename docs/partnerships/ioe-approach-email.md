@@ -47,10 +47,14 @@ questions covering the Higher Level course — 516 of them across 21 topics — 
 worked solutions in steps, flashcards, and past papers under timed conditions. Teachers
 assign work to a class and see who has done it and where they are getting stuck.
 
-What separates it from a revision website is that it marks. A student types an answer, or
-photographs their handwritten working, and NumScoil marks it against the criteria of the
-official marking scheme, awards partial credit, and explains the mark in seconds. As a former
-SEC examiner, you will judge that faster than most.
+What separates it from a revision website is that it marks. A student types an answer and
+NumScoil marks it against the criteria of the official marking scheme, awards partial credit,
+and explains the mark in seconds. It compares the mathematics directly, so equivalent forms
+are accepted; AI is used for the parts that need judgement, such as written reasoning. As a
+former SEC examiner, you will judge that faster than most.
+
+Maths is not typed, though. A student can scan a QR code, photograph their handwritten
+working with their phone, and have the method itself read and commented on.
 
 It is built and maintained by [Company] in partnership with me — I author the content — and
 has been trialled with real students and revised on the strength of how they used it.
@@ -71,7 +75,12 @@ Morgan McKnight
 
 ---
 
-*261 words. Do not attach anything.*
+*307 words. Do not attach anything.*
+
+If it needs shortening, cut the flashcards and timed papers from paragraph 2 (the marking and
+the phone are what differentiate; breadth of content is not) and the "trialled with real
+students" clause from paragraph 5. Do **not** cut paragraph 2's opening sentence or the QR
+paragraph.
 
 ---
 
@@ -92,11 +101,44 @@ it differs within.
 - **Paragraph 3 is the pivot: "What separates it from a revision website is that it marks."**
   This is where the hook belongs — after context, not before it. Studyclix is the reference
   point she already has in her head, so name the category and step away from it. "Partial
-  credit" is the word an examiner notices; the handwriting capture is the part nobody else
-  does.
+  credit" is the word an examiner notices.
 - **Her SEC examining comes at the end of that paragraph, not the start.** Same flattery,
   same relevance, but now it lands on a claim she can actually evaluate rather than being the
   first thing she reads.
+- **Paragraph 4 gets the phone and the QR code its own paragraph** because it is the most
+  differentiated thing in the product and nothing else in the Irish market does it. "Maths is
+  not typed, though" is the line that earns it — it concedes the obvious limitation of typed
+  answers before she raises it, which is more persuasive than claiming completeness. The QR
+  code is not a feature anyone buys, but it is the detail that makes a teacher believe you
+  have watched students use this: it removes the friction that would otherwise kill the whole
+  idea.
+
+### On "AI-powered" — deliberately not used as a label
+
+The phrase is the most devalued in edtech and reads as a vendor mailshot, which is the exact
+impression this email is built to avoid. There is also direct evidence against it: the earlier
+campaign to 120 schools used subject lines such as *"AI-Powered Maths Tutor for Leaving Cert
+Students"* and produced two replies. Thin evidence, but it is the only evidence available and
+it points the same way.
+
+For a principal who examined for the SEC, "AI marks your students' maths" invites the
+accuracy objection rather than interest — *will it mark them wrong?* — plus a data-protection
+question.
+
+**So the mechanism is named precisely, once, and framed by what is deterministic:**
+
+> It compares the mathematics directly, so equivalent forms are accepted; AI is used for the
+> parts that need judgement, such as written reasoning.
+
+This is accurate — `services/marking.py` attempts algebraic equivalence and numeric
+normalisation first and only falls back to GPT — and it is a **better** claim than
+"AI-powered". Most marking is actual mathematics rather than a language model guessing, which
+is precisely what a maths teacher needs to hear. It answers "how can it read handwriting?"
+while pre-empting "can I trust it?".
+
+If she raises AI directly, lean into it: the group's owner runs AI programmes across its
+schools, so the appetite exists at Dukes level. Have the sub-processor answer ready (see
+`ioe-deal-structures.md`).
 - **The vendor sentence sits in paragraph 4, deliberately.** [Company] builds and maintains;
   Morgan authors the content. It answers "who is behind this and who supports it" at the
   point she starts wondering, rather than competing with the product description for
