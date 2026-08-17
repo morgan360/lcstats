@@ -31,27 +31,33 @@ Friday afternoon.
 
 ## The email
 
-**Subject:** Marking LC maths against the marking scheme — 20 minutes?
+**Subject:** An online maths tutor for your Leaving Cert students — 20 minutes?
 
-*(If you phoned first: `Following my call today — marking LC maths against the marking scheme`)*
+*(If you phoned first: `Following my call today — an online maths tutor for your LC students`)*
 
 ---
 
 Dear Ms O'Toole,
 
-You examined for the State Examinations Commission, so you will judge this faster than most:
-NumScoil marks a student's maths answer against the official marking scheme and explains the
-mark in seconds, partial credit included.
+I teach Leaving Certificate Higher Level Maths and give grinds, and I am writing to propose
+that the Institute offer my platform to its students.
 
-NumScoil is built and maintained by [Company] in partnership with me. I teach Leaving
-Certificate Higher Level maths and give grinds, and I author the content — 516 practice
-questions across 21 topics of the Higher Level course, with hints, worked solutions, and a
-teacher dashboard for setting and tracking homework. It has been trialled with real students
-and revised on the strength of how they used it.
+NumScoil is an online tutor for Leaving Certificate Maths. Students work through practice
+questions covering the Higher Level course — 516 of them across 21 topics — with hints,
+worked solutions in steps, flashcards, and past papers under timed conditions. Teachers
+assign work to a class and see who has done it and where they are getting stuck.
 
-I would like to propose that the Institute offer it to its students, either carrying your
-own name or co-branded with a share of the revenue. We own, host and maintain the platform,
-so the Institute would have one without building it.
+What separates it from a revision website is that it marks. A student types an answer, or
+photographs their handwritten working, and NumScoil marks it against the criteria of the
+official marking scheme, awards partial credit, and explains the mark in seconds. As a former
+SEC examiner, you will judge that faster than most.
+
+It is built and maintained by [Company] in partnership with me — I author the content — and
+has been trialled with real students and revised on the strength of how they used it.
+
+My proposal is that the Institute offer it, either under your own name or co-branded with a
+share of the revenue. We own, host and maintain it, so you would have the platform without
+building one.
 
 Aidan Roantree is the right person to say whether the maths meets your standard, and I would
 welcome his verdict. Could I show it to you both, for twenty minutes, on Leeson Street?
@@ -65,19 +71,38 @@ Morgan McKnight
 
 ---
 
-*198 words. Do not attach anything.*
+*261 words. Do not attach anything.*
 
 ---
 
 ## Why each part is there
 
-- **First line names her SEC examining.** It is specific, it is flattering without being
-  fawning, and it tells her the product is about marking rather than content delivery —
-  which is the part she is uniquely equipped to assess.
-- **"Partial credit included"** is the detail that separates this from a right/wrong quiz.
-  An examiner will notice.
-- **[Company] first, then Morgan.** The vendor is a software company; Morgan is the subject
-  authority. Present tense throughout — nothing claims the company was there from the start.
+The order is: who is writing → **what NumScoil is** → what makes it different → the
+proposal → the ask. The second step is the one that is easy to skip and cannot be. Opening on
+the marking-scheme feature reads as jumping into the middle of a conversation: it is a
+differentiator, and a differentiator only means something once the reader knows the category
+it differs within.
+
+- **Paragraph 1 orients in one line** — a maths teacher, writing with a proposal. She knows
+  within four seconds who this is and what it wants.
+- **Paragraph 2 says what the thing actually is**, plainly: an online tutor for LC Maths,
+  and the scope of it — practice questions across the course, solutions, flashcards, timed
+  papers, and the teacher side. Breadth first, so she is picturing a platform rather than a
+  feature.
+- **Paragraph 3 is the pivot: "What separates it from a revision website is that it marks."**
+  This is where the hook belongs — after context, not before it. Studyclix is the reference
+  point she already has in her head, so name the category and step away from it. "Partial
+  credit" is the word an examiner notices; the handwriting capture is the part nobody else
+  does.
+- **Her SEC examining comes at the end of that paragraph, not the start.** Same flattery,
+  same relevance, but now it lands on a claim she can actually evaluate rather than being the
+  first thing she reads.
+- **The vendor sentence sits in paragraph 4, deliberately.** [Company] builds and maintains;
+  Morgan authors the content. It answers "who is behind this and who supports it" at the
+  point she starts wondering, rather than competing with the product description for
+  attention. Present tense throughout — nothing claims the company was there from the start.
+  A cold email opening with a company she has never heard of reads as a vendor mailshot; one
+  opening with a maths teacher reads as a person.
 - **516 practice questions across 21 topics** is the one number. It is verifiable on
   production and large enough to show seriousness.
 
@@ -98,12 +123,14 @@ Morgan McKnight
 - **No price, no attachment.** A price gives her a reason to decide without meeting you. An
   attachment gets it forwarded and filtered.
 
-## LinkedIn version (under 300 characters)
+## LinkedIn version
 
-> Ms O'Toole — I teach LC Higher Level maths. NumScoil marks a student's answer against the
-> official marking scheme and explains the mark in seconds. I'd like to propose the
-> Institute offer it to students, co-branded or under your own name. Could I show you and
-> Aidan Roantree 20 minutes? — Morgan McKnight
+Fits LinkedIn's 300-character limit on a connection-request note (262 characters). If sending
+as a normal message instead, there is no such limit — use the email body.
+
+> Ms O'Toole — I teach LC Higher Level maths. NumScoil is an online tutor for LC Maths:
+> practice questions, worked solutions, and it marks a student's answer against the official
+> marking scheme. Could I show it to you and Aidan Roantree for 20 minutes? — Morgan McKnight
 
 ## If there is no reply
 
