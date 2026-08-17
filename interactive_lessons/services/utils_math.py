@@ -23,8 +23,13 @@ _SUPERSCRIPTS = {
     "⁰": "0", "¹": "1", "²": "2", "³": "3", "⁴": "4",
     "⁵": "5", "⁶": "6", "⁷": "7", "⁸": "8", "⁹": "9",
     "⁺": "+", "⁻": "-", "⁽": "(", "⁾": ")",
-    "ⁿ": "n", "/": "/"
+    "ⁿ": "n",
 }
+
+def _is_superscript(expr: str, i: int) -> bool:
+    """True if position ``i`` is inside ``expr`` and holds a superscript character."""
+    return 0 <= i < len(expr) and expr[i] in _SUPERSCRIPTS
+
 
 def _preclean_plain(expr: str) -> str:
     """Make text/MathLive-ish input safe for parse_expr (non-LaTeX path)."""
@@ -46,6 +51,11 @@ def _preclean_plain(expr: str) -> str:
         c = expr[i]
         if c in _SUPERSCRIPTS:
             superscript_buffer.append(_SUPERSCRIPTS[c])
+        elif c == "/" and superscript_buffer and _is_superscript(expr, i + 1):
+            # Superscript fraction, e.g. "2⁵/²" → "2^(5/2)". Only a slash that
+            # sits between two superscripts belongs to the exponent; anywhere
+            # else it is ordinary division and must be left alone.
+            superscript_buffer.append("/")
         else:
             if superscript_buffer:
                 result.append("^(" + "".join(superscript_buffer) + ")")

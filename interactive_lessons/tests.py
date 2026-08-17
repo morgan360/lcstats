@@ -1,9 +1,63 @@
+from fractions import Fraction
+
 from django.contrib.auth.models import User
 from django.test import TestCase
 from django.urls import reverse
 
 from core.models import Subject
 from interactive_lessons.models import Topic, Section, Question
+from interactive_lessons.services.utils_math import _preclean_plain, compare_algebraic
+from interactive_lessons.stats_tutor import normalise_numeric_answer
+
+
+class FractionAnswerTests(TestCase):
+    """A typed fraction like "1/2" has to survive both grading paths.
+
+    Both cleaners used to list ASCII "/" among the unicode superscripts, so
+    every slash was swallowed into an exponent: "1/2" became "1**(/)2" for the
+    algebraic path and "1^/2" for the numeric one. Neither parses, so every
+    fraction answer fell through to the paid GPT fallback.
+    """
+
+    # Ground truth from the stdlib, not from our own normaliser.
+    FRACTIONS = ["1/2", "3/4", "-2/3", "22/7", "10/5", "-3/11"]
+
+    def test_preclean_leaves_ordinary_division_alone(self):
+        for text in self.FRACTIONS:
+            with self.subTest(text=text):
+                self.assertEqual(_preclean_plain(text), text)
+
+    def test_numeric_path_evaluates_fractions(self):
+        for text in self.FRACTIONS:
+            with self.subTest(text=text):
+                self.assertEqual(
+                    normalise_numeric_answer(text), [float(Fraction(text))]
+                )
+
+    def test_fraction_matches_its_decimal(self):
+        for text in ["1/2", "3/4", "-1/4"]:
+            with self.subTest(text=text):
+                decimal = str(float(Fraction(text)))
+                self.assertTrue(compare_algebraic(text, decimal))
+                self.assertEqual(
+                    normalise_numeric_answer(text),
+                    normalise_numeric_answer(decimal),
+                )
+
+    def test_unsimplified_fraction_still_matches(self):
+        self.assertTrue(compare_algebraic("2/4", "1/2"))
+
+    def test_superscript_exponents_still_convert(self):
+        # The slash entry existed to support "2⁵/²"; that must keep working,
+        # and the exponent must be bracketed so it is not read as (2**5)/2.
+        self.assertEqual(_preclean_plain("2⁵/²"), "2**(5/2)")
+        self.assertEqual(normalise_numeric_answer("2⁵/²"), [2 ** 2.5])
+        self.assertEqual(normalise_numeric_answer("2⁵"), [32.0])
+
+    def test_slash_after_a_superscript_is_still_division(self):
+        # "x²/3" is x squared over three, not x to the power of 2/3.
+        self.assertEqual(_preclean_plain("x²/3"), "x**(2)/3")
+        self.assertEqual(normalise_numeric_answer("3²/9"), [1.0])
 
 
 class MoveSectionAdminTests(TestCase):
