@@ -2,6 +2,34 @@
 
 You are a question extraction assistant for the LCAI Maths Django platform.
 
+## Where questions get created — read this first
+
+**Author on local only. Never run this skill against production.**
+
+Creating questions locally is what lets you open them in the running app and test
+the grading before a student ever sees them. Editing the live database by hand
+leaves no record, cannot be reviewed, and cannot be replayed.
+
+A `git pull` does **not** move database rows, so local authoring is only half the
+job. The other half is the deploy artifact: alongside creating the rows locally,
+write an **idempotent management command** that recreates them. That command is
+the thing production runs.
+
+```
+author on local  →  commit the command  →  deploy  →  run the command on prod
+```
+
+The command must be idempotent and keyed on **topic slug, section name and
+question order — never on primary key**, because ids differ between local and
+production. Use `update_or_create` so re-running updates in place instead of
+duplicating. See
+`interactive_lessons/management/commands/add_induction_questions.py` for the
+shape to copy.
+
+Ignore the older `add_question_<NNN>.py` commands as a template: they use bare
+`.create()` (re-running duplicates everything) and the legacy `section="string"`
+field, both of which are wrong against the current models.
+
 ## Your Task
 
 When invoked, ask the user to paste or provide the path to the question image, then extract and format the question for entry into the Django admin system.
@@ -43,6 +71,23 @@ Ask the user: **"Please paste the question image or provide the file path to the
      - Put each option on a separate line
      - Use bold for option letters: **(A)**, **(B)**, **(C)**, **(D)**
      - Include clear formatting instructions at the end
+     - **VARY WHICH LETTER IS CORRECT.** `interactive_lessons` does **not**
+       shuffle options — unlike flashcards, they are literal text baked into
+       `QuestionPart.prompt` and every student sees the same order. If you write
+       a batch of questions whose answer is always `A`, students learn "pick A"
+       instead of the mathematics. Spread the correct answer across A–D, and
+       before finishing a batch check the spread:
+       ```
+       python manage.py shell -c "
+       from interactive_lessons.models import QuestionPart
+       import collections
+       print(collections.Counter(QuestionPart.objects.filter(
+           question__topic__slug='<slug>', expected_type='multi'
+       ).values_list('answer', flat=True)))"
+       ```
+     - Write the distractors so each is plausible on its own terms. Do not make
+       the correct option the longest or the most detailed — length is a tell
+       that lets a student guess without doing the work.
      - Example format:
        ```
        Question text with **42 points** and **standard deviation of 15**...
@@ -191,15 +236,28 @@ After extracting the question, ask:
 
 2. **Determine the topic:**
 
-**Available Topics:**
-- Descriptive Statistics
-- Inferential Statistics / Inferential Stats
-- Algebra
-- Complex Numbers
-- Integration
-- Differential Calculus
-- Finance
-- Probability
+**Available Topics** (Maths — every topic also carries a `paper`, which the
+practice-topic listing groups by, so a new topic must set it):
+
+*Paper 1:* Algebra (1) · Algebra-Inequalities and Factorisation · Complex Numbers ·
+Differential Calculus · Finance · Functions · Indices and Logs · Integration ·
+Proof by Induction · Sequences and Series
+
+*Paper 2:* Area & Volume · Descriptive Statistics · Geometry-Constructions ·
+Geometry-Theorems · Inferential Statistics · Probability · The Circle · The Line ·
+Trigonometry (1) · Trigonometry (2)
+
+Physics is a separate subject with its own topics (Mechanics, Waves and Sound,
+Electric Fields, and so on). Confirm the subject before assuming Maths.
+
+Don't trust this list blindly — it drifts. Check the live set first:
+
+```
+python manage.py shell -c "
+from interactive_lessons.models import Topic
+for t in Topic.objects.order_by('subject__name','paper','name'):
+    print(t.subject, t.paper, t.name, t.slug)"
+```
 
 **Process:**
 1. Analyze the question content to infer the most likely topic
@@ -272,6 +330,11 @@ After extracting the question, ask:
 - Depreciation
 - Loans and Mortgages
 
+**Proof by Induction:**
+- Divisibility
+- Series
+- Inequalities
+
 **Process:**
 1. Analyze the question content to determine the specific concept/sub-topic
 2. Suggest an appropriate section name based on the guidelines above
@@ -280,70 +343,87 @@ After extracting the question, ask:
 
 4. Ask for the **order** number (position within the topic, default to next available)
 
-## Step 4: Generate Database Creation Code
+## Step 4: Write an idempotent management command
 
-After confirming all details, generate ready-to-run Django shell commands:
+Do **not** generate a throwaway `manage.py shell -c` snippet. Write a management
+command at `interactive_lessons/management/commands/add_<slug>_questions.py`. It
+runs on local first, then gets committed and replayed on production, so the same
+source produces the same content on both databases.
 
 ```python
-from interactive_lessons.models import Topic, Question, QuestionPart
+from django.core.management.base import BaseCommand
+from django.db import transaction
 
-# Get the topic
-topic = Topic.objects.get(name="[Topic Name]")
+from core.models import Subject
+from interactive_lessons.models import Topic, Section, Question, QuestionPart
 
-# Create the Question container
-question = Question.objects.create(
-    topic=topic,
-    order=[order_number],
-    section=[section_name or None],
-    hint=r"""[Hint text with KaTeX using $...$]""",
-    solution=r"""[Full solution if available, formatted in steps]""",
-    is_exam_question=[True/False],
-    is_copyrighted=[True/False],  # Mark True if reformulated from copyrighted source
-    exam_year=[year or None],
-    paper_type=['p1'/'p2' or None],
-    source_pdf_name=[pdf_name or None]
+subject = Subject.objects.get(name="Maths")
+
+# Key on slug. Set subject AND paper — Topic.subject is nullable, so a bare
+# get_or_create(name=...) yields a topic that no subject-filtered page shows,
+# which makes a deploy look like it silently did nothing.
+topic, _ = Topic.objects.get_or_create(
+    slug="[topic-slug]",
+    defaults={"name": "[Topic Name]", "subject": subject, "paper": "p1"},
 )
 
-# Create Part (a)
-QuestionPart.objects.create(
+# Section is a ForeignKey model. Give it an order, or the section list
+# comes out arbitrary.
+section, _ = Section.objects.get_or_create(
+    topic=topic, name="[Section Name]", defaults={"order": 0},
+)
+
+# update_or_create, not create: re-running must update, never duplicate.
+question, _ = Question.objects.update_or_create(
+    topic=topic,
+    section=section,
+    order=[order_number],
+    defaults={
+        "hint": r"""[Hint text with KaTeX using $...$]""",
+        "solution": r"""[Full solution if available, in steps]""",
+        "is_exam_question": [True/False],
+        "is_copyrighted": [True/False],
+    },
+)
+
+QuestionPart.objects.update_or_create(
     question=question,
     label="(a)",
-    prompt=r"""[Part (a) question text with KaTeX using $...$]""",
-    answer=r"""[Answer]""",
-    expected_format="""[Expected format with examples using DIFFERENT numbers - e.g., "Single value (e.g., 7 or -5)"]""",
-    solution=r"""**Step 1:** [Describe what we're doing]
+    defaults={
+        "prompt": r"""[Part (a) text with KaTeX using $...$]""",
+        "answer": r"""[Answer]""",
+        "expected_format": """[Format, with example values DIFFERENT from the answer]""",
+        "solution": r"""**Step 1:** [What we're doing]
 
 [Math working with $...$]
 
-**Step 2:** [Next step]
-
-[Math working]
-
 **Answer:** [Final answer]""",
-    expected_type="[exact/numeric/expression/multi/manual]",
-    max_marks=[marks],
-    order=0
+        "expected_type": "[exact/numeric/expression/multi/manual]",
+        "max_marks": [marks],
+        "order": 0,
+        "solution_unlock_after_attempts": 2,
+    },
 )
-
-# Create Part (b)
-QuestionPart.objects.create(
-    question=question,
-    label="(b)",
-    prompt=r"""[Part (b) question text with KaTeX using $...$]""",
-    answer=r"""[Answer]""",
-    expected_format="""[Expected format]""",
-    solution=r"""**Step 1:** ...
-
-**Answer:** ...""",
-    expected_type="[exact/numeric/expression/multi/manual]",
-    max_marks=[marks],
-    order=1
-)
-
-# Continue for all parts...
-
-print(f"✅ Created Question {question.id}: {question}")
 ```
+
+Wrap the whole thing in `transaction.atomic()` and offer `--dry-run` (report what
+would change, then `transaction.set_rollback(True)`), matching the convention in
+the `exam_papers` commands.
+
+**Fields it is easy to drop, and worth setting explicitly:**
+`Question.is_copyrighted`, `Question.is_quickkick_suitable`,
+`QuestionPart.solution_unlock_after_attempts` (2 for production),
+`QuestionPart.scale`, `QuestionPart.is_quickkick_suitable`, `Section.order`.
+
+**Do not write `Question.section_old`** — that's the legacy string field, kept
+only for migration history. Use the `section` FK.
+
+**Images are not database rows.** If a part has an `image` or `solution_image`,
+the file under `media/` needs rsync to production separately; the command only
+carries the path.
+
+Run it locally, then run it a **second** time and confirm the counts are
+unchanged — that is the idempotency check.
 
 ## Important Notes
 
@@ -362,6 +442,17 @@ print(f"✅ Created Question {question.id}: {question}")
 Present the extraction in **two sections**:
 
 1. **Extracted Content** - Clean, formatted question content for review
-2. **Database Creation Commands** - Ready-to-execute Django shell code
+2. **The management command** - the file written per Step 4
 
-After generating both sections, **automatically execute** the commands using `python manage.py shell -c '...'` (use single quotes to avoid escaping issues) and report the result to the user.
+Then, **on local only**:
+
+1. Run the command with `--dry-run` and show what it would do.
+2. Run it for real.
+3. Run it a second time and confirm the question/part counts did not change.
+4. Check the multiple-choice answer spread (see the `multi` guidance above).
+5. Report the result, and tell the user the command still needs committing and
+   running on production to reach students.
+
+Never run it against production yourself — that is a deploy, and it belongs to
+the user. The deploy sequence is documented in `CLAUDE.md`; content writes should
+be preceded by `manage.py backup_database --compress` on the server.
