@@ -75,6 +75,32 @@ def _roster(teacher_class):
     return teacher_class.students.all().order_by('first_name', 'last_name', 'username')
 
 
+def _short_name(user):
+    """
+    First given name plus the last word of the surname, so long rosters stay
+    readable: 'Maria Eduarda Alencar Soares' becomes 'Maria Soares' and
+    'Francesca De Oliveira Castelhano Tafuri' becomes 'Francesca Tafuri'.
+    Hyphenated surnames are one word and survive whole (Sadolewski-Odinakaeze).
+    """
+    given = (user.first_name or '').split()
+    surname = (user.last_name or '').split()
+    name = ' '.join(filter(None, [given[0] if given else '', surname[-1] if surname else ''])).strip()
+    return name or user.username
+
+
+def _roster_name(user, class_note):
+    """
+    Short name, with a trailing * for a student whose note records a nationality
+    other than Irish. The note is the only nationality we hold, so a blank note
+    reads as unmarked rather than as Irish.
+    """
+    name = _short_name(user)
+    note = (class_note.note if class_note else '') or ''
+    if note and not note.lower().startswith('irish'):
+        name += '*'
+    return name
+
+
 # ------------------------------------------------------------
 # Dashboard
 # ------------------------------------------------------------
@@ -191,6 +217,7 @@ def daily_entry(request, class_id):
     notes = {n.student_id: n for n in StudentClassNote.objects.filter(teacher_class=teacher_class)}
     for record in records:
         record.class_note = notes.get(record.student_id)
+        record.roster_name = _roster_name(record.student, record.class_note)
 
     context = {
         'teacher_class': teacher_class,

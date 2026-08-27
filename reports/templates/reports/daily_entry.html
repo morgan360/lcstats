@@ -27,7 +27,7 @@
     </label>
 </div>
 
-<p class="mb-3 text-xs text-twilight/60">Tap a chip to change it — everyone starts Present with homework Done. Changes save instantly. The ability chip and the note behind 💬 are standing information, not per-day.
+<p class="mb-3 text-xs text-twilight/60">Tap a chip to change it — everyone starts Present with homework Done. Changes save instantly. Ability and the standing note live behind 💬; * marks a student whose note records a nationality other than Irish.
     <span class="ml-1 inline-flex items-center gap-1"><span class="inline-block h-2 w-2 rounded-full bg-lime-glow ring-1 ring-midnight/20"></span> = worked on NumScoil since {{ since|date:"j M" }}</span>
 </p>
 
@@ -37,7 +37,7 @@
     <div class="rounded-2xl bg-white p-3 shadow-sm ring-1 ring-twilight/10" data-record-id="{{ record.id }}" data-student-id="{{ record.student.id }}">
         <div class="flex items-center gap-2">
             <div class="min-w-0 flex-1">
-                <span class="truncate font-semibold">{{ record.student.get_full_name|default:record.student.username }}</span>
+                <span class="truncate font-semibold">{{ record.roster_name }}</span>
                 {% if record.student.id in active_ids %}
                 <span class="ml-1 inline-block h-2 w-2 rounded-full bg-lime-glow ring-1 ring-midnight/20" title="Active on NumScoil since last class"></span>
                 {% endif %}
@@ -46,9 +46,6 @@
                 data-field="attendance" data-state="{{ record.attendance }}"></button>
             <button type="button" class="chip min-h-[44px] min-w-[72px] rounded-xl px-2 text-sm font-semibold transition"
                 data-field="homework" data-state="{{ record.homework }}"></button>
-            <button type="button" class="chip min-h-[44px] min-w-[72px] rounded-xl px-2 text-sm font-semibold transition"
-                data-field="ability" data-state="{{ record.class_note.ability|default:'' }}"
-                title="Ability at maths - kept between classes"></button>
             <button type="button" class="comment-toggle min-h-[44px] min-w-[44px] rounded-xl text-lg transition
                 {% if record.has_comment %}bg-rose-pop/15{% else %}bg-twilight/10 opacity-60{% endif %}"
                 aria-label="Comment">💬</button>
@@ -71,6 +68,9 @@
                     <span class="note-updated ml-1 font-normal text-twilight/50">{% if record.class_note and record.class_note.note %}· updated {{ record.class_note.updated_at|date:"j M" }}{% endif %}</span>
                 </p>
                 <div class="flex flex-col gap-2 sm:flex-row">
+                    <button type="button" class="chip min-h-[44px] min-w-[72px] shrink-0 rounded-xl px-2 text-sm font-semibold transition"
+                        data-field="ability" data-state="{{ record.class_note.ability|default:'' }}"
+                        title="Ability at maths"></button>
                     <input type="text" maxlength="300" placeholder="e.g. strong on algebra, struggles with proofs"
                         value="{{ record.class_note.note|default:'' }}"
                         class="student-note min-h-[44px] flex-1 rounded-xl border border-twilight/20 px-3 text-sm">

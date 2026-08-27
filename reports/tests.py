@@ -347,3 +347,71 @@ class StudentClassNoteTests(BaseReportTestCase):
         self.login_teacher()
         response = self.client.get(reverse('reports:daily_entry', args=[other_class.id]))
         self.assertNotContains(response, 'Only in 6th year')
+
+
+class RosterNameTests(BaseReportTestCase):
+    """Short names (no middle name) and the non-Irish asterisk."""
+
+    def setUp(self):
+        self.login_teacher()
+
+    def roster_html(self):
+        return self.client.get(
+            reverse('reports:daily_entry', args=[self.teacher_class.id])
+        ).content.decode()
+
+    def test_middle_name_and_extra_surname_words_dropped(self):
+        self.student1.first_name, self.student1.last_name = 'Maria Eduarda', 'Alencar Soares'
+        self.student1.save()
+        self.assertIn('Maria Soares', self.roster_html())
+
+    def test_long_surname_reduced_to_last_word(self):
+        self.student1.first_name = 'Francesca'
+        self.student1.last_name = 'De Oliveira Castelhano Tafuri'
+        self.student1.save()
+        self.assertIn('Francesca Tafuri', self.roster_html())
+
+    def test_hyphenated_surname_kept_whole(self):
+        self.student1.first_name, self.student1.last_name = 'Alex', 'Sadolewski-Odinakaeze'
+        self.student1.save()
+        self.assertIn('Alex Sadolewski-Odinakaeze', self.roster_html())
+
+    def test_single_given_name_unchanged(self):
+        self.student1.first_name, self.student1.last_name = 'Daisy', 'Nolan'
+        self.student1.save()
+        self.assertIn('Daisy Nolan', self.roster_html())
+
+    def test_falls_back_to_username_when_unnamed(self):
+        self.student1.first_name = self.student1.last_name = ''
+        self.student1.save()
+        self.assertIn('student1', self.roster_html())
+
+    def test_non_irish_note_gets_asterisk(self):
+        self.student1.first_name, self.student1.last_name = 'Julia', 'Favero'
+        self.student1.save()
+        StudentClassNote.objects.create(
+            teacher_class=self.teacher_class, student=self.student1,
+            note='Brazilian · study abroad, ends Dec 2026',
+        )
+        self.assertIn('Julia Favero*', self.roster_html())
+
+    def test_irish_note_gets_no_asterisk(self):
+        self.student1.first_name, self.student1.last_name = 'Daisy', 'Nolan'
+        self.student1.save()
+        StudentClassNote.objects.create(
+            teacher_class=self.teacher_class, student=self.student1, note='Irish',
+        )
+        self.assertIn('Daisy Nolan<', self.roster_html())
+        self.assertNotIn('Daisy Nolan*', self.roster_html())
+
+    def test_blank_note_is_unmarked_not_foreign(self):
+        self.student1.first_name, self.student1.last_name = 'Kai', 'Farrell'
+        self.student1.save()
+        self.assertNotIn('Kai Farrell*', self.roster_html())
+
+    def test_ability_chip_is_inside_the_panel_not_the_front_row(self):
+        html = self.roster_html()
+        panel_start = html.index('comment-panel')
+        ability_at = html.index('data-field="ability"')
+        self.assertGreater(ability_at, panel_start,
+                           "ability chip should sit inside the expandable panel")
