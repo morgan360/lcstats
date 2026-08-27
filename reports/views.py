@@ -80,11 +80,13 @@ def _short_name(user):
     First given name plus the last word of the surname, so long rosters stay
     readable: 'Maria Eduarda Alencar Soares' becomes 'Maria Soares' and
     'Francesca De Oliveira Castelhano Tafuri' becomes 'Francesca Tafuri'.
-    Hyphenated surnames are one word and survive whole (Sadolewski-Odinakaeze).
+    A double-barrelled surname keeps only its first half, so
+    'Sadolewski-Odinakaeze' shows as 'Sadolewski'.
     """
     given = (user.first_name or '').split()
     surname = (user.last_name or '').split()
-    name = ' '.join(filter(None, [given[0] if given else '', surname[-1] if surname else ''])).strip()
+    last = surname[-1].split('-')[0] if surname else ''
+    name = ' '.join(filter(None, [given[0] if given else '', last])).strip()
     return name or user.username
 
 

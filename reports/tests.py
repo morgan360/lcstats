@@ -371,10 +371,12 @@ class RosterNameTests(BaseReportTestCase):
         self.student1.save()
         self.assertIn('Francesca Tafuri', self.roster_html())
 
-    def test_hyphenated_surname_kept_whole(self):
+    def test_double_barrelled_surname_keeps_first_half(self):
         self.student1.first_name, self.student1.last_name = 'Alex', 'Sadolewski-Odinakaeze'
         self.student1.save()
-        self.assertIn('Alex Sadolewski-Odinakaeze', self.roster_html())
+        html = self.roster_html()
+        self.assertIn('Alex Sadolewski<', html)
+        self.assertNotIn('Odinakaeze', html)
 
     def test_single_given_name_unchanged(self):
         self.student1.first_name, self.student1.last_name = 'Daisy', 'Nolan'
