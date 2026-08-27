@@ -22,7 +22,15 @@ from homework.models import TeacherClass
 from students.decorators import teacher_required
 
 from . import services
-from .models import ClassSession, ClassTest, CommentPreset, StudentSessionRecord, TestResult, TimetableSlot
+from .models import (
+    ClassSession,
+    ClassTest,
+    CommentPreset,
+    StudentClassNote,
+    StudentSessionRecord,
+    TestResult,
+    TimetableSlot,
+)
 
 MIDNIGHT_HEX = '#001C3D'  # tailwind.config.js "midnight" token
 
@@ -178,6 +186,12 @@ def daily_entry(request, class_id):
 
     behaviour_presets = CommentPreset.objects.filter(category='behaviour', is_active=True)
 
+    # Standing ability/note per student, in one query. Rows only exist for students
+    # the teacher has actually rated, so a missing key is the unrated state.
+    notes = {n.student_id: n for n in StudentClassNote.objects.filter(teacher_class=teacher_class)}
+    for record in records:
+        record.class_note = notes.get(record.student_id)
+
     context = {
         'teacher_class': teacher_class,
         'session': session,
@@ -191,6 +205,7 @@ def daily_entry(request, class_id):
         'since': since,
         'attendance_choices': StudentSessionRecord.ATTENDANCE_CHOICES,
         'homework_choices': StudentSessionRecord.HOMEWORK_CHOICES,
+        'ability_choices': StudentClassNote.ABILITY_CHOICES,
     }
     return render(request, 'reports/daily_entry.html', context)
 
@@ -265,6 +280,44 @@ def set_homework_due(request, session_id):
     session.homework_due = bool(data.get('homework_due'))
     session.save(update_fields=['homework_due', 'updated_at'])
     return JsonResponse({'ok': True, 'homework_due': session.homework_due})
+
+
+@teacher_required
+def set_student_note(request, class_id, student_id):
+    """Standing ability/note for one student in one class. Row is created on first use."""
+    if request.method != 'POST':
+        return JsonResponse({'error': 'POST required'}, status=405)
+
+    teacher_class = _get_owned_class(request, class_id)
+    student = get_object_or_404(teacher_class.students, id=student_id)
+
+    try:
+        data = json.loads(request.body)
+    except (json.JSONDecodeError, UnicodeDecodeError):
+        return JsonResponse({'error': 'Invalid JSON'}, status=400)
+
+    field = data.get('field')
+    if field not in ('ability', 'note'):
+        return JsonResponse({'error': 'Unknown field'}, status=400)
+
+    value = data.get('value') or ''
+    if field == 'ability' and value and value not in dict(StudentClassNote.ABILITY_CHOICES):
+        return JsonResponse({'error': 'Invalid ability value'}, status=400)
+    if field == 'note':
+        value = value[:300]
+
+    note, _created = StudentClassNote.objects.get_or_create(
+        teacher_class=teacher_class, student=student
+    )
+    setattr(note, field, value)
+    note.save(update_fields=[field, 'updated_at'])
+
+    return JsonResponse({
+        'ok': True,
+        'field': field,
+        'value': value,
+        'updated_at': note.updated_at.strftime('%-d %b'),
+    })
 
 
 # ------------------------------------------------------------

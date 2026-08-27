@@ -12,7 +12,14 @@ from quickkicks.models import QuickKick, QuickKickView
 from students.models import QuestionAttempt, StudentProfile
 
 from . import services
-from .models import ClassSession, ClassTest, CommentPreset, StudentSessionRecord, TestResult
+from .models import (
+    ClassSession,
+    ClassTest,
+    CommentPreset,
+    StudentClassNote,
+    StudentSessionRecord,
+    TestResult,
+)
 
 
 def make_teacher(username):
@@ -239,3 +246,104 @@ class DashboardTests(BaseReportTestCase):
         response = self.client.get(reverse('reports:dashboard'))
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, '6th Year HL')
+
+
+class StudentClassNoteTests(BaseReportTestCase):
+    """Standing ability/note per student, per class."""
+
+    def note_url(self, student=None):
+        return reverse(
+            'reports:set_student_note',
+            args=[self.teacher_class.id, (student or self.student1).id],
+        )
+
+    def post_note(self, field, value, student=None):
+        return self.client.post(
+            self.note_url(student),
+            data=json.dumps({'field': field, 'value': value}),
+            content_type='application/json',
+        )
+
+    def test_other_teacher_blocked(self):
+        self.client.login(username='teacher_b', password='pw')
+        response = self.post_note('ability', 'high')
+        self.assertEqual(response.status_code, 403)
+        self.assertFalse(StudentClassNote.objects.exists())
+
+    def test_ability_creates_then_updates_one_row(self):
+        self.login_teacher()
+        self.assertEqual(self.post_note('ability', 'high').status_code, 200)
+        self.assertEqual(self.post_note('ability', 'low').status_code, 200)
+
+        notes = StudentClassNote.objects.filter(teacher_class=self.teacher_class, student=self.student1)
+        self.assertEqual(notes.count(), 1)
+        self.assertEqual(notes.first().ability, 'low')
+
+    def test_invalid_ability_rejected_and_row_untouched(self):
+        self.login_teacher()
+        self.post_note('ability', 'high')
+        response = self.post_note('ability', 'excellent')
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(StudentClassNote.objects.get(student=self.student1).ability, 'high')
+
+    def test_blank_ability_clears_rating(self):
+        self.login_teacher()
+        self.post_note('ability', 'medium')
+        self.assertEqual(self.post_note('ability', '').status_code, 200)
+        self.assertEqual(StudentClassNote.objects.get(student=self.student1).ability, '')
+
+    def test_note_saved_and_truncated(self):
+        self.login_teacher()
+        self.assertEqual(self.post_note('note', 'Strong on algebra').status_code, 200)
+        self.assertEqual(StudentClassNote.objects.get(student=self.student1).note, 'Strong on algebra')
+
+        response = self.post_note('note', 'x' * 400)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(StudentClassNote.objects.get(student=self.student1).note), 300)
+
+    def test_ability_and_note_are_independent(self):
+        self.login_teacher()
+        self.post_note('ability', 'high')
+        self.post_note('note', 'Needs pushing')
+        note = StudentClassNote.objects.get(student=self.student1)
+        self.assertEqual(note.ability, 'high')
+        self.assertEqual(note.note, 'Needs pushing')
+
+    def test_unknown_field_rejected(self):
+        self.login_teacher()
+        response = self.post_note('grade', 'A')
+        self.assertEqual(response.status_code, 400)
+
+    def test_get_not_allowed(self):
+        self.login_teacher()
+        self.assertEqual(self.client.get(self.note_url()).status_code, 405)
+
+    def test_student_outside_class_404s(self):
+        outsider = User.objects.create_user(username='outsider', password='pw')
+        self.login_teacher()
+        response = self.client.post(
+            reverse('reports:set_student_note', args=[self.teacher_class.id, outsider.id]),
+            data=json.dumps({'field': 'ability', 'value': 'high'}),
+            content_type='application/json',
+        )
+        self.assertEqual(response.status_code, 404)
+
+    def test_daily_entry_renders_existing_ability_and_note(self):
+        StudentClassNote.objects.create(
+            teacher_class=self.teacher_class, student=self.student1,
+            ability='high', note='Strong on algebra',
+        )
+        self.login_teacher()
+        response = self.client.get(reverse('reports:daily_entry', args=[self.teacher_class.id]))
+        self.assertContains(response, 'Strong on algebra')
+        self.assertContains(response, 'data-field="ability" data-state="high"')
+
+    def test_notes_do_not_leak_between_classes(self):
+        other_class = TeacherClass.objects.create(teacher=self.teacher_profile, name='5th Year')
+        other_class.students.add(self.student1)
+        StudentClassNote.objects.create(
+            teacher_class=self.teacher_class, student=self.student1, note='Only in 6th year',
+        )
+        self.login_teacher()
+        response = self.client.get(reverse('reports:daily_entry', args=[other_class.id]))
+        self.assertNotContains(response, 'Only in 6th year')

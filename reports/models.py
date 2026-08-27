@@ -149,6 +149,48 @@ class StudentSessionRecord(models.Model):
         return bool(self.comment_preset_id or self.comment_text)
 
 
+class StudentClassNote(models.Model):
+    """
+    Standing information about a student within one class: how strong they are at
+    the subject, and a short note. Unlike StudentSessionRecord this is not tied to
+    a date - it is overwritten as the teacher's view of the student changes.
+    """
+    ABILITY_CHOICES = [
+        ('high', 'High'),
+        ('medium', 'Medium'),
+        ('low', 'Low'),
+    ]
+
+    teacher_class = models.ForeignKey(
+        'homework.TeacherClass',
+        on_delete=models.CASCADE,
+        related_name='student_notes',
+    )
+    student = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='class_notes',
+    )
+    ability = models.CharField(
+        max_length=10,
+        choices=ABILITY_CHOICES,
+        blank=True,
+        help_text="Blank means not rated yet",
+    )
+    note = models.CharField(max_length=300, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=['teacher_class', 'student'], name='uniq_note_class_student'),
+        ]
+
+    def __str__(self):
+        ability = self.get_ability_display() if self.ability else 'unrated'
+        return f"{self.student.username} - {self.teacher_class.name} ({ability})"
+
+
 class ClassTest(models.Model):
     """A class test (in-school, on paper) whose results are entered manually."""
     teacher_class = models.ForeignKey(

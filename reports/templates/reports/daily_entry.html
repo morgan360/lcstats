@@ -27,13 +27,14 @@
     </label>
 </div>
 
-<p class="mb-3 text-xs text-twilight/60">Tap a chip to change it — everyone starts Present with homework Done. Changes save instantly.
+<p class="mb-3 text-xs text-twilight/60">Tap a chip to change it — everyone starts Present with homework Done. Changes save instantly. The ability chip and the note behind 💬 are standing information, not per-day.
     <span class="ml-1 inline-flex items-center gap-1"><span class="inline-block h-2 w-2 rounded-full bg-lime-glow ring-1 ring-midnight/20"></span> = worked on NumScoil since {{ since|date:"j M" }}</span>
 </p>
 
-<div id="roster" class="space-y-2" data-set-url-template="{% url 'reports:set_record' 0 %}">
+<div id="roster" class="space-y-2" data-set-url-template="{% url 'reports:set_record' 0 %}"
+     data-note-url-template="{% url 'reports:set_student_note' teacher_class.id 0 %}">
     {% for record in records %}
-    <div class="rounded-2xl bg-white p-3 shadow-sm ring-1 ring-twilight/10" data-record-id="{{ record.id }}">
+    <div class="rounded-2xl bg-white p-3 shadow-sm ring-1 ring-twilight/10" data-record-id="{{ record.id }}" data-student-id="{{ record.student.id }}">
         <div class="flex items-center gap-2">
             <div class="min-w-0 flex-1">
                 <span class="truncate font-semibold">{{ record.student.get_full_name|default:record.student.username }}</span>
@@ -45,6 +46,9 @@
                 data-field="attendance" data-state="{{ record.attendance }}"></button>
             <button type="button" class="chip min-h-[44px] min-w-[72px] rounded-xl px-2 text-sm font-semibold transition"
                 data-field="homework" data-state="{{ record.homework }}"></button>
+            <button type="button" class="chip min-h-[44px] min-w-[72px] rounded-xl px-2 text-sm font-semibold transition"
+                data-field="ability" data-state="{{ record.class_note.ability|default:'' }}"
+                title="Ability at maths - kept between classes"></button>
             <button type="button" class="comment-toggle min-h-[44px] min-w-[44px] rounded-xl text-lg transition
                 {% if record.has_comment %}bg-rose-pop/15{% else %}bg-twilight/10 opacity-60{% endif %}"
                 aria-label="Comment">💬</button>
@@ -61,6 +65,18 @@
                     class="comment-text min-h-[44px] flex-1 rounded-xl border border-twilight/20 px-3 text-sm">
                 <button type="button" class="comment-save min-h-[44px] rounded-xl bg-midnight px-4 text-sm font-semibold text-mist">Save</button>
             </div>
+            <div class="mt-3 border-t border-dashed border-twilight/20 pt-3">
+                <p class="mb-1 text-xs font-semibold text-twilight/70">
+                    About this student — kept between classes
+                    <span class="note-updated ml-1 font-normal text-twilight/50">{% if record.class_note and record.class_note.note %}· updated {{ record.class_note.updated_at|date:"j M" }}{% endif %}</span>
+                </p>
+                <div class="flex flex-col gap-2 sm:flex-row">
+                    <input type="text" maxlength="300" placeholder="e.g. strong on algebra, struggles with proofs"
+                        value="{{ record.class_note.note|default:'' }}"
+                        class="student-note min-h-[44px] flex-1 rounded-xl border border-twilight/20 px-3 text-sm">
+                    <button type="button" class="note-save min-h-[44px] rounded-xl bg-twilight/15 px-4 text-sm font-semibold">Save</button>
+                </div>
+            </div>
         </div>
     </div>
     {% empty %}
@@ -74,6 +90,7 @@
 (function () {
     const CSRF = "{{ csrf_token }}";
     const SET_URL_TEMPLATE = document.getElementById('roster').dataset.setUrlTemplate;
+    const NOTE_URL_TEMPLATE = document.getElementById('roster').dataset.noteUrlTemplate;
     const HOMEWORK_DUE_URL = "{% url 'reports:set_homework_due' session.id %}";
 
     const STATES = {
@@ -84,6 +101,16 @@
                 present: 'bg-lime-glow/25 text-midnight ring-1 ring-lime-glow',
                 absent: 'bg-rose-pop/15 text-rose-pop ring-1 ring-rose-pop/50',
                 late: 'bg-amber-100 text-amber-800 ring-1 ring-amber-300',
+            },
+        },
+        ability: {
+            order: ['', 'high', 'medium', 'low'],
+            labels: { '': 'Ability', high: 'High', medium: 'Medium', low: 'Low' },
+            classes: {
+                '': 'bg-twilight/5 text-twilight/50 ring-1 ring-twilight/15',
+                high: 'bg-indigo-100 text-indigo-800 ring-1 ring-indigo-300',
+                medium: 'bg-sky-100 text-sky-800 ring-1 ring-sky-300',
+                low: 'bg-slate-200 text-slate-700 ring-1 ring-slate-400',
             },
         },
         homework: {
@@ -121,32 +148,40 @@
         return SET_URL_TEMPLATE.replace('/0/', '/' + recordId + '/');
     }
 
+    function noteUrl(studentId) {
+        return NOTE_URL_TEMPLATE.replace('/student/0/', '/student/' + studentId + '/');
+    }
+
     document.querySelectorAll('.chip').forEach(paint);
 
     document.getElementById('roster').addEventListener('click', function (event) {
         const chip = event.target.closest('.chip');
         const commentToggle = event.target.closest('.comment-toggle');
         const commentSave = event.target.closest('.comment-save');
+        const noteSave = event.target.closest('.note-save');
         const row = event.target.closest('[data-record-id]');
         if (!row) return;
         const recordId = row.dataset.recordId;
 
         if (chip) {
-            if (inFlight.has(recordId)) return;
-            const spec = STATES[chip.dataset.field];
+            const field = chip.dataset.field;
+            const key = recordId + ':' + field;
+            if (inFlight.has(key)) return;
+            const spec = STATES[field];
             const previous = chip.dataset.state;
             const next = spec.order[(spec.order.indexOf(previous) + 1) % spec.order.length];
             chip.dataset.state = next;
             paint(chip);
-            inFlight.add(recordId);
-            post(setUrl(recordId), { field: chip.dataset.field, value: next })
+            inFlight.add(key);
+            const url = field === 'ability' ? noteUrl(row.dataset.studentId) : setUrl(recordId);
+            post(url, { field: field, value: next })
                 .catch(function () {
                     chip.dataset.state = previous;
                     paint(chip);
                     chip.classList.add('ring-2', 'ring-rose-pop');
                     setTimeout(function () { chip.classList.remove('ring-2', 'ring-rose-pop'); }, 1500);
                 })
-                .finally(function () { inFlight.delete(recordId); });
+                .finally(function () { inFlight.delete(key); });
         }
 
         if (commentToggle) {
@@ -170,6 +205,19 @@
                     }, 700);
                 })
                 .catch(function () { commentSave.textContent = 'Retry'; });
+        }
+
+        if (noteSave) {
+            const value = row.querySelector('.student-note').value;
+            noteSave.textContent = '…';
+            post(noteUrl(row.dataset.studentId), { field: 'note', value: value })
+                .then(function (data) {
+                    noteSave.textContent = 'Saved ✓';
+                    const stamp = row.querySelector('.note-updated');
+                    if (stamp) stamp.textContent = value ? '· updated ' + data.updated_at : '';
+                    setTimeout(function () { noteSave.textContent = 'Save'; }, 700);
+                })
+                .catch(function () { noteSave.textContent = 'Retry'; });
         }
     });
 

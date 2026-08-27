@@ -1,6 +1,14 @@
 from django.contrib import admin
 
-from .models import ClassSession, ClassTest, CommentPreset, StudentSessionRecord, TestResult, TimetableSlot
+from .models import (
+    ClassSession,
+    ClassTest,
+    CommentPreset,
+    StudentClassNote,
+    StudentSessionRecord,
+    TestResult,
+    TimetableSlot,
+)
 
 
 @admin.register(CommentPreset)
@@ -44,3 +52,11 @@ class ClassTestAdmin(admin.ModelAdmin):
     list_filter = ('teacher_class',)
     date_hierarchy = 'date'
     inlines = [TestResultInline]
+
+
+@admin.register(StudentClassNote)
+class StudentClassNoteAdmin(admin.ModelAdmin):
+    list_display = ('student', 'teacher_class', 'ability', 'note', 'updated_at')
+    list_filter = ('teacher_class', 'ability')
+    search_fields = ('student__username', 'student__first_name', 'student__last_name', 'note')
+    raw_id_fields = ('student',)
