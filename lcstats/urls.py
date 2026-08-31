@@ -20,6 +20,7 @@ urlpatterns = [
     path('quickkicks/', include('quickkicks.urls')),
     path('flashcards/', include('flashcards.urls')),
     path('homework/', include('homework.urls')),
+    path('hw-solutions/', include('hw_solutions.urls')),
     path('stats-simulator/', include('stats_simulator.urls')),
     path('reports/', include('reports.urls')),
 

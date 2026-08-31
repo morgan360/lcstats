@@ -158,6 +158,7 @@ INSTALLED_APPS = [
     'quickkicks',
     'flashcards',
     'homework',
+    'hw_solutions',
     'stats_simulator',
     'schools',
     'reports',
