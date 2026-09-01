@@ -1,0 +1,9 @@
+{% comment %}
+Back to the class list. Reports is often opened from a phone home screen, where
+there is no browser chrome and so no back button, leaving these pages a dead end.
+Arrow rather than a chevron so it is not mistaken for the ‹ › day nav.
+{% endcomment %}
+<a href="{% url 'reports:dashboard' %}"
+   class="-ml-2 inline-flex min-h-[44px] items-center gap-1 rounded-lg px-2 text-sm font-semibold text-twilight/70 transition hover:bg-twilight/10 hover:text-midnight">
+    <span aria-hidden="true">←</span> Classes
+</a>

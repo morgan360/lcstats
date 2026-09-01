@@ -5,6 +5,8 @@
 {% block content %}
 {% include "reports/includes/messages.html" %}
 
+{% include "reports/includes/_back_link.html" %}
+
 <h1 class="mb-4 text-xl font-bold">{{ teacher_class.name }} — tests</h1>
 
 <form method="post" class="mb-6 rounded-2xl bg-white p-4 shadow-sm ring-1 ring-twilight/10">
