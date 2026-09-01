@@ -39,6 +39,16 @@ WORK_UPLOAD_TOKEN_MAX_AGE = int(os.getenv("WORK_UPLOAD_TOKEN_MAX_AGE", 900))
 # only staff can open an upload slot. Set WORK_PHOTO_STAFF_ONLY=False in the
 # environment to open it to students -- no code change, no redeploy.
 WORK_PHOTO_STAFF_ONLY = os.getenv("WORK_PHOTO_STAFF_ONLY", "True") == "True"
+
+# --- Homework Check (teacher marks a student's exercise from photos) --------
+# Sixteen photos is one full exercise off an iPhone. They are analysed in
+# chunks because sixteen photos plus the solution pages in a single request
+# would run past OPENAI_VISION_TIMEOUT and hold a web worker open -- these
+# calls are synchronous and there is no background queue.
+HOMEWORK_CHECK_MAX_PHOTOS = int(os.getenv("HOMEWORK_CHECK_MAX_PHOTOS", 16))
+HOMEWORK_CHECK_CHUNK_SIZE = int(os.getenv("HOMEWORK_CHECK_CHUNK_SIZE", 4))
+HOMEWORK_CHECK_HOURLY_LIMIT = int(os.getenv("HOMEWORK_CHECK_HOURLY_LIMIT", 40))
+HOMEWORK_CHECK_RETENTION_DAYS = int(os.getenv("HOMEWORK_CHECK_RETENTION_DAYS", 90))
 FAQ_MATCH_THRESHOLD = float(os.getenv("FAQ_MATCH_THRESHOLD", 0.7))
 
 # NumSkull "site help" matching (pure retrieval, no GPT call — see chat/views.py).
@@ -162,6 +172,7 @@ INSTALLED_APPS = [
     'stats_simulator',
     'schools',
     'reports',
+    'homework_check',
     'hijack',
     'hijack.contrib.admin',
 ]

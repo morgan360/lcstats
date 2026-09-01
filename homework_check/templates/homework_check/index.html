@@ -1,0 +1,82 @@
+{% extends "_base.html" %}
+{% block title %}Homework Check{% endblock %}
+
+{% block content %}
+<div class="mx-auto max-w-4xl px-4 py-6 sm:px-6">
+
+  <div class="mb-6 flex flex-wrap items-center justify-between gap-3">
+    <div>
+      <h1 class="text-2xl font-bold text-twilight">Homework Check</h1>
+      <p class="mt-1 text-sm text-twilight/70">
+        Photograph a student's copy and check it against a solutions PDF.
+      </p>
+    </div>
+    <a href="{% url 'homework_check:check_new' %}{% if current_class %}?class={{ current_class.id }}{% endif %}"
+       class="rounded-xl bg-violet-royal px-4 py-3 text-sm font-semibold text-white shadow-sm">
+      + New check
+    </a>
+  </div>
+
+  {% if classes %}
+    <div class="mb-5 flex flex-wrap gap-2">
+      <a href="{% url 'homework_check:index' %}"
+         class="rounded-xl px-3 py-2 text-sm font-semibold {% if not current_class %}bg-twilight text-white{% else %}bg-white text-twilight ring-1 ring-twilight/15{% endif %}">
+        All classes
+      </a>
+      {% for c in classes %}
+        <a href="?class={{ c.id }}"
+           class="rounded-xl px-3 py-2 text-sm font-semibold {% if current_class.id == c.id %}bg-twilight text-white{% else %}bg-white text-twilight ring-1 ring-twilight/15{% endif %}">
+          {{ c.name }}
+        </a>
+      {% endfor %}
+    </div>
+  {% endif %}
+
+  {% if checks %}
+    <div class="space-y-2">
+      {% for check in checks %}
+        <a href="{% url 'homework_check:check_detail' check.pk %}"
+           class="block rounded-2xl bg-white p-4 shadow-sm ring-1 ring-twilight/10 transition hover:ring-violet-royal/40">
+          <div class="flex flex-wrap items-center gap-2">
+            <span class="font-semibold text-twilight">
+              {{ check.student.get_full_name|default:check.student.username }}
+            </span>
+            <span class="text-sm text-twilight/60">{{ check.exercise_name }}</span>
+
+            {% if check.final_rating %}
+              <span class="ml-auto rounded-lg px-2 py-1 text-xs font-bold uppercase tracking-wide
+                {% if check.final_rating == 'excellent' %}bg-lime-glow/25 text-twilight
+                {% elif check.final_rating == 'good' %}bg-violet-royal/15 text-violet-royal
+                {% elif check.final_rating == 'fair' %}bg-amber-100 text-amber-800
+                {% else %}bg-rose-pop/15 text-rose-pop{% endif %}">
+                {{ check.final_rating_display }}
+              </span>
+            {% elif check.status == 'complete' %}
+              <span class="ml-auto rounded-lg bg-twilight/10 px-2 py-1 text-xs font-semibold text-twilight/70">
+                No rating
+              </span>
+            {% else %}
+              <span class="ml-auto rounded-lg bg-twilight/10 px-2 py-1 text-xs font-semibold text-twilight/70">
+                {{ check.get_status_display }}
+              </span>
+            {% endif %}
+          </div>
+          <div class="mt-1 text-xs text-twilight/50">
+            {{ check.teacher_class.name }} · {{ check.solution.title }} ·
+            {{ check.created_at|date:"j M Y" }}
+            {% if check.is_reviewed %} · reviewed{% endif %}
+          </div>
+        </a>
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="rounded-2xl bg-white p-8 text-center shadow-sm ring-1 ring-twilight/10">
+      <p class="text-twilight/70">No checks yet.</p>
+      <a href="{% url 'homework_check:check_new' %}"
+         class="mt-4 inline-block rounded-xl bg-violet-royal px-4 py-3 text-sm font-semibold text-white">
+        Check a student's homework
+      </a>
+    </div>
+  {% endif %}
+</div>
+{% endblock %}

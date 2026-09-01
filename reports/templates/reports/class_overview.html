@@ -18,6 +18,7 @@
     <div class="flex gap-2 text-sm font-semibold">
         <a href="{% url 'reports:daily_entry' teacher_class.id %}" class="rounded-lg bg-twilight/10 px-3 py-2 hover:bg-twilight/20">Daily entry</a>
         <a href="{% url 'reports:class_overview_csv' teacher_class.id %}" class="rounded-lg bg-twilight/10 px-3 py-2 hover:bg-twilight/20">CSV</a>
+        <a href="{% url 'homework_check:index' %}?class={{ teacher_class.id }}" class="rounded-lg bg-twilight/10 px-3 py-2 hover:bg-twilight/20">Homework Check</a>
     </div>
 </div>
 

@@ -183,6 +183,11 @@ to the stylesheet.
   // Shrink in a canvas before upload. Takes a 4MB photo to a few hundred KB,
   // which matters on school wifi -- and converts HEIC for free, because Safari
   // decodes it into the canvas and toBlob gives back JPEG.
+  //
+  // The same algorithm lives in static/js/photo_upload.js, which the teacher
+  // homework-check page uses for its multi-file upload. Kept separate because
+  // this page is live to students and was verified on a real phone; change
+  // one and change the other.
   function downscale(file, done) {
     var img = new Image();
     img.onload = function () {

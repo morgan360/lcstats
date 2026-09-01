@@ -22,10 +22,15 @@
             <a href="?date={{ next_date|date:'Y-m-d' }}" class="rounded-lg bg-twilight/10 px-3 py-2 hover:bg-twilight/20" aria-label="Next day">›</a>
         </div>
     </div>
-    <label class="mt-2 flex items-center gap-2 text-sm text-twilight/80">
-        <input type="checkbox" id="homeworkDue" class="h-5 w-5 rounded accent-midnight" {% if session.homework_due %}checked{% endif %}>
-        Homework was due today
-    </label>
+    <div class="mt-2 flex flex-wrap items-center justify-between gap-2">
+        <label class="flex items-center gap-2 text-sm text-twilight/80">
+            <input type="checkbox" id="homeworkDue" class="h-5 w-5 rounded accent-midnight" {% if session.homework_due %}checked{% endif %}>
+            Homework was due today
+        </label>
+        {# A link only. Nothing over there writes back to the homework chip. #}
+        <a href="{% url 'homework_check:index' %}?class={{ teacher_class.id }}"
+           class="rounded-lg bg-twilight/10 px-3 py-2 text-sm font-semibold hover:bg-twilight/20">Check a copy</a>
+    </div>
 </div>
 
 <p class="mb-3 text-xs text-twilight/60">Tap a chip to change it — everyone starts Present with homework Done. Changes save instantly. Ability and the standing note live behind 💬; * marks a student whose note records a nationality other than Irish.

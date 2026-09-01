@@ -1,0 +1,442 @@
+{% extends "_base.html" %}
+{% load static %}
+{% block title %}{{ check.exercise_name }} — {{ check.student.get_full_name|default:check.student.username }}{% endblock %}
+
+{% block content %}
+<div class="mx-auto max-w-3xl px-4 py-6 sm:px-6"
+     id="check" data-pk="{{ check.pk }}"
+     data-upload-url="{% url 'homework_check:check_upload' check.pk %}"
+     data-analyse-url="{% url 'homework_check:analyse_next' check.pk %}"
+     data-edit-url="{% url 'homework_check:check_edit' check.pk %}"
+     data-max-photos="{{ max_photos }}">
+
+  <a href="{% url 'homework_check:index' %}" class="text-sm font-semibold text-twilight/60">← Homework Check</a>
+
+  <div class="mt-2 mb-5">
+    <h1 class="text-2xl font-bold text-twilight">
+      {{ check.student.get_full_name|default:check.student.username }}
+    </h1>
+    <p class="text-sm text-twilight/70">
+      {{ check.exercise_name }} · {{ check.teacher_class.name }}<br>
+      <span class="text-twilight/50">
+        Checked against {{ check.solution.title }}{% if check.solution_pages %}, pages {{ check.solution_pages }}{% endif %}
+      </span>
+    </p>
+  </div>
+
+  {# ---- Photos ---------------------------------------------------------- #}
+  <section class="mb-6 rounded-2xl bg-white p-4 shadow-sm ring-1 ring-twilight/10">
+    <div class="mb-3 flex items-center justify-between">
+      <h2 class="font-semibold text-twilight">Photos</h2>
+      <span id="photoCount" class="text-sm text-twilight/60">{{ total }} of {{ max_photos }}</span>
+    </div>
+
+    <div id="photoGrid" class="mb-3 grid grid-cols-3 gap-2 sm:grid-cols-4">
+      {% for photo in photos %}
+        <div class="relative" data-photo-id="{{ photo.pk }}">
+          <img src="{% url 'homework_check:check_photo' photo.pk %}"
+               alt="Page {{ photo.order|add:1 }}"
+               class="aspect-[3/4] w-full rounded-xl object-cover ring-1 ring-twilight/10">
+          <button type="button" data-drop="{{ photo.pk }}"
+                  class="absolute right-1 top-1 rounded-lg bg-white/90 px-2 py-1 text-xs font-bold text-rose-pop shadow-sm"
+                  aria-label="Remove this photo">✕</button>
+        </div>
+      {% endfor %}
+    </div>
+
+    <input type="file" id="fileInput" accept="image/*" multiple hidden>
+    <button type="button" id="addPhotos"
+            class="w-full rounded-xl bg-twilight px-4 py-4 text-base font-semibold text-white shadow-sm">
+      Add photos
+    </button>
+    <p class="mt-2 text-xs text-twilight/50">
+      Take the photos with your camera first, then pick them all here. Up to
+      {{ max_photos }} pages, flat and straight on.
+    </p>
+    <p id="uploadStatus" class="mt-2 hidden text-sm font-semibold text-violet-royal"></p>
+    <ul id="uploadErrors" class="mt-2 hidden space-y-1 text-sm text-rose-pop"></ul>
+  </section>
+
+  {# ---- Analysis -------------------------------------------------------- #}
+  <section class="mb-6 rounded-2xl bg-white p-4 shadow-sm ring-1 ring-twilight/10">
+    <div class="mb-3 flex items-center justify-between">
+      <h2 class="font-semibold text-twilight">Check against the solutions</h2>
+      <span id="progressLabel" class="text-sm text-twilight/60">{{ done }} / {{ total }}</span>
+    </div>
+
+    <div class="mb-3 h-2 overflow-hidden rounded-full bg-twilight/10">
+      <div id="progressBar" class="h-full bg-violet-royal transition-all"
+           style="width: {% if total %}{% widthratio done total 100 %}{% else %}0{% endif %}%"></div>
+    </div>
+
+    <button type="button" id="runCheck"
+            class="w-full rounded-xl bg-violet-royal px-4 py-4 text-base font-semibold text-white shadow-sm disabled:opacity-50">
+      {% if check.status == 'complete' %}Check again{% else %}Check this homework{% endif %}
+    </button>
+    <p id="analyseStatus" class="mt-2 hidden text-sm font-semibold text-violet-royal"></p>
+    <p id="analyseError" class="mt-2 hidden text-sm font-semibold text-rose-pop"></p>
+  </section>
+
+  {# ---- Result ---------------------------------------------------------- #}
+  <section id="result" class="{% if check.status != 'complete' %}hidden{% endif %}">
+
+    {% if not check.readable or check.confidence == 'low' %}
+      <div class="mb-4 rounded-xl bg-amber-50 p-3 text-sm text-amber-900 ring-1 ring-amber-200">
+        Some of these photos were hard to read, so check the questions below
+        carefully before printing.
+      </div>
+    {% endif %}
+
+    {% if check.notes %}
+      <div class="mb-4 rounded-xl bg-twilight/5 p-3 text-sm text-twilight/80">
+        {% for note in check.notes %}<p>{{ note }}</p>{% endfor %}
+      </div>
+    {% endif %}
+
+    <div class="mb-4 rounded-2xl bg-white p-4 shadow-sm ring-1 ring-twilight/10">
+      <h2 class="mb-2 font-semibold text-twilight">Rating</h2>
+      {% if check.rating_reason and not check.teacher_rating %}
+        <p class="mb-2 text-sm text-twilight/70">
+          No rating was given — {{ check.rating_reason }}. Set one yourself if you want one on the sheet.
+        </p>
+      {% endif %}
+      <div class="flex flex-wrap gap-2" id="ratingChips">
+        {% for value, label in ratings %}
+          <button type="button" data-rating="{{ value }}"
+                  class="rating-chip min-h-[44px] rounded-xl px-4 text-sm font-semibold transition
+                    {% if check.final_rating == value %}bg-twilight text-white{% else %}bg-twilight/10 text-twilight{% endif %}">
+            {{ label }}
+          </button>
+        {% endfor %}
+        <button type="button" data-rating=""
+                class="rating-chip min-h-[44px] rounded-xl px-4 text-sm font-semibold transition
+                  {% if not check.final_rating %}bg-twilight text-white{% else %}bg-twilight/10 text-twilight{% endif %}">
+          None
+        </button>
+      </div>
+      {% if check.rating %}
+        <p class="mt-2 text-xs text-twilight/50">Suggested: {{ check.get_rating_display }}</p>
+      {% endif %}
+    </div>
+
+    <div class="mb-4 rounded-2xl bg-white p-4 shadow-sm ring-1 ring-twilight/10">
+      <h2 class="mb-3 font-semibold text-twilight">Questions</h2>
+      <div id="questions" class="space-y-3">
+        {% for q in check.findings %}
+          <div class="rounded-xl bg-mist/60 p-3" data-label="{{ q.label }}">
+            <div class="flex items-center gap-2">
+              <span class="rounded-md px-2 py-0.5 text-xs font-bold uppercase
+                {% if q.verdict == 'correct' %}bg-lime-glow/30 text-twilight
+                {% elif q.verdict == 'slip' %}bg-amber-100 text-amber-800
+                {% elif q.verdict == 'wrong' %}bg-rose-pop/20 text-rose-pop
+                {% else %}bg-twilight/10 text-twilight/70{% endif %}">
+                {{ q.verdict }}
+              </span>
+              <span class="font-semibold text-twilight">{{ q.label }}</span>
+              <button type="button" data-drop-question="{{ q.label }}"
+                      class="ml-auto text-xs font-semibold text-twilight/40">remove</button>
+            </div>
+            <div class="mt-2 space-y-1 text-sm maths">
+              {% if q.student_answer %}
+                <p><span class="text-twilight/50">Theirs:</span> {{ q.student_answer }}</p>
+              {% endif %}
+              {% if q.correct_answer %}
+                <p><span class="text-twilight/50">Correct:</span> {{ q.correct_answer }}</p>
+              {% elif not q.found_in_solutions %}
+                <p class="text-twilight/50">Not in the solution pages you chose.</p>
+              {% endif %}
+            </div>
+            <textarea data-comment="{{ q.label }}" rows="2"
+                      class="mt-2 w-full rounded-lg border-twilight/15 bg-white p-2 text-sm">{{ q.comment }}</textarea>
+          </div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <div class="mb-4 rounded-2xl bg-white p-4 shadow-sm ring-1 ring-twilight/10">
+      <h2 class="mb-2 font-semibold text-twilight">Closing note</h2>
+      <textarea id="summaryBox" rows="4"
+                class="w-full rounded-lg border-twilight/15 bg-white p-3 text-sm">{{ check.summary }}</textarea>
+
+      <h2 class="mb-2 mt-4 font-semibold text-twilight">
+        Your own note <span class="font-normal text-twilight/50">(optional)</span>
+      </h2>
+      <textarea id="teacherNote" rows="2" placeholder="Anything you want to add in your own words"
+                class="w-full rounded-lg border-twilight/15 bg-white p-3 text-sm">{{ check.teacher_note }}</textarea>
+      <p id="saveHint" class="mt-2 text-xs text-twilight/40">Edits save as you type.</p>
+    </div>
+
+    <a href="{% url 'homework_check:report_print' check.pk %}" target="_blank"
+       class="block rounded-xl bg-lime-glow px-4 py-4 text-center text-base font-bold text-twilight shadow-sm">
+      Open the printable sheet →
+    </a>
+  </section>
+
+  <form method="post" action="{% url 'homework_check:check_delete' check.pk %}"
+        class="mt-8 text-center"
+        onsubmit="return confirm('Delete this check and its photos?');">
+    {% csrf_token %}
+    <button type="submit" class="text-sm font-semibold text-rose-pop/70">Delete this check</button>
+  </form>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="{% static 'js/photo_upload.js' %}"></script>
+<script>
+(function () {
+  var root = document.getElementById('check');
+  var csrf = document.querySelector('[name=csrfmiddlewaretoken]').value;
+
+  var uploadUrl = root.dataset.uploadUrl;
+  var analyseUrl = root.dataset.analyseUrl;
+  var editUrl = root.dataset.editUrl;
+  var maxPhotos = parseInt(root.dataset.maxPhotos, 10);
+
+  function $(id) { return document.getElementById(id); }
+  function show(el, on) { el.classList.toggle('hidden', !on); }
+
+  /* ---- Uploading ---------------------------------------------------- */
+  $('addPhotos').addEventListener('click', function () { $('fileInput').click(); });
+
+  $('fileInput').addEventListener('change', function (e) {
+    var files = Array.prototype.slice.call(e.target.files || []);
+    if (!files.length) return;
+
+    var room = maxPhotos - document.querySelectorAll('#photoGrid [data-photo-id]').length;
+    if (files.length > room) {
+      files = files.slice(0, Math.max(0, room));
+      if (!files.length) {
+        alert('That is already ' + maxPhotos + ' photos for this exercise.');
+        return;
+      }
+    }
+
+    var status = $('uploadStatus');
+    var errors = $('uploadErrors');
+    errors.innerHTML = '';
+    show(errors, false);
+    show(status, true);
+    $('addPhotos').disabled = true;
+
+    PhotoUpload.uploadAll({
+      url: uploadUrl,
+      files: files,
+      csrf: csrf,
+      onProgress: function (i, total) {
+        status.textContent = 'Uploading ' + (i + 1) + ' of ' + total + '…';
+      },
+      onOne: function (i, data) {
+        addThumb(data);
+        $('photoCount').textContent = data.count + ' of ' + maxPhotos;
+      },
+      onError: function (i, message) {
+        // One bad photo must not lose the rest -- name it and carry on.
+        var li = document.createElement('li');
+        li.textContent = 'Photo ' + (i + 1) + ': ' + message;
+        errors.appendChild(li);
+        show(errors, true);
+      },
+      onDone: function (ok, failed) {
+        status.textContent = failed
+          ? ok + ' uploaded, ' + failed + ' could not be read.'
+          : ok + ' photo(s) uploaded.';
+        $('addPhotos').disabled = false;
+        $('fileInput').value = '';
+        refreshProgressLabel();
+      }
+    });
+  });
+
+  function addThumb(data) {
+    var wrap = document.createElement('div');
+    wrap.className = 'relative';
+    wrap.dataset.photoId = data.id;
+    var img = document.createElement('img');
+    img.src = data.url;
+    img.alt = 'Page ' + (data.order + 1);
+    img.className = 'aspect-[3/4] w-full rounded-xl object-cover ring-1 ring-twilight/10';
+    var btn = document.createElement('button');
+    btn.type = 'button';
+    btn.dataset.drop = data.id;
+    btn.className = 'absolute right-1 top-1 rounded-lg bg-white/90 px-2 py-1 text-xs font-bold text-rose-pop shadow-sm';
+    btn.textContent = '✕';
+    wrap.appendChild(img);
+    wrap.appendChild(btn);
+    $('photoGrid').appendChild(wrap);
+  }
+
+  $('photoGrid').addEventListener('click', function (e) {
+    var btn = e.target.closest('[data-drop]');
+    if (!btn) return;
+    var id = btn.dataset.drop;
+    fetch('/homework-check/photo/' + id + '/delete/', {
+      method: 'POST', headers: { 'X-CSRFToken': csrf }
+    })
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        if (!data.success) return;
+        btn.closest('[data-photo-id]').remove();
+        $('photoCount').textContent = data.count + ' of ' + maxPhotos;
+        refreshProgressLabel();
+      });
+  });
+
+  function refreshProgressLabel() {
+    var count = document.querySelectorAll('#photoGrid [data-photo-id]').length;
+    var parts = $('progressLabel').textContent.split('/');
+    $('progressLabel').textContent = (parts[0] || '0').trim() + ' / ' + count;
+  }
+
+  /* ---- Analysing ------------------------------------------------------
+   * The browser is the queue: one chunk per request, looping until the
+   * server says complete. That keeps every call inside the vision timeout
+   * without needing a background worker, and closing the tab just pauses it.
+   */
+  var running = false;
+
+  $('runCheck').addEventListener('click', function () {
+    if (running) return;
+    if (!document.querySelectorAll('#photoGrid [data-photo-id]').length) {
+      alert('Add some photos first.');
+      return;
+    }
+    running = true;
+    $('runCheck').disabled = true;
+    show($('analyseError'), false);
+    show($('analyseStatus'), true);
+    $('analyseStatus').textContent = 'Reading the pages…';
+    step();
+  });
+
+  function step() {
+    fetch(analyseUrl, { method: 'POST', headers: { 'X-CSRFToken': csrf } })
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        if (!data.success) {
+          running = false;
+          $('runCheck').disabled = false;
+          show($('analyseStatus'), false);
+          $('analyseError').textContent = data.message || 'Something went wrong.';
+          show($('analyseError'), true);
+          return;
+        }
+
+        var pct = data.total ? Math.round((data.done / data.total) * 100) : 0;
+        $('progressBar').style.width = pct + '%';
+        $('progressLabel').textContent = data.done + ' / ' + data.total;
+
+        if (data.complete) {
+          $('analyseStatus').textContent = 'Done. Loading the report…';
+          window.location.reload();
+          return;
+        }
+
+        $('analyseStatus').textContent =
+          'Read ' + data.done + ' of ' + data.total + ' pages…';
+        step();
+      })
+      .catch(function () {
+        running = false;
+        $('runCheck').disabled = false;
+        show($('analyseStatus'), false);
+        $('analyseError').textContent = 'Could not reach NumScoil. Check your connection.';
+        show($('analyseError'), true);
+      });
+  }
+
+  /* ---- Editing --------------------------------------------------------
+   * Guard keyed by field, so a second keystroke while a save is in flight
+   * replaces it rather than racing it. Same idea as the reports roster.
+   */
+  var inFlight = {};
+
+  function save(field, value, extra) {
+    var key = field + ':' + ((extra && extra.label) || '');
+    if (inFlight[key]) { inFlight[key] = { field: field, value: value, extra: extra }; return; }
+    inFlight[key] = true;
+
+    var body = Object.assign({ field: field, value: value }, extra || {});
+    fetch(editUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrf },
+      body: JSON.stringify(body)
+    })
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        if (data.success) $('saveHint').textContent = 'Saved.';
+      })
+      .catch(function () { $('saveHint').textContent = 'Not saved — check your connection.'; })
+      .finally(function () {
+        var queued = inFlight[key];
+        inFlight[key] = null;
+        if (queued && queued !== true) save(queued.field, queued.value, queued.extra);
+      });
+  }
+
+  function debounce(fn, ms) {
+    var t;
+    return function () {
+      var args = arguments;
+      clearTimeout(t);
+      t = setTimeout(function () { fn.apply(null, args); }, ms);
+    };
+  }
+
+  var summaryBox = $('summaryBox');
+  if (summaryBox) {
+    summaryBox.addEventListener('input', debounce(function () {
+      save('summary', summaryBox.value);
+    }, 600));
+  }
+
+  var teacherNote = $('teacherNote');
+  if (teacherNote) {
+    teacherNote.addEventListener('input', debounce(function () {
+      save('teacher_note', teacherNote.value);
+    }, 600));
+  }
+
+  var questions = $('questions');
+  if (questions) {
+    questions.addEventListener('input', debounce(function (e) {
+      var box = e.target.closest('[data-comment]');
+      if (!box) return;
+      save('comment', box.value, { label: box.dataset.comment });
+    }, 600));
+
+    questions.addEventListener('click', function (e) {
+      var btn = e.target.closest('[data-drop-question]');
+      if (!btn) return;
+      var label = btn.dataset.dropQuestion;
+      if (!confirm('Leave ' + label + ' off the sheet?')) return;
+      save('drop_question', '', { label: label });
+      btn.closest('[data-label]').remove();
+    });
+  }
+
+  var chips = $('ratingChips');
+  if (chips) {
+    chips.addEventListener('click', function (e) {
+      var btn = e.target.closest('[data-rating]');
+      if (!btn) return;
+      chips.querySelectorAll('.rating-chip').forEach(function (c) {
+        c.className = c.className
+          .replace('bg-twilight text-white', 'bg-twilight/10 text-twilight');
+      });
+      btn.className = btn.className
+        .replace('bg-twilight/10 text-twilight', 'bg-twilight text-white');
+      save('rating', btn.dataset.rating);
+    });
+  }
+
+  /* Model output carries LaTeX, so it needs the same maths pass every other
+   * page that injects feedback uses. */
+  if (window.Feedback && Feedback.renderMaths) {
+    document.querySelectorAll('#result .maths').forEach(function (el) {
+      Feedback.renderMaths(el);
+    });
+  }
+})();
+</script>
+{% endblock %}

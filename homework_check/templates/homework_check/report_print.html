@@ -1,0 +1,164 @@
+{% load static %}<!DOCTYPE html>
+{# Standalone on purpose: no site nav, no dark theme, black on white, sized to
+   one A4 page. This is the sheet the student is handed. #}
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ check.exercise_name }} — {{ check.student.get_full_name|default:check.student.username }}</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+  <style>
+    :root { --ink: #1c1c28; --muted: #6b6b7d; --rule: #d8d8e2; }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      padding: 18mm 16mm;
+      background: #fff;
+      color: var(--ink);
+      font: 10.5pt/1.45 "Helvetica Neue", Helvetica, Arial, sans-serif;
+      max-width: 210mm;
+    }
+
+    header { border-bottom: 2px solid var(--ink); padding-bottom: 8px; margin-bottom: 14px; }
+    .row { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+    h1 { font-size: 15pt; margin: 0; }
+    .meta { color: var(--muted); font-size: 9pt; margin-top: 2px; }
+
+    .rating {
+      border: 2px solid var(--ink);
+      border-radius: 6px;
+      padding: 6px 14px;
+      font-size: 12pt;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .04em;
+      white-space: nowrap;
+    }
+
+    table { width: 100%; border-collapse: collapse; margin-bottom: 12px; }
+    th {
+      text-align: left; font-size: 8.5pt; text-transform: uppercase;
+      letter-spacing: .05em; color: var(--muted);
+      border-bottom: 1px solid var(--rule); padding: 0 6px 4px 0;
+    }
+    td { vertical-align: top; padding: 6px 6px 6px 0; border-bottom: 1px solid var(--rule); }
+    td.q { font-weight: 700; white-space: nowrap; width: 12mm; }
+    td.a { width: 34mm; }
+    .v {
+      display: inline-block; font-size: 8pt; font-weight: 700; text-transform: uppercase;
+      border: 1px solid var(--ink); border-radius: 3px; padding: 1px 5px; white-space: nowrap;
+    }
+    .v.correct { background: #e8f5e0; }
+    .v.slip { background: #fdf0d5; }
+    .v.wrong { background: #fbe0e0; }
+    .v.incomplete, .v.unclear { background: #eeeef4; color: var(--muted); }
+    .muted { color: var(--muted); }
+
+    h2 { font-size: 10pt; text-transform: uppercase; letter-spacing: .05em;
+         color: var(--muted); margin: 14px 0 4px; }
+    .note { border-left: 3px solid var(--ink); padding-left: 10px; }
+
+    footer { margin-top: 16px; border-top: 1px solid var(--rule);
+             padding-top: 6px; font-size: 8pt; color: var(--muted); }
+
+    .noprint { margin-bottom: 14px; }
+    .noprint button {
+      font: inherit; font-weight: 700; cursor: pointer;
+      background: var(--ink); color: #fff; border: 0;
+      border-radius: 6px; padding: 9px 16px;
+    }
+
+    @media print {
+      body { padding: 0; }
+      .noprint { display: none !important; }
+      table { page-break-inside: auto; }
+      tr { page-break-inside: avoid; }
+    }
+    @page { size: A4; margin: 14mm; }
+  </style>
+</head>
+<body>
+
+<div class="noprint">
+  <button type="button" onclick="window.print()">Print this sheet</button>
+</div>
+
+<header>
+  <div class="row">
+    <div>
+      <h1>{{ check.student.get_full_name|default:check.student.username }}</h1>
+      <div class="meta">
+        {{ check.exercise_name }} · {{ check.teacher_class.name }} · {{ check.created_at|date:"j F Y" }}
+      </div>
+    </div>
+    {% if check.final_rating %}
+      <div class="rating">{{ check.final_rating_display }}</div>
+    {% endif %}
+  </div>
+</header>
+
+{% if questions %}
+  <table>
+    <thead>
+      <tr>
+        <th>Q</th>
+        <th>How it went</th>
+        <th>Your answer</th>
+        <th>Correct answer</th>
+        <th>Comment</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for q in questions %}
+        <tr>
+          <td class="q">{{ q.label }}</td>
+          <td><span class="v {{ q.verdict }}">{{ q.verdict }}</span></td>
+          <td class="a maths">{{ q.student_answer|default:"—" }}</td>
+          <td class="a maths">
+            {% if q.correct_answer %}{{ q.correct_answer }}
+            {% else %}<span class="muted">not checked</span>{% endif %}
+          </td>
+          <td class="maths">{{ q.comment }}</td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+{% else %}
+  <p class="muted">No questions were matched against the solutions.</p>
+{% endif %}
+
+{% if check.has_diagram and check.diagram_feedback %}
+  <h2>Your graph</h2>
+  <p class="maths">{{ check.diagram_feedback }}</p>
+{% endif %}
+
+{% if check.summary %}
+  <h2>What to work on</h2>
+  <p class="maths">{{ check.summary }}</p>
+{% endif %}
+
+{% if check.teacher_note %}
+  <h2>From your teacher</h2>
+  <p class="note maths">{{ check.teacher_note }}</p>
+{% endif %}
+
+<footer>
+  Checked against {{ check.solution.title }}{% if check.solution_pages %}, pages {{ check.solution_pages }}{% endif %}.
+  Marked with help from NumScoil and reviewed by your teacher.
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+<script src="{% static 'js/feedback_render.js' %}?v=1"></script>
+<script>
+  /* A standalone page showing model output without a maths renderer prints
+     raw $x = 3$ onto the sheet. That has shipped here once already. */
+  window.addEventListener('load', function () {
+    document.querySelectorAll('.maths').forEach(function (el) {
+      Feedback.renderMaths(el);
+    });
+  });
+</script>
+</body>
+</html>

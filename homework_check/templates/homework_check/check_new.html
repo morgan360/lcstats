@@ -1,0 +1,108 @@
+{% extends "_base.html" %}
+{% block title %}New homework check{% endblock %}
+
+{% block content %}
+<div class="mx-auto max-w-xl px-4 py-6 sm:px-6">
+  <a href="{% url 'homework_check:index' %}" class="text-sm font-semibold text-twilight/60">← Homework Check</a>
+  <h1 class="mt-2 mb-5 text-2xl font-bold text-twilight">New check</h1>
+
+  {% if not solutions %}
+    <div class="rounded-2xl bg-rose-pop/10 p-5 text-sm text-twilight ring-1 ring-rose-pop/25">
+      <p class="font-semibold">There are no solution PDFs to check against yet.</p>
+      <p class="mt-1">
+        Upload one in the admin under HW Solutions{% if current_subject %} for {{ current_subject.name }}{% endif %},
+        then come back here.
+      </p>
+    </div>
+  {% else %}
+  <form method="post" class="space-y-5">
+    {% csrf_token %}
+
+    <div>
+      <label class="mb-1 block text-sm font-semibold text-twilight">Class</label>
+      <select name="teacher_class" id="classSelect" required
+              class="w-full rounded-xl border-twilight/20 bg-white p-3 text-base">
+        {% for c in classes %}
+          <option value="{{ c.id }}" {% if selected_class.id == c.id %}selected{% endif %}>{{ c.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div>
+      <label class="mb-1 block text-sm font-semibold text-twilight">Student</label>
+      <select name="student" id="studentSelect" required
+              class="w-full rounded-xl border-twilight/20 bg-white p-3 text-base">
+      </select>
+    </div>
+
+    <div>
+      <label class="mb-1 block text-sm font-semibold text-twilight">Exercise</label>
+      <input type="text" name="exercise_name" required maxlength="200"
+             placeholder="e.g. Ex 5A Q1–8"
+             class="w-full rounded-xl border-twilight/20 bg-white p-3 text-base">
+    </div>
+
+    <div>
+      <label class="mb-1 block text-sm font-semibold text-twilight">Solutions</label>
+      <select name="solution" required
+              class="w-full rounded-xl border-twilight/20 bg-white p-3 text-base">
+        {% for s in solutions %}
+          <option value="{{ s.id }}">{{ s.title }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div>
+      <label class="mb-1 block text-sm font-semibold text-twilight">
+        Pages <span class="font-normal text-twilight/50">(optional)</span>
+      </label>
+      <input type="text" name="solution_pages" maxlength="60" placeholder="e.g. 3-4"
+             class="w-full rounded-xl border-twilight/20 bg-white p-3 text-base">
+      <p class="mt-1 text-xs text-twilight/50">
+        Leave blank to use every page. Narrowing it to the pages covering this
+        exercise makes each check faster and cheaper.
+      </p>
+    </div>
+
+    <button type="submit"
+            class="w-full rounded-xl bg-violet-royal px-4 py-4 text-base font-semibold text-white shadow-sm">
+      Start · add photos next
+    </button>
+  </form>
+  {% endif %}
+</div>
+
+<script>
+(function () {
+  var rosters = {
+    {% for c in classes %}
+      "{{ c.id }}": [{% for s in c.students.all %}{"id": {{ s.id }}, "name": "{{ s.get_full_name|default:s.username|escapejs }}"}{% if not forloop.last %},{% endif %}{% endfor %}]{% if not forloop.last %},{% endif %}
+    {% endfor %}
+  };
+
+  var classSelect = document.getElementById('classSelect');
+  var studentSelect = document.getElementById('studentSelect');
+  if (!classSelect || !studentSelect) return;
+
+  function fill() {
+    var list = rosters[classSelect.value] || [];
+    studentSelect.innerHTML = '';
+    list.forEach(function (s) {
+      var opt = document.createElement('option');
+      opt.value = s.id;
+      opt.textContent = s.name;
+      studentSelect.appendChild(opt);
+    });
+    if (!list.length) {
+      var opt = document.createElement('option');
+      opt.textContent = 'No students enrolled in this class';
+      opt.disabled = true;
+      studentSelect.appendChild(opt);
+    }
+  }
+
+  classSelect.addEventListener('change', fill);
+  fill();
+})();
+</script>
+{% endblock %}

@@ -34,6 +34,10 @@ class HWSolution(models.Model):
         default=0,
         help_text="Display order (lower numbers appear first)"
     )
+    page_count = models.PositiveSmallIntegerField(
+        default=0,
+        help_text="Filled in automatically the first time the pages are rendered."
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -44,3 +48,37 @@ class HWSolution(models.Model):
 
     def __str__(self):
         return self.title
+
+
+class HWSolutionPage(models.Model):
+    """One page of a solutions PDF, rendered to an image.
+
+    Rendered once and kept, because checking a class of 25 against the same
+    sheet would otherwise re-render the same PDF 25 times. The images are the
+    form the vision model reads -- pulling the text layer out of a maths PDF
+    was tried for exam questions and abandoned as too unreliable to build on.
+
+    Public media is the right place for these: the parent PDF is already
+    served to students at a public URL from the Downloads menu, so the pages
+    disclose nothing the sheet itself does not.
+    """
+    solution = models.ForeignKey(
+        HWSolution,
+        on_delete=models.CASCADE,
+        related_name='pages',
+    )
+    page_number = models.PositiveSmallIntegerField()
+    image = models.ImageField(upload_to='hw_solutions/pages/')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['solution', 'page_number']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['solution', 'page_number'],
+                name='uniq_hwsolutionpage_solution_page',
+            )
+        ]
+
+    def __str__(self):
+        return f"{self.solution.title} — page {self.page_number}"

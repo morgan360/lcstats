@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import HWSolution
+from .models import HWSolution, HWSolutionPage
 
 
 @admin.register(HWSolution)
@@ -21,3 +21,10 @@ class HWSolutionAdmin(admin.ModelAdmin):
             'fields': ('order',)
         }),
     )
+
+
+@admin.register(HWSolutionPage)
+class HWSolutionPageAdmin(admin.ModelAdmin):
+    list_display = ['solution', 'page_number', 'created_at']
+    list_filter = ['solution']
+    readonly_fields = ['created_at']
