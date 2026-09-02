@@ -146,7 +146,7 @@
                 <p class="text-twilight/50">Not in the solution pages you chose.</p>
               {% endif %}
             </div>
-            <textarea data-comment="{{ q.label }}" rows="2"
+            <textarea data-comment="{{ q.label }}" data-maths-preview rows="2"
                       class="mt-2 w-full rounded-lg border-twilight/15 bg-white p-2 text-sm">{{ q.comment }}</textarea>
           </div>
         {% endfor %}
@@ -155,13 +155,13 @@
 
     <div class="mb-4 rounded-2xl bg-white p-4 shadow-sm ring-1 ring-twilight/10">
       <h2 class="mb-2 font-semibold text-twilight">Closing note</h2>
-      <textarea id="summaryBox" rows="4"
+      <textarea id="summaryBox" data-maths-preview rows="4"
                 class="w-full rounded-lg border-twilight/15 bg-white p-3 text-sm">{{ check.summary }}</textarea>
 
       <h2 class="mb-2 mt-4 font-semibold text-twilight">
         Your own note <span class="font-normal text-twilight/50">(optional)</span>
       </h2>
-      <textarea id="teacherNote" rows="2" placeholder="Anything you want to add in your own words"
+      <textarea id="teacherNote" data-maths-preview rows="2" placeholder="Anything you want to add in your own words"
                 class="w-full rounded-lg border-twilight/15 bg-white p-3 text-sm">{{ check.teacher_note }}</textarea>
       <p id="saveHint" class="mt-2 text-xs text-twilight/40">Edits save as you type.</p>
     </div>
@@ -437,6 +437,41 @@
       Feedback.renderMaths(el);
     });
   }
+
+  /* A textarea can only ever show plain text, so the LaTeX in these boxes sat
+   * there raw: $-q^2$ rather than the squared q the student sees on the
+   * printed sheet. The teacher was reading the one version of the comment
+   * nobody was meant to read. Put a rendered copy above each box and keep it
+   * in step, rather than asking the model for less LaTeX and degrading the
+   * sheet that actually gets handed over.
+   *
+   * Runs after the pass above so these previews, which render themselves, are
+   * not caught and rendered a second time. */
+  function attachPreview(box) {
+    var preview = document.createElement('div');
+    preview.className = 'maths mt-2 rounded-lg bg-twilight/5 px-3 py-2 '
+                      + 'text-sm text-twilight';
+    box.parentNode.insertBefore(preview, box);
+
+    function refresh() {
+      var text = box.value.trim();
+      // An empty box -- a teacher note nobody filled in -- gets no empty
+      // grey slab above it.
+      preview.hidden = !text;
+      if (!text) return;
+      // textContent, not innerHTML: this is model output going back into the
+      // page, and KaTeX reads the text nodes either way.
+      preview.textContent = text;
+      if (window.Feedback && Feedback.renderMaths) Feedback.renderMaths(preview);
+    }
+
+    // Debounced for the same reason the saves are: a dozen comment boxes and
+    // a KaTeX pass per keystroke is work nobody asked for.
+    box.addEventListener('input', debounce(refresh, 300));
+    refresh();
+  }
+
+  document.querySelectorAll('[data-maths-preview]').forEach(attachPreview);
 })();
 </script>
 {% endblock %}
