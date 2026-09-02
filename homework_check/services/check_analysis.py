@@ -27,7 +27,25 @@ logger = logging.getLogger(__name__)
 
 # Larger than work_analysis's 1200: a chunk covers up to four photos and may
 # report on a dozen questions, each with its own answer and comment.
-MAX_TOKENS = 3000
+#
+# It has to be larger than the *visible* output needs, because the configured
+# vision model reasons before it answers and both come out of one budget --
+# `_vision_completion` passes this as `max_completion_tokens`. At 3000 the
+# effective ceiling was `max(3000, REASONING_TOKEN_BUDGET)` = 4000, and real
+# batches of thirteen questions were landing on 3715-3910 of it. The ones that
+# tipped over came back HTTP 200 with an empty string where the JSON should be,
+# which read to the teacher as "that batch couldn't be read" -- a token ceiling
+# wearing the costume of a bad photograph.
+MAX_TOKENS = 9000
+
+class EmptyResponse(Exception):
+    """The model returned a 200 with no content at all.
+
+    Distinct from a parse failure, because the cause and the cure are
+    different: nothing was written, so there is nothing to salvage, and the
+    teacher's photographs are not the problem.
+    """
+
 
 VERDICTS = ("correct", "slip", "wrong", "incomplete", "unclear")
 
@@ -219,7 +237,25 @@ def analyse_chunk(photo_b64s, solution_page_b64s, exercise_name,
         response_format={"type": "json_object"},
     )
 
-    result = _parse_json_response(response.choices[0].message.content.strip())
+    choice = response.choices[0]
+    raw = (choice.message.content or "").strip()
+    if not raw:
+        # Empty body on a 200. The model spent its whole budget reasoning and
+        # had none left to answer with; nothing about the photos is at fault,
+        # so say so rather than sending the teacher back to re-shoot them.
+        usage = getattr(response, "usage", None)
+        logger.error(
+            "Empty response from %s: finish_reason=%s tokens=%s/%s photos=%s "
+            "pages=%s", vision_model(), getattr(choice, "finish_reason", None),
+            getattr(usage, "prompt_tokens", 0), getattr(usage, "completion_tokens", 0),
+            len(photo_b64s), len(solution_page_b64s),
+        )
+        raise EmptyResponse(
+            "The model ran out of room before it answered. Try again with "
+            "fewer photos in the batch, or a narrower page range."
+        )
+
+    result = _parse_json_response(raw)
     result["questions"] = _clean_questions(result.get("questions"))
 
     result["model_used"] = vision_model()

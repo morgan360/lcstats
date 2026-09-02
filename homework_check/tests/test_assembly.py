@@ -205,6 +205,33 @@ class FallbackSummaryTests(SimpleTestCase):
         self.assertIn("wrong approach", text)
 
 
+class PhotosThatNeverRanTests(SimpleTestCase):
+    """A batch that died is not the same as a batch that read badly.
+
+    The readable/confidence guards can only inspect chunks that exist, so a
+    failed batch used to leave no trace: the report was assembled from the
+    batches that worked, and rated as though the whole copy had been read.
+    """
+
+    def test_a_failed_page_withholds_the_rating(self):
+        rating, reason = derive_rating(
+            [q(str(i)) for i in range(9)],
+            [chunk([q("1")])],
+            failed_photos=4,
+        )
+        self.assertEqual(rating, "")
+        self.assertIn("4 page(s)", reason)
+
+    def test_it_says_so_on_the_report(self):
+        report = assemble([chunk([q(str(i)) for i in range(9)])], failed_photos=2)
+        self.assertEqual(report["rating"], "")
+        self.assertIn("only part of the work", report["rating_reason"])
+
+    def test_all_pages_analysed_rates_as_normal(self):
+        report = assemble([chunk([q(str(i)) for i in range(9)])])
+        self.assertEqual(report["rating"], "excellent")
+
+
 class AssembleTests(SimpleTestCase):
     def test_takes_the_lowest_confidence_across_chunks(self):
         report = assemble([chunk([q("1")], confidence="high"),

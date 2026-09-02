@@ -14,7 +14,7 @@ from django.utils import timezone
 from students.services.image_intake import encode_for_api, encode_path_for_api
 
 from . import assembly
-from .check_analysis import analyse_chunk
+from .check_analysis import EmptyResponse, analyse_chunk
 from .solution_pages import pages_for_check
 from .summarise import summarise
 
@@ -89,6 +89,12 @@ def analyse_next_chunk(check):
             photo_b64s, page_b64s, check.exercise_name,
             page_numbers=page_numbers, chunk_label=label,
         )
+    except EmptyResponse:
+        # Retryable, and nothing is wrong with these photos, so they stay
+        # pending. Marking them failed would drop them from pending_photos()
+        # and count them as done in progress(), which is how a check reached
+        # "8/8 complete" with four of its pages never looked at.
+        raise
     except Exception:
         CheckPhoto.objects.filter(pk__in=[p.pk for p in batch]).update(
             status=CheckPhoto.Status.FAILED
@@ -114,8 +120,11 @@ def finalise(check):
     """Assemble the report once every photo has been through a chunk."""
     from ..models import HomeworkCheck
 
+    from ..models import CheckPhoto
+
     chunks = list(check.analysis or [])
-    report = assembly.assemble(chunks)
+    failed_photos = check.photos.filter(status=CheckPhoto.Status.FAILED).count()
+    report = assembly.assemble(chunks, failed_photos=failed_photos)
 
     check.findings = report["questions"]
     check.counts = report["counts"]

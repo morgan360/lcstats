@@ -303,6 +303,11 @@ def analyse_next(request, pk):
 
     try:
         done, total = runner.analyse_next_chunk(check)
+    except runner.EmptyResponse as e:
+        # Not a broken check: the photos are untouched and still pending, so
+        # pressing the button again picks up the same batch.
+        logger.warning("Homework check %s: empty model response", check.pk)
+        return JsonResponse({'success': False, 'message': str(e)})
     except runner.TooManySolutionPages as e:
         # The teacher's to fix, not a failure to log: leave the check alone so
         # they can narrow the range and press the button again.

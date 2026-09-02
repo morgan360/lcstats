@@ -80,7 +80,7 @@ def merge_questions(chunks):
     return sorted(merged.values(), key=lambda r: _sort_key(r["label"]))
 
 
-def derive_rating(questions, chunks):
+def derive_rating(questions, chunks, failed_photos=0):
     """Decide Excellent / Good / Fair / Poor in code, not on the model's word.
 
     A rating is the one output on this sheet a student will take literally, so
@@ -90,7 +90,20 @@ def derive_rating(questions, chunks):
 
     Returns (rating, reason). ``rating`` is "" when it is withheld, and
     ``reason`` says why, for the teacher.
+
+    ``failed_photos`` counts pages that never produced a chunk at all. The
+    readable/confidence guards below can only inspect chunks that exist, so a
+    batch that died mid-run was invisible here: the report was assembled from
+    the batches that happened to work and rated as though the whole copy had
+    been read. That is a rating on half a student's homework, printed and
+    handed to them, with nothing on the sheet saying so.
     """
+    if failed_photos:
+        return "", (
+            f"{failed_photos} page(s) could not be analysed, so this covers "
+            "only part of the work"
+        )
+
     for chunk in chunks:
         if not chunk.get("readable", True):
             return "", "some of the photos could not be read clearly"
@@ -163,11 +176,11 @@ def collect_notes(chunks):
     return seen
 
 
-def assemble(chunks):
+def assemble(chunks, failed_photos=0):
     """Build the whole report from the per-chunk results."""
     questions = merge_questions(chunks)
     counts = tally(questions)
-    rating, rating_reason = derive_rating(questions, chunks)
+    rating, rating_reason = derive_rating(questions, chunks, failed_photos)
 
     diagram_feedback = " ".join(
         str(c.get("diagram_feedback") or "").strip()
