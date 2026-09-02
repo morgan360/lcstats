@@ -22,14 +22,15 @@ Approved plan: `~/.claude/plans/could-we-create-a-zippy-dusk.md`.
 | Exercise picker | `3d1d22b9` | `2b316eef` |
 | Token ceiling + failed-batch fixes | `896a7767` | `1740279f` |
 | Rendered maths preview | `3fd3915e` | `8b324bd6` |
+| Prompt caching + class-set flow | `28fa4377` | not yet deployed |
 
 Migrations applied on prod: `hw_solutions.0001`–`0003`, `homework_check.0001`.
 Nothing pending.
 
-Test suite: **210 tests, 1 failure**, and that one failure is
+Test suite: **239 tests, 1 error**, and that one error is
 `reports.tests.ActivityServiceTests.test_get_activity_by_day_counts_sources`,
 which is pre-existing and unrelated — see *Known bugs* below. Everything in
-`homework_check` and `hw_solutions` passes (74 tests).
+`homework_check` and `hw_solutions` passes (108 tests).
 
 **Real handwriting now works.** This was the outstanding unknown — everything
 before today had been validated on rendered text, not a real student's copy.
@@ -139,6 +140,66 @@ The model's formatting rules were deliberately left alone: asking for less LaTeX
 would fix the teacher's view by degrading the sheet that actually gets handed to
 the student.
 
+### 4. The solution pages are now sent first, and cached (`28fa4377`)
+
+The request was built prompt → student photos → solution pages. OpenAI
+discounts a request only where it shares an **exact prefix** with a recent one,
+and the photos are the one part that changes every batch, so the solution pages
+sat behind content that never repeats and were charged in full on every batch of
+every student.
+
+Reordered to prompt → solution pages → photos. Measured on the real Algebra
+chapter, the same eight photographs against pages 2–12:
+
+| | prompt tokens | of which cached |
+|---|---|---|
+| before, batch 1 | 14,302 | 0 |
+| before, batch 2 | 14,302 | **0** |
+| after, batch 1 | 14,328 | 0 |
+| after, batch 2 | 14,328 | **10,368** |
+
+72% of the input on every batch after the first, and the same again for the
+second and twenty-fifth student marked against the same pages.
+
+**The prompt must not contain anything that differs between batches.** The photo
+count and batch label used to be in it; they now ride on the heading above the
+photos, which sits after the pages. Left in the prompt they put a difference in
+the first few tokens and cost the cache on any check whose final batch is short.
+`test_request_shape.py` asserts this, because nothing else in the suite would
+notice it being undone — the reports come out identical either way.
+
+`prompt_cache_key` groups requests by exercise name, solutions and page range —
+not by check or student, which is what lets a class set share one warm cache.
+`cached_tokens` is logged and kept in each chunk's `usage`, so the hit rate for
+any check can be read back out of `HomeworkCheck.analysis`.
+
+**Quality was verified, not assumed.** The same eight photographs were marked
+three times: 34 questions every time, `readable=True`, `confidence=medium`,
+rating Good. The reordered runs differ from the baseline on 5 and 3 of those 34
+verdicts — and the new order differs *from itself* on 3, on the same handful of
+ambiguous questions. The change sits inside ordinary run-to-run variance.
+
+Repeat the measurement with:
+
+```bash
+python manage.py check_homework_photos --pdf <solutions.pdf> --photos <8 jpgs> \
+    --pages 2-12 --exercise "HW-1" --no-summary
+```
+
+It now prints per-batch `tokens N in (M cached) / K out`.
+
+### 5. Marking a class, not a copy (`28fa4377`)
+
+- **"Check another student on this exercise"** on a finished report carries the
+  class, exercise name, solutions PDF and page range forward as query
+  parameters, so the next copy is one dropdown and a camera roll. They arrive in
+  a URL a teacher can edit, so `_carried_over` re-checks each against what that
+  teacher may actually pick; nothing there grants access, and choosing a student
+  still goes through the class the POST handler validates.
+- **The exercise name fills itself in** from the section picked, and stops doing
+  so the moment the teacher edits it — appending "Q1–8" is the whole reason the
+  field is editable.
+
 ## Decisions already made — do not re-litigate
 
 - **The prompt deliberately states the correct answer**, inverting the strictest
@@ -163,15 +224,16 @@ the student.
 
 ## Open decisions
 
-**`HOMEWORK_CHECK_MAX_SOLUTION_PAGES` is 12, and this needs a number.** The
-solution pages go up with every batch, so a long exercise is the expensive case.
-At 12, Exercise 1.6 (15pp) and Revision Exercises (29pp) are both refused with
-"pick a narrower range" — and Exercise 1.6 is an ordinary homework set. 29 pages
-arguably *should* be refused. It is an env var, so it can be changed on prod in
-seconds with no redeploy.
+None outstanding.
 
-The alternative, which removes the pressure entirely but is real work: send the
-solution pages **once per check** rather than once per batch.
+**`HOMEWORK_CHECK_MAX_SOLUTION_PAGES` was decided: 12 → 30** (2026-09-02). At 12
+it refused Exercise 1.6 (15pp), an ordinary homework set, and the Revision
+Exercises (29pp). The cost argument for a low cap was the pages being re-sent
+with every batch, and after `28fa4377` they are served from cache instead, so 30
+now covers every section in the book. It stays a cap rather than no cap because
+rendering, encoding and reading the pages is *not* cached and still has to fit
+inside `OPENAI_VISION_TIMEOUT`. Still an env var, so prod can be changed in
+seconds with no redeploy.
 
 ## Known bugs, not yet fixed
 
