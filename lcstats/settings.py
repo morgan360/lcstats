@@ -49,6 +49,10 @@ HOMEWORK_CHECK_MAX_PHOTOS = int(os.getenv("HOMEWORK_CHECK_MAX_PHOTOS", 16))
 HOMEWORK_CHECK_CHUNK_SIZE = int(os.getenv("HOMEWORK_CHECK_CHUNK_SIZE", 4))
 HOMEWORK_CHECK_HOURLY_LIMIT = int(os.getenv("HOMEWORK_CHECK_HOURLY_LIMIT", 40))
 HOMEWORK_CHECK_RETENTION_DAYS = int(os.getenv("HOMEWORK_CHECK_RETENTION_DAYS", 90))
+# The solution pages go to the model with EVERY batch of photos, so an
+# unscoped 84-page chapter is sent four times over for one student. Refuse
+# rather than run up that bill and time out.
+HOMEWORK_CHECK_MAX_SOLUTION_PAGES = int(os.getenv("HOMEWORK_CHECK_MAX_SOLUTION_PAGES", 12))
 FAQ_MATCH_THRESHOLD = float(os.getenv("FAQ_MATCH_THRESHOLD", 0.7))
 
 # NumSkull "site help" matching (pure retrieval, no GPT call — see chat/views.py).

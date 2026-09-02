@@ -44,7 +44,7 @@
 
     <div>
       <label class="mb-1 block text-sm font-semibold text-twilight">Solutions</label>
-      <select name="solution" required
+      <select name="solution" id="solutionSelect" required
               class="w-full rounded-xl border-twilight/20 bg-white p-3 text-base">
         {% for s in solutions %}
           <option value="{{ s.id }}">{{ s.title }}</option>
@@ -53,15 +53,16 @@
     </div>
 
     <div>
-      <label class="mb-1 block text-sm font-semibold text-twilight">
-        Pages <span class="font-normal text-twilight/50">(optional)</span>
-      </label>
-      <input type="text" name="solution_pages" maxlength="60" placeholder="e.g. 3-4"
-             class="w-full rounded-xl border-twilight/20 bg-white p-3 text-base">
-      <p class="mt-1 text-xs text-twilight/50">
-        Leave blank to use every page. Narrowing it to the pages covering this
-        exercise makes each check faster and cheaper.
-      </p>
+      <label class="mb-1 block text-sm font-semibold text-twilight">Which exercise</label>
+      <select id="sectionSelect"
+              class="w-full rounded-xl border-twilight/20 bg-white p-3 text-base">
+      </select>
+      <input type="hidden" name="solution_pages" id="pagesField">
+      <div id="pagesManual" class="mt-2 hidden">
+        <input type="text" id="pagesInput" maxlength="60" placeholder="e.g. 17-21"
+               class="w-full rounded-xl border-twilight/20 bg-white p-3 text-base">
+      </div>
+      <p id="pagesHint" class="mt-1 text-xs text-twilight/50"></p>
     </div>
 
     <button type="submit"
@@ -80,11 +81,21 @@
     {% endfor %}
   };
 
+  /* Which exercise sits on which pages, per solution PDF. Detected from the
+     running header when the PDF was first opened here. */
+  var sections = {
+    {% for s in solutions %}
+      "{{ s.id }}": [{% for sec in s.sections.all %}{"label": "{{ sec.label|escapejs }}", "range": "{{ sec.page_range }}", "pages": {{ sec.page_count }}}{% if not forloop.last %},{% endif %}{% endfor %}]{% if not forloop.last %},{% endif %}
+    {% endfor %}
+  };
+
+  var maxPages = {{ max_solution_pages }};
+
   var classSelect = document.getElementById('classSelect');
   var studentSelect = document.getElementById('studentSelect');
   if (!classSelect || !studentSelect) return;
 
-  function fill() {
+  function fillStudents() {
     var list = rosters[classSelect.value] || [];
     studentSelect.innerHTML = '';
     list.forEach(function (s) {
@@ -101,8 +112,73 @@
     }
   }
 
-  classSelect.addEventListener('change', fill);
-  fill();
+  classSelect.addEventListener('change', fillStudents);
+  fillStudents();
+
+  /* ---- Exercise -> page range ---------------------------------------- */
+  var solutionSelect = document.getElementById('solutionSelect');
+  var sectionSelect = document.getElementById('sectionSelect');
+  var pagesField = document.getElementById('pagesField');
+  var pagesManual = document.getElementById('pagesManual');
+  var pagesInput = document.getElementById('pagesInput');
+  var pagesHint = document.getElementById('pagesHint');
+  if (!solutionSelect || !sectionSelect) return;
+
+  function fillSections() {
+    var list = sections[solutionSelect.value] || [];
+    sectionSelect.innerHTML = '';
+
+    list.forEach(function (sec) {
+      var opt = document.createElement('option');
+      opt.value = sec.range;
+      opt.dataset.pages = sec.pages;
+      opt.textContent = sec.label + '  (pages ' + sec.range + ')';
+      sectionSelect.appendChild(opt);
+    });
+
+    var other = document.createElement('option');
+    other.value = '__manual__';
+    other.textContent = list.length ? 'Other — type the pages myself'
+                                    : 'Type the pages myself';
+    sectionSelect.appendChild(other);
+
+    if (!list.length) sectionSelect.value = '__manual__';
+    applySection();
+  }
+
+  function applySection() {
+    var manual = sectionSelect.value === '__manual__';
+    pagesManual.classList.toggle('hidden', !manual);
+
+    if (manual) {
+      pagesField.value = pagesInput.value.trim();
+      pagesHint.textContent = 'Give the pages covering this exercise, e.g. 17-21. '
+        + 'At most ' + maxPages + ' pages.';
+      pagesHint.className = 'mt-1 text-xs text-twilight/50';
+      return;
+    }
+
+    pagesField.value = sectionSelect.value;
+    var opt = sectionSelect.options[sectionSelect.selectedIndex];
+    var count = parseInt(opt && opt.dataset.pages, 10) || 0;
+
+    if (count > maxPages) {
+      // These pages are re-sent with every batch of photos, so a long
+      // exercise is the expensive case, not a cosmetic one.
+      pagesHint.textContent = 'That exercise runs to ' + count + ' pages, over the '
+        + 'limit of ' + maxPages + '. Type a narrower range covering just the '
+        + 'questions you set.';
+      pagesHint.className = 'mt-1 text-xs font-semibold text-rose-pop';
+    } else {
+      pagesHint.textContent = count + ' page(s) of solutions will be checked against.';
+      pagesHint.className = 'mt-1 text-xs text-twilight/50';
+    }
+  }
+
+  solutionSelect.addEventListener('change', fillSections);
+  sectionSelect.addEventListener('change', applySection);
+  pagesInput.addEventListener('input', applySection);
+  fillSections();
 })();
 </script>
 {% endblock %}

@@ -82,3 +82,47 @@ class HWSolutionPage(models.Model):
 
     def __str__(self):
         return f"{self.solution.title} — page {self.page_number}"
+
+
+class HWSolutionSection(models.Model):
+    """One exercise inside a solutions PDF, and the pages it covers.
+
+    Detected from the running header rather than entered by hand, so that a
+    teacher picks "Exercise 1.3" from a list instead of working out that it
+    lives on pages 17-21 of an 84-page chapter.
+
+    The point is cost and speed, not tidiness: every batch of photos is sent to
+    the vision model together with these pages, so an unscoped 84-page PDF
+    would be sent four times over for a single student.
+    """
+    solution = models.ForeignKey(
+        HWSolution,
+        on_delete=models.CASCADE,
+        related_name='sections',
+    )
+    label = models.CharField(max_length=100, help_text="e.g. 'Exercise 1.3'")
+    first_page = models.PositiveSmallIntegerField()
+    last_page = models.PositiveSmallIntegerField()
+
+    class Meta:
+        ordering = ['solution', 'first_page']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['solution', 'label'],
+                name='uniq_hwsolutionsection_solution_label',
+            )
+        ]
+
+    def __str__(self):
+        return f"{self.label} (pp. {self.page_range})"
+
+    @property
+    def page_range(self):
+        """The range string the check stores, e.g. '17-21'."""
+        if self.first_page == self.last_page:
+            return str(self.first_page)
+        return f"{self.first_page}-{self.last_page}"
+
+    @property
+    def page_count(self):
+        return self.last_page - self.first_page + 1

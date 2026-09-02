@@ -18,6 +18,7 @@ from django.views.decorators.http import require_GET, require_POST
 
 from homework.models import TeacherClass
 from hw_solutions.models import HWSolution
+from hw_solutions.services import build_sections
 from students.decorators import teacher_required
 from students.services.image_intake import ImageIntakeError, process_upload
 
@@ -32,13 +33,40 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 
 def _owned_classes(request):
-    """Every class this teacher may act on."""
+    """Every class this teacher may act on.
+
+    Permissive for superusers on purpose -- this backs the permission checks,
+    and an admin must still be able to reach a class to support a colleague.
+    What the *pickers* offer is a narrower question; see _pickable_classes.
+    """
     if request.user.is_superuser:
         return TeacherClass.objects.filter(is_active=True)
     profile = getattr(request.user, 'teacher_profile', None)
     if profile is None:
         raise PermissionDenied
     return profile.classes.filter(is_active=True)
+
+
+def _pickable_classes(request):
+    """What the class dropdown offers -- your own classes, not everyone's.
+
+    A superuser is allowed to reach every class, but defaulting the picker to
+    that put three other teachers' classes, from other schools, in the list
+    beside their own. That is noise at best and the wrong student at worst.
+    Their own classes come first; ?all=1 restores the full list, and an admin
+    with no classes of their own still sees everything rather than nothing.
+    """
+    profile = getattr(request.user, 'teacher_profile', None)
+    own = profile.classes.filter(is_active=True) if profile else TeacherClass.objects.none()
+
+    if not request.user.is_superuser:
+        if profile is None:
+            raise PermissionDenied
+        return own
+
+    if request.GET.get('all') == '1' or not own.exists():
+        return TeacherClass.objects.filter(is_active=True)
+    return own
 
 
 def _get_owned_check(request, pk):
@@ -70,7 +98,7 @@ def _rate_limited(user):
 @require_GET
 def index(request):
     """Recent checks, optionally narrowed to one class."""
-    classes = _owned_classes(request)
+    classes = _pickable_classes(request)
     checks = HomeworkCheck.objects.filter(
         teacher_class__in=classes
     ).select_related('student', 'teacher_class', 'solution')
@@ -92,13 +120,22 @@ def index(request):
 @teacher_required
 def check_new(request):
     """Pick a student, name the exercise, choose the solutions to check against."""
-    classes = _owned_classes(request)
+    classes = _pickable_classes(request)
 
-    solutions = HWSolution.objects.select_related('subject')
+    solutions = HWSolution.objects.select_related('subject').prefetch_related('sections')
     current_subject = getattr(request, 'current_subject', None)
     if current_subject:
         solutions = solutions.filter(
             Q(subject=current_subject) | Q(subject__isnull=True))
+
+    # Index on demand, so a PDF uploaded through the admin needs no extra step.
+    # Reads the text layer only -- cheap, and cached after the first time.
+    for solution in solutions:
+        if not solution.sections.all():
+            try:
+                build_sections(solution)
+            except Exception:
+                logger.exception("Could not index solution %s", solution.pk)
 
     if request.method == 'POST':
         if _rate_limited(request.user):
@@ -136,6 +173,8 @@ def check_new(request):
         'solutions': solutions,
         'selected_class': selected_class,
         'current_subject': current_subject,
+        'max_solution_pages': getattr(
+            settings, 'HOMEWORK_CHECK_MAX_SOLUTION_PAGES', 12),
     })
 
 
@@ -264,6 +303,10 @@ def analyse_next(request, pk):
 
     try:
         done, total = runner.analyse_next_chunk(check)
+    except runner.TooManySolutionPages as e:
+        # The teacher's to fix, not a failure to log: leave the check alone so
+        # they can narrow the range and press the button again.
+        return JsonResponse({'success': False, 'message': str(e)})
     except Exception as e:
         logger.exception("Homework check %s failed during analysis", check.pk)
         check.status = HomeworkCheck.Status.FAILED

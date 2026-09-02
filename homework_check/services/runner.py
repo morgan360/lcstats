@@ -8,6 +8,7 @@ from the first photo not yet analysed.
 """
 import logging
 
+from django.conf import settings
 from django.utils import timezone
 
 from students.services.image_intake import encode_for_api, encode_path_for_api
@@ -28,9 +29,30 @@ ANALYSIS_FAILED_MESSAGE = (
 )
 
 
+class TooManySolutionPages(Exception):
+    """The chosen page range is too big to send with every batch.
+
+    Its message is written to be read by a teacher: it names the number and
+    says what to do, because the fix is theirs to make, not a fault to log.
+    """
+
+
 def _encode_solution_pages(check):
-    """Base64 the scoped solution pages, with their page numbers."""
+    """Base64 the scoped solution pages, with their page numbers.
+
+    Guarded on count: these images are re-sent with every batch of photos, so
+    a whole chapter here is multiplied by the number of batches.
+    """
     pages = pages_for_check(check.solution, check.solution_pages)
+
+    limit = getattr(settings, "HOMEWORK_CHECK_MAX_SOLUTION_PAGES", 12)
+    if len(pages) > limit:
+        raise TooManySolutionPages(
+            f"That's {len(pages)} pages of solutions to check against, and the "
+            f"limit is {limit}. Pick the exercise this homework came from, or "
+            f"type a narrower page range, then try again."
+        )
+
     encoded = []
     numbers = []
     for page in pages:
