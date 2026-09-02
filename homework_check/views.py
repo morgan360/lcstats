@@ -13,6 +13,7 @@ from django.core.exceptions import PermissionDenied
 from django.db.models import Q
 from django.http import FileResponse, HttpResponseForbidden, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.http import require_GET, require_POST
 
@@ -437,7 +438,21 @@ def check_edit(request, pk):
 @teacher_required
 @require_POST
 def check_delete(request, pk):
+    """Delete one check, from either the list or the check's own page.
+
+    The photographs go with it: CheckPhoto cascades, and its post_delete
+    receiver takes each file off disk. There is no undo, which is why both
+    callers confirm first and name the student in the prompt.
+    """
     check = _get_owned_check(request, pk)
+    label = f"{check.student.get_full_name() or check.student.username} — {check.exercise_name}"
     check.delete()
-    messages.success(request, "Check deleted.")
+    messages.success(request, f"Deleted {label}.")
+
+    # Deleting from a class-filtered list should leave you on that same list
+    # rather than back at all classes, which is where the next one to delete
+    # almost certainly is. Digits only -- it is a form field, not a trusted one.
+    class_id = request.POST.get('class', '')
+    if class_id.isdigit():
+        return redirect(f"{reverse('homework_check:index')}?class={class_id}")
     return redirect('homework_check:index')

@@ -365,3 +365,124 @@ class HomeworkCheckFlowTests(TestCase):
         response = self.client.get(
             reverse('homework_check:report_print', args=[self.check.pk]))
         self.assertNotContains(response, 'navMenu')
+
+
+@override_settings(PRIVATE_MEDIA_ROOT=PRIVATE_ROOT)
+class DeletingAChecklistRowTests(TestCase):
+    """Removing a check from the list page.
+
+    Deletion existed only on a check's own page, which meant clearing a few
+    unwanted rows -- test runs, a mis-picked student -- was a round trip each.
+    It is irreversible and takes the photographs with it, so the destructive
+    half of these tests matters as much as the convenience half.
+    """
+
+    @classmethod
+    def tearDownClass(cls):
+        shutil.rmtree(PRIVATE_ROOT, ignore_errors=True)
+        super().tearDownClass()
+
+    def setUp(self):
+        self.teacher, self.profile = make_teacher('teacher_a')
+        self.other_teacher, self.other_profile = make_teacher('teacher_b')
+        self.student = User.objects.create_user('aoife', password='pw',
+                                                first_name='Aoife')
+        self.teacher_class = TeacherClass.objects.create(
+            teacher=self.profile, name='6th Year HL')
+        self.teacher_class.students.add(self.student)
+        self.solution = HWSolution.objects.create(title='Ex 5A solutions',
+                                                  page_count=2)
+        self.check = HomeworkCheck.objects.create(
+            teacher=self.teacher, teacher_class=self.teacher_class,
+            student=self.student, solution=self.solution,
+            exercise_name='Ex 5A',
+        )
+        self.client.login(username='teacher_a', password='pw')
+
+    def url(self):
+        return reverse('homework_check:check_delete', args=[self.check.pk])
+
+    # -- it is offered ----------------------------------------------------
+
+    def test_the_list_page_offers_a_delete_control_for_each_check(self):
+        response = self.client.get(reverse('homework_check:index'))
+        self.assertContains(response, self.url())
+        self.assertContains(response, 'Delete this check')
+
+    def test_the_control_is_a_post_form_not_a_link(self):
+        """A GET link would let a crawler or a prefetch delete a report."""
+        response = self.client.get(self.url())
+        self.assertEqual(response.status_code, 405)
+
+    # -- it works ---------------------------------------------------------
+
+    def test_deleting_removes_the_check(self):
+        self.client.post(self.url())
+        self.assertFalse(HomeworkCheck.objects.filter(pk=self.check.pk).exists())
+
+    def test_deleting_takes_the_photographs_off_disk(self):
+        """The whole point of private storage is that deleted means deleted."""
+        import os
+        self.client.post(
+            reverse('homework_check:check_upload', args=[self.check.pk]),
+            {'photo': photo()},
+        )
+        path = CheckPhoto.objects.get(hw_check=self.check).image.path
+        self.assertTrue(os.path.exists(path))
+
+        self.client.post(self.url())
+
+        self.assertFalse(CheckPhoto.objects.filter(hw_check=self.check).exists())
+        self.assertFalse(os.path.exists(path))
+
+    def test_the_teacher_is_told_what_was_deleted(self):
+        response = self.client.post(self.url(), follow=True)
+        self.assertContains(response, 'Aoife')
+        self.assertContains(response, 'Ex 5A')
+
+    # -- where it lands ---------------------------------------------------
+
+    def test_deleting_from_a_filtered_list_stays_on_that_list(self):
+        response = self.client.post(self.url(),
+                                    {'class': self.teacher_class.pk})
+        self.assertRedirects(
+            response,
+            f"{reverse('homework_check:index')}?class={self.teacher_class.pk}",
+        )
+
+    def test_deleting_from_the_unfiltered_list_lands_on_all_classes(self):
+        response = self.client.post(self.url())
+        self.assertRedirects(response, reverse('homework_check:index'))
+
+    def test_a_junk_class_value_is_ignored_rather_than_reflected(self):
+        response = self.client.post(self.url(), {'class': '../../evil'})
+        self.assertRedirects(response, reverse('homework_check:index'))
+
+    # -- ownership --------------------------------------------------------
+
+    def test_another_teacher_cannot_delete_my_check(self):
+        """The worst version of this bug: silent, irreversible, someone else's."""
+        self.client.login(username='teacher_b', password='pw')
+        response = self.client.post(self.url())
+        self.assertEqual(response.status_code, 403)
+        self.assertTrue(HomeworkCheck.objects.filter(pk=self.check.pk).exists())
+
+    def test_a_student_cannot_delete_a_check(self):
+        self.client.login(username='aoife', password='pw')
+        response = self.client.post(self.url())
+        self.assertEqual(response.status_code, 403)
+        self.assertTrue(HomeworkCheck.objects.filter(pk=self.check.pk).exists())
+
+    def test_another_teachers_check_is_not_offered_for_deletion_in_the_list(self):
+        other_class = TeacherClass.objects.create(
+            teacher=self.other_profile, name='5th Year')
+        theirs = HomeworkCheck.objects.create(
+            teacher=self.other_teacher, teacher_class=other_class,
+            student=self.student, solution=self.solution,
+            exercise_name='Not mine',
+        )
+        response = self.client.get(reverse('homework_check:index'))
+        self.assertNotContains(
+            response,
+            reverse('homework_check:check_delete', args=[theirs.pk]),
+        )

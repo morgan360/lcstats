@@ -1,0 +1,19 @@
+{# Django messages, rendered for this app's pages only.
+
+   `_base.html` has no messages block, and the allauth templates that do render
+   messages render them inside their own content block -- so putting one in the
+   base would show them twice on every login and signup page. Until that is
+   sorted site-wide, the Homework Check pages render their own, because
+   otherwise "Deleted Aoife - Ex 5A", the exercise-name error and the hourly
+   rate-limit warning are all posted and never shown to anyone. #}
+{% if messages %}
+  <div class="mb-5 space-y-2">
+    {% for message in messages %}
+      <div class="rounded-xl px-4 py-3 text-sm font-semibold
+        {% if message.tags == 'error' %}bg-rose-pop/10 text-rose-pop ring-1 ring-rose-pop/25
+        {% else %}bg-lime-glow/20 text-twilight{% endif %}">
+        {{ message }}
+      </div>
+    {% endfor %}
+  </div>
+{% endif %}

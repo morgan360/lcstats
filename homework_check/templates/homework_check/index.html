@@ -4,6 +4,8 @@
 {% block content %}
 <div class="mx-auto max-w-4xl px-4 py-6 sm:px-6">
 
+  {% include "homework_check/_messages.html" %}
+
   <div class="mb-6 flex flex-wrap items-center justify-between gap-3">
     <div>
       <h1 class="text-2xl font-bold text-twilight">Homework Check</h1>
@@ -35,8 +37,12 @@
   {% if checks %}
     <div class="space-y-2">
       {% for check in checks %}
+      {# The row link and the delete button are siblings, not nested: a button
+         inside an anchor is invalid, and a stray tap would open the check
+         instead of deleting it. #}
+      <div class="flex items-stretch gap-2">
         <a href="{% url 'homework_check:check_detail' check.pk %}"
-           class="block rounded-2xl bg-white p-4 shadow-sm ring-1 ring-twilight/10 transition hover:ring-violet-royal/40">
+           class="block flex-1 rounded-2xl bg-white p-4 shadow-sm ring-1 ring-twilight/10 transition hover:ring-violet-royal/40">
           <div class="flex flex-wrap items-center gap-2">
             <span class="font-semibold text-twilight">
               {{ check.student.get_full_name|default:check.student.username }}
@@ -67,6 +73,26 @@
             {% if check.is_reviewed %} · reviewed{% endif %}
           </div>
         </a>
+
+        {# Named in the prompt, because the rows differ only by student and
+           exercise and the photographs go with it irreversibly. #}
+        <form method="post" class="flex"
+              action="{% url 'homework_check:check_delete' check.pk %}"
+              onsubmit="return confirm('Delete {{ check.student.get_full_name|default:check.student.username|escapejs }} — {{ check.exercise_name|escapejs }}?\n\nThe report and its photos are removed for good.');">
+          {% csrf_token %}
+          {% if current_class %}
+            <input type="hidden" name="class" value="{{ current_class.id }}">
+          {% endif %}
+          {# w-11 is 44px: the minimum comfortable touch target, and this is
+             used on a phone beside a stack of copies. #}
+          <button type="submit"
+                  aria-label="Delete this check"
+                  title="Delete this check"
+                  class="flex w-11 items-center justify-center rounded-2xl bg-white text-lg font-bold text-rose-pop/50 shadow-sm ring-1 ring-twilight/10 transition hover:bg-rose-pop/10 hover:text-rose-pop hover:ring-rose-pop/30">
+            ✕
+          </button>
+        </form>
+      </div>
       {% endfor %}
     </div>
   {% else %}

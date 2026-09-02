@@ -4,7 +4,9 @@
 {% block content %}
 <div class="mx-auto max-w-xl px-4 py-6 sm:px-6">
   <a href="{% url 'homework_check:index' %}" class="text-sm font-semibold text-twilight/60">← Homework Check</a>
-  <h1 class="mt-2 {% if carried %}mb-2{% else %}mb-5{% endif %} text-2xl font-bold text-twilight">New check</h1>
+  <h1 class="mt-2 mb-3 text-2xl font-bold text-twilight">New check</h1>
+
+  {% include "homework_check/_messages.html" %}
 
   {% if carried %}
     <p class="mb-5 rounded-xl bg-lime-glow/20 p-3 text-sm text-twilight">
