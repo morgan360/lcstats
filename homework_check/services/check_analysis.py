@@ -20,7 +20,9 @@ import re
 
 from django.conf import settings
 
-from exam_papers.services.vision_grading import _vision_completion, vision_model
+from exam_papers.services.vision_grading import (
+    _vision_completion, restore_eaten_latex, vision_model,
+)
 from exam_papers.services.work_analysis import DIAGRAM_CHECKLIST, FORMATTING_RULES
 
 logger = logging.getLogger(__name__)
@@ -79,17 +81,17 @@ def _parse_json_response(raw):
     whole call is wasted if a stray backtick throws it away.
     """
     try:
-        return json.loads(raw)
+        return restore_eaten_latex(json.loads(raw))
     except json.JSONDecodeError:
         pass
 
     fenced = re.search(r'```(?:json)?\s*(\{.*?\})\s*```', raw, re.DOTALL)
     if fenced:
-        return json.loads(fenced.group(1))
+        return restore_eaten_latex(json.loads(fenced.group(1)))
 
     bare = re.search(r'\{.*\}', raw, re.DOTALL)
     if bare:
-        return json.loads(bare.group(0))
+        return restore_eaten_latex(json.loads(bare.group(0)))
 
     raise ValueError(f"Could not parse JSON from response: {raw[:500]}")
 

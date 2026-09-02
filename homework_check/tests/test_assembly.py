@@ -14,7 +14,7 @@ from django.test import SimpleTestCase
 from homework_check.services.assembly import (
     assemble, derive_rating, fallback_summary, merge_questions, tally,
 )
-from homework_check.services.check_analysis import _clean_questions
+from homework_check.services.check_analysis import _clean_questions, _parse_json_response
 
 
 def q(label, verdict="correct", found=True, student="", correct="",
@@ -29,6 +29,38 @@ def q(label, verdict="correct", found=True, student="", correct="",
 def chunk(questions, readable=True, confidence="high", **extra):
     return {"questions": questions, "readable": readable,
             "confidence": confidence, **extra}
+
+
+class EatenLatexTests(SimpleTestCase):
+    """JSON's escape table overlaps LaTeX's command names.
+
+    "\\frac" inside a JSON string is a valid escape -- formfeed -- followed by
+    "rac", so json.loads swallows the backslash silently and a student's sheet
+    showed "- rac{1}{2}" in red where $-\\frac{1}{2}$ belonged.
+    """
+
+    def test_single_escaped_latex_commands_survive_parsing(self):
+        raw = '{"comment": "write $-\\frac{1}{2}$ where $\\theta$ meets $\\rho$"}'
+        out = _parse_json_response(raw)
+        self.assertEqual(
+            out["comment"],
+            "write $-\\frac{1}{2}$ where $\\theta$ meets $\\rho$")
+
+    def test_repair_reaches_nested_structures(self):
+        raw = '{"questions": [{"correct_answer": "$\\frac{3}{4}$"}]}'
+        out = _parse_json_response(raw)
+        self.assertEqual(out["questions"][0]["correct_answer"], "$\\frac{3}{4}$")
+
+    def test_properly_doubled_latex_is_untouched(self):
+        raw = '{"comment": "already right: $\\\\frac{1}{2}$"}'
+        out = _parse_json_response(raw)
+        self.assertEqual(out["comment"], "already right: $\\frac{1}{2}$")
+
+    def test_real_newlines_are_left_alone(self):
+        """A transcription's line breaks are content, not eaten commands."""
+        raw = '{"transcription": "line one\\nline two"}'
+        out = _parse_json_response(raw)
+        self.assertEqual(out["transcription"], "line one\nline two")
 
 
 class CleanQuestionsTests(SimpleTestCase):

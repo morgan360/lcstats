@@ -1,6 +1,8 @@
 {% load static %}<!DOCTYPE html>
-{# Standalone on purpose: no site nav, no dark theme, black on white, sized to
-   one A4 page. This is the sheet the student is handed. #}
+{% comment %}Standalone on purpose: no site nav, no dark theme, black on
+white, sized to one A4 page. This is the sheet the student is handed. Django's
+{# ... #} syntax only comments a single line -- across two it is plain text,
+and it printed at the top of a student's sheet.{% endcomment %}
 <html lang="en">
 <head>
   <meta charset="utf-8">

@@ -16,7 +16,10 @@ import re
 
 from django.conf import settings
 
-from .vision_grading import _vision_completion, encode_image_from_file, vision_model
+from .vision_grading import (
+    _vision_completion, encode_image_from_file, restore_eaten_latex,
+    vision_model,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -32,7 +35,9 @@ FORMATTING_RULES = """**Formatting** (the student sees this rendered in a web pa
   LaTeX left outside $...$ displays to the student as raw code.
 - Do NOT use \\( \\) or \\[ \\] delimiters. Only $...$ and $$...$$.
 - Write plain prose sentences. Do NOT use Markdown: no **bold**, no headings,
-  no bullet points, no numbered lists."""
+  no bullet points, no numbered lists.
+- In the JSON you return, every LaTeX backslash must be doubled so it survives
+  JSON escaping: write $-\\\\frac{1}{2}$, not $-\\frac{1}{2}$."""
 
 DIAGRAM_CHECKLIST = """If the page contains a graph, sketch or diagram, work through this list
 explicitly rather than commenting in general terms:
@@ -56,17 +61,17 @@ def _parse_json_response(raw):
     whole call is wasted if a stray backtick throws it away.
     """
     try:
-        return json.loads(raw)
+        return restore_eaten_latex(json.loads(raw))
     except json.JSONDecodeError:
         pass
 
     fenced = re.search(r'```(?:json)?\s*(\{.*?\})\s*```', raw, re.DOTALL)
     if fenced:
-        return json.loads(fenced.group(1))
+        return restore_eaten_latex(json.loads(fenced.group(1)))
 
     bare = re.search(r'\{.*\}', raw, re.DOTALL)
     if bare:
-        return json.loads(bare.group(0))
+        return restore_eaten_latex(json.loads(bare.group(0)))
 
     raise ValueError(f"Could not parse JSON from response: {raw[:500]}")
 

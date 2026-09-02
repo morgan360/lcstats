@@ -36,6 +36,31 @@ def vision_model():
     return getattr(settings, 'OPENAI_VISION_MODEL', 'gpt-4o')
 
 
+# JSON's escape table overlaps LaTeX's command names. Inside a JSON string
+# "\frac" is a *valid* escape -- formfeed -- followed by "rac", so json.loads
+# swallows the backslash without an error and the student sees "- rac{1}{2}"
+# in red where $-\frac{1}{2}$ should be. The same happens to \theta (tab),
+# \rho (carriage return) and \beta (backspace). None of those control
+# characters legitimately appears in model prose, so finding one is proof of
+# an eaten command and safe to reverse. A newline is NOT safe -- real newlines
+# separate the lines of a transcription -- so "\neq" cannot be repaired here;
+# the formatting rules tell the model to double its backslashes instead.
+_EATEN_LATEX = (("\f", "\\f"), ("\b", "\\b"), ("\t", "\\t"), ("\r", "\\r"))
+
+
+def restore_eaten_latex(value):
+    """Undo JSON escape-eating in every string of a parsed response."""
+    if isinstance(value, str):
+        for eaten, restored in _EATEN_LATEX:
+            value = value.replace(eaten, restored)
+        return value
+    if isinstance(value, list):
+        return [restore_eaten_latex(v) for v in value]
+    if isinstance(value, dict):
+        return {k: restore_eaten_latex(v) for k, v in value.items()}
+    return value
+
+
 def _vision_completion(messages, max_tokens, temperature, **extra):
     """Call the configured vision model with parameters it accepts."""
     model = vision_model()
@@ -342,6 +367,8 @@ Example response:
                     result = json.loads(json_match.group(0))
                 else:
                     raise ValueError(f"Could not parse JSON from response: {raw_response}")
+
+        result = restore_eaten_latex(result)
 
         # Validate required fields
         marks_awarded = float(result.get('marks_awarded', 0))
