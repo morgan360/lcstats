@@ -96,7 +96,16 @@ def _parse_json_response(raw):
     raise ValueError(f"Could not parse JSON from response: {raw[:500]}")
 
 
-def build_prompt(exercise_name, photo_count, page_numbers):
+def build_prompt(exercise_name, page_numbers):
+    """The instructions, identical for every batch of a given exercise.
+
+    Deliberately carries nothing that changes from batch to batch -- not the
+    photo count, not the batch label. This text is the first thing in the
+    request and therefore the start of the cached prefix, and a single word
+    differing between batches pushes every later token, the solution pages
+    included, out of the cache. What varies rides on the heading above the
+    photos instead, which sits after the solution pages. See analyse_chunk.
+    """
     pages = ", ".join(str(n) for n in page_numbers) or "none supplied"
     return "\n".join([
         "You are an experienced Leaving Certificate Higher Level Maths teacher "
@@ -105,9 +114,10 @@ def build_prompt(exercise_name, photo_count, page_numbers):
         "handed back to the student afterwards.",
         "",
         f"**The exercise:** {exercise_name}",
-        f"**Photographs of the student's work:** {photo_count} in this batch.",
         f"**Worked solutions supplied:** page(s) {pages} of the teacher's "
-        "solutions PDF, as images.",
+        "solutions PDF, as images. They come first, before the student's work.",
+        "**Photographs of the student's work:** they follow the solution "
+        "pages, under a heading saying which pages of the copy they are.",
         "",
         "**Work through these four stages in order.**",
         "",
@@ -200,7 +210,7 @@ def _image_part(b64, detail):
 
 
 def analyse_chunk(photo_b64s, solution_page_b64s, exercise_name,
-                  page_numbers=(), chunk_label=""):
+                  page_numbers=(), chunk_label="", cache_key=""):
     """Compare one batch of photos against the solution pages.
 
     Args:
@@ -209,34 +219,55 @@ def analyse_chunk(photo_b64s, solution_page_b64s, exercise_name,
         exercise_name: what the teacher called this exercise.
         page_numbers: the page numbers those solution images came from.
         chunk_label: e.g. "photos 5-8", for the model's orientation only.
+        cache_key: groups requests that share a prefix, so the solution pages
+            cached for one batch are reused by the next and by the next
+            student marked against the same pages. Blank to omit it.
 
     Returns the parsed dict plus 'model_used' and 'usage'. Raises on failure --
     the caller decides what the teacher sees, so no exception text can leak
     into a report.
     """
+    # The order here is a cost decision, not a presentational one. OpenAI
+    # discounts a request only where it shares an exact prefix with a recent
+    # one, so everything that repeats has to come first: the instructions,
+    # then the solution pages, and only then the photographs, which are
+    # different in every batch. Built the other way round -- photos before
+    # solutions, as this was -- the eleven solution pages sit behind content
+    # that never repeats and are paid for in full on every single batch.
     content = [{
         "type": "text",
-        "text": build_prompt(exercise_name, len(photo_b64s), page_numbers),
+        "text": build_prompt(exercise_name, page_numbers),
     }]
-
-    heading = f"**The student's work ({chunk_label}):**" if chunk_label \
-        else "**The student's work:**"
-    content.append({"type": "text", "text": heading})
-    for b64 in photo_b64s:
-        # High detail: this is handwriting, and the whole thing turns on
-        # reading it accurately.
-        content.append(_image_part(b64, "high"))
 
     if solution_page_b64s:
         content.append({"type": "text", "text": "**The worked solutions:**"})
         for b64 in solution_page_b64s:
             content.append(_image_part(b64, "high"))
 
+    where = f"{chunk_label}, " if chunk_label else ""
+    content.append({
+        "type": "text",
+        "text": f"**The student's work ({where}{len(photo_b64s)} "
+                f"photograph(s)):**",
+    })
+    for b64 in photo_b64s:
+        # High detail: this is handwriting, and the whole thing turns on
+        # reading it accurately.
+        content.append(_image_part(b64, "high"))
+
+    extra = {}
+    if cache_key:
+        # Routing hint, not a correctness one: it steers requests sharing a
+        # prefix to the same cache, which is what lets the second student of
+        # an exercise reuse the solution pages the first student warmed.
+        extra["prompt_cache_key"] = cache_key[:64]
+
     response = _vision_completion(
         messages=[{"role": "user", "content": content}],
         max_tokens=MAX_TOKENS,
         temperature=0.2,
         response_format={"type": "json_object"},
+        **extra,
     )
 
     choice = response.choices[0]
@@ -261,21 +292,34 @@ def analyse_chunk(photo_b64s, solution_page_b64s, exercise_name,
     result["questions"] = _clean_questions(result.get("questions"))
 
     result["model_used"] = vision_model()
-    usage = getattr(response, "usage", None)
-    result["usage"] = {
-        "prompt_tokens": getattr(usage, "prompt_tokens", 0) or 0,
-        "completion_tokens": getattr(usage, "completion_tokens", 0) or 0,
-    }
+    result["usage"] = _usage(response)
 
     logger.info(
         "Analysed homework chunk (%s): photos=%s pages=%s readable=%s "
-        "confidence=%s questions=%s tokens=%s/%s",
+        "confidence=%s questions=%s tokens=%s/%s cached=%s",
         vision_model(), len(photo_b64s), len(solution_page_b64s),
         result.get("readable"), result.get("confidence"),
         len(result["questions"]), result["usage"]["prompt_tokens"],
-        result["usage"]["completion_tokens"],
+        result["usage"]["completion_tokens"], result["usage"]["cached_tokens"],
     )
     return result
+
+
+def _usage(response):
+    """Token counts off the response, including how many were served from cache.
+
+    ``cached_tokens`` is the number the reorder in ``analyse_chunk`` exists
+    for. It is kept in the per-chunk ``usage`` dict, which the runner stores
+    verbatim in ``HomeworkCheck.analysis``, so a check's cache hit rate can be
+    read back from the database without a schema change.
+    """
+    usage = getattr(response, "usage", None)
+    details = getattr(usage, "prompt_tokens_details", None)
+    return {
+        "prompt_tokens": getattr(usage, "prompt_tokens", 0) or 0,
+        "completion_tokens": getattr(usage, "completion_tokens", 0) or 0,
+        "cached_tokens": getattr(details, "cached_tokens", 0) or 0,
+    }
 
 
 def _clean_questions(raw):

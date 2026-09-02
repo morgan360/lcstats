@@ -4,7 +4,14 @@
 {% block content %}
 <div class="mx-auto max-w-xl px-4 py-6 sm:px-6">
   <a href="{% url 'homework_check:index' %}" class="text-sm font-semibold text-twilight/60">← Homework Check</a>
-  <h1 class="mt-2 mb-5 text-2xl font-bold text-twilight">New check</h1>
+  <h1 class="mt-2 {% if carried %}mb-2{% else %}mb-5{% endif %} text-2xl font-bold text-twilight">New check</h1>
+
+  {% if carried %}
+    <p class="mb-5 rounded-xl bg-lime-glow/20 p-3 text-sm text-twilight">
+      Same exercise as the last one{% if carried.exercise_name %} — <span class="font-semibold">{{ carried.exercise_name }}</span>{% endif %}.
+      Pick the next student and add their photos.
+    </p>
+  {% endif %}
 
   {% if not solutions %}
     <div class="rounded-2xl bg-rose-pop/10 p-5 text-sm text-twilight ring-1 ring-rose-pop/25">
@@ -37,9 +44,14 @@
 
     <div>
       <label class="mb-1 block text-sm font-semibold text-twilight">Exercise</label>
-      <input type="text" name="exercise_name" required maxlength="200"
+      <input type="text" name="exercise_name" id="exerciseName" required maxlength="200"
+             value="{{ carried.exercise_name|default:'' }}"
              placeholder="e.g. Ex 5A Q1–8"
              class="w-full rounded-xl border-twilight/20 bg-white p-3 text-base">
+      <p class="mt-1 text-xs text-twilight/50">
+        Filled in from the exercise you pick below. Add to it if you set only
+        some of it, e.g. “Q1–8”.
+      </p>
     </div>
 
     <div>
@@ -47,7 +59,7 @@
       <select name="solution" id="solutionSelect" required
               class="w-full rounded-xl border-twilight/20 bg-white p-3 text-base">
         {% for s in solutions %}
-          <option value="{{ s.id }}">{{ s.title }}</option>
+          <option value="{{ s.id }}" {% if carried.solution_id == s.id %}selected{% endif %}>{{ s.title }}</option>
         {% endfor %}
       </select>
     </div>
@@ -90,6 +102,20 @@
   };
 
   var maxPages = {{ max_solution_pages }};
+  var carriedPages = "{{ carried.pages|default:''|escapejs }}";
+  var exerciseName = document.getElementById('exerciseName');
+
+  /* The name is filled from the section picked, but must never overwrite
+     something the teacher typed -- "Ex 1.1 Q1-8" is the whole point of the
+     field being editable. So we only replace a value this script wrote. */
+  var autoFilled = exerciseName ? exerciseName.value : '';
+
+  function nameFromSection(label) {
+    if (!exerciseName || !label) return;
+    if (exerciseName.value && exerciseName.value !== autoFilled) return;
+    exerciseName.value = label;
+    autoFilled = label;
+  }
 
   var classSelect = document.getElementById('classSelect');
   var studentSelect = document.getElementById('studentSelect');
@@ -132,6 +158,7 @@
       var opt = document.createElement('option');
       opt.value = sec.range;
       opt.dataset.pages = sec.pages;
+      opt.dataset.label = sec.label;
       opt.textContent = sec.label + '  (pages ' + sec.range + ')';
       sectionSelect.appendChild(opt);
     });
@@ -143,6 +170,26 @@
     sectionSelect.appendChild(other);
 
     if (!list.length) sectionSelect.value = '__manual__';
+
+    /* Carried over from the last student's check. A range the PDF no longer
+       has a section for still stands -- it goes in the manual box rather
+       than being dropped, because it is what the teacher chose. */
+    if (carriedPages) {
+      var matched = false;
+      for (var i = 0; i < sectionSelect.options.length; i++) {
+        if (sectionSelect.options[i].value === carriedPages) {
+          sectionSelect.selectedIndex = i;
+          matched = true;
+          break;
+        }
+      }
+      if (!matched) {
+        sectionSelect.value = '__manual__';
+        pagesInput.value = carriedPages;
+      }
+      carriedPages = '';
+    }
+
     applySection();
   }
 
@@ -161,6 +208,7 @@
     pagesField.value = sectionSelect.value;
     var opt = sectionSelect.options[sectionSelect.selectedIndex];
     var count = parseInt(opt && opt.dataset.pages, 10) || 0;
+    nameFromSection(opt && opt.dataset.label);
 
     if (count > maxPages) {
       // These pages are re-sent with every batch of photos, so a long

@@ -172,10 +172,45 @@ def check_new(request):
         'classes': classes,
         'solutions': solutions,
         'selected_class': selected_class,
+        'carried': _carried_over(request, classes, solutions, selected_class),
         'current_subject': current_subject,
         'max_solution_pages': getattr(
-            settings, 'HOMEWORK_CHECK_MAX_SOLUTION_PAGES', 12),
+            settings, 'HOMEWORK_CHECK_MAX_SOLUTION_PAGES', 30),
     })
+
+
+def _carried_over(request, classes, solutions, selected_class):
+    """The settings brought forward from a finished check, if any.
+
+    Marking a class is a stack of copies, not one: the class, the exercise
+    name, the solutions PDF and the page range are the same for all
+    twenty-five, and only the student and the photographs change. The
+    "check another student" button on a finished report sends those four
+    back here as query parameters so they are already filled in.
+
+    Every one of them is re-checked against what this teacher may actually
+    pick, because they arrive in a URL a teacher can edit. The solution is
+    looked up in the same queryset the dropdown is built from; the class was
+    already narrowed by the caller. Nothing here grants access -- picking a
+    student still goes through the class the POST handler validates.
+    """
+    solution = None
+    solution_id = request.GET.get('solution')
+    if solution_id and solution_id.isdigit():
+        solution = solutions.filter(pk=int(solution_id)).first()
+
+    exercise = (request.GET.get('exercise') or '').strip()[:200]
+    pages = (request.GET.get('pages') or '').strip()[:60]
+
+    if not (solution or exercise or pages):
+        return None
+
+    return {
+        'class_id': selected_class.pk if selected_class else None,
+        'solution_id': solution.pk if solution else None,
+        'exercise_name': exercise,
+        'pages': pages,
+    }
 
 
 @teacher_required

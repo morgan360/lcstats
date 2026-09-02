@@ -6,6 +6,7 @@ exercise inside OPENAI_VISION_TIMEOUT without introducing Celery, and it makes
 the work resumable -- closing the tab pauses it, reopening the check carries on
 from the first photo not yet analysed.
 """
+import hashlib
 import logging
 
 from django.conf import settings
@@ -45,7 +46,7 @@ def _encode_solution_pages(check):
     """
     pages = pages_for_check(check.solution, check.solution_pages)
 
-    limit = getattr(settings, "HOMEWORK_CHECK_MAX_SOLUTION_PAGES", 12)
+    limit = getattr(settings, "HOMEWORK_CHECK_MAX_SOLUTION_PAGES", 30)
     if len(pages) > limit:
         raise TooManySolutionPages(
             f"That's {len(pages)} pages of solutions to check against, and the "
@@ -60,6 +61,24 @@ def _encode_solution_pages(check):
             encoded.append(encode_path_for_api(fh))
         numbers.append(page.page_number)
     return encoded, numbers
+
+
+def _cache_key(check):
+    """Group requests that begin with the same prefix.
+
+    Keyed on everything that prefix actually contains -- the exercise name,
+    which is in the prompt, then the solutions and the page range -- and
+    deliberately not on the check or the student. Marking a class is
+    twenty-five checks that all open with the same eleven solution pages, and
+    they should all reuse the cache the first one warmed.
+
+    The name is hashed rather than written in because it is free text and the
+    key has to stay short and printable. A collision costs nothing: the key
+    only decides which cache a request is routed to, and an exact prefix
+    match is still what earns the discount.
+    """
+    name = hashlib.md5(check.exercise_name.encode("utf-8")).hexdigest()[:8]
+    return f"hwcheck-{check.solution_id}-{check.solution_pages or 'all'}-{name}"
 
 
 def analyse_next_chunk(check):
@@ -88,6 +107,7 @@ def analyse_next_chunk(check):
         result = analyse_chunk(
             photo_b64s, page_b64s, check.exercise_name,
             page_numbers=page_numbers, chunk_label=label,
+            cache_key=_cache_key(check),
         )
     except EmptyResponse:
         # Retryable, and nothing is wrong with these photos, so they stay

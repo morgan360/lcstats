@@ -92,12 +92,11 @@ class Command(BaseCommand):
 
         if options["show_prompt"]:
             self.stdout.write("\n" + "=" * 70)
-            self.stdout.write(build_prompt(
-                options["exercise"], len(photo_b64s), page_numbers))
+            self.stdout.write(build_prompt(options["exercise"], page_numbers))
             return
 
         chunks = []
-        total = {"prompt_tokens": 0, "completion_tokens": 0}
+        total = {"prompt_tokens": 0, "completion_tokens": 0, "cached_tokens": 0}
         for start in range(0, len(photo_b64s), chunk_size):
             batch = photo_b64s[start:start + chunk_size]
             label = f"photos {start + 1}-{start + len(batch)}"
@@ -106,10 +105,18 @@ class Command(BaseCommand):
             result = analyse_chunk(
                 batch, page_b64s, options["exercise"],
                 page_numbers=page_numbers, chunk_label=label,
+                # Mirrors what the runner sends, so the probe measures the
+                # caching the live path actually gets.
+                cache_key=f"hwcheck-probe-{options['pages'] or 'all'}",
             )
             chunks.append(result)
             for key in total:
-                total[key] += result["usage"][key]
+                total[key] += result["usage"].get(key, 0)
+            self.stdout.write(
+                f"  tokens {result['usage']['prompt_tokens']} in "
+                f"({result['usage']['cached_tokens']} cached) / "
+                f"{result['usage']['completion_tokens']} out"
+            )
 
         report = assembly.assemble(chunks)
 
@@ -119,7 +126,7 @@ class Command(BaseCommand):
                 text, usage = summarise(options["exercise"], report["questions"])
                 report["summary"] = text
                 for key in total:
-                    total[key] += usage[key]
+                    total[key] += usage.get(key, 0)
             except Exception as e:
                 self.stderr.write(f"  summary call failed ({e}); using fallback")
                 report["summary"] = assembly.fallback_summary(
@@ -194,7 +201,8 @@ class Command(BaseCommand):
         out.write("Closing note: " + report.get("summary", ""))
 
         out.write("\n" + "-" * 70)
-        out.write(f"Tokens: {total['prompt_tokens']} in / "
+        out.write(f"Tokens: {total['prompt_tokens']} in "
+                  f"({total['cached_tokens']} served from cache) / "
                   f"{total['completion_tokens']} out across "
                   f"{len(chunks)} vision call(s)")
 

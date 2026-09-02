@@ -170,6 +170,14 @@
        class="block rounded-xl bg-lime-glow px-4 py-4 text-center text-base font-bold text-twilight shadow-sm">
       Open the printable sheet →
     </a>
+
+    {# The real unit of work is a stack of copies, not one. Everything except
+       the student and their photos is the same for the whole class, so carry
+       it forward rather than asking for it twenty-five times. #}
+    <a href="{% url 'homework_check:check_new' %}?class={{ check.teacher_class_id }}&amp;solution={{ check.solution_id }}&amp;pages={{ check.solution_pages|urlencode }}&amp;exercise={{ check.exercise_name|urlencode }}"
+       class="mt-3 block rounded-xl bg-twilight px-4 py-4 text-center text-base font-semibold text-white shadow-sm">
+      Check another student on this exercise →
+    </a>
   </section>
 
   <form method="post" action="{% url 'homework_check:check_delete' check.pk %}"

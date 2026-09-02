@@ -49,10 +49,17 @@ HOMEWORK_CHECK_MAX_PHOTOS = int(os.getenv("HOMEWORK_CHECK_MAX_PHOTOS", 16))
 HOMEWORK_CHECK_CHUNK_SIZE = int(os.getenv("HOMEWORK_CHECK_CHUNK_SIZE", 4))
 HOMEWORK_CHECK_HOURLY_LIMIT = int(os.getenv("HOMEWORK_CHECK_HOURLY_LIMIT", 40))
 HOMEWORK_CHECK_RETENTION_DAYS = int(os.getenv("HOMEWORK_CHECK_RETENTION_DAYS", 90))
-# The solution pages go to the model with EVERY batch of photos, so an
-# unscoped 84-page chapter is sent four times over for one student. Refuse
-# rather than run up that bill and time out.
-HOMEWORK_CHECK_MAX_SOLUTION_PAGES = int(os.getenv("HOMEWORK_CHECK_MAX_SOLUTION_PAGES", 12))
+# The solution pages go to the model with every batch of photos, but they are
+# sent first and identically every time, so from the second batch on they are
+# served from the prompt cache -- and the same holds for the second and
+# twenty-fifth student marked against the same pages. Measured on the real
+# Algebra chapter: 10,368 of 14,328 input tokens cached on every batch after
+# the first. That is what makes 30 affordable where 12 was not, and 30 covers
+# every section in the book, Revision Exercises (29pp) included.
+#
+# It is still a cap rather than no cap: the pages also have to be rendered,
+# encoded and read within OPENAI_VISION_TIMEOUT, and none of that is cached.
+HOMEWORK_CHECK_MAX_SOLUTION_PAGES = int(os.getenv("HOMEWORK_CHECK_MAX_SOLUTION_PAGES", 30))
 FAQ_MATCH_THRESHOLD = float(os.getenv("FAQ_MATCH_THRESHOLD", 0.7))
 
 # NumSkull "site help" matching (pure retrieval, no GPT call — see chat/views.py).

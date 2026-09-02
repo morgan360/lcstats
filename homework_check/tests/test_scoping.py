@@ -167,3 +167,89 @@ class SectionModelTests(TestCase):
         self.assertEqual(parse_page_range(multi.page_range, 84),
                          [17, 18, 19, 20, 21])
         self.assertEqual(parse_page_range(single.page_range, 84), [60])
+
+
+@override_settings(PRIVATE_MEDIA_ROOT=PRIVATE_ROOT)
+class CarriedOverSettingsTests(TestCase):
+    """"Check another student" brings the last check's settings forward.
+
+    Marking a class is a stack of copies: the class, exercise, solutions PDF
+    and page range are the same for all of them and only the student and the
+    photographs change. The values arrive as query parameters, which a
+    teacher can edit, so each one is re-checked here rather than trusted.
+    """
+
+    def setUp(self):
+        self.teacher, self.profile = make_teacher('t')
+        self.student = User.objects.create_user('s', password='pw')
+        self.teacher_class = TeacherClass.objects.create(
+            teacher=self.profile, name='6th')
+        self.teacher_class.students.add(self.student)
+        self.solution = HWSolution.objects.create(title='Ch 1', page_count=84)
+        self.other_solution = HWSolution.objects.create(title='Ch 2',
+                                                        page_count=40)
+        self.client.login(username='t', password='pw')
+
+    def carry(self, **params):
+        query = "&".join(f"{k}={v}" for k, v in params.items())
+        return self.client.get(f"{reverse('homework_check:check_new')}?{query}")
+
+    def test_the_exercise_name_comes_back_filled_in(self):
+        response = self.carry(exercise='Exercise%201.1')
+        self.assertContains(response, 'value="Exercise 1.1"')
+
+    def test_the_solutions_pdf_comes_back_selected(self):
+        response = self.carry(solution=self.other_solution.pk)
+        self.assertContains(
+            response, f'value="{self.other_solution.pk}" selected')
+
+    def test_the_page_range_comes_back(self):
+        """escapejs writes the hyphen as \\u002D, which is still "2-12" to JS."""
+        response = self.carry(solution=self.solution.pk, pages='2-12')
+        self.assertContains(response, 'carriedPages = "2\\u002D12"')
+
+    def test_the_class_comes_back_selected(self):
+        response = self.carry(**{'class': self.teacher_class.pk,
+                                 'exercise': 'Ex+1.1'})
+        self.assertContains(response, f'value="{self.teacher_class.pk}" selected')
+
+    def test_a_plain_new_check_carries_nothing(self):
+        """The banner and the prefilled name belong only to a repeat."""
+        response = self.client.get(reverse('homework_check:check_new'))
+        self.assertNotContains(response, 'Same exercise as the last one')
+        self.assertContains(response, 'value=""')
+
+    def test_a_solution_that_does_not_exist_is_ignored_not_an_error(self):
+        """A hand-edited URL must not 500, and must not select anything."""
+        response = self.carry(solution=99999, exercise='Ex+1.1')
+        self.assertEqual(response.status_code, 200)
+        self.assertNotContains(response, '99999')
+
+    def test_a_non_numeric_solution_is_ignored(self):
+        response = self.carry(solution='../../etc', exercise='Ex+1.1')
+        self.assertEqual(response.status_code, 200)
+
+    def test_a_carried_exercise_name_is_length_capped(self):
+        """The field is 200 chars; the URL is not bounded by the form."""
+        response = self.carry(exercise='x' * 500)
+        self.assertContains(response, 'x' * 200)
+        self.assertNotContains(response, 'x' * 201)
+
+    def test_the_repeat_banner_names_the_exercise(self):
+        response = self.carry(exercise='Exercise%201.6')
+        self.assertContains(response, 'Same exercise as the last one')
+        self.assertContains(response, 'Exercise 1.6')
+
+    def test_the_finished_report_offers_the_repeat(self):
+        check = HomeworkCheck.objects.create(
+            teacher=self.teacher, teacher_class=self.teacher_class,
+            student=self.student, solution=self.solution,
+            exercise_name='Exercise 1.1', solution_pages='2-12',
+            status=HomeworkCheck.Status.COMPLETE,
+        )
+        response = self.client.get(
+            reverse('homework_check:check_detail', args=[check.pk]))
+        self.assertContains(response, 'Check another student')
+        self.assertContains(response, f'solution={self.solution.pk}')
+        self.assertContains(response, 'pages=2-12')
+        self.assertContains(response, 'exercise=Exercise%201.1')
