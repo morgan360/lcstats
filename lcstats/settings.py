@@ -22,10 +22,18 @@ OPENAI_GRADING_MODEL = os.getenv("OPENAI_GRADING_MODEL", OPENAI_CHAT_MODEL)
 OPENAI_VISION_MODEL = os.getenv("OPENAI_VISION_MODEL", "gpt-4o")  # For exam marking with vision
 # Vision calls run synchronously inside the request, so an untimed one holds a
 # web worker open for as long as the API takes to give up.
-OPENAI_VISION_TIMEOUT = float(os.getenv("OPENAI_VISION_TIMEOUT", 90))
-# ...and the SDK's own retries multiply that wait. Two retries meant a slow
-# batch spent 275s in a single request before the teacher heard anything.
-OPENAI_VISION_MAX_RETRIES = int(os.getenv("OPENAI_VISION_MAX_RETRIES", 1))
+# 90 was cutting off work that was going to succeed: measured on the homework
+# checker, a batch of two photos against eleven solution pages runs 31-74s and
+# the slow ones need more than 90. Nothing in front of the origin objects --
+# Cloudflare passed a 169s response through to the browser intact, and
+# PythonAnywhere has served a 276s request -- so the ceiling here is the only
+# thing that was ending them.
+OPENAI_VISION_TIMEOUT = float(os.getenv("OPENAI_VISION_TIMEOUT", 170))
+# No automatic retry, now that one attempt can run 170s: two would sit a web
+# worker on a single click for longer than the platform allows. Retrying is the
+# teacher pressing the button again, which costs nothing -- the photos of a
+# timed-out batch stay pending by design (see homework_check.services.runner).
+OPENAI_VISION_MAX_RETRIES = int(os.getenv("OPENAI_VISION_MAX_RETRIES", 0))
 # Long edge, in pixels, of the copy of a photo sent to the vision API. The API
 # tiles images at 512px, so past ~1024 you pay linearly more tokens for detail
 # the model does not use.
