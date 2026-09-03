@@ -84,6 +84,18 @@ def _vision_completion(messages, max_tokens, temperature, **extra):
         kwargs['temperature'] = temperature
     else:
         kwargs['max_completion_tokens'] = max(max_tokens, REASONING_TOKEN_BUDGET)
+        # Reasoning is the largest single line on the bill and none of it
+        # reaches the page. Measured on two real homework checks: at the
+        # default effort gpt-5.5 spent 6144 and 10013 thinking tokens against
+        # 2059 and 2137 at 'low', for 60% of all output. Cutting it halved the
+        # cost and the latency without moving the verdicts -- a control run at
+        # the default agreed with its own baseline on exactly the same 24 of 28
+        # as the low-effort run did, so the handful that move are the model
+        # being non-deterministic on an ambiguous copy, not the effort.
+        # Legacy models reject the parameter, hence the split.
+        effort = getattr(settings, 'OPENAI_VISION_REASONING_EFFORT', '')
+        if effort:
+            kwargs.setdefault('reasoning_effort', effort)
 
     return get_client().chat.completions.create(**kwargs)
 

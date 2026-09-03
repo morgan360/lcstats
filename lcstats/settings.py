@@ -34,6 +34,14 @@ OPENAI_VISION_TIMEOUT = float(os.getenv("OPENAI_VISION_TIMEOUT", 170))
 # teacher pressing the button again, which costs nothing -- the photos of a
 # timed-out batch stay pending by design (see homework_check.services.runner).
 OPENAI_VISION_MAX_RETRIES = int(os.getenv("OPENAI_VISION_MAX_RETRIES", 0))
+# 60% of a homework check's output tokens were reasoning, and output is 78% of
+# what a check costs -- so nearly half the bill was thinking the teacher never
+# sees. 'low' cut it by two thirds. Measured on checks 4 and 22 (2026-09-03):
+# $0.43->$0.30 and $0.49->$0.27, 107s->67s and 149s->70s, with the rating,
+# readability and confidence unchanged and verdict agreement no worse than the
+# same model's run-to-run noise at the default. Blank sends no parameter at
+# all, which is what a non-reasoning model needs.
+OPENAI_VISION_REASONING_EFFORT = os.getenv("OPENAI_VISION_REASONING_EFFORT", "low")
 # Long edge, in pixels, of the copy of a photo sent to the vision API. The API
 # tiles images at 512px, so past ~1024 you pay linearly more tokens for detail
 # the model does not use.

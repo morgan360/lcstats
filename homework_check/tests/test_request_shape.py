@@ -192,6 +192,44 @@ class CacheKeyTests(TestCase):
         self.assertEqual(result["usage"]["cached_tokens"], 0)
 
 
+
+class ReasoningEffortTests(TestCase):
+    """How hard the model thinks is a billing decision, so it is a setting.
+
+    Reasoning was 60% of a check's output tokens and output is 78% of its
+    cost. These pin the parameter to the models that accept it: the legacy
+    ones reject it outright, and a blank setting has to send nothing rather
+    than send an empty string.
+    """
+
+    def call(self):
+        from exam_papers.services import vision_grading
+        client = mock.Mock()
+        with mock.patch.object(vision_grading, "get_client",
+                               return_value=client):
+            vision_grading._vision_completion(
+                messages=[], max_tokens=9000, temperature=0.2)
+        return client.chat.completions.create.call_args.kwargs
+
+    @override_settings(OPENAI_VISION_MODEL="gpt-5.5",
+                       OPENAI_VISION_REASONING_EFFORT="low")
+    def test_effort_is_sent_to_a_reasoning_model(self):
+        self.assertEqual(self.call()["reasoning_effort"], "low")
+
+    @override_settings(OPENAI_VISION_MODEL="gpt-5.5",
+                       OPENAI_VISION_REASONING_EFFORT="")
+    def test_blank_effort_sends_no_parameter(self):
+        self.assertNotIn("reasoning_effort", self.call())
+
+    @override_settings(OPENAI_VISION_MODEL="gpt-4o",
+                       OPENAI_VISION_REASONING_EFFORT="low")
+    def test_a_legacy_model_is_never_sent_the_parameter(self):
+        """gpt-4o rejects it, and it takes max_tokens/temperature instead."""
+        kwargs = self.call()
+        self.assertNotIn("reasoning_effort", kwargs)
+        self.assertIn("max_tokens", kwargs)
+
+
 @override_settings(HOMEWORK_CHECK_MAX_SOLUTION_PAGES=30)
 class RunnerCacheKeyTests(TestCase):
     """The key groups by exercise, not by student.
