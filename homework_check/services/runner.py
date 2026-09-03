@@ -11,6 +11,7 @@ import logging
 
 from django.conf import settings
 from django.utils import timezone
+from openai import APIConnectionError
 
 from students.services.image_intake import encode_for_api, encode_path_for_api
 
@@ -28,6 +29,23 @@ ANALYSIS_FAILED_MESSAGE = (
     "That batch couldn't be read. Check the photos are flat, straight on and "
     "in good light, then try again."
 )
+
+
+# Same shape as ANALYSIS_FAILED_MESSAGE, but this one is not the photos'
+# fault and the batch is still there to retry, so it says so.
+ANALYSIS_STALLED_MESSAGE = (
+    "That batch took too long to come back. Nothing is wrong with the photos "
+    "and none of them have been used up -- press the button again to carry "
+    "on. If it keeps happening, the pages are quicker in smaller batches."
+)
+
+
+class Stalled(Exception):
+    """The model call timed out or the connection dropped.
+
+    Retryable, and it says nothing about the photographs, so it is kept apart
+    from a genuine failure. Its message is written to be read by a teacher.
+    """
 
 
 class TooManySolutionPages(Exception):
@@ -115,6 +133,18 @@ def analyse_next_chunk(check):
         # and count them as done in progress(), which is how a check reached
         # "8/8 complete" with four of its pages never looked at.
         raise
+    except APIConnectionError as e:
+        # A timeout or a dropped connection, which is exactly the same
+        # situation: the photos were never read, so they must stay pending
+        # for the same reason. Marking them failed here is how check 13 came
+        # to sit at "8/8" with its last four pages never looked at -- the
+        # batch had timed out, not been rejected. APITimeoutError is a
+        # subclass of this, so both arrive here.
+        logger.warning(
+            "Homework check %s: batch of %s did not come back (%s)",
+            check.pk, len(batch), type(e).__name__,
+        )
+        raise Stalled(ANALYSIS_STALLED_MESSAGE) from e
     except Exception:
         CheckPhoto.objects.filter(pk__in=[p.pk for p in batch]).update(
             status=CheckPhoto.Status.FAILED

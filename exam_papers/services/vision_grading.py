@@ -17,9 +17,18 @@ _client = None
 
 
 def get_client():
+    """The shared client for every vision call, retries capped.
+
+    The SDK retries a timeout twice by default, which turns one slow batch
+    into three OPENAI_VISION_TIMEOUT waits back to back -- 275s measured on a
+    homework check, against a proxy that gives up long before that and a web
+    worker held open the whole time. One retry still absorbs a blip; the
+    second only ever arrived too late to be read.
+    """
     global _client
     if _client is None:
-        _client = OpenAI()
+        _client = OpenAI(max_retries=getattr(
+            settings, 'OPENAI_VISION_MAX_RETRIES', 1))
     return _client
 
 # Models that take the older completion parameters. Newer models reject

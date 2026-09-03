@@ -344,6 +344,11 @@ def analyse_next(request, pk):
         # pressing the button again picks up the same batch.
         logger.warning("Homework check %s: empty model response", check.pk)
         return JsonResponse({'success': False, 'message': str(e)})
+    except runner.Stalled as e:
+        # The photos are untouched and still pending, so the button picks up
+        # the same batch. Not logged as a failure: nothing here is broken.
+        logger.warning("Homework check %s: batch timed out", check.pk)
+        return JsonResponse({'success': False, 'message': str(e)})
     except runner.TooManySolutionPages as e:
         # The teacher's to fix, not a failure to log: leave the check alone so
         # they can narrow the range and press the button again.

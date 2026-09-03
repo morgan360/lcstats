@@ -23,6 +23,9 @@ OPENAI_VISION_MODEL = os.getenv("OPENAI_VISION_MODEL", "gpt-4o")  # For exam mar
 # Vision calls run synchronously inside the request, so an untimed one holds a
 # web worker open for as long as the API takes to give up.
 OPENAI_VISION_TIMEOUT = float(os.getenv("OPENAI_VISION_TIMEOUT", 90))
+# ...and the SDK's own retries multiply that wait. Two retries meant a slow
+# batch spent 275s in a single request before the teacher heard anything.
+OPENAI_VISION_MAX_RETRIES = int(os.getenv("OPENAI_VISION_MAX_RETRIES", 1))
 # Long edge, in pixels, of the copy of a photo sent to the vision API. The API
 # tiles images at 512px, so past ~1024 you pay linearly more tokens for detail
 # the model does not use.

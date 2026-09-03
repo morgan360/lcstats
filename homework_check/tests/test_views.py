@@ -249,6 +249,39 @@ class HomeworkCheckFlowTests(TestCase):
         self.assertEqual(self.check.status, HomeworkCheck.Status.FAILED)
         self.assertIn('boom', self.check.error_message)
 
+    @mock.patch('homework_check.services.runner.analyse_chunk')
+    @mock.patch('homework_check.services.runner._encode_solution_pages')
+    def test_a_timed_out_batch_leaves_its_photos_to_be_retried(self, pages, analyse):
+        """A timeout is not a verdict on the photographs.
+
+        Marking the batch failed took it out of pending_photos() while still
+        counting it as done in progress(), so the check read "8/8" and
+        finalise() printed a report for the four pages that had been read.
+        That is a real check, 13, and four pages of a student's work that
+        were never looked at.
+        """
+        import httpx
+        from openai import APITimeoutError
+
+        pages.return_value = ([], [])
+        analyse.side_effect = APITimeoutError(
+            request=httpx.Request("POST", "https://api.openai.com/v1/x"))
+        self.upload()
+        self.upload()
+
+        with self.assertLogs('homework_check', level='WARNING'):
+            body = self.client.post(
+                reverse('homework_check:analyse_next',
+                        args=[self.check.pk])).json()
+
+        self.assertFalse(body['success'])
+        self.assertIn('again', body['message'])
+
+        self.check.refresh_from_db()
+        self.assertNotEqual(self.check.status, HomeworkCheck.Status.FAILED)
+        self.assertEqual(self.check.progress(), (0, 2))
+        self.assertEqual(self.check.pending_photos().count(), 2)
+
     @mock.patch('homework_check.services.runner.summarise')
     @mock.patch('homework_check.services.runner.analyse_chunk')
     @mock.patch('homework_check.services.runner._encode_solution_pages')
