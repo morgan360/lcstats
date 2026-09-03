@@ -26,6 +26,7 @@ def fake_response(content='{"questions": []}'):
     response.usage = mock.Mock(
         prompt_tokens=100, completion_tokens=20,
         prompt_tokens_details=mock.Mock(cached_tokens=64),
+        completion_tokens_details=mock.Mock(reasoning_tokens=12),
     )
     return response
 
@@ -151,10 +152,38 @@ class CacheKeyTests(TestCase):
             result = analyse_chunk(["p"], ["s"], "Ex 1.1")
         self.assertEqual(result["usage"]["cached_tokens"], 64)
 
+    def test_reasoning_tokens_are_reported_back(self):
+        """Output is 78% of what a check costs and this is the unknown in it.
+
+        Nothing else says how much of a completion was thinking rather than
+        the JSON the teacher reads, so without this the choice between a
+        cheaper model and a lower reasoning_effort cannot be made on evidence.
+        """
+        with mock.patch(
+            "homework_check.services.check_analysis._vision_completion",
+            return_value=fake_response(),
+        ):
+            result = analyse_chunk(["p"], ["s"], "Ex 1.1")
+        self.assertEqual(result["usage"]["reasoning_tokens"], 12)
+
+    def test_reasoning_tokens_default_to_zero_when_the_api_omits_them(self):
+        """A non-reasoning model sends no details block at all."""
+        response = fake_response()
+        response.usage = mock.Mock(prompt_tokens=1, completion_tokens=1,
+                                   prompt_tokens_details=None,
+                                   completion_tokens_details=None)
+        with mock.patch(
+            "homework_check.services.check_analysis._vision_completion",
+            return_value=response,
+        ):
+            result = analyse_chunk(["p"], ["s"], "Ex 1.1")
+        self.assertEqual(result["usage"]["reasoning_tokens"], 0)
+
     def test_cached_tokens_default_to_zero_when_the_api_omits_them(self):
         response = fake_response()
         response.usage = mock.Mock(prompt_tokens=1, completion_tokens=1,
-                                   prompt_tokens_details=None)
+                                   prompt_tokens_details=None,
+                                   completion_tokens_details=None)
         with mock.patch(
             "homework_check.services.check_analysis._vision_completion",
             return_value=response,

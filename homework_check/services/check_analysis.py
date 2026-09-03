@@ -296,11 +296,12 @@ def analyse_chunk(photo_b64s, solution_page_b64s, exercise_name,
 
     logger.info(
         "Analysed homework chunk (%s): photos=%s pages=%s readable=%s "
-        "confidence=%s questions=%s tokens=%s/%s cached=%s",
+        "confidence=%s questions=%s tokens=%s/%s cached=%s reasoning=%s",
         vision_model(), len(photo_b64s), len(solution_page_b64s),
         result.get("readable"), result.get("confidence"),
         len(result["questions"]), result["usage"]["prompt_tokens"],
         result["usage"]["completion_tokens"], result["usage"]["cached_tokens"],
+        result["usage"]["reasoning_tokens"],
     )
     return result
 
@@ -312,13 +313,23 @@ def _usage(response):
     for. It is kept in the per-chunk ``usage`` dict, which the runner stores
     verbatim in ``HomeworkCheck.analysis``, so a check's cache hit rate can be
     read back from the database without a schema change.
+
+    ``reasoning_tokens`` is the same idea pointed at the bill. Output is 78% of
+    what a check costs (measured over the first fourteen: $0.37 each, of which
+    $0.29 is output), and on a reasoning model an unknown share of that is
+    thinking the teacher never sees. Without this number there is no way to
+    tell whether the cure is a cheaper model or a lower ``reasoning_effort``.
+    It also reads on the same budget as ``MAX_TOKENS``, so a check that comes
+    back empty can be diagnosed from the row instead of the log.
     """
     usage = getattr(response, "usage", None)
     details = getattr(usage, "prompt_tokens_details", None)
+    completion = getattr(usage, "completion_tokens_details", None)
     return {
         "prompt_tokens": getattr(usage, "prompt_tokens", 0) or 0,
         "completion_tokens": getattr(usage, "completion_tokens", 0) or 0,
         "cached_tokens": getattr(details, "cached_tokens", 0) or 0,
+        "reasoning_tokens": getattr(completion, "reasoning_tokens", 0) or 0,
     }
 
 

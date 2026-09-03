@@ -101,7 +101,12 @@ def summarise(exercise_name, questions):
         raise ValueError("The summarising call returned no text.")
 
     usage = getattr(response, "usage", None)
+    completion = getattr(usage, "completion_tokens_details", None)
     return text, {
         "prompt_tokens": getattr(usage, "prompt_tokens", 0) or 0,
         "completion_tokens": getattr(usage, "completion_tokens", 0) or 0,
+        # Counted for the same reason as the vision call's: this one lands in
+        # the check's totals too, so leaving it out would put the summary's
+        # thinking in the unexplained part of the bill.
+        "reasoning_tokens": getattr(completion, "reasoning_tokens", 0) or 0,
     }
