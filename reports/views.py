@@ -21,6 +21,7 @@ from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, Tabl
 from homework.models import TeacherClass
 from students.decorators import teacher_required
 
+from . import openai_costs as openai_costs_service
 from . import services
 from .models import (
     ClassSession,
@@ -33,6 +34,21 @@ from .models import (
 )
 
 MIDNIGHT_HEX = '#001C3D'  # tailwind.config.js "midnight" token
+
+
+# ------------------------------------------------------------
+# OpenAI spend (superuser only)
+# ------------------------------------------------------------
+
+@login_required
+def openai_costs(request):
+    """Live OpenAI org spend. Superuser only -- this is billing, not a teacher view."""
+    if not request.user.is_superuser:
+        raise PermissionDenied
+    summary = openai_costs_service.get_cost_summary(
+        force_refresh=request.GET.get("refresh") == "1"
+    )
+    return render(request, "reports/openai_costs.html", {"summary": summary})
 
 
 # ------------------------------------------------------------

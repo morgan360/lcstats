@@ -106,6 +106,31 @@ RAG_CONTEXT_MIN_SCORE = float(os.getenv("RAG_CONTEXT_MIN_SCORE", 0.45))
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 OPENAI_ORG_ID = os.getenv("OPENAI_ORG_ID")
 
+# Admin API key (starts with sk-admin-...) used ONLY for the org Costs API on the
+# superuser spend page. Different from the project OPENAI_API_KEY above; create it
+# at https://platform.openai.com/settings/organization/admin-keys. Optional -- if
+# unset, the spend page shows a "not configured" notice instead of live figures.
+OPENAI_ADMIN_KEY = os.getenv("OPENAI_ADMIN_KEY")
+
+# Optional "credits remaining" countdown on the spend page. OpenAI exposes spend,
+# not prepaid balance, so we compute remaining = topup - spend-since-date ourselves.
+# Set OPENAI_CREDIT_TOPUP to the cumulative amount you have loaded as of
+# OPENAI_CREDIT_SINCE (YYYY-MM-DD). Leave either unset to show spend only.
+try:
+    OPENAI_CREDIT_TOPUP = float(os.getenv("OPENAI_CREDIT_TOPUP")) \
+        if os.getenv("OPENAI_CREDIT_TOPUP") else None
+except (TypeError, ValueError):
+    OPENAI_CREDIT_TOPUP = None
+
+OPENAI_CREDIT_SINCE = None
+_credit_since_raw = os.getenv("OPENAI_CREDIT_SINCE")
+if _credit_since_raw:
+    from datetime import datetime as _dt
+    try:
+        OPENAI_CREDIT_SINCE = _dt.strptime(_credit_since_raw.strip(), "%Y-%m-%d").date()
+    except ValueError:
+        OPENAI_CREDIT_SINCE = None
+
 # You can create the client later inside your app code, not here:
 # from openai import OpenAI
 # client = OpenAI(api_key=OPENAI_API_KEY, organization=OPENAI_ORG_ID)

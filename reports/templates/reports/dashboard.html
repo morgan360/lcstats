@@ -65,4 +65,13 @@
 {% else %}
 <p class="text-twilight/70">No active classes yet — create one from the <a class="underline" href="{% url 'homework:teacher_dashboard' %}">Teacher dashboard</a>.</p>
 {% endif %}
+
+{% if request.user.is_superuser %}
+<div class="mt-10 border-t border-twilight/10 pt-6">
+    <a href="{% url 'reports:openai_costs' %}"
+        class="inline-flex items-center gap-2 rounded-lg bg-twilight/10 px-3 py-2 text-sm font-semibold text-midnight transition hover:bg-twilight/20">
+        <span>💸</span> OpenAI spend
+    </a>
+</div>
+{% endif %}
 {% endblock %}

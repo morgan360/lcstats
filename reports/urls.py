@@ -6,6 +6,7 @@ app_name = 'reports'
 
 urlpatterns = [
     path('', views.dashboard, name='dashboard'),
+    path('openai-costs/', views.openai_costs, name='openai_costs'),
     path('class/<int:class_id>/entry/', views.daily_entry, name='daily_entry'),
     path('record/<int:record_id>/set/', views.set_record, name='set_record'),
     path('session/<int:session_id>/homework-due/', views.set_homework_due, name='set_homework_due'),
