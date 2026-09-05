@@ -359,7 +359,14 @@ _MS_PAPER_BREAK = re.compile(r"Marking Scheme\s*[-–]\s*Paper\s*(\d)", re.I)
 # merge it with the heading that follows it ("Q5 Model Solution - 30 Marks").
 # Missing the merged form is silent and damaging: the question gets no region
 # at all, and the previous question's region runs on through its pages.
-_MS_QUESTION = re.compile(r"^Q\s*(\d{1,2})(?:\s+Model\s+Solution\b.*)?$", re.I)
+# From 2026 the SEC prefixes the paper onto the label ("P1 Q1"), which matched
+# nothing here and left the whole scheme without a single question marker, so
+# the prefix is optional and ignored -- the paper is already decided by the
+# section split above, and trusting a printed number over section order is the
+# mistake _MS_PAPER_BREAK's comment warns about.
+_MS_QUESTION = re.compile(
+    r"^(?:P\s*\d\s+)?Q\s*(\d{1,2})(?:\s+Model\s+Solution\b.*)?$", re.I
+)
 _MS_PART = re.compile(r"^\(?([a-h])\)$")
 _MS_SUBPART = re.compile(r"^\(?(i{1,3}|iv|v|vi{1,3})\)$")
 # Some schemes merge the letter and its roman numeral into one span, with or
