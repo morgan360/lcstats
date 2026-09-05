@@ -205,9 +205,3 @@ class RevisionSectionAdmin(admin.ModelAdmin):
         """Optimize query to reduce DB hits"""
         qs = super().get_queryset(request)
         return qs.select_related('module', 'module__topic')
-
-
-# Customize the admin site header
-admin.site.site_header = "NumScoil Administration"
-admin.site.site_title = "NumScoil Admin"
-admin.site.index_title = "Welcome to NumScoil Administration"

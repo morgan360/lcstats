@@ -193,7 +193,8 @@ if not DEBUG:
     X_FRAME_OPTIONS = 'SAMEORIGIN'
 
 INSTALLED_APPS = [
-    'django.contrib.admin',
+    # Grouped admin index; see core/admin_site.py
+    'core.admin_apps.NumScoilAdminConfig',
     'django.contrib.auth',
     'django.contrib.contenttypes',
     'django.contrib.sessions',

@@ -494,9 +494,3 @@ class ExamQuestionFeedbackAdmin(admin.ModelAdmin):
     def marks_awarded_display(self, obj):
         return f"{obj.attempt.marks_awarded}/{obj.attempt.max_marks}"
     marks_awarded_display.short_description = "Marks"
-
-
-# Customize admin site header
-admin.site.site_header = "NumScoil - Exam Papers Administration"
-admin.site.site_title = "Exam Papers Admin"
-admin.site.index_title = "Exam Papers Management"

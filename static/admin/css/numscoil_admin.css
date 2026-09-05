@@ -1,0 +1,106 @@
+/*
+ * NumScoil admin skin.
+ *
+ * Deliberately small: it re-points Django's own CSS custom properties at the
+ * site palette (see tailwind.config.js) and fixes the two layout rules that
+ * make the stock admin feel cramped. It does not restyle admin components, so
+ * a Django upgrade should not break it.
+ */
+
+/* --- Palette ------------------------------------------------------------ */
+
+html[data-theme="light"],
+:root {
+    --secondary: #332277;          /* indigo-deep */
+    --primary: #9448b0;            /* violet-royal */
+    --accent: #d8f878;             /* lime-glow */
+
+    --header-color: var(--accent);
+    --header-branding-color: var(--accent);
+
+    --breadcrumbs-bg: #241a5c;
+    --breadcrumbs-fg: #cfc7ee;
+
+    --link-fg: #6d3a8f;
+    --link-hover-color: #332277;
+    --link-selected-fg: #9448b0;
+
+    --button-bg: var(--secondary);
+    --button-hover-bg: #9448b0;
+    --default-button-bg: #9448b0;
+    --default-button-hover-bg: #332277;
+
+    --object-tools-bg: #9448b0;
+    --object-tools-hover-bg: #332277;
+
+    /* Stock is #ffc, which fights with the purple. */
+    --selected-row: #f4ecf9;
+}
+
+/* Django ships light values in base.css and dark ones in dark_mode.css, both
+   before this file, so the dark palette has to be restated in both forms. */
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+        --primary: #4a3b8f;
+        --secondary: #241a5c;
+        --breadcrumbs-bg: #241a5c;
+        --breadcrumbs-fg: #cfc7ee;
+        --link-fg: #c9a6e8;
+        --link-hover-color: #ddc4f2;
+        --link-selected-fg: #b98fdc;
+        --selected-row: #2a1f4d;
+        --object-tools-bg: #4a3b8f;
+        --object-tools-hover-bg: #6d5ab8;
+    }
+}
+
+html[data-theme="dark"] {
+    --primary: #4a3b8f;
+    --secondary: #241a5c;
+    --breadcrumbs-bg: #241a5c;
+    --breadcrumbs-fg: #cfc7ee;
+    --link-fg: #c9a6e8;
+    --link-hover-color: #ddc4f2;
+    --link-selected-fg: #b98fdc;
+    --selected-row: #2a1f4d;
+    --object-tools-bg: #4a3b8f;
+    --object-tools-hover-bg: #6d5ab8;
+}
+
+/* --- Index layout ------------------------------------------------------- */
+
+/* Django pins the dashboard to 600px, which is what makes ~50 models read as
+   one endless column no matter how wide the window is. */
+.dashboard #content {
+    width: auto;
+    max-width: 1700px;
+}
+
+/* The groups from core/admin_site.py are the direct children of #content-main,
+   so they can be laid out as cards without touching admin/app_list.html. */
+.dashboard #content-main {
+    float: none;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 16px;
+    align-items: start;
+}
+
+.dashboard #content-main .module {
+    margin-bottom: 0;
+}
+
+/* Group names are headings, not destinations: the href is only an anchor. */
+.dashboard #content-main .module caption a.section {
+    cursor: default;
+    text-decoration: none;
+}
+
+/* --- Changelists -------------------------------------------------------- */
+
+/* Slightly denser rows; the stock padding costs about a third of a screenful
+   on the long question and attempt lists. */
+#changelist table tbody td,
+#changelist table tbody th {
+    padding: 6px 8px;
+}
