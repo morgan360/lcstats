@@ -193,9 +193,6 @@ if not DEBUG:
     X_FRAME_OPTIONS = 'SAMEORIGIN'
 
 INSTALLED_APPS = [
-    # django-autocomplete-light must be before django.contrib.admin
-    'dal',
-    'dal_select2',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
