@@ -25,6 +25,7 @@ class StudentProfileAdmin(admin.ModelAdmin):
     # two extra rows per student.
     list_select_related = ('user', 'school')
     ordering = ('-last_activity',)
+    date_hierarchy = 'last_activity'
     actions = ['generate_daily_report', 'generate_weekly_report', 'generate_monthly_report', 'generate_yearly_report', 'generate_all_attempts_report', 'generate_weekly_attempts_report']
 
     def get_queryset(self, request):
@@ -602,6 +603,7 @@ class QuestionAttemptAdmin(admin.ModelAdmin):
         'question_part', 'question_part__question', 'question_part__question__topic',
     )
     ordering = ('-attempted_at',)
+    date_hierarchy = 'attempted_at'
 
 
 @admin.register(RegistrationCode)
