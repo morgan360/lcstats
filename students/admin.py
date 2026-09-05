@@ -18,9 +18,13 @@ from .models import StudentProfile, QuestionAttempt, RegistrationCode, LoginHist
 @admin.register(StudentProfile)
 class StudentProfileAdmin(admin.ModelAdmin):
     list_display = ('user', 'school', 'total_score', 'lessons_completed', 'last_activity')
-    list_filter = ('school',)
-    search_fields = ('user__username', 'user__email', 'school__name')
+    list_filter = ('school', 'user__is_active', 'last_activity')
+    search_fields = ('user__username', 'user__email', 'user__first_name', 'user__last_name', 'school__name')
     readonly_fields = ('last_activity',)
+    # Every row renders user and school, so join them rather than fetching
+    # two extra rows per student.
+    list_select_related = ('user', 'school')
+    ordering = ('-last_activity',)
     actions = ['generate_daily_report', 'generate_weekly_report', 'generate_monthly_report', 'generate_yearly_report', 'generate_all_attempts_report', 'generate_weekly_attempts_report']
 
     def get_queryset(self, request):
@@ -588,8 +592,16 @@ class StudentProfileAdmin(admin.ModelAdmin):
 class QuestionAttemptAdmin(admin.ModelAdmin):
     list_display = ('student', 'question', 'question_part', 'score_awarded', 'is_correct', 'attempted_at')
     list_filter = ('is_correct', 'attempted_at')
-    search_fields = ('student__user__username', 'question__id')
+    search_fields = ('student__user__username', '=question__id')
     readonly_fields = ('attempted_at', 'marks_awarded')
+    # Question.__str__ reads topic.name and QuestionPart.__str__ nests a
+    # Question, so both chains have to be joined or every row costs 3 queries.
+    list_select_related = (
+        'student', 'student__user',
+        'question', 'question__topic',
+        'question_part', 'question_part__question', 'question_part__question__topic',
+    )
+    ordering = ('-attempted_at',)
 
 
 @admin.register(RegistrationCode)

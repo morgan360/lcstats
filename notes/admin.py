@@ -1,6 +1,7 @@
 from django.contrib import admin
 from django.shortcuts import render
 from django.urls import path
+from django.utils.html import format_html
 from django import forms
 from .models import Note, InfoBotQuery, InfoBotFeedback
 from .utils import search_similar

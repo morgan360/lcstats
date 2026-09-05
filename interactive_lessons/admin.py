@@ -213,12 +213,26 @@ class QuestionAdmin(admin.ModelAdmin):
     )
     list_editable = ["section", "order"]
     list_select_related = ("topic", "section")
+    # "section" is deliberately not a filter: one <option> per section makes the
+    # dropdown unusable as content grows. Filter by topic, then search.
     list_filter = (
-        "topic",
-        "section",
+        "topic__subject",
+        ("topic", admin.RelatedOnlyFieldListFilter),
         "is_copyrighted",
     )
-    search_fields = ("id", "hint", "source_pdf_name", "topic__name", "section__name")
+    # The question text lives on the parts, not here, so searching without
+    # parts__ can only ever match metadata. "=id" is an exact match: plain "id"
+    # became `id LIKE '%...%'`, which cannot use the primary key index.
+    search_fields = (
+        "=id",
+        "hint",
+        "source_pdf_name",
+        "topic__name",
+        "section__name",
+        "parts__prompt",
+        "parts__answer",
+    )
+    autocomplete_fields = ["topic"]
     ordering = ("topic__name", "section__order", "order")
     save_on_top = True
     list_per_page = 50  # Pagination for better performance
@@ -229,16 +243,20 @@ class QuestionAdmin(admin.ModelAdmin):
     def formfield_for_foreignkey(self, db_field, request, **kwargs):
         """Customize the section dropdown to show only section names"""
         if db_field.name == "section":
-            # Get the topic from the request if editing an existing question
+            # Section.__str__ reads self.topic.name, so without select_related
+            # every <option> costs a query -- and "section" is list_editable,
+            # so the changelist renders the whole dropdown once per row.
+            queryset = Section.objects.select_related("topic")
+            # Narrow to the question's own topic when editing an existing one.
             obj_id = request.resolver_match.kwargs.get('object_id')
             if obj_id:
                 try:
                     from .models import Question
                     question = Question.objects.get(pk=obj_id)
-                    # Filter sections by the question's topic
-                    kwargs["queryset"] = Section.objects.filter(topic=question.topic).order_by('order')
-                except:
+                    queryset = queryset.filter(topic=question.topic).order_by('order')
+                except Question.DoesNotExist:
                     pass
+            kwargs["queryset"] = queryset
         return super().formfield_for_foreignkey(db_field, request, **kwargs)
 
     fieldsets = (
@@ -337,6 +355,61 @@ class QuestionAdmin(admin.ModelAdmin):
 
 
 # --- Student Inquiry Admin ----------------------------------------------------
+
+# --- QuestionPart Admin -------------------------------------------------------
+
+@admin.register(QuestionPart)
+class QuestionPartAdmin(admin.ModelAdmin):
+    """
+    Parts are edited inline under their question, but they also need a
+    changelist of their own: the prompt, answer and solution all live here, so
+    this is the only place the actual wording of a question can be searched.
+    """
+
+    list_display = (
+        "part_label",
+        "topic",
+        "prompt_preview",
+        "expected_type",
+        "max_marks",
+        "has_solution",
+    )
+    list_filter = (
+        "question__topic__subject",
+        "expected_type",
+        ("question__topic", admin.RelatedOnlyFieldListFilter),
+    )
+    search_fields = (
+        "=question__id",
+        "label",
+        "prompt",
+        "answer",
+        "solution",
+        "question__topic__name",
+        "question__section__name",
+    )
+    autocomplete_fields = ["question"]
+    list_select_related = ("question", "question__topic")
+    ordering = ("question__topic__name", "question__order", "order")
+    list_per_page = 50
+
+    @admin.display(description="Part", ordering="question__id")
+    def part_label(self, obj):
+        return f"Q{obj.question_id} {obj.label}".strip()
+
+    @admin.display(description="Topic", ordering="question__topic__name")
+    def topic(self, obj):
+        return obj.question.topic
+
+    @admin.display(description="Prompt")
+    def prompt_preview(self, obj):
+        prompt = obj.prompt or ""
+        return prompt[:90] + "…" if len(prompt) > 90 else prompt
+
+    @admin.display(description="Solution", boolean=True)
+    def has_solution(self, obj):
+        return bool(obj.solution or obj.solution_image)
+
 
 @admin.register(StudentInquiry)
 class StudentInquiryAdmin(admin.ModelAdmin):

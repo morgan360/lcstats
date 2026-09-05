@@ -117,7 +117,7 @@ class BaseHomeworkTaskInline(admin.StackedInline):
 
     class Media:
         css = {
-            'all': ('/static/admin/css/homework_task_inline.css',)
+            'all': ('admin/css/homework_task_inline.css',)
         }
 
     def get_formset(self, request, obj=None, **kwargs):

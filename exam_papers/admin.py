@@ -5,6 +5,7 @@ from django.urls import reverse, path
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
 from django.core.files.base import ContentFile
+from django.db.models import Count, Q
 from django import forms
 from .models import (
     ExamPaper,
@@ -195,6 +196,29 @@ class ExamPaperAdmin(admin.ModelAdmin):
     pdf_preview.short_description = 'PDF Preview & Extraction'
 
 
+def annotate_solution_counts(queryset):
+    """
+    Add _total_parts / _parts_with_images to an ExamQuestion queryset.
+
+    Counting in SQL rather than calling solution_images_status() per row: that
+    property runs two queries per question, so the changelist and its filter
+    both used to cost a couple of hundred queries on a full paper.
+    """
+    return queryset.annotate(
+        _total_parts=Count('parts', distinct=True),
+        # `> ''` is false for both the empty string and NULL, which is exactly
+        # what "no image on this part" means for a FileField.
+        _parts_with_images=Count(
+            'parts', filter=Q(parts__solution_image__gt=''), distinct=True
+        ),
+        _parts_missing_images=Count(
+            'parts',
+            filter=Q(parts__solution_image='') | Q(parts__solution_image__isnull=True),
+            distinct=True,
+        ),
+    )
+
+
 class SolutionImagesFilter(admin.SimpleListFilter):
     """Custom filter for solution image upload status"""
     title = 'solution images'
@@ -208,38 +232,45 @@ class SolutionImagesFilter(admin.SimpleListFilter):
         )
 
     def queryset(self, request, queryset):
-        from django.db.models import Count, Q
-
-        if self.value() == 'complete':
-            # Questions where all parts have solution images
-            for question in queryset:
-                if not question.has_all_solution_images:
-                    queryset = queryset.exclude(pk=question.pk)
+        value = self.value()
+        if value not in {'complete', 'incomplete', 'none'}:
             return queryset
-        elif self.value() == 'incomplete':
-            # Questions with some but not all solution images
-            incomplete_ids = []
-            for question in queryset:
-                with_images, total = question.solution_images_status()
-                if 0 < with_images < total:
-                    incomplete_ids.append(question.pk)
-            return queryset.filter(pk__in=incomplete_ids)
-        elif self.value() == 'none':
-            # Questions with no solution images at all
-            none_ids = []
-            for question in queryset:
-                with_images, total = question.solution_images_status()
-                if with_images == 0 and total > 0:
-                    none_ids.append(question.pk)
-            return queryset.filter(pk__in=none_ids)
-        return queryset
+
+        # Both counts are compared against constants rather than against each
+        # other: an annotation-to-annotation comparison lands in HAVING and
+        # does not evaluate the way it reads.
+        queryset = annotate_solution_counts(queryset)
+        if value == 'complete':
+            return queryset.filter(_parts_with_images__gt=0, _parts_missing_images=0)
+        if value == 'incomplete':
+            return queryset.filter(_parts_with_images__gt=0, _parts_missing_images__gt=0)
+        return queryset.filter(_parts_with_images=0, _parts_missing_images__gt=0)
 
 
 @admin.register(ExamQuestion)
 class ExamQuestionAdmin(admin.ModelAdmin):
     list_display = ('__str__', 'question_number', 'solution_progress', 'topic', 'total_marks', 'suggested_time_minutes', 'has_image', 'exam_paper')
-    list_filter = ('exam_paper__subject', 'exam_paper__year', 'exam_paper__paper_type', 'topic', SolutionImagesFilter)
-    search_fields = ('title', 'question_number')
+    list_filter = (
+        'exam_paper__subject',
+        'exam_paper__year',
+        'exam_paper__paper_type',
+        ('topic', admin.RelatedOnlyFieldListFilter),
+        SolutionImagesFilter,
+    )
+    # Parts of an exam question are images, so there is no part text to search;
+    # the paper and topic are what people actually have in hand.
+    search_fields = (
+        'title',
+        'question_number',
+        'exam_paper__title',
+        'exam_paper__year',
+        'topic__name',
+    )
+    autocomplete_fields = ['exam_paper', 'topic']
+    list_select_related = ('exam_paper', 'topic')
+    # Annotating clears the model's default ordering for pagination purposes,
+    # so state it here; these are the same three fields as Meta.ordering.
+    ordering = ('exam_paper', 'order', 'question_number')
     change_list_template = 'admin/exam_papers/examquestion_change_list.html'
 
     fieldsets = (
@@ -257,6 +288,11 @@ class ExamQuestionAdmin(admin.ModelAdmin):
 
     readonly_fields = ('image_preview', 'suggested_time_minutes')
     inlines = [ExamQuestionPartInline]
+
+    def get_queryset(self, request):
+        # solution_progress renders on every row; annotate once instead of
+        # letting each row run solution_images_status() for itself.
+        return annotate_solution_counts(super().get_queryset(request))
 
     def get_urls(self):
         urls = super().get_urls()
@@ -357,12 +393,17 @@ class ExamQuestionAdmin(admin.ModelAdmin):
 
     def solution_progress(self, obj):
         """Show solution image upload progress"""
-        with_images, total = obj.solution_images_status()
+        # Annotated by get_queryset(); fall back for callers that pass a plain
+        # instance (the change form, other admins reusing this method).
+        total = getattr(obj, '_total_parts', None)
+        with_images = getattr(obj, '_parts_with_images', None)
+        if total is None or with_images is None:
+            with_images, total = obj.solution_images_status()
 
         if total == 0:
             return format_html('<span style="color: gray;">No parts</span>')
 
-        percentage = obj.solution_images_percentage
+        percentage = int((with_images / total) * 100)
 
         # Color coding
         if percentage == 100:
@@ -409,6 +450,62 @@ class ExamQuestionAttemptInline(admin.TabularInline):
     fields = ('question_part', 'student_answer', 'marks_awarded', 'max_marks', 'attempt_number', 'hint_used', 'solution_viewed')
     readonly_fields = ('submitted_at',)
     can_delete = False
+
+
+@admin.register(ExamQuestionPart)
+class ExamQuestionPartAdmin(admin.ModelAdmin):
+    """
+    Parts are edited inline under their question, but the backlog work — parts
+    with no marking-scheme image, or with max_marks still blank — is per-part,
+    and there was no way to list those across papers.
+    """
+
+    list_display = (
+        'part_label',
+        'exam_paper',
+        'topic',
+        'max_marks',
+        'has_solution_image',
+        'solution_unlock_after_attempts',
+    )
+    list_filter = (
+        'question__exam_paper__subject',
+        'question__exam_paper__year',
+        'question__exam_paper__paper_type',
+        ('question__exam_paper', admin.RelatedOnlyFieldListFilter),
+    )
+    search_fields = (
+        'label',
+        'question__title',
+        'question__question_number',
+        'question__exam_paper__title',
+        'question__topic__name',
+    )
+    autocomplete_fields = ['question']
+    list_select_related = (
+        'question', 'question__exam_paper', 'question__topic',
+    )
+    list_editable = ['max_marks']
+    ordering = (
+        '-question__exam_paper__year', 'question__order', 'order',
+    )
+    list_per_page = 50
+
+    @admin.display(description='Part', ordering='question__question_number')
+    def part_label(self, obj):
+        return f"Q{obj.question.question_number} {obj.label}".strip()
+
+    @admin.display(description='Paper', ordering='question__exam_paper__year')
+    def exam_paper(self, obj):
+        return obj.question.exam_paper
+
+    @admin.display(description='Topic', ordering='question__topic__name')
+    def topic(self, obj):
+        return obj.question.topic
+
+    @admin.display(description='Scheme image', boolean=True)
+    def has_solution_image(self, obj):
+        return bool(obj.solution_image)
 
 
 @admin.register(ExamAttempt)
