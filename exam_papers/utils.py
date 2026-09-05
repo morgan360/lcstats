@@ -367,7 +367,21 @@ _MS_PAPER_BREAK = re.compile(r"Marking Scheme\s*[-–]\s*Paper\s*(\d)", re.I)
 _MS_QUESTION = re.compile(
     r"^(?:P\s*\d\s+)?Q\s*(\d{1,2})(?:\s+Model\s+Solution\b.*)?$", re.I
 )
-_MS_PART = re.compile(r"^\(?([a-h])\)$")
+# A part label is usually a span of its own, but some schemes run it into the
+# first line of its own solution -- "(b)  From y-intercept to (q, r):" in 2022
+# Paper 2, "(a)  Tangent correctly drawn," in the 2024 deferred paper. Anchored
+# at both ends this matched nothing and the part silently got no region, so
+# trailing text is allowed and discarded.
+_MS_PART = re.compile(r"^\(?([a-h])\)(?:\s+(\S.*))?$")
+# ...except when that trailing text is only more labels. The 2026 scheme sets
+# parts side by side and extracts them as one span, "(a) (b) (a)", where the
+# labels share a y-position and there is no sound way to say where each region
+# begins. Guessing there shows a student the wrong solution, so such a span is
+# rejected and the part is reported as unmatched for someone to attach by hand.
+_MS_LABEL_RUN = re.compile(
+    r"^(?:\(?[a-h]\)|\(?(?:i{1,3}|iv|v|vi{1,3})\))"
+    r"(?:\s+(?:\(?[a-h]\)|\(?(?:i{1,3}|iv|v|vi{1,3})\)))*$", re.I
+)
 _MS_SUBPART = re.compile(r"^\(?(i{1,3}|iv|v|vi{1,3})\)$")
 # Some schemes merge the letter and its roman numeral into one span, with or
 # without a space: "(a)(i)" in the 2025 scheme, "(a) (i)" in the 2023 one.
@@ -391,6 +405,8 @@ def _marking_scheme_markers(doc, first_page, last_page):
             question = _MS_QUESTION.match(text)
             combined = _MS_PART_SUB.match(text)
             part = _MS_PART.match(text)
+            if part and part.group(2) and _MS_LABEL_RUN.match(part.group(2)):
+                part = None  # a run of bare labels, not a label plus its text
             sub = _MS_SUBPART.match(text)
             if question:
                 found.append((bbox[1], 'question', int(question.group(1))))
