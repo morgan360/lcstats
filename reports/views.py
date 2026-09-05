@@ -7,7 +7,7 @@ from io import BytesIO
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
-from django.core.exceptions import PermissionDenied
+from django.core.exceptions import ObjectDoesNotExist, PermissionDenied
 from django.db.models import Avg, Count
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
@@ -125,9 +125,21 @@ def _roster_name(user, class_note):
 
 @teacher_required
 def dashboard(request):
-    teacher_profile = request.user.teacher_profile
+    try:
+        teacher_profile = request.user.teacher_profile
+    except ObjectDoesNotExist:
+        teacher_profile = None
+
+    # A teacher sees their own classes; a superuser without a profile sees all.
+    if teacher_profile is not None:
+        class_qs = teacher_profile.classes
+    elif request.user.is_superuser:
+        class_qs = TeacherClass.objects.all()
+    else:
+        class_qs = TeacherClass.objects.none()
+
     classes = (
-        teacher_profile.classes.filter(is_active=True)
+        class_qs.filter(is_active=True)
         .annotate(num_students=Count('students', distinct=True))
         .order_by('name')
     )
