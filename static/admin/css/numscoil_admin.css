@@ -77,17 +77,26 @@ html[data-theme="dark"] {
 }
 
 /* The groups from core/admin_site.py are the direct children of #content-main,
-   so they can be laid out as cards without touching admin/app_list.html. */
+   so they can be laid out as cards without touching admin/app_list.html.
+   Multi-column rather than grid: the groups differ a lot in height (Content
+   has three times the rows of Site & outreach) and grid rows are as tall as
+   their tallest card, which left a screenful of dead space. Columns balance
+   by height instead, so the cards pack.
+
+   The float is Django's, not decoration: #content-related sits in the gutter
+   that .colMS reserves via a negative margin, which only works while
+   #content-main floats. Dropping it drops Recent actions below the fold. */
 .dashboard #content-main {
-    float: none;
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-    gap: 16px;
-    align-items: start;
+    float: left;
+    width: 100%;
+    columns: 3 300px;
+    column-gap: 16px;
 }
 
 .dashboard #content-main .module {
-    margin-bottom: 0;
+    /* Cards must not be split down the middle of a column break. */
+    break-inside: avoid;
+    margin-bottom: 16px;
 }
 
 /* Group names are headings, not destinations: the href is only an anchor. */
