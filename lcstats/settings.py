@@ -206,8 +206,6 @@ INSTALLED_APPS = [
     'allauth.account',
     'allauth.socialaccount',
     'allauth.socialaccount.providers.google',
-    # Third-party apps
-    'django_select2',  # Searchable dropdowns
     # My Apps
     'core',  # Core models (Subject, etc.)
     'home',
