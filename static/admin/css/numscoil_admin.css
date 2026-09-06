@@ -99,6 +99,38 @@ html[data-theme="dark"] {
     margin-bottom: 16px;
 }
 
+/* Filter box above the grouped cards (templates/admin/index.html). */
+#ns-index-filter {
+    margin-bottom: 16px;
+}
+
+#ns-filter {
+    width: 100%;
+    max-width: 420px;
+    padding: 8px 10px;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    background: var(--body-bg);
+    color: var(--body-fg);
+    font-size: 14px;
+}
+
+#ns-filter:focus {
+    outline: 2px solid var(--primary);
+    outline-offset: -1px;
+}
+
+#ns-filter-empty {
+    margin: 8px 0 0;
+    color: var(--body-quiet-color);
+}
+
+/* Set by numscoil_index_filter.js; !important because .module and tr both
+   carry display values from the admin's own stylesheets. */
+.ns-filtered-out {
+    display: none !important;
+}
+
 /* Group names are headings, not destinations: the href is only an anchor. */
 .dashboard #content-main .module caption a.section {
     cursor: default;
