@@ -41,9 +41,7 @@ class TimetableSlot(models.Model):
         (2, 'Wednesday'),
         (3, 'Thursday'),
         (4, 'Friday'),
-        (5, 'Saturday'),
-        (6, 'Sunday'),
-    ]
+    ]  # No Saturday or Sunday: classes do not meet at the weekend.
 
     teacher_class = models.ForeignKey(
         'homework.TeacherClass',

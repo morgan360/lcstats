@@ -11,6 +11,7 @@ from django.core.exceptions import ObjectDoesNotExist, PermissionDenied
 from django.db.models import Avg, Count
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 from django.utils import timezone
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4
@@ -202,10 +203,30 @@ def dashboard(request):
 # Daily entry
 # ------------------------------------------------------------
 
+def _school_day(date, forward):
+    """Nearest weekday to `date`, stepping forward or back. Saturday and Sunday
+    are not school days, so nothing in daily entry or the reports should land
+    on one."""
+    step = timedelta(days=1 if forward else -1)
+    while date.weekday() >= 5:
+        date += step
+    return date
+
+
 @teacher_required
 def daily_entry(request, class_id):
     teacher_class = _get_owned_class(request, class_id)
     date = _parse_date(request.GET.get('date'), timezone.localdate())
+
+    # Opening this page creates the session and a record for every student, so a
+    # weekend date -- typed, bookmarked, or stepped into before the navigation
+    # skipped them -- would leave a whole junk session behind. Send it back to
+    # the last school day instead of recording a class that never happened.
+    if date.weekday() >= 5:
+        return redirect(
+            f"{reverse('reports:daily_entry', args=[teacher_class.id])}"
+            f"?date={_school_day(date, forward=False)}"
+        )
 
     slot = None
     slot_id = request.GET.get('slot')
@@ -256,8 +277,8 @@ def daily_entry(request, class_id):
         'active_ids': active_ids,
         'behaviour_presets': behaviour_presets,
         'date': date,
-        'prev_date': date - timedelta(days=1),
-        'next_date': date + timedelta(days=1),
+        'prev_date': _school_day(date - timedelta(days=1), forward=False),
+        'next_date': _school_day(date + timedelta(days=1), forward=True),
         'today': timezone.localdate(),
         'since': since,
         'attendance_choices': StudentSessionRecord.ATTENDANCE_CHOICES,
@@ -695,8 +716,11 @@ def _student_report_data(request, student, start, end):
     strip = []
     day = start
     while day <= end:
-        total = per_day.get(day, {}).get('total', 0)
-        strip.append({'date': day, 'total': total, 'level': _activity_level(total)})
+        # Weekends are not school days; a fortnight of blank Saturday squares
+        # says nothing and makes the strip harder to read.
+        if day.weekday() < 5:
+            total = per_day.get(day, {}).get('total', 0)
+            strip.append({'date': day, 'total': total, 'level': _activity_level(total)})
         day += timedelta(days=1)
     active_days = sum(1 for s in strip if s['total'])
 
