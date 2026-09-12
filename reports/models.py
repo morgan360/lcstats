@@ -104,8 +104,9 @@ class ClassSession(models.Model):
 class StudentSessionRecord(models.Model):
     """
     Per-student record for one session: attendance + paper homework + behaviour
-    comment. Defaults are the no-news-is-good-news state (present, homework done)
-    so the teacher only taps exceptions.
+    comment. Attendance and homework start blank each day, so a record the
+    teacher never touched reads as not recorded rather than as present with
+    homework done. Blank values are left out of every rate.
     """
     ATTENDANCE_CHOICES = [
         ('present', 'Present'),
@@ -120,8 +121,8 @@ class StudentSessionRecord(models.Model):
 
     session = models.ForeignKey(ClassSession, on_delete=models.CASCADE, related_name='records')
     student = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='session_records')
-    attendance = models.CharField(max_length=10, choices=ATTENDANCE_CHOICES, default='present')
-    homework = models.CharField(max_length=10, choices=HOMEWORK_CHOICES, default='done')
+    attendance = models.CharField(max_length=10, choices=ATTENDANCE_CHOICES, blank=True, default='')
+    homework = models.CharField(max_length=10, choices=HOMEWORK_CHOICES, blank=True, default='')
     comment_preset = models.ForeignKey(
         CommentPreset,
         null=True,

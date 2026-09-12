@@ -33,7 +33,7 @@
     </div>
 </div>
 
-<p class="mb-3 text-xs text-twilight/60">Tap a chip to change it — everyone starts Present with homework Done. Changes save instantly. Ability and the standing note live behind 💬; * marks a student whose note records a nationality other than Irish.
+<p class="mb-3 text-xs text-twilight/60">Tap a chip to change it — attendance and homework start blank each day, and anything left blank isn't counted either way. Changes save instantly. Ability and the standing note live behind 💬; * marks a student whose note records a nationality other than Irish.
     <span class="ml-1 inline-flex items-center gap-1"><span class="inline-block h-2 w-2 rounded-full bg-lime-glow ring-1 ring-midnight/20"></span> = worked on NumScoil since {{ since|date:"j M" }}</span>
 </p>
 
@@ -99,11 +99,14 @@
     const NOTE_URL_TEMPLATE = document.getElementById('roster').dataset.noteUrlTemplate;
     const HOMEWORK_DUE_URL = "{% url 'reports:set_homework_due' session.id %}";
 
+    // Attendance and homework start blank each day; the cycle returns to blank
+    // so a mistaken tap can be undone.
     const STATES = {
         attendance: {
-            order: ['present', 'absent', 'late'],
-            labels: { present: 'Present', absent: 'Absent', late: 'Late' },
+            order: ['', 'present', 'absent', 'late'],
+            labels: { '': 'Here?', present: 'Present', absent: 'Absent', late: 'Late' },
             classes: {
+                '': 'bg-twilight/5 text-twilight/50 ring-1 ring-twilight/15',
                 present: 'bg-lime-glow/25 text-midnight ring-1 ring-lime-glow',
                 absent: 'bg-rose-pop/15 text-rose-pop ring-1 ring-rose-pop/50',
                 late: 'bg-amber-100 text-amber-800 ring-1 ring-amber-300',
@@ -120,9 +123,10 @@
             },
         },
         homework: {
-            order: ['done', 'partial', 'not_done'],
-            labels: { done: 'HW ✓', partial: 'HW ½', not_done: 'HW ✗' },
+            order: ['', 'done', 'partial', 'not_done'],
+            labels: { '': 'HW ?', done: 'HW ✓', partial: 'HW ½', not_done: 'HW ✗' },
             classes: {
+                '': 'bg-twilight/5 text-twilight/50 ring-1 ring-twilight/15',
                 done: 'bg-lime-glow/25 text-midnight ring-1 ring-lime-glow',
                 partial: 'bg-amber-100 text-amber-800 ring-1 ring-amber-300',
                 not_done: 'bg-rose-pop/15 text-rose-pop ring-1 ring-rose-pop/50',

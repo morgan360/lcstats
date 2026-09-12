@@ -146,6 +146,13 @@ def dashboard(request):
     )
     today = timezone.localdate()
 
+    # Opening daily entry creates the session with every student blank, so a
+    # session only counts as recorded once someone's attendance is marked.
+    recorded_sessions = ClassSession.objects.filter(
+        teacher_class__in=classes,
+        records__attendance__in=[value for value, _label in StudentSessionRecord.ATTENDANCE_CHOICES],
+    )
+
     # Today's timetabled slots, with a recorded/not chip each
     today_slots = (
         TimetableSlot.objects.filter(
@@ -155,14 +162,10 @@ def dashboard(request):
         .order_by('start_time')
     )
     recorded_slot_ids = set(
-        ClassSession.objects.filter(
-            teacher_class__in=classes, date=today, slot__isnull=False
-        ).values_list('slot_id', flat=True)
+        recorded_sessions.filter(date=today, slot__isnull=False).values_list('slot_id', flat=True)
     )
     recorded_slotless_class_ids = set(
-        ClassSession.objects.filter(
-            teacher_class__in=classes, date=today, slot__isnull=True
-        ).values_list('teacher_class_id', flat=True)
+        recorded_sessions.filter(date=today, slot__isnull=True).values_list('teacher_class_id', flat=True)
     )
     todays_classes = [
         {
@@ -177,8 +180,8 @@ def dashboard(request):
     # Recent gaps: timetabled slots in the last 7 days (excl. today) with no session
     gaps = []
     sessions_last_week = set(
-        ClassSession.objects.filter(
-            teacher_class__in=classes, date__gte=today - timedelta(days=7), date__lt=today
+        recorded_sessions.filter(
+            date__gte=today - timedelta(days=7), date__lt=today
         ).values_list('teacher_class_id', 'date')
     )
     all_slots = TimetableSlot.objects.filter(
@@ -305,10 +308,12 @@ def set_record(request, record_id):
     except (json.JSONDecodeError, UnicodeDecodeError):
         return JsonResponse({'error': 'Invalid JSON'}, status=400)
 
+    # A blank value is valid for both chips: tapping round the cycle clears a
+    # mistaken tap back to not recorded.
     field = data.get('field')
     if field == 'attendance':
         value = data.get('value')
-        if value not in dict(StudentSessionRecord.ATTENDANCE_CHOICES):
+        if value != '' and value not in dict(StudentSessionRecord.ATTENDANCE_CHOICES):
             return JsonResponse({'error': 'Invalid attendance value'}, status=400)
         record.attendance = value
         record.save(update_fields=['attendance', 'updated_at'])
@@ -316,7 +321,7 @@ def set_record(request, record_id):
 
     if field == 'homework':
         value = data.get('value')
-        if value not in dict(StudentSessionRecord.HOMEWORK_CHOICES):
+        if value != '' and value not in dict(StudentSessionRecord.HOMEWORK_CHOICES):
             return JsonResponse({'error': 'Invalid homework value'}, status=400)
         record.homework = value
         record.save(update_fields=['homework', 'updated_at'])
@@ -420,10 +425,12 @@ def _overview_data(teacher_class, num_sessions):
     for student in _roster(teacher_class):
         student_records = by_student.get(student.id, {})
         cells = [student_records.get(s.id) for s in sessions]
-        recorded = [r for r in cells if r is not None]
+        # Blank attendance or homework was never marked, so it is left out of
+        # the rate rather than counted either way.
+        recorded = [r for r in cells if r is not None and r.attendance]
         attended = [r for r in recorded if r.attendance in ('present', 'late')]
         late = [r for r in recorded if r.attendance == 'late']
-        hw_recorded = [r for r in recorded if r.session.homework_due]
+        hw_recorded = [r for r in cells if r is not None and r.homework and r.session.homework_due]
         hw_done = [r for r in hw_recorded if r.homework == 'done']
         rows.append({
             'student': student,
@@ -484,7 +491,9 @@ def class_overview_csv(request, class_id):
             if record is None:
                 cells.append('')
             else:
-                cell = f"{record.get_attendance_display()} / HW {record.get_homework_display()}"
+                attendance = record.get_attendance_display() or 'Not recorded'
+                homework = record.get_homework_display() or 'not recorded'
+                cell = f"{attendance} / HW {homework}"
                 if record.has_comment:
                     comment = record.comment_preset.text if record.comment_preset else ''
                     cell += f" / {comment} {record.comment_text}".rstrip()
@@ -657,7 +666,8 @@ def _student_report_data(request, student, start, end):
             **{f'session__{k}': v for k, v in class_filter.items()},
         ).select_related('session', 'comment_preset')
     )
-    recorded = len(records)
+    # Blank attendance or homework was never marked; leave it out of the rates.
+    recorded = sum(1 for r in records if r.attendance)
     attendance = {
         'recorded': recorded,
         'present': sum(1 for r in records if r.attendance == 'present'),
@@ -667,7 +677,7 @@ def _student_report_data(request, student, start, end):
     attendance['pct'] = (
         round((attendance['present'] + attendance['late']) / recorded * 100) if recorded else None
     )
-    hw_records = [r for r in records if r.session.homework_due]
+    hw_records = [r for r in records if r.homework and r.session.homework_due]
     homework = {
         'recorded': len(hw_records),
         'done': sum(1 for r in hw_records if r.homework == 'done'),

@@ -1,5 +1,6 @@
 import json
-from datetime import date, timedelta
+from datetime import date, time, timedelta
+from unittest.mock import patch
 
 from django.contrib.auth.models import Group, User
 from django.test import TestCase
@@ -19,6 +20,7 @@ from .models import (
     StudentClassNote,
     StudentSessionRecord,
     TestResult,
+    TimetableSlot,
 )
 
 
@@ -39,6 +41,24 @@ class BaseReportTestCase(TestCase):
         cls.student2 = User.objects.create_user(username='student2', password='pw', first_name='Brian')
         cls.teacher_class = TeacherClass.objects.create(teacher=cls.teacher_profile, name='6th Year HL')
         cls.teacher_class.students.add(cls.student1, cls.student2)
+
+    def setUp(self):
+        # Daily entry redirects a weekend date to Friday, so a suite run on a
+        # Saturday or Sunday would see redirects instead of the page. Pin
+        # "today" to the last school day; on a weekday this changes nothing.
+        real_localdate = timezone.localdate
+        school_day = real_localdate()
+        while school_day.weekday() >= 5:
+            school_day -= timedelta(days=1)
+
+        def localdate(value=None, timezone=None):
+            if value is None and timezone is None:
+                return school_day
+            return real_localdate(value, timezone)
+
+        patcher = patch('django.utils.timezone.localdate', side_effect=localdate)
+        patcher.start()
+        self.addCleanup(patcher.stop)
 
     def login_teacher(self):
         self.client.login(username='teacher_a', password='pw')
@@ -84,7 +104,7 @@ class DailyEntryTests(BaseReportTestCase):
         self.assertEqual(ClassSession.objects.count(), 1)
         session = ClassSession.objects.get()
         self.assertEqual(session.records.count(), 2)
-        self.assertTrue(all(r.attendance == 'present' and r.homework == 'done' for r in session.records.all()))
+        self.assertTrue(all(r.attendance == '' and r.homework == '' for r in session.records.all()))
 
         self.client.get(url)
         self.assertEqual(ClassSession.objects.count(), 1)
@@ -109,6 +129,15 @@ class DailyEntryTests(BaseReportTestCase):
             content_type='application/json',
         )
         self.assertEqual(response.status_code, 400)
+
+        # Tapping round the cycle clears a chip back to not recorded
+        response = self.client.post(
+            url, data=json.dumps({'field': 'attendance', 'value': ''}),
+            content_type='application/json',
+        )
+        self.assertEqual(response.status_code, 200)
+        record.refresh_from_db()
+        self.assertEqual(record.attendance, '')
 
         response = self.client.get(url)
         self.assertEqual(response.status_code, 405)
@@ -239,6 +268,25 @@ class StudentReportTests(BaseReportTestCase):
         self.assertEqual(response.context['homework']['recorded'], 1)
         self.assertEqual(response.context['homework']['pct'], 100)
 
+    def test_blank_attendance_and_homework_excluded_from_rates(self):
+        self.login_teacher()
+        today = timezone.localdate()
+        marked = ClassSession.objects.create(teacher_class=self.teacher_class, date=today)
+        unmarked = ClassSession.objects.create(teacher_class=self.teacher_class, date=today - timedelta(days=1))
+        StudentSessionRecord.objects.create(session=marked, student=self.student1, attendance='present', homework='done')
+        StudentSessionRecord.objects.create(session=unmarked, student=self.student1)
+
+        response = self.client.get(reverse('reports:student_report', args=[self.student1.id]))
+        self.assertEqual(response.context['attendance']['recorded'], 1)
+        self.assertEqual(response.context['attendance']['pct'], 100)
+        self.assertEqual(response.context['homework']['recorded'], 1)
+        self.assertEqual(response.context['homework']['pct'], 100)
+
+        response = self.client.get(reverse('reports:class_overview', args=[self.teacher_class.id]))
+        row = next(r for r in response.context['rows'] if r['student'] == self.student1)
+        self.assertEqual(row['attendance_pct'], 100)
+        self.assertEqual(row['homework_pct'], 100)
+
 
 class DashboardTests(BaseReportTestCase):
     def test_dashboard_lists_classes(self):
@@ -246,6 +294,23 @@ class DashboardTests(BaseReportTestCase):
         response = self.client.get(reverse('reports:dashboard'))
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, '6th Year HL')
+
+    def test_opened_but_unmarked_session_is_not_recorded(self):
+        today = timezone.localdate()
+        slot = TimetableSlot.objects.create(
+            teacher_class=self.teacher_class, weekday=today.weekday(), start_time=time(9, 0)
+        )
+        session = ClassSession.objects.create(teacher_class=self.teacher_class, date=today, slot=slot)
+        record = StudentSessionRecord.objects.create(session=session, student=self.student1)
+        self.login_teacher()
+
+        response = self.client.get(reverse('reports:dashboard'))
+        self.assertFalse(response.context['todays_classes'][0]['recorded'])
+
+        record.attendance = 'absent'
+        record.save()
+        response = self.client.get(reverse('reports:dashboard'))
+        self.assertTrue(response.context['todays_classes'][0]['recorded'])
 
 
 class StudentClassNoteTests(BaseReportTestCase):
@@ -353,6 +418,7 @@ class RosterNameTests(BaseReportTestCase):
     """Short names (no middle name) and the non-Irish asterisk."""
 
     def setUp(self):
+        super().setUp()
         self.login_teacher()
 
     def roster_html(self):

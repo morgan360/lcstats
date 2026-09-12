@@ -53,9 +53,9 @@
                 {% for record in row.cells %}
                 <td class="px-2 py-2 text-center">
                     {% if record %}
-                    <span title="{{ record.get_attendance_display }} · HW {{ record.get_homework_display }}{% if record.comment_preset %} · {{ record.comment_preset.text }}{% endif %}{% if record.comment_text %} · {{ record.comment_text }}{% endif %}">
-                        {% if record.attendance == 'present' %}<span class="text-lime-700">✓</span>{% elif record.attendance == 'late' %}<span class="font-semibold text-amber-700">L</span>{% else %}<span class="font-semibold text-rose-pop">✗</span>{% endif %}<!--
-                     -->{% if record.session.homework_due %}{% if record.homework == 'done' %}<span class="ml-0.5 inline-block h-1.5 w-1.5 rounded-full bg-lime-glow align-middle"></span>{% elif record.homework == 'partial' %}<span class="ml-0.5 inline-block h-1.5 w-1.5 rounded-full bg-amber-400 align-middle"></span>{% else %}<span class="ml-0.5 inline-block h-1.5 w-1.5 rounded-full bg-rose-pop align-middle"></span>{% endif %}{% endif %}<!--
+                    <span title="{{ record.get_attendance_display|default:'Not recorded' }} · HW {{ record.get_homework_display|default:'not recorded' }}{% if record.comment_preset %} · {{ record.comment_preset.text }}{% endif %}{% if record.comment_text %} · {{ record.comment_text }}{% endif %}">
+                        {% if record.attendance == 'present' %}<span class="text-lime-700">✓</span>{% elif record.attendance == 'late' %}<span class="font-semibold text-amber-700">L</span>{% elif record.attendance == 'absent' %}<span class="font-semibold text-rose-pop">✗</span>{% else %}<span class="text-twilight/30">?</span>{% endif %}<!--
+                     -->{% if record.session.homework_due %}{% if record.homework == 'done' %}<span class="ml-0.5 inline-block h-1.5 w-1.5 rounded-full bg-lime-glow align-middle"></span>{% elif record.homework == 'partial' %}<span class="ml-0.5 inline-block h-1.5 w-1.5 rounded-full bg-amber-400 align-middle"></span>{% elif record.homework == 'not_done' %}<span class="ml-0.5 inline-block h-1.5 w-1.5 rounded-full bg-rose-pop align-middle"></span>{% endif %}{% endif %}<!--
                      -->{% if record.has_comment %}<span class="ml-0.5 text-xs">💬</span>{% endif %}
                     </span>
                     {% else %}
@@ -68,7 +68,7 @@
         </tbody>
     </table>
 </div>
-<p class="mt-3 text-xs text-twilight/60">✓/L/✗ attendance · dot = homework (green done, amber partial, red not done) · 💬 = comment (shown on hover). Tap a date to open that day.</p>
+<p class="mt-3 text-xs text-twilight/60">✓/L/✗ attendance, ? not marked · dot = homework (green done, amber partial, red not done, none not marked) · 💬 = comment (shown on hover). Tap a date to open that day.</p>
 {% else %}
 <p class="text-twilight/70">No sessions recorded yet — start with <a class="underline" href="{% url 'reports:daily_entry' teacher_class.id %}">today's entry</a>.</p>
 {% endif %}

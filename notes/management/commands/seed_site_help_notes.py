@@ -63,9 +63,10 @@ TEACHER_NOTES = [
     (
         "How to record daily attendance and homework",
         "Open **Reports** from the nav, choose a class, and use Today's Entry. "
-        "Every student defaults to Present and Homework Done — you only need to "
-        "tap the students who were absent, late, or didn't do their homework. "
-        "Taps save instantly; no submit button needed.",
+        "Attendance and homework start blank each day — tap each student's "
+        "chips to mark them present, absent or late, and whether their homework "
+        "was done. Anything left blank isn't counted in the rates. Taps save "
+        "instantly; no submit button needed.",
     ),
     (
         "How to add your class timetable",
