@@ -381,13 +381,47 @@ context. Otherwise it falls back to a general AI question (no topic/question con
     }
     .numskull__btn--ghost:hover { background: rgba(191, 243, 255, 0.1); }
 
-    @media (max-width: 480px) {
-        .numskull { left: calc(0.75rem + 0.5cm); top: calc(4.25rem + 0.5cm); }
+    /* Phones: top-left sat on each page's first line, which is where back links
+       live (and on Reports the header is sticky, so it never scrolled clear).
+       Bottom-right is free here -- the log tables button is hidden below 768px
+       and the calculator has bottom-left -- so the mascot moves there and the
+       panel opens upwards. */
+    @media (max-width: 767px) {
+        .numskull,
+        .numskull-restore {
+            left: auto;
+            top: auto;
+            right: 1rem;
+            bottom: 1rem;
+        }
         .numskull__toggle { width: 56px; height: 56px; }
+        .numskull__tip { left: auto; right: calc(100% + 6px); transform: translateX(6px); }
+        .numskull__tip::after {
+            left: auto;
+            right: -5px;
+            border-left: none;
+            border-bottom: none;
+            border-right: 1px solid rgba(191, 243, 255, 0.3);
+            border-top: 1px solid rgba(191, 243, 255, 0.3);
+        }
         .numskull__panel {
-            width: calc(100vw - 2.5rem);
-            top: 72px;
-            height: min(32rem, calc(100vh - 12rem));
+            left: auto;
+            top: auto;
+            right: 0;
+            bottom: 68px;
+            width: calc(100vw - 2rem);
+            height: min(32rem, calc(100vh - 11rem));
+            height: min(32rem, calc(100dvh - 11rem));
+        }
+        .numskull__panel::after {
+            left: auto;
+            top: auto;
+            right: 20px;
+            bottom: -8px;
+            border-left: none;
+            border-top: none;
+            border-right: 1px solid rgba(191, 243, 255, 0.25);
+            border-bottom: 1px solid rgba(191, 243, 255, 0.25);
         }
     }
 </style>
@@ -761,7 +795,7 @@ context. Otherwise it falls back to a general AI question (no topic/question con
         dragBar.addEventListener('pointercancel', endDrag);
 
         (function restorePanelPosition() {
-            if (window.innerWidth <= 480) { return; }
+            if (window.innerWidth <= 767) { return; }
             var saved = localStorage.getItem('numskull-panel-pos');
             if (!saved) { return; }
             try {
