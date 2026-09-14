@@ -28,6 +28,11 @@ from .services import runner
 
 logger = logging.getLogger(__name__)
 
+PHOTOS_DELETED_MESSAGE = (
+    "The photos for this check have been deleted, so it can't take new ones "
+    "or be marked again. Start a new check for this student instead."
+)
+
 
 # ---------------------------------------------------------------------------
 # Ownership
@@ -225,6 +230,8 @@ def check_detail(request, pk):
         'done': done,
         'total': total,
         'max_photos': getattr(settings, 'HOMEWORK_CHECK_MAX_PHOTOS', 16),
+        'photo_retention_days': getattr(
+            settings, 'HOMEWORK_CHECK_PHOTO_RETENTION_DAYS', 7),
         'ratings': Rating.choices,
     })
 
@@ -253,6 +260,11 @@ def check_upload(request, pk):
     phone's memory at once will have Safari kill the tab.
     """
     check = _get_owned_check(request, pk)
+
+    # New pages on a check whose originals are gone would be marked against a
+    # report built from different photos. A fresh check is the honest route.
+    if check.photos_deleted:
+        return JsonResponse({'success': False, 'message': PHOTOS_DELETED_MESSAGE})
 
     limit = getattr(settings, 'HOMEWORK_CHECK_MAX_PHOTOS', 16)
     if check.photos.count() >= limit:
@@ -334,6 +346,8 @@ def analyse_next(request, pk):
     """Run exactly one chunk. The page calls this until 'complete' comes back."""
     check = _get_owned_check(request, pk)
 
+    if check.photos_deleted:
+        return JsonResponse({'success': False, 'message': PHOTOS_DELETED_MESSAGE})
     if not check.photos.exists():
         return JsonResponse({'success': False, 'message': 'No photos yet.'})
 

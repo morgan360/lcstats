@@ -249,11 +249,28 @@ seconds with no redeploy.
 
 ## Still to do
 
-- Add the `purge_homework_checks` daily task by hand in the PythonAnywhere web
-  UI. There is no `crontab` and no SSH or API route to scheduled tasks, so this
-  can never be done from a session.
-- Check the scheduled tasks that already exist actually ran — a task that never
-  runs looks identical to one with nothing to do.
+- Check the scheduled tasks actually run — a task that never runs looks
+  identical to one with nothing to do. The only proof is each row's log icon in
+  the PythonAnywhere Tasks tab.
+
+## Retention (changed 2026-09-14)
+
+`purge_homework_checks` now runs daily at 03:00 UTC (added by hand in the
+PythonAnywhere Tasks tab on 2026-09-14 — there is no `crontab` and no SSH or API
+route to scheduled tasks, so it can never be done from a session).
+
+**Photos go after 7 days; reports are kept.** A check's photos are deleted once
+the newest of them is older than `HOMEWORK_CHECK_PHOTO_RETENTION_DAYS` (default
+7, settable in `.env` with no deploy). The check — findings, summary, the
+teacher's edits and rating — stays as the student's history until a teacher
+deletes it. This replaced a 90-day `purge_after` that deleted the whole check,
+report included; migration `0002` drops that column.
+
+The report does not need the photos once `finalise()` has run: "Check again"
+rebuilds from the stored `analysis`, never from the pages. A purged check
+records `photos_deleted_at`/`photos_deleted_count`, its page says so, and
+upload and analysis refuse it. The upload and analysis controls are hidden
+rather than removed, because the page script binds to them by id.
 
 ## Deploying — read this, it changed today
 

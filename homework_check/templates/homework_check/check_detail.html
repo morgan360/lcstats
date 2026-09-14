@@ -28,9 +28,23 @@
   <section class="mb-6 rounded-2xl bg-white p-4 shadow-sm ring-1 ring-twilight/10">
     <div class="mb-3 flex items-center justify-between">
       <h2 class="font-semibold text-twilight">Photos</h2>
-      <span id="photoCount" class="text-sm text-twilight/60">{{ total }} of {{ max_photos }}</span>
+      <span id="photoCount" class="text-sm text-twilight/60 {% if check.photos_deleted %}hidden{% endif %}">{{ total }} of {{ max_photos }}</span>
     </div>
 
+    {% comment %}
+      Once the photos are purged the upload controls are hidden, not removed:
+      the script below binds to them by id and would stop at the first missing
+      one, taking the report's edit boxes down with it.
+    {% endcomment %}
+    {% if check.photos_deleted %}
+      <p class="text-sm text-twilight/70">
+        The {{ check.photos_deleted_count }} photo{{ check.photos_deleted_count|pluralize }}
+        of this copy {{ check.photos_deleted_count|pluralize:"was,were" }} deleted on
+        {{ check.photos_deleted_at|date:"j F" }}. The report below is kept.
+      </p>
+    {% endif %}
+
+    <div class="{% if check.photos_deleted %}hidden{% endif %}">
     <div id="photoGrid" class="mb-3 grid grid-cols-3 gap-2 sm:grid-cols-4">
       {% for photo in photos %}
         <div class="relative" data-photo-id="{{ photo.pk }}">
@@ -51,14 +65,17 @@
     </button>
     <p class="mt-2 text-xs text-twilight/50">
       Take the photos with your camera first, then pick them all here. Up to
-      {{ max_photos }} pages, flat and straight on.
+      {{ max_photos }} pages, flat and straight on. The photos are deleted
+      {{ photo_retention_days }} days after the last one is added; the report is kept.
     </p>
     <p id="uploadStatus" class="mt-2 hidden text-sm font-semibold text-violet-royal"></p>
     <ul id="uploadErrors" class="mt-2 hidden space-y-1 text-sm text-rose-pop"></ul>
+    </div>
   </section>
 
   {# ---- Analysis -------------------------------------------------------- #}
-  <section class="mb-6 rounded-2xl bg-white p-4 shadow-sm ring-1 ring-twilight/10">
+  {# Hidden, not dropped, once the photos are gone -- see the note above. #}
+  <section class="mb-6 rounded-2xl bg-white p-4 shadow-sm ring-1 ring-twilight/10 {% if check.photos_deleted %}hidden{% endif %}">
     <div class="mb-3 flex items-center justify-between">
       <h2 class="font-semibold text-twilight">Check against the solutions</h2>
       <span id="progressLabel" class="text-sm text-twilight/60">{{ done }} / {{ total }}</span>

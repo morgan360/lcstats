@@ -67,7 +67,11 @@ WORK_PHOTO_STAFF_ONLY = os.getenv("WORK_PHOTO_STAFF_ONLY", "True") == "True"
 HOMEWORK_CHECK_MAX_PHOTOS = int(os.getenv("HOMEWORK_CHECK_MAX_PHOTOS", 16))
 HOMEWORK_CHECK_CHUNK_SIZE = int(os.getenv("HOMEWORK_CHECK_CHUNK_SIZE", 4))
 HOMEWORK_CHECK_HOURLY_LIMIT = int(os.getenv("HOMEWORK_CHECK_HOURLY_LIMIT", 40))
-HOMEWORK_CHECK_RETENTION_DAYS = int(os.getenv("HOMEWORK_CHECK_RETENTION_DAYS", 90))
+# The photos of a student's copy are deleted this many days after the last one
+# was added; the marked report is kept. Counted from the last upload, not from
+# when the check was opened, so a teacher part way through a class never loses
+# photos before they are marked. The daily purge_homework_checks task does it.
+HOMEWORK_CHECK_PHOTO_RETENTION_DAYS = int(os.getenv("HOMEWORK_CHECK_PHOTO_RETENTION_DAYS", 7))
 # The solution pages go to the model with every batch of photos, but they are
 # sent first and identically every time, so from the second batch on they are
 # served from the prompt cache -- and the same holds for the second and

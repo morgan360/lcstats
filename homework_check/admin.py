@@ -24,7 +24,8 @@ class HomeworkCheckAdmin(admin.ModelAdmin):
     inlines = [CheckPhotoInline]
     readonly_fields = ['analysis', 'findings', 'counts', 'notes', 'model_used',
                        'prompt_tokens', 'completion_tokens', 'error_message',
-                       'created_at', 'analysed_at', 'reviewed_at']
+                       'created_at', 'analysed_at', 'reviewed_at',
+                       'photos_deleted_at', 'photos_deleted_count']
 
     fieldsets = (
         ('Who and what', {
@@ -44,6 +45,7 @@ class HomeworkCheckAdmin(admin.ModelAdmin):
             'classes': ('collapse',),
             'fields': ('model_used', 'prompt_tokens', 'completion_tokens',
                        'error_message', 'created_at', 'analysed_at',
-                       'reviewed_at', 'purge_after')
+                       'reviewed_at', 'photos_deleted_at',
+                       'photos_deleted_count')
         }),
     )

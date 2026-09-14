@@ -8,7 +8,6 @@ questions, and has no question part at all. The *services* are shared --
 private storage, image intake, the vision wrapper -- but the row is not.
 """
 import uuid
-from datetime import timedelta
 
 from django.conf import settings
 from django.db import models
@@ -122,7 +121,15 @@ class HomeworkCheck(models.Model):
 
     created_at = models.DateTimeField(default=timezone.now)
     analysed_at = models.DateTimeField(null=True, blank=True)
-    purge_after = models.DateTimeField(null=True, blank=True, db_index=True)
+
+    # The photographs are deleted a few days after the last one was added
+    # (HOMEWORK_CHECK_PHOTO_RETENTION_DAYS), but the report is kept: it is the
+    # student's marking history, and it no longer needs the photos once
+    # finalise() has run -- "Check again" rebuilds from ``analysis``, not from
+    # the pages. Recorded so the page can say what happened instead of showing
+    # an empty photo grid that looks like a check nobody started.
+    photos_deleted_at = models.DateTimeField(null=True, blank=True)
+    photos_deleted_count = models.PositiveSmallIntegerField(default=0)
 
     class Meta:
         ordering = ['-created_at']
@@ -135,11 +142,9 @@ class HomeworkCheck(models.Model):
     def __str__(self):
         return f"{self.student.get_full_name() or self.student.username} — {self.exercise_name}"
 
-    def save(self, *args, **kwargs):
-        if not self.purge_after:
-            days = getattr(settings, 'HOMEWORK_CHECK_RETENTION_DAYS', 90)
-            self.purge_after = (self.created_at or timezone.now()) + timedelta(days=days)
-        super().save(*args, **kwargs)
+    @property
+    def photos_deleted(self):
+        return self.photos_deleted_at is not None
 
     @property
     def final_rating(self):
