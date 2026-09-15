@@ -489,6 +489,7 @@ def analyse_next(request, pk):
         'done': done,
         'total': total,
         'complete': complete,
+        'wrong_solutions': complete and check.solutions_mismatch,
     })
 
 

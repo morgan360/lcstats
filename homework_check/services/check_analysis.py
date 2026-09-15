@@ -20,12 +20,41 @@ import re
 
 from django.conf import settings
 
-from exam_papers.services.vision_grading import (
-    _vision_completion, restore_eaten_latex, vision_model,
-)
+from openai import OpenAI
+
+from exam_papers.services.vision_grading import _vision_completion, restore_eaten_latex
 from exam_papers.services.work_analysis import DIAGRAM_CHECKLIST, FORMATTING_RULES
 
 logger = logging.getLogger(__name__)
+
+_clients = {}
+
+
+def vision_model():
+    """The model Homework Check reads photos with -- see settings."""
+    return settings.HOMEWORK_CHECK_VISION_MODEL
+
+
+def _other_provider():
+    return bool(getattr(settings, "HOMEWORK_CHECK_VISION_BASE_URL", ""))
+
+
+def vision_client():
+    """A client for HOMEWORK_CHECK_VISION_BASE_URL, or None for the shared one.
+
+    Built once per endpoint and key, with the same retry cap as the shared
+    client and for the same reason: a retried 170s timeout holds a web worker
+    for the length of two.
+    """
+    if not _other_provider():
+        return None
+    key = (settings.HOMEWORK_CHECK_VISION_BASE_URL,
+           settings.HOMEWORK_CHECK_VISION_API_KEY)
+    if key not in _clients:
+        _clients[key] = OpenAI(
+            base_url=key[0], api_key=key[1],
+            max_retries=getattr(settings, "OPENAI_VISION_MAX_RETRIES", 1))
+    return _clients[key]
 
 # Larger than work_analysis's 1200: a chunk covers up to four photos and may
 # report on a dozen questions, each with its own answer and comment.
@@ -123,8 +152,18 @@ def build_prompt(exercise_name, page_numbers):
         "",
         "STAGE 1 - Read the student's pages.",
         "The student has written the question number beside each piece of "
-        "working. Find those labels and use them exactly as written, e.g. "
-        '"3(b)", "Q7", "12 (ii)". Read what they actually wrote without '
+        "working. Label every question in full, so that no two different "
+        "questions ever share a label:",
+        '- Include the question number with the part: where the student wrote '
+        '"2." and then "(i)", "(ii)" underneath, the labels are "2(i)" and '
+        '"2(ii)", never just "(i)".',
+        "- If the exercise above names more than one exercise, start every "
+        'label with its exercise number, e.g. "2.1 Q5" and "2.2 Q5" -- the '
+        "same question number appears in each exercise. Take the exercise "
+        "from the heading on the student's page or the book page.",
+        '- Otherwise write the question as the student numbered it, e.g. '
+        '"3(b)", "7", "12(ii)".',
+        "Read what they actually wrote without "
         "silently correcting it: if they wrote $2x = 6$ then $x = 4$, both "
         "lines are what is on the page. Where a question's working runs off "
         "the bottom of one photo and continues on the next, treat it as one "
@@ -190,7 +229,7 @@ def build_prompt(exercise_name, page_numbers):
         '- "has_diagram": boolean, true if a graph or sketch is present',
         '- "diagram_feedback": prose on the graph, or "" if there is none',
         '- "questions": array of objects, each with:',
-        '    "label": the question number as the student wrote it',
+        '    "label": the full question label, as described in STAGE 1',
         '    "found_in_solutions": boolean',
         '    "student_answer": their final answer, or "" if they reached none',
         '    "correct_answer": the answer from the solutions, or "" if not found',
@@ -256,10 +295,11 @@ def analyse_chunk(photo_b64s, solution_page_b64s, exercise_name,
         content.append(_image_part(b64, "high"))
 
     extra = {}
-    if cache_key:
+    if cache_key and not _other_provider():
         # Routing hint, not a correctness one: it steers requests sharing a
         # prefix to the same cache, which is what lets the second student of
         # an exercise reuse the solution pages the first student warmed.
+        # OpenAI's own parameter, so it is only sent to OpenAI.
         extra["prompt_cache_key"] = cache_key[:64]
 
     response = _vision_completion(
@@ -267,6 +307,8 @@ def analyse_chunk(photo_b64s, solution_page_b64s, exercise_name,
         max_tokens=MAX_TOKENS,
         temperature=0.2,
         response_format={"type": "json_object"},
+        model=vision_model(),
+        client=vision_client(),
         **extra,
     )
 
@@ -325,12 +367,39 @@ def _usage(response):
     usage = getattr(response, "usage", None)
     details = getattr(usage, "prompt_tokens_details", None)
     completion = getattr(usage, "completion_tokens_details", None)
+    prompt_tokens = getattr(usage, "prompt_tokens", 0) or 0
+    completion_tokens = getattr(usage, "completion_tokens", 0) or 0
+    reasoning_tokens = getattr(completion, "reasoning_tokens", 0) or 0
+
+    # Gemini's OpenAI-compatible endpoint leaves its thinking out of
+    # completion_tokens and counts it only in total_tokens, though it is
+    # billed as output. OpenAI's total is exactly prompt + completion, so
+    # there this adds nothing.
+    total = getattr(usage, "total_tokens", 0)
+    hidden = total - prompt_tokens - completion_tokens if isinstance(total, int) else 0
+    if hidden > 0:
+        completion_tokens += hidden
+        reasoning_tokens += hidden
+
     return {
-        "prompt_tokens": getattr(usage, "prompt_tokens", 0) or 0,
-        "completion_tokens": getattr(usage, "completion_tokens", 0) or 0,
+        "prompt_tokens": prompt_tokens,
+        "completion_tokens": completion_tokens,
         "cached_tokens": getattr(details, "cached_tokens", 0) or 0,
-        "reasoning_tokens": getattr(completion, "reasoning_tokens", 0) or 0,
+        "reasoning_tokens": reasoning_tokens,
     }
+
+
+def tidy_label(label):
+    """One spelling per question label: "5." and "5", "5 (i)" and "5(i)".
+
+    The model re-spells labels between batches -- 11 of 34 moved between two
+    runs of one check -- and assembly merges rows on the label, so two
+    spellings of one question printed as two half-filled rows.
+    """
+    label = re.sub(r"\s+", " ", str(label or "")).strip()
+    label = re.sub(r"\s+(?=[(\[])", "", label)       # "5 (i)" -> "5(i)"
+    label = re.sub(r"\b([Qq])\s+(?=\d)", r"\1", label)  # "Q 7" -> "Q7"
+    return label.rstrip(" .:")                        # "5." -> "5"
 
 
 def _clean_questions(raw):
@@ -344,7 +413,7 @@ def _clean_questions(raw):
     for row in raw or []:
         if not isinstance(row, dict):
             continue
-        label = str(row.get("label") or "").strip()
+        label = tidy_label(row.get("label"))
         if not label:
             continue
 

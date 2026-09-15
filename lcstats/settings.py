@@ -42,6 +42,17 @@ OPENAI_VISION_MAX_RETRIES = int(os.getenv("OPENAI_VISION_MAX_RETRIES", 0))
 # same model's run-to-run noise at the default. Blank sends no parameter at
 # all, which is what a non-reasoning model needs.
 OPENAI_VISION_REASONING_EFFORT = os.getenv("OPENAI_VISION_REASONING_EFFORT", "low")
+# Homework Check's vision calls can go to a different model and provider from
+# the rest of the site's. Any OpenAI-compatible endpoint works: Gemini's is
+# https://generativelanguage.googleapis.com/v1beta/openai/ with a Gemini key.
+# Chosen 2026-09-15 after a read-only bake-off on four real checks: Gemini 3.8
+# Flash matched gpt-5.5 about as closely as gpt-5.5 matches itself, at 18% of
+# the cost and a third of the time; gpt-5.4 did not (it marked six correct
+# answers wrong). Exam photo grading and work photos were not tested, so they
+# stay on OPENAI_VISION_MODEL. All three blank = the shared OpenAI settings.
+HOMEWORK_CHECK_VISION_MODEL = os.getenv("HOMEWORK_CHECK_VISION_MODEL", "") or OPENAI_VISION_MODEL
+HOMEWORK_CHECK_VISION_BASE_URL = os.getenv("HOMEWORK_CHECK_VISION_BASE_URL", "")
+HOMEWORK_CHECK_VISION_API_KEY = os.getenv("HOMEWORK_CHECK_VISION_API_KEY", "")
 # Long edge, in pixels, of the copy of a photo sent to the vision API. The API
 # tiles images at 512px, so past ~1024 you pay linearly more tokens for detail
 # the model does not use.

@@ -205,6 +205,47 @@ class DeriveRatingTests(SimpleTestCase):
         self.assertEqual(derive_rating(qs, [chunk(qs)])[0], "excellent")
 
 
+class WrongSolutionsTests(SimpleTestCase):
+    """Most questions missing from the PDF means the wrong PDF, not bad photos.
+
+    Check 33 on prod: Exercises 2.1-2.3 marked against the Chapter 1
+    solutions. All 13 questions came back "not in the solutions", and the
+    reason given was "the photos could not be read clearly" -- which sends
+    the teacher to rescan pages that were fine.
+    """
+
+    def test_every_question_missing_is_wrong_solutions(self):
+        qs = [q(str(i), verdict="unclear", found=False) for i in range(1, 14)]
+        rating, reason = derive_rating(qs, [chunk(qs)])
+        self.assertEqual(rating, "")
+        self.assertIn("not in the solution pages chosen", reason)
+
+    def test_it_is_named_ahead_of_an_unreadable_page(self):
+        """Check 33 also had one sideways page; the solutions were the fix."""
+        qs = [q(str(i), verdict="unclear", found=False) for i in range(1, 6)]
+        _, reason = derive_rating(qs, [chunk(qs), chunk([], readable=False)])
+        self.assertIn("not in the solution pages chosen", reason)
+
+    def test_a_failed_page_still_comes_first(self):
+        qs = [q("1", verdict="unclear", found=False)]
+        _, reason = derive_rating(qs, [chunk(qs)], failed_photos=2)
+        self.assertIn("could not be analysed", reason)
+
+    def test_a_few_missing_is_normal(self):
+        """A page range cut one short, or a question from the next exercise."""
+        from homework_check.services.assembly import looks_like_wrong_solutions
+        self.assertFalse(looks_like_wrong_solutions({"total": 5, "not_in_solutions": 1}))
+        self.assertFalse(looks_like_wrong_solutions({"total": 6, "not_in_solutions": 3}))
+        self.assertTrue(looks_like_wrong_solutions({"total": 6, "not_in_solutions": 4}))
+        self.assertTrue(looks_like_wrong_solutions({"total": 1, "not_in_solutions": 1}))
+
+    def test_nothing_to_judge_is_not_a_mismatch(self):
+        from homework_check.services.assembly import looks_like_wrong_solutions
+        self.assertFalse(looks_like_wrong_solutions({}))
+        self.assertFalse(looks_like_wrong_solutions(None))
+        self.assertFalse(looks_like_wrong_solutions({"total": 0, "not_in_solutions": 0}))
+
+
 class TallyTests(SimpleTestCase):
     def test_counts_every_verdict_and_the_gaps_in_the_solutions(self):
         counts = tally([

@@ -157,6 +157,13 @@ class HomeworkCheck(models.Model):
         return dict(Rating.choices).get(self.final_rating, "")
 
     @property
+    def solutions_mismatch(self):
+        """Most questions weren't in the chosen solution pages -- see assembly."""
+        from .services.assembly import looks_like_wrong_solutions
+        return (self.status == self.Status.COMPLETE
+                and looks_like_wrong_solutions(self.counts))
+
+    @property
     def is_reviewed(self):
         return self.reviewed_at is not None
 

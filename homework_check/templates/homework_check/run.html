@@ -24,9 +24,13 @@
           <p class="font-semibold text-twilight">{{ row.check.student.get_full_name|default:row.check.student.username }}</p>
           <p class="text-xs text-twilight/50">{{ row.check.exercise_name }} · {{ row.total }} page{{ row.total|pluralize }}</p>
         </div>
-        <span data-status class="text-sm text-twilight/60">
-          {% if row.check.status == 'complete' %}Done{% elif row.done %}{{ row.done }} / {{ row.total }}{% else %}Waiting{% endif %}
-        </span>
+        {% if row.check.solutions_mismatch %}
+          <span data-status class="text-sm font-semibold text-rose-pop">Check solutions</span>
+        {% else %}
+          <span data-status class="text-sm text-twilight/60">
+            {% if row.check.status == 'complete' %}Done{% elif row.done %}{{ row.done }} / {{ row.total }}{% else %}Waiting{% endif %}
+          </span>
+        {% endif %}
         <a href="{% url 'homework_check:check_detail' row.check.pk %}"
            class="rounded-lg bg-twilight/10 px-3 py-2 text-sm font-semibold text-twilight">Open</a>
       </div>
@@ -67,8 +71,10 @@
           }
           if (data.complete) {
             row.dataset.complete = '1';
-            status.textContent = 'Done';
-            status.className = 'text-sm font-semibold text-twilight';
+            // Finished, but against solutions that don't hold these questions.
+            status.textContent = data.wrong_solutions ? 'Check solutions' : 'Done';
+            status.className = 'text-sm font-semibold '
+              + (data.wrong_solutions ? 'text-rose-pop' : 'text-twilight');
             return done(true);
           }
           status.textContent = data.done + ' / ' + data.total;

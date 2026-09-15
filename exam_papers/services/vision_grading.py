@@ -70,9 +70,15 @@ def restore_eaten_latex(value):
     return value
 
 
-def _vision_completion(messages, max_tokens, temperature, **extra):
-    """Call the configured vision model with parameters it accepts."""
-    model = vision_model()
+def _vision_completion(messages, max_tokens, temperature, model=None,
+                       client=None, **extra):
+    """Call the configured vision model with parameters it accepts.
+
+    ``model`` and ``client`` default to the shared vision settings; Homework
+    Check passes its own, which may point at another provider's
+    OpenAI-compatible endpoint.
+    """
+    model = model or vision_model()
     kwargs = {'model': model, 'messages': messages, **extra}
 
     # Without this a stalled call holds a web worker open indefinitely: these
@@ -97,7 +103,7 @@ def _vision_completion(messages, max_tokens, temperature, **extra):
         if effort:
             kwargs.setdefault('reasoning_effort', effort)
 
-    return get_client().chat.completions.create(**kwargs)
+    return (client or get_client()).chat.completions.create(**kwargs)
 
 
 def encode_image_from_file(image_field):

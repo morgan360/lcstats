@@ -101,6 +101,20 @@
   {# ---- Result ---------------------------------------------------------- #}
   <section id="result" class="{% if check.status != 'complete' %}hidden{% endif %}">
 
+    {% if check.solutions_mismatch %}
+      <div class="mb-4 rounded-xl bg-white p-4 text-sm text-twilight ring-2 ring-rose-pop">
+        <p class="font-semibold text-rose-pop">Check the solutions you picked</p>
+        <p class="mt-1">
+          {{ check.counts.not_in_solutions }} of the {{ check.counts.total }} question{{ check.counts.total|pluralize }}
+          on this copy {{ check.counts.not_in_solutions|pluralize:"isn't,aren't" }} in
+          {{ check.solution.title }}{% if check.solution_pages %}, pages {{ check.solution_pages }}{% endif %},
+          so the work is probably from a different exercise or chapter.
+          {% if check.notes %}The model's notes below say what it found on the pages.{% endif %}
+        </p>
+        <p class="mt-1 text-twilight/70">Don't hand this sheet out. Start a new check with the right solutions.</p>
+      </div>
+    {% endif %}
+
     {% if not check.readable or check.confidence == 'low' %}
       <div class="mb-4 rounded-xl bg-amber-50 p-3 text-sm text-amber-900 ring-1 ring-amber-200">
         Some of these photos were hard to read, so check the questions below

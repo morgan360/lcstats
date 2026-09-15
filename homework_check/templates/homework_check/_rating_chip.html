@@ -10,6 +10,10 @@
     {% else %}bg-rose-pop/15 text-rose-pop{% endif %}">
     {{ check.final_rating_display }}
   </span>
+{% elif check.solutions_mismatch %}
+  <span class="ml-auto rounded-lg bg-rose-pop/15 px-2 py-1 text-xs font-bold text-rose-pop">
+    Check solutions
+  </span>
 {% elif check.status == 'complete' %}
   <span class="ml-auto rounded-lg bg-twilight/10 px-2 py-1 text-xs font-semibold text-twilight/70">
     No rating

@@ -6,6 +6,7 @@ without mocking anything -- the same reasoning as
 ``exam_papers/tests/test_work_analysis_mark.py``.
 """
 import logging
+import re
 
 from .check_analysis import RATING_BANDS, VERDICT_CREDIT, VERDICTS
 
@@ -28,17 +29,17 @@ _VERDICT_SEVERITY = {
 
 
 def _sort_key(label):
-    """Order labels the way a copy runs: 2 before 10, 3(a) before 3(b)."""
-    lead = ""
-    rest = label
-    for i, ch in enumerate(label):
-        if ch.isdigit():
-            lead += ch
-            rest = label[i + 1:]
-        elif lead:
-            rest = label[i:]
-            break
-    return (int(lead) if lead else 9999, rest.lower(), label.lower())
+    """Order labels the way a copy runs: 2 before 10, 3(a) before 3(b).
+
+    Every run of digits compares as a number, not just the first, so that
+    "2.1 Q5" comes before "2.1 Q10" and all of 2.1 before 2.2 now that one
+    check can span several exercises. Labels with no number go last.
+    """
+    parts = re.split(r"(\d+)", label.lower())
+    if len(parts) == 1:
+        return ((1,), label.lower())
+    return ((0,) + tuple((0, int(p), "") if p.isdigit() else (1, 0, p)
+                         for p in parts if p), label.lower())
 
 
 def merge_questions(chunks):
@@ -104,6 +105,12 @@ def derive_rating(questions, chunks, failed_photos=0):
             "only part of the work"
         )
 
+    # Ahead of the readability guards on purpose: when the wrong solutions
+    # were picked, that is the thing to fix, and "couldn't read the photos"
+    # sends the teacher to rescan pages that were fine.
+    if looks_like_wrong_solutions(tally(questions)):
+        return "", WRONG_SOLUTIONS_REASON
+
     for chunk in chunks:
         if not chunk.get("readable", True):
             return "", "some of the photos could not be read clearly"
@@ -122,6 +129,27 @@ def derive_rating(questions, chunks, failed_photos=0):
         if share >= threshold:
             return rating, ""
     return "poor", ""
+
+
+WRONG_SOLUTIONS_REASON = (
+    "most of the questions are not in the solution pages chosen, so the work "
+    "may be from a different exercise or chapter"
+)
+
+
+def looks_like_wrong_solutions(counts):
+    """Most of the questions weren't found in the solution pages at all.
+
+    Taken from ``tally`` counts, so a stored check can be asked too. A few
+    missing is normal -- a question from the next exercise, a page range cut
+    one short -- but most of them means the work was checked against the wrong
+    PDF or the wrong exercises. That happened on 15 Sep 2026: Exercises
+    2.1-2.3 were marked against the Chapter 1 solutions, and every question
+    came back "not in the solutions".
+    """
+    counts = counts or {}
+    total = counts.get("total") or 0
+    return total > 0 and (counts.get("not_in_solutions") or 0) * 2 > total
 
 
 def tally(questions):
