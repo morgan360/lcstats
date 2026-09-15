@@ -28,7 +28,7 @@
   var autoFilled = exerciseName ? exerciseName.value : '';
 
   function nameFromSection(label) {
-    if (!exerciseName || !label) return;
+    if (!exerciseName) return;
     if (exerciseName.value && exerciseName.value !== autoFilled) return;
     exerciseName.value = label;
     autoFilled = label;
@@ -70,91 +70,160 @@
   classSelect.addEventListener('change', fillStudents);
   fillStudents();
 
-  /* ---- Exercise -> page range ---------------------------------------- */
+  /* ---- Exercises -> page range --------------------------------------- */
+  /* A homework often spans several exercises (2.1, 2.2 and 2.3), so they are
+     ticked rather than picked. Ticking writes their pages, merged, into the
+     page box; the box stays editable so a long run can be trimmed to the
+     questions actually set. The box is what gets posted. */
   var solutionSelect = document.getElementById('solutionSelect');
-  var sectionSelect = document.getElementById('sectionSelect');
-  var pagesField = document.getElementById('pagesField');
-  var pagesManual = document.getElementById('pagesManual');
+  var sectionPicker = document.getElementById('sectionPicker');
+  var sectionList = document.getElementById('sectionList');
   var pagesInput = document.getElementById('pagesInput');
   var pagesHint = document.getElementById('pagesHint');
-  if (!solutionSelect || !sectionSelect) return;
+  if (!solutionSelect || !sectionList) return;
+
+  /* Read the way parse_page_range reads it on the server, so the count shown
+     is the count that will be sent. Sorted, and a page shared by two
+     exercises counts once. */
+  function parsePages(spec) {
+    var seen = {};
+    String(spec).replace(/\s+/g, '').split(',').forEach(function (chunk) {
+      var m = chunk.match(/^(\d+)-(\d+)$/);
+      if (m) {
+        for (var p = +m[1]; p <= +m[2]; p++) seen[p] = true;
+      } else if (/^\d+$/.test(chunk)) {
+        seen[+chunk] = true;
+      }
+    });
+    return Object.keys(seen).map(Number).filter(function (p) { return p >= 1; })
+      .sort(function (a, b) { return a - b; });
+  }
+
+  // [3, 4, 5, 9, 11, 12] -> "3-5,9,11-12"
+  function compress(pages) {
+    var out = [];
+    for (var i = 0; i < pages.length; i++) {
+      var j = i;
+      while (j + 1 < pages.length && pages[j + 1] === pages[j] + 1) j++;
+      out.push(i === j ? String(pages[i]) : pages[i] + '-' + pages[j]);
+      i = j;
+    }
+    return out.join(',');
+  }
+
+  // "Exercise 2.1", "Exercise 2.2" -> "Exercise 2.1, 2.2"
+  function joinLabels(labels) {
+    if (labels.length < 2) return labels[0] || '';
+    var word = labels[0].split(' ')[0] + ' ';
+    var shared = labels.every(function (l) {
+      return l.indexOf(word) === 0 && l.length > word.length;
+    });
+    if (!shared) return labels.join(', ');
+    return word + labels.map(function (l) { return l.slice(word.length); }).join(', ');
+  }
+
+  function boxes() {
+    return Array.prototype.slice.call(sectionList.querySelectorAll('input[type=checkbox]'));
+  }
 
   function fillSections() {
     var list = sections[solutionSelect.value] || [];
-    sectionSelect.innerHTML = '';
+    sectionList.innerHTML = '';
+    sectionPicker.classList.toggle('hidden', !list.length);
+    // Blank would send the whole PDF. With exercises to tick, that is never
+    // what was meant; without them, it is the only option there was before.
+    pagesInput.required = list.length > 0;
 
-    list.forEach(function (sec) {
-      var opt = document.createElement('option');
-      opt.value = sec.range;
-      opt.dataset.pages = sec.pages;
-      opt.dataset.label = sec.label;
-      opt.textContent = sec.label + '  (pages ' + sec.range + ')';
-      sectionSelect.appendChild(opt);
+    list.forEach(function (sec, i) {
+      var row = document.createElement('label');
+      row.className = 'flex cursor-pointer items-center gap-3 px-3 py-2 text-sm text-twilight'
+        + (i < list.length - 1 ? ' border-b border-twilight/10' : '');
+      var box = document.createElement('input');
+      box.type = 'checkbox';
+      box.className = 'h-5 w-5 shrink-0 accent-midnight';
+      box.dataset.range = sec.range;
+      box.dataset.label = sec.label;
+      box.addEventListener('change', applySections);
+      var name = document.createElement('span');
+      name.className = 'flex-1';
+      name.textContent = sec.label;
+      var pages = document.createElement('span');
+      pages.className = 'text-xs text-twilight/50';
+      pages.textContent = 'pp. ' + sec.range;
+      row.appendChild(box);
+      row.appendChild(name);
+      row.appendChild(pages);
+      sectionList.appendChild(row);
     });
 
-    var other = document.createElement('option');
-    other.value = '__manual__';
-    other.textContent = list.length ? 'Other — type the pages myself'
-                                    : 'Type the pages myself';
-    sectionSelect.appendChild(other);
-
-    if (!list.length) sectionSelect.value = '__manual__';
-
-    /* Carried over from the last student's check. A range the PDF no longer
-       has a section for still stands -- it goes in the manual box rather
-       than being dropped, because it is what the teacher chose. */
+    /* Carried over from the last student's check. The pages stand exactly as
+       they were -- they are what the teacher chose, perhaps trimmed by hand --
+       and the exercises lying wholly inside them are ticked to show where
+       they came from. */
     if (carriedPages) {
-      var matched = false;
-      for (var i = 0; i < sectionSelect.options.length; i++) {
-        if (sectionSelect.options[i].value === carriedPages) {
-          sectionSelect.selectedIndex = i;
-          matched = true;
-          break;
-        }
-      }
-      if (!matched) {
-        sectionSelect.value = '__manual__';
-        pagesInput.value = carriedPages;
-      }
+      var carried = parsePages(carriedPages);
+      boxes().forEach(function (box) {
+        box.checked = parsePages(box.dataset.range).every(function (p) {
+          return carried.indexOf(p) !== -1;
+        });
+      });
+      pagesInput.value = carriedPages;
       carriedPages = '';
+      showCount();
+    } else {
+      applySections();
     }
-
-    applySection();
   }
 
-  function applySection() {
-    var manual = sectionSelect.value === '__manual__';
-    pagesManual.classList.toggle('hidden', !manual);
+  function applySections() {
+    var ticked = boxes().filter(function (b) { return b.checked; });
+    pagesInput.value = compress(parsePages(
+      ticked.map(function (b) { return b.dataset.range; }).join(',')));
+    nameFromSection(joinLabels(ticked.map(function (b) { return b.dataset.label; })));
+    showCount();
+  }
 
-    if (manual) {
-      pagesField.value = pagesInput.value.trim();
-      pagesHint.textContent = 'Give the pages covering this exercise, e.g. 17-21. '
-        + 'At most ' + maxPages + ' pages.';
-      pagesHint.className = 'mt-1 text-xs text-twilight/50';
-      return;
-    }
+  function showCount() {
+    var spec = pagesInput.value.trim();
+    var count = parsePages(spec).length;
+    var warn = true;
+    var block = false;
 
-    pagesField.value = sectionSelect.value;
-    var opt = sectionSelect.options[sectionSelect.selectedIndex];
-    var count = parseInt(opt && opt.dataset.pages, 10) || 0;
-    nameFromSection(opt && opt.dataset.label);
-
-    if (count > maxPages) {
+    if (!spec) {
+      pagesHint.textContent = pagesInput.required
+        ? 'Tick the exercises you set, or type the pages yourself.'
+        : 'Give the pages covering this homework, e.g. 17-21, 24. At most '
+          + maxPages + ' pages.';
+      warn = false;
+    } else if (!count) {
+      // The server would read this as blank, and send the whole PDF.
+      pagesHint.textContent = "Those pages can't be read. Use numbers and ranges, "
+        + 'e.g. 17-21, 24.';
+      block = true;
+    } else if (spec.length > 60) {
+      // The field holds 60 characters, and the server would cut the rest off.
+      pagesHint.textContent = 'That list of pages is too long to save. Join up '
+        + 'neighbouring pages into ranges, e.g. 17-21 rather than 17,18,19,20,21.';
+      block = true;
+    } else if (count > maxPages) {
       // These pages are re-sent with every batch of photos, so a long
-      // exercise is the expensive case, not a cosmetic one.
-      pagesHint.textContent = 'That exercise runs to ' + count + ' pages, over the '
-        + 'limit of ' + maxPages + '. Type a narrower range covering just the '
-        + 'questions you set.';
-      pagesHint.className = 'mt-1 text-xs font-semibold text-rose-pop';
+      // homework is the expensive case, not a cosmetic one.
+      pagesHint.textContent = 'That is ' + count + ' pages, over the limit of '
+        + maxPages + '. Take out the pages for questions you did not set.';
     } else {
       pagesHint.textContent = count + ' page(s) of solutions will be checked against.';
-      pagesHint.className = 'mt-1 text-xs text-twilight/50';
+      warn = false;
     }
+    pagesHint.className = warn ? 'mt-1 text-xs font-semibold text-rose-pop'
+                               : 'mt-1 text-xs text-twilight/50';
+    // Too long and unreadable would each save something other than what was
+    // typed, so the form won't submit them. Over the page limit still can:
+    // the server refuses it with its own explanation, as before.
+    pagesInput.setCustomValidity(block ? pagesHint.textContent : '');
   }
 
   solutionSelect.addEventListener('change', fillSections);
-  sectionSelect.addEventListener('change', applySection);
-  pagesInput.addEventListener('input', applySection);
+  pagesInput.addEventListener('input', showCount);
   fillSections();
 })();
 </script>
