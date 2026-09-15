@@ -14,7 +14,7 @@ from django.test import TestCase, override_settings
 from django.urls import reverse
 
 from homework.models import TeacherClass, TeacherProfile
-from homework_check.models import HomeworkCheck
+from homework_check.models import HomeworkCheck, InboundScan
 from homework_check.services import runner
 from hw_solutions.models import HWSolution, HWSolutionSection
 
@@ -86,6 +86,41 @@ class ClassPickerScopingTests(TestCase):
         )
         response = self.client.get(reverse('homework_check:index'))
         self.assertNotContains(response, 'Theirs')
+
+
+@override_settings(PRIVATE_MEDIA_ROOT=PRIVATE_ROOT)
+class DefaultClassTests(TestCase):
+    """The pickers open on 6th Year, which sorts last by name."""
+
+    def setUp(self):
+        self.teacher, self.profile = make_teacher('t')
+        self.fourth = TeacherClass.objects.create(
+            teacher=self.profile, name='4th Year 2026/27')
+        self.sixth = TeacherClass.objects.create(
+            teacher=self.profile, name='6th Year 2026/27')
+        HWSolution.objects.create(title='Ch 1 solutions')
+        self.client.login(username='t', password='pw')
+
+    def test_a_new_check_opens_on_sixth_year(self):
+        response = self.client.get(reverse('homework_check:check_new'))
+        self.assertContains(response, f'value="{self.sixth.pk}" selected')
+
+    def test_the_scans_page_opens_on_sixth_year(self):
+        # The picker is only drawn when there is a scan waiting to assign.
+        InboundScan.objects.create(teacher=self.teacher, filename='copy.pdf')
+        response = self.client.get(reverse('homework_check:scans'))
+        self.assertContains(response, f'value="{self.sixth.pk}" selected')
+
+    def test_a_class_in_the_url_still_wins(self):
+        response = self.client.get(
+            reverse('homework_check:check_new') + f'?class={self.fourth.pk}')
+        self.assertContains(response, f'value="{self.fourth.pk}" selected')
+        self.assertNotContains(response, f'value="{self.sixth.pk}" selected')
+
+    def test_no_sixth_year_class_selects_nothing(self):
+        self.sixth.delete()
+        response = self.client.get(reverse('homework_check:check_new'))
+        self.assertNotContains(response, 'selected>4th Year')
 
 
 @override_settings(PRIVATE_MEDIA_ROOT=PRIVATE_ROOT,

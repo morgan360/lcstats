@@ -7,6 +7,7 @@ reach another teacher's class or a student who is not in one of their own.
 import hmac
 import json
 import logging
+import re
 
 from django.conf import settings
 from django.contrib import messages
@@ -75,6 +76,25 @@ def _pickable_classes(request):
     if request.GET.get('all') == '1' or not own.exists():
         return TeacherClass.objects.filter(is_active=True)
     return own
+
+
+SIXTH_YEAR = re.compile(r'6th|sixth', re.IGNORECASE)
+
+
+def _selected_class(request, classes):
+    """The class a picker opens on: ?class= if given, else the 6th Years.
+
+    Classes sort by name, so with no default the dropdown opened on 4th Year,
+    and it is the Leaving Certs whose homework gets checked. Matched by name
+    because TeacherClass has no year field; no match leaves the browser's own
+    default, the first option.
+    """
+    class_id = request.GET.get('class')
+    if class_id and class_id.isdigit():
+        chosen = classes.filter(pk=int(class_id)).first()
+        if chosen:
+            return chosen
+    return next((c for c in classes if SIXTH_YEAR.search(c.name)), None)
 
 
 def _get_owned_check(request, pk):
@@ -183,10 +203,7 @@ def check_new(request):
             )
             return redirect('homework_check:check_detail', pk=check.pk)
 
-    selected_class = None
-    class_id = request.GET.get('class')
-    if class_id and class_id.isdigit():
-        selected_class = classes.filter(pk=int(class_id)).first()
+    selected_class = _selected_class(request, classes)
 
     return render(request, 'homework_check/check_new.html', {
         'classes': classes,
@@ -549,10 +566,7 @@ def scans(request):
     """Emailed scans waiting to be matched to students."""
     classes = _pickable_classes(request)
     solutions = _solutions_for(request)
-    class_id = request.GET.get('class')
-    selected_class = None
-    if class_id and class_id.isdigit():
-        selected_class = classes.filter(pk=int(class_id)).first()
+    selected_class = _selected_class(request, classes)
 
     return render(request, 'homework_check/scans.html', {
         'address': ScanAddress.for_teacher(request.user),
