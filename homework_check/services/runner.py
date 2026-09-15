@@ -15,7 +15,7 @@ from openai import APIConnectionError
 
 from students.services.image_intake import encode_for_api, encode_path_for_api
 
-from . import assembly
+from . import assembly, pricing
 from .check_analysis import EmptyResponse, analyse_chunk
 from .solution_pages import pages_for_check
 from .summarise import summarise
@@ -158,12 +158,37 @@ def analyse_next_chunk(check):
     check.save(update_fields=[
         "analysis", "prompt_tokens", "completion_tokens", "model_used",
     ])
+    _record_usage(check, result)
 
     CheckPhoto.objects.filter(pk__in=[p.pk for p in batch]).update(
         status=CheckPhoto.Status.ANALYSED
     )
 
     return check.progress()
+
+
+def _record_usage(check, result):
+    """Write the batch's cost to the ledger the spend page reads.
+
+    Never allowed to fail the batch: the teacher's report matters more than
+    the bookkeeping, so a problem here is logged and stepped over.
+    """
+    from ..models import VisionUsage
+
+    try:
+        usage = result["usage"]
+        model = result.get("model_used", "")[:64]
+        VisionUsage.objects.create(
+            hw_check=check, model=model,
+            prompt_tokens=usage["prompt_tokens"],
+            cached_tokens=usage.get("cached_tokens", 0),
+            completion_tokens=usage["completion_tokens"],
+            cost_usd=pricing.cost_usd(
+                model, usage["prompt_tokens"], usage.get("cached_tokens", 0),
+                usage["completion_tokens"], timezone.localdate()),
+        )
+    except Exception:
+        logger.exception("Could not record vision usage for check %s", check.pk)
 
 
 def finalise(check):

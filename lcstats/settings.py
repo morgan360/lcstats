@@ -156,6 +156,28 @@ if _credit_since_raw:
     except ValueError:
         OPENAI_CREDIT_SINCE = None
 
+# The same countdown for Gemini, which marks homework checks. Google has no API
+# for a key's spend or balance, so spend comes from the calls NumScoil records
+# itself (homework_check.VisionUsage, priced in dollars) and remaining is
+# GEMINI_CREDIT_TOPUP (in GEMINI_CREDIT_CURRENCY, what the card was charged)
+# minus that spend since GEMINI_CREDIT_SINCE, converted at GEMINI_USD_PER_CREDIT
+# dollars per unit of credit. 1.15 was EUR/USD on 2026-09-15 (1.1536); Google
+# converts at its own rate, so the remaining figure is approximate.
+try:
+    GEMINI_CREDIT_TOPUP = float(os.getenv("GEMINI_CREDIT_TOPUP")) \
+        if os.getenv("GEMINI_CREDIT_TOPUP") else None
+except (TypeError, ValueError):
+    GEMINI_CREDIT_TOPUP = None
+GEMINI_CREDIT_CURRENCY = os.getenv("GEMINI_CREDIT_CURRENCY", "EUR")
+GEMINI_USD_PER_CREDIT = float(os.getenv("GEMINI_USD_PER_CREDIT", "1.15"))
+GEMINI_CREDIT_SINCE = None
+if os.getenv("GEMINI_CREDIT_SINCE"):
+    from datetime import datetime as _dt
+    try:
+        GEMINI_CREDIT_SINCE = _dt.strptime(os.getenv("GEMINI_CREDIT_SINCE").strip(), "%Y-%m-%d").date()
+    except ValueError:
+        GEMINI_CREDIT_SINCE = None
+
 # You can create the client later inside your app code, not here:
 # from openai import OpenAI
 # client = OpenAI(api_key=OPENAI_API_KEY, organization=OPENAI_ORG_ID)

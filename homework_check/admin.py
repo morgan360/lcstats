@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import CheckPhoto, HomeworkCheck, InboundScan, ScanAddress
+from .models import CheckPhoto, HomeworkCheck, InboundScan, ScanAddress, VisionUsage
 
 
 class CheckPhotoInline(admin.TabularInline):
@@ -66,3 +66,15 @@ class InboundScanAdmin(admin.ModelAdmin):
     fields = ['teacher', 'received_at', 'sender', 'subject', 'filename',
               'page_count', 'problem']
     readonly_fields = fields
+
+
+@admin.register(VisionUsage)
+class VisionUsageAdmin(admin.ModelAdmin):
+    """What each vision call cost; the spend page's Gemini figures come from here."""
+    list_display = ['created_at', 'model', 'hw_check', 'prompt_tokens',
+                    'cached_tokens', 'completion_tokens', 'cost_usd']
+    list_filter = ['model']
+    readonly_fields = [f.name for f in VisionUsage._meta.fields]
+
+    def has_add_permission(self, request):
+        return False

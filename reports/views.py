@@ -22,6 +22,7 @@ from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, Tabl
 from homework.models import TeacherClass
 from students.decorators import teacher_required
 
+from . import gemini_spend
 from . import openai_costs as openai_costs_service
 from . import services
 from .models import (
@@ -43,13 +44,19 @@ MIDNIGHT_HEX = '#001C3D'  # tailwind.config.js "midnight" token
 
 @login_required
 def openai_costs(request):
-    """Live OpenAI org spend. Superuser only -- this is billing, not a teacher view."""
+    """AI spend: live OpenAI org spend, and Gemini from NumScoil's own records.
+
+    Superuser only -- this is billing, not a teacher view.
+    """
     if not request.user.is_superuser:
         raise PermissionDenied
     summary = openai_costs_service.get_cost_summary(
         force_refresh=request.GET.get("refresh") == "1"
     )
-    return render(request, "reports/openai_costs.html", {"summary": summary})
+    return render(request, "reports/openai_costs.html", {
+        "summary": summary,
+        "gemini": gemini_spend.get_gemini_summary(),
+    })
 
 
 # ------------------------------------------------------------

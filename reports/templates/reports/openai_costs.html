@@ -1,17 +1,22 @@
 {% extends "_base.html" %}
-{% block title %}OpenAI spend · NumScoil{% endblock %}
+{% block title %}AI spend · NumScoil{% endblock %}
 
 {% block content %}
+{# Text outside the white cards is mist: the page ground is midnight. #}
 <div class="mb-6 flex items-center justify-between">
     <div>
-        <h1 class="text-2xl font-bold">OpenAI spend</h1>
-        <p class="text-sm text-twilight/70">Live from the OpenAI organization Costs API</p>
+        <h1 class="text-2xl font-bold text-mist">AI spend</h1>
+        <p class="text-sm text-mist/70">OpenAI for everything but homework checks, Gemini for homework checks</p>
     </div>
     <a href="{% url 'reports:openai_costs' %}?refresh=1"
-        class="rounded-lg bg-twilight/10 px-3 py-2 text-sm font-semibold text-midnight transition hover:bg-twilight/20">
+        class="rounded-lg bg-white px-3 py-2 text-sm font-semibold text-midnight transition hover:bg-mist">
         Refresh
     </a>
 </div>
+
+{# ---- OpenAI --------------------------------------------------------------- #}
+<h2 class="mb-3 text-lg font-semibold text-mist">OpenAI</h2>
+<p class="mb-3 text-xs text-mist/70">Grading, the tutor chat, notes search, exam photos, work photos and report summaries. Live from the OpenAI Costs API.</p>
 
 {% if summary.ok %}
 <div class="grid gap-4 sm:grid-cols-2 {% if summary.remaining is not None %}lg:grid-cols-3{% endif %}">
@@ -27,51 +32,48 @@
     <div class="rounded-2xl bg-gradient-03 p-5 shadow-sm ring-1 ring-twilight/10">
         <div class="text-sm text-mist/90">Estimated remaining</div>
         <div class="mt-1 text-3xl font-bold text-mist">${{ summary.remaining|floatformat:2 }}</div>
+        {# One dollar sign per element: KaTeX auto-render reads "$a ... $b" in one text node as maths. #}
         <div class="mt-1 text-xs text-mist/80">
-            ${{ summary.topup|floatformat:2 }} loaded − ${{ summary.spent_since|floatformat:2 }} spent since {{ summary.since|date:"j M Y" }}
+            <span>${{ summary.topup|floatformat:2 }}</span> balance on {{ summary.since|date:"j M Y" }} − <span>${{ summary.spent_since|floatformat:2 }}</span> spent since
         </div>
     </div>
     {% endif %}
 </div>
 
 {% if summary.remaining is None %}
-<p class="mt-4 rounded-xl bg-twilight/5 p-3 text-xs text-twilight/70">
+<p class="mt-4 rounded-xl bg-white p-3 text-xs text-twilight/70 ring-1 ring-twilight/10">
     Showing spend only. To show an estimated <em>remaining</em> balance, set
-    <code>OPENAI_CREDIT_TOPUP</code> (amount loaded) and <code>OPENAI_CREDIT_SINCE</code>
-    (YYYY-MM-DD) in the environment — OpenAI's API reports spend, not prepaid balance.
+    <code>OPENAI_CREDIT_TOPUP</code> (the balance, or amount loaded) and <code>OPENAI_CREDIT_SINCE</code>
+    (YYYY-MM-DD, the day it was that) in the environment — OpenAI's API reports spend, not prepaid balance.
 </p>
 {% endif %}
 
 {% if summary.daily %}
-<h2 class="mb-3 mt-8 text-lg font-semibold">Daily this month</h2>
-<div class="overflow-x-auto rounded-2xl bg-white shadow-sm ring-1 ring-twilight/10">
-    <table class="w-full text-sm">
-        <thead>
-            <tr class="border-b border-twilight/10 text-left text-twilight/70">
-                <th class="px-5 py-3 font-medium">Date</th>
-                <th class="px-5 py-3 text-right font-medium">Spend</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for row in summary.daily %}
-            <tr class="border-b border-twilight/5 last:border-0">
-                <td class="px-5 py-2.5">{{ row.date|date:"D j M" }}</td>
-                <td class="px-5 py-2.5 text-right font-medium text-midnight">${{ row.amount|floatformat:2 }}</td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
-</div>
+<details class="mt-4 rounded-2xl bg-white shadow-sm ring-1 ring-twilight/10">
+    <summary class="cursor-pointer px-5 py-3 text-sm font-semibold text-midnight">Daily this month</summary>
+    <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+            <tbody>
+                {% for row in summary.daily %}
+                <tr class="border-t border-twilight/5">
+                    <td class="px-5 py-2.5 text-twilight">{{ row.date|date:"D j M" }}</td>
+                    <td class="px-5 py-2.5 text-right font-medium text-midnight">${{ row.amount|floatformat:2 }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</details>
 {% endif %}
 
-<p class="mt-6 text-xs text-twilight/60">
+<p class="mt-3 text-xs text-mist/60">
     Updated {{ summary.updated_at|date:"j M Y, H:i" }} UTC · cached ~10 min · figures in {{ summary.currency|upper }}
 </p>
 
 {% else %}
 <div class="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-twilight/10">
     {% if summary.not_configured %}
-    <h2 class="text-lg font-semibold text-midnight">Not configured</h2>
+    <h3 class="text-lg font-semibold text-midnight">Not configured</h3>
     <p class="mt-2 text-sm text-twilight/80">
         Set <code>OPENAI_ADMIN_KEY</code> in the environment to show live spend. It must be an
         <strong>Admin key</strong> (<code>sk-admin-…</code>) from
@@ -79,10 +81,68 @@
         not the project API key.
     </p>
     {% else %}
-    <h2 class="text-lg font-semibold text-rose-pop">Couldn't load spend</h2>
+    <h3 class="text-lg font-semibold text-rose-pop">Couldn't load spend</h3>
     <p class="mt-2 text-sm text-twilight/80">{{ summary.error }}</p>
     <p class="mt-2 text-xs text-twilight/60">The key must be an Admin key with org-level access.</p>
     {% endif %}
 </div>
 {% endif %}
+
+{# ---- Gemini --------------------------------------------------------------- #}
+<h2 class="mb-3 mt-10 text-lg font-semibold text-mist">Gemini</h2>
+<p class="mb-3 text-xs text-mist/70">Homework checks. Google has no spend API for a Gemini key, so this is worked out from each call NumScoil makes, at list price.</p>
+
+<div class="grid gap-4 sm:grid-cols-2 {% if gemini.remaining is not None %}lg:grid-cols-3{% endif %}">
+    <div class="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-twilight/10">
+        <div class="text-sm text-twilight/70">Today (UTC)</div>
+        <div class="mt-1 text-3xl font-bold text-midnight">${{ gemini.today|floatformat:2 }}</div>
+    </div>
+    <div class="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-twilight/10">
+        <div class="text-sm text-twilight/70">{{ gemini.month_label }} to date</div>
+        <div class="mt-1 text-3xl font-bold text-midnight">${{ gemini.month_to_date|floatformat:2 }}</div>
+        <div class="mt-1 text-xs text-twilight/60">{{ gemini.calls }} call{{ gemini.calls|pluralize }}</div>
+    </div>
+    {% if gemini.remaining is not None %}
+    <div class="rounded-2xl bg-gradient-03 p-5 shadow-sm ring-1 ring-twilight/10">
+        <div class="text-sm text-mist/90">Estimated remaining</div>
+        <div class="mt-1 text-3xl font-bold text-mist">
+            ≈ {% if gemini.currency == "EUR" %}€{% endif %}{{ gemini.remaining|floatformat:2 }}{% if gemini.currency != "EUR" %} {{ gemini.currency }}{% endif %}
+        </div>
+        <div class="mt-1 text-xs text-mist/80">
+            {% if gemini.currency == "EUR" %}€{% endif %}{{ gemini.topup|floatformat:2 }} prepaid on {{ gemini.since|date:"j M Y" }}
+            − <span>${{ gemini.spent_since_usd|floatformat:2 }}</span> spent since, at <span>${{ gemini.rate }}</span> per {{ gemini.currency }}
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+{% if gemini.remaining is None %}
+<p class="mt-4 rounded-xl bg-white p-3 text-xs text-twilight/70 ring-1 ring-twilight/10">
+    To show what is left of the prepaid credit, set <code>GEMINI_CREDIT_TOPUP</code> and
+    <code>GEMINI_CREDIT_SINCE</code> (YYYY-MM-DD) in the environment.
+</p>
+{% endif %}
+
+{% if gemini.daily %}
+<details class="mt-4 rounded-2xl bg-white shadow-sm ring-1 ring-twilight/10">
+    <summary class="cursor-pointer px-5 py-3 text-sm font-semibold text-midnight">Daily this month</summary>
+    <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+            <tbody>
+                {% for row in gemini.daily %}
+                <tr class="border-t border-twilight/5">
+                    <td class="px-5 py-2.5 text-twilight">{{ row.date|date:"D j M" }}</td>
+                    <td class="px-5 py-2.5 text-right font-medium text-midnight">${{ row.amount|floatformat:2 }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</details>
+{% endif %}
+
+<p class="mt-3 text-xs text-mist/60">
+    Google charges the credit in euro at its own exchange rate, so the remaining figure is approximate.
+    The exact balance is in AI Studio → Billing.
+</p>
 {% endblock %}
