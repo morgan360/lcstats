@@ -93,6 +93,37 @@ class ThinkingOnTheBillTests(SimpleTestCase):
         self.assertEqual(u['reasoning_tokens'], 0)
 
 
+class AnswerDelimiterTests(SimpleTestCase):
+    """Check 33 printed "x = \\frac{57}{41}" as raw code: Gemini left the
+    dollars off two answers, and the page renders maths only inside them."""
+
+    def test_undelimited_latex_answers_are_wrapped(self):
+        from homework_check.services.check_analysis import delimit_answer
+        self.assertEqual(delimit_answer(r'x = \frac{57}{41}, y = \frac{46}{41}'),
+                         r'$x = \frac{57}{41}, y = \frac{46}{41}$')
+        self.assertEqual(delimit_answer('210x^{4}'), '$210x^{4}$')
+        self.assertEqual(delimit_answer('x^2 + 1'), '$x^2 + 1$')
+
+    def test_everything_else_is_left_alone(self):
+        from homework_check.services.check_analysis import delimit_answer
+        self.assertEqual(delimit_answer('$x = 9, y = 8$'), '$x = 9, y = 8$')
+        self.assertEqual(delimit_answer('a = 1, b = 3, c = 0'), 'a = 1, b = 3, c = 0')
+        self.assertEqual(delimit_answer(''), '')
+        self.assertEqual(delimit_answer(None), '')
+
+    def test_both_answer_fields_are_cleaned_and_comments_are_not(self):
+        rows = check_analysis._clean_questions([{
+            'label': '10', 'verdict': 'correct', 'found_in_solutions': True,
+            'student_answer': r'\frac{1}{2}', 'correct_answer': r'\frac{1}{2}',
+            'comment': r'Well done with \frac{1}{2}.'}])
+        self.assertEqual(rows[0]['student_answer'], r'$\frac{1}{2}$')
+        self.assertEqual(rows[0]['correct_answer'], r'$\frac{1}{2}$')
+        self.assertEqual(rows[0]['comment'], r'Well done with \frac{1}{2}.')
+
+    def test_the_prompt_asks_for_dollars_on_the_answers(self):
+        self.assertIn('their final answer, wrapped in $...$', build_prompt('Ex 1', [1]))
+
+
 class FullLabelTests(SimpleTestCase):
     """Check 27 printed Q2(i) and Q8(i) as one "(i)" row, and check 33 put
     Exercise 2.1 Q5 and 2.2 Q5 under the same "5"."""

@@ -247,8 +247,10 @@ def build_prompt(exercise_name, page_numbers):
         '- "questions": array of objects, each with:',
         '    "label": the full question label, as described in STAGE 1',
         '    "found_in_solutions": boolean',
-        '    "student_answer": their final answer, or "" if they reached none',
-        '    "correct_answer": the answer from the solutions, or "" if not found',
+        '    "student_answer": their final answer, wrapped in $...$ like all '
+        'maths, or "" if they reached none',
+        '    "correct_answer": the answer from the solutions, wrapped in $...$, '
+        'or "" if not found',
         '    "verdict": one of "correct", "slip", "wrong", "incomplete", '
         '"not_attempted", "unclear"',
         '    "comment": one or two sentences for the student on what went wrong',
@@ -422,6 +424,24 @@ def tidy_label(label):
     return label.rstrip(" .:")                        # "5." -> "5"
 
 
+_LATEX_MARKER = re.compile(r"\\[A-Za-z]+|[\^_]\{|\^-?\d")
+
+
+def delimit_answer(answer):
+    """Wrap an answer that is LaTeX but has no $...$ in dollars.
+
+    The page only renders maths inside dollar delimiters, and Gemini leaves
+    them off answers now and then even when told -- check 33 printed
+    "x = \\frac{57}{41}" as raw code on the student's sheet. An answer is one
+    short expression, so wrapping the whole of it is safe. Plain answers such
+    as "a = 1, b = 3" render fine as they are and are left alone.
+    """
+    answer = str(answer or "").strip()
+    if answer and "$" not in answer and _LATEX_MARKER.search(answer):
+        return f"${answer}$"
+    return answer
+
+
 def _clean_questions(raw):
     """Coerce the model's question rows into the shape the templates expect.
 
@@ -442,7 +462,7 @@ def _clean_questions(raw):
             verdict = "unclear"
 
         found = bool(row.get("found_in_solutions"))
-        correct = str(row.get("correct_answer") or "").strip()
+        correct = delimit_answer(row.get("correct_answer"))
         # An answer for a question the model says it could not find is exactly
         # the invention the prompt forbids. Drop it rather than print it.
         # "Not attempted" stays true either way -- there is nothing to judge.
@@ -454,7 +474,7 @@ def _clean_questions(raw):
         cleaned.append({
             "label": label,
             "found_in_solutions": found,
-            "student_answer": str(row.get("student_answer") or "").strip(),
+            "student_answer": delimit_answer(row.get("student_answer")),
             "correct_answer": correct,
             "verdict": verdict,
             "comment": str(row.get("comment") or "").strip(),
