@@ -1,0 +1,61 @@
+{% extends "_base.html" %}
+{% block title %}{{ student.get_full_name|default:student.username }} — Homework Check{% endblock %}
+
+{% block content %}
+<div class="mx-auto max-w-4xl px-4 py-6 sm:px-6">
+
+  {# Mist, not twilight: this header sits on the page's midnight ground. #}
+  <a href="{% url 'homework_check:index' %}" class="text-sm font-semibold text-mist/60 hover:text-mist">← Homework Check</a>
+
+  <div class="mt-2 mb-5 flex flex-wrap items-center justify-between gap-3">
+    <div>
+      <h1 class="text-2xl font-bold text-mist">
+        {{ student.get_full_name|default:student.username }}
+      </h1>
+      <p class="mt-1 text-sm text-mist/70">
+        {{ checks|length }} homework report{{ checks|length|pluralize }}{% if classes %} · {{ classes|join:", " }}{% endif %}
+      </p>
+    </div>
+    <a href="{% url 'reports:student_report' student.id %}"
+       class="rounded-xl bg-white px-4 py-3 text-sm font-semibold text-twilight shadow-sm ring-1 ring-twilight/15">
+      Student report
+    </a>
+  </div>
+
+  {% if tally %}
+    <div class="mb-5 flex flex-wrap gap-2 text-sm">
+      {% for label, n in tally %}
+        <span class="rounded-xl bg-white px-3 py-2 font-semibold text-twilight ring-1 ring-twilight/15">
+          {{ label }} <span class="text-twilight/50">× {{ n }}</span>
+        </span>
+      {% endfor %}
+    </div>
+  {% endif %}
+
+  {% if checks %}
+    <div class="space-y-2">
+      {% for check in checks %}
+        <a href="{% url 'homework_check:check_detail' check.pk %}"
+           class="block rounded-2xl bg-white p-4 shadow-sm ring-1 ring-twilight/10 transition hover:ring-violet-royal/40">
+          <div class="flex flex-wrap items-center gap-2">
+            <span class="font-semibold text-twilight">{{ check.exercise_name }}</span>
+            <span class="text-sm text-twilight/60">{{ check.created_at|date:"j M Y" }}</span>
+            {% include "homework_check/_rating_chip.html" %}
+          </div>
+          {% if check.count_line %}
+            <div class="mt-1 text-sm text-twilight/70">{{ check.count_line }}</div>
+          {% endif %}
+          <div class="mt-1 text-xs text-twilight/50">
+            {{ check.teacher_class.name }} · {{ check.solution.title }}{% if check.solution_pages %}, pages {{ check.solution_pages }}{% endif %}
+            {% if check.is_reviewed %} · reviewed{% endif %}
+          </div>
+        </a>
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="rounded-2xl bg-white p-8 text-center shadow-sm ring-1 ring-twilight/10">
+      <p class="text-twilight/70">No homework has been checked for this student yet.</p>
+    </div>
+  {% endif %}
+</div>
+{% endblock %}

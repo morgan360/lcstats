@@ -3,8 +3,8 @@
 
 {% block content %}
 <div class="mx-auto max-w-3xl px-4 py-6 sm:px-6">
-  <a href="{% url 'homework_check:index' %}" class="text-sm font-semibold text-twilight/60">← Homework Check</a>
-  <h1 class="mt-2 mb-3 text-2xl font-bold text-twilight">Scans</h1>
+  <a href="{% url 'homework_check:index' %}" class="text-sm font-semibold text-mist/60 hover:text-mist">← Homework Check</a>
+  <h1 class="mt-2 mb-3 text-2xl font-bold text-mist">Scans</h1>
 
   {% include "homework_check/_messages.html" %}
 
@@ -31,7 +31,7 @@
       No scans waiting. Emailed scans appear here.
     </div>
   {% elif not solutions %}
-    <div class="rounded-2xl bg-rose-pop/10 p-5 text-sm text-twilight ring-1 ring-rose-pop/25">
+    <div class="rounded-2xl bg-white p-5 text-sm text-twilight ring-1 ring-rose-pop/25">
       <p class="font-semibold">There are no solution PDFs to check against yet.</p>
       <p class="mt-1">Upload one in the admin under HW Solutions, then come back here.</p>
     </div>

@@ -11,6 +11,8 @@
         <p class="text-sm text-twilight/70">{{ start|date:"j M Y" }} — {{ end|date:"j M Y" }}</p>
     </div>
     <div class="flex gap-2 text-sm font-semibold">
+        <a href="{% url 'homework_check:student_reports' student.id %}"
+            class="rounded-lg bg-twilight/10 px-3 py-2 hover:bg-twilight/20">Homework checks</a>
         <a href="{% url 'reports:student_report_csv' student.id %}?start={{ start|date:'Y-m-d' }}&end={{ end|date:'Y-m-d' }}"
             class="rounded-lg bg-twilight/10 px-3 py-2 hover:bg-twilight/20">CSV</a>
         <a href="{% url 'reports:student_report_pdf' student.id %}?start={{ start|date:'Y-m-d' }}&end={{ end|date:'Y-m-d' }}"

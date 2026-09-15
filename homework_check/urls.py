@@ -7,6 +7,7 @@ app_name = 'homework_check'
 urlpatterns = [
     path('', views.index, name='index'),
     path('new/', views.check_new, name='check_new'),
+    path('student/<int:student_id>/', views.student_reports, name='student_reports'),
     path('<int:pk>/', views.check_detail, name='check_detail'),
     path('<int:pk>/upload/', views.check_upload, name='check_upload'),
     path('<int:pk>/analyse-next/', views.analyse_next, name='analyse_next'),

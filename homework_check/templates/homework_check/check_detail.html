@@ -10,18 +10,22 @@
      data-edit-url="{% url 'homework_check:check_edit' check.pk %}"
      data-max-photos="{{ max_photos }}">
 
-  <a href="{% url 'homework_check:index' %}" class="text-sm font-semibold text-twilight/60">← Homework Check</a>
+  <a href="{% url 'homework_check:index' %}" class="text-sm font-semibold text-mist/60 hover:text-mist">← Homework Check</a>
 
   <div class="mt-2 mb-5">
-    <h1 class="text-2xl font-bold text-twilight">
+    <h1 class="text-2xl font-bold text-mist">
       {{ check.student.get_full_name|default:check.student.username }}
     </h1>
-    <p class="text-sm text-twilight/70">
+    <p class="text-sm text-mist/70">
       {{ check.exercise_name }} · {{ check.teacher_class.name }}<br>
-      <span class="text-twilight/50">
+      <span class="text-mist/60">
         Checked against {{ check.solution.title }}{% if check.solution_pages %}, pages {{ check.solution_pages }}{% endif %}
       </span>
     </p>
+    <a href="{% url 'homework_check:student_reports' check.student_id %}"
+       class="mt-2 inline-block text-sm font-semibold text-lime-glow">
+      All reports for this student →
+    </a>
   </div>
 
   {# ---- Photos ---------------------------------------------------------- #}
@@ -105,7 +109,7 @@
     {% endif %}
 
     {% if check.notes %}
-      <div class="mb-4 rounded-xl bg-twilight/5 p-3 text-sm text-twilight/80">
+      <div class="mb-4 rounded-xl bg-white p-3 text-sm text-twilight/80 ring-1 ring-twilight/10">
         {% for note in check.notes %}<p>{{ note }}</p>{% endfor %}
       </div>
     {% endif %}

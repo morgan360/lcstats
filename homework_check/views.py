@@ -11,6 +11,7 @@ import re
 
 from django.conf import settings
 from django.contrib import messages
+from django.contrib.auth.models import User
 from django.core.exceptions import PermissionDenied
 from django.db.models import Q
 from django.http import FileResponse, Http404, HttpResponseForbidden, JsonResponse
@@ -143,6 +144,77 @@ def index(request):
         'classes': classes,
         'current_class': current_class,
         'scans_waiting': InboundScan.objects.filter(teacher=request.user).count(),
+    })
+
+
+# What a row on the student page says about a report, in this order. Correct
+# answers lead; the rest only appear when there are some.
+COUNT_PHRASES = [
+    ('correct', 'right', 'right'),
+    ('slip', 'slip', 'slips'),
+    ('wrong', 'wrong', 'wrong'),
+    ('incomplete', 'incomplete', 'incomplete'),
+    ('not_in_solutions', 'not in the solutions', 'not in the solutions'),
+]
+
+
+def _count_line(counts):
+    """ "12 questions: 10 right, 2 slips" -- or '' before a check is marked."""
+    total = (counts or {}).get('total') or 0
+    if not total:
+        return ''
+    parts = []
+    for key, one, many in COUNT_PHRASES:
+        n = counts.get(key) or 0
+        if n or key == 'correct':
+            parts.append(f"{n} {one if n == 1 else many}")
+    return f"{total} question{'s' if total != 1 else ''}: {', '.join(parts)}"
+
+
+@teacher_required
+@require_GET
+def student_reports(request, student_id):
+    """Every report for one student, newest first -- their homework history.
+
+    The list page shows only the latest sixty checks, so a student's older
+    reports drop off it within a couple of homeworks. They are kept for good
+    (the purge takes photos, not reports), and this is where they stay
+    reachable.
+
+    Who may look follows reports.student_report: a student in one of your
+    classes. Checks are then narrowed to your own classes, the same test
+    _get_owned_check applies to each one, so another teacher's reports on a
+    shared student never show here. Having checked a student also counts, so
+    one who has since left the class keeps their history.
+    """
+    student = get_object_or_404(User, pk=student_id)
+    checks = HomeworkCheck.objects.filter(student=student).select_related(
+        'teacher_class', 'solution')
+
+    if not request.user.is_superuser:
+        profile = getattr(request.user, 'teacher_profile', None)
+        if profile is None:
+            raise PermissionDenied
+        checks = checks.filter(teacher_class__teacher=profile)
+        in_class = profile.classes.filter(students=student).exists()
+        if not in_class and not checks.exists():
+            raise PermissionDenied
+
+    checks = list(checks)
+    for check in checks:
+        check.count_line = _count_line(check.counts)
+
+    tally = {}
+    for check in checks:
+        if check.final_rating:
+            tally[check.final_rating] = tally.get(check.final_rating, 0) + 1
+
+    return render(request, 'homework_check/student.html', {
+        'student': student,
+        'checks': checks,
+        'classes': sorted({c.teacher_class.name for c in checks}),
+        'tally': [(label, tally[value]) for value, label in Rating.choices
+                  if value in tally],
     })
 
 

@@ -1,0 +1,21 @@
+{% comment %}
+  A check's rating, or its status when it has none. Shared by the list page and
+  the student page. Needs `check`.
+{% endcomment %}
+{% if check.final_rating %}
+  <span class="ml-auto rounded-lg px-2 py-1 text-xs font-bold uppercase tracking-wide
+    {% if check.final_rating == 'excellent' %}bg-lime-glow/25 text-twilight
+    {% elif check.final_rating == 'good' %}bg-violet-royal/15 text-violet-royal
+    {% elif check.final_rating == 'fair' %}bg-amber-100 text-amber-800
+    {% else %}bg-rose-pop/15 text-rose-pop{% endif %}">
+    {{ check.final_rating_display }}
+  </span>
+{% elif check.status == 'complete' %}
+  <span class="ml-auto rounded-lg bg-twilight/10 px-2 py-1 text-xs font-semibold text-twilight/70">
+    No rating
+  </span>
+{% else %}
+  <span class="ml-auto rounded-lg bg-twilight/10 px-2 py-1 text-xs font-semibold text-twilight/70">
+    {{ check.get_status_display }}
+  </span>
+{% endif %}
