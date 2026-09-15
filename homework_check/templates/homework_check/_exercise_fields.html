@@ -1,0 +1,39 @@
+{% comment %}
+  The exercise, solutions and page-range fields, shared by the new-check form
+  and the scans page. Pair with _exercise_script.html.
+{% endcomment %}
+    <div>
+      <label class="mb-1 block text-sm font-semibold text-twilight">Exercise</label>
+      <input type="text" name="exercise_name" id="exerciseName" required maxlength="200"
+             value="{{ carried.exercise_name|default:'' }}"
+             placeholder="e.g. Ex 5A Q1–8"
+             class="w-full rounded-xl border-twilight/20 bg-white p-3 text-base">
+      <p class="mt-1 text-xs text-twilight/50">
+        Filled in from the exercise you pick below. Add to it if you set only
+        some of it, e.g. “Q1–8”.
+      </p>
+    </div>
+
+    <div>
+      <label class="mb-1 block text-sm font-semibold text-twilight">Solutions</label>
+      <select name="solution" id="solutionSelect" required
+              class="w-full rounded-xl border-twilight/20 bg-white p-3 text-base">
+        {% for s in solutions %}
+          <option value="{{ s.id }}" {% if carried.solution_id == s.id %}selected{% endif %}>{{ s.title }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div>
+      <label class="mb-1 block text-sm font-semibold text-twilight">Which exercise</label>
+      <select id="sectionSelect"
+              class="w-full rounded-xl border-twilight/20 bg-white p-3 text-base">
+      </select>
+      <input type="hidden" name="solution_pages" id="pagesField">
+      <div id="pagesManual" class="mt-2 hidden">
+        <input type="text" id="pagesInput" maxlength="60" placeholder="e.g. 17-21"
+               class="w-full rounded-xl border-twilight/20 bg-white p-3 text-base">
+      </div>
+      <p id="pagesHint" class="mt-1 text-xs text-twilight/50"></p>
+    </div>
+

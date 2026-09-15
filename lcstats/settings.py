@@ -72,6 +72,16 @@ HOMEWORK_CHECK_HOURLY_LIMIT = int(os.getenv("HOMEWORK_CHECK_HOURLY_LIMIT", 40))
 # when the check was opened, so a teacher part way through a class never loses
 # photos before they are marked. The daily purge_homework_checks task does it.
 HOMEWORK_CHECK_PHOTO_RETENTION_DAYS = int(os.getenv("HOMEWORK_CHECK_PHOTO_RETENTION_DAYS", 7))
+# Scans by email. A Cloudflare Email Worker posts each email sent to
+# scans+<token>@<domain> to /homework-check/inbound-email/ with this secret in a
+# header. Blank switches the endpoint off entirely (it answers 404), so an
+# unconfigured server accepts nothing. The same value goes in the Worker's
+# SCAN_SECRET variable.
+HOMEWORK_CHECK_INBOUND_SECRET = os.getenv("HOMEWORK_CHECK_INBOUND_SECRET", "")
+HOMEWORK_CHECK_SCAN_DOMAIN = os.getenv("HOMEWORK_CHECK_SCAN_DOMAIN", "numscoil.ie")
+# Cloudflare refuses inbound mail over 25 MiB, so nothing larger can arrive
+# legitimately; the margin is for the MIME encoding around it.
+HOMEWORK_CHECK_INBOUND_MAX_BYTES = int(os.getenv("HOMEWORK_CHECK_INBOUND_MAX_BYTES", 26 * 1024 * 1024))
 # The solution pages go to the model with every batch of photos, but they are
 # sent first and identically every time, so from the second batch on they are
 # served from the prompt cache -- and the same holds for the second and

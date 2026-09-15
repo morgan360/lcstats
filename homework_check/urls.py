@@ -15,4 +15,10 @@ urlpatterns = [
     path('<int:pk>/delete/', views.check_delete, name='check_delete'),
     path('photo/<int:pk>/', views.check_photo, name='check_photo'),
     path('photo/<int:pk>/delete/', views.photo_delete, name='photo_delete'),
+    path('scans/', views.scans, name='scans'),
+    path('scans/assign/', views.scans_assign, name='scans_assign'),
+    path('scans/<int:pk>/thumb/', views.scan_thumb, name='scan_thumb'),
+    path('scans/<int:pk>/delete/', views.scan_delete, name='scan_delete'),
+    path('run/', views.run, name='run'),
+    path('inbound-email/', views.inbound_email, name='inbound_email'),
 ]

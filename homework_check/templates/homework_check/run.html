@@ -1,0 +1,114 @@
+{% extends "_base.html" %}
+{% block title %}Mark the batch — Homework Check{% endblock %}
+
+{% block content %}
+<div class="mx-auto max-w-3xl px-4 py-6 sm:px-6">
+  <a href="{% url 'homework_check:index' %}" class="text-sm font-semibold text-twilight/60">← Homework Check</a>
+  <h1 class="mt-2 mb-3 text-2xl font-bold text-twilight">Mark the batch</h1>
+
+  {% include "homework_check/_messages.html" %}
+  {% csrf_token %}
+
+  <p class="mb-4 rounded-2xl bg-white p-4 text-sm text-twilight/70 shadow-sm ring-1 ring-twilight/10">
+    Marks each one in turn. Keep this tab open while it runs — closing it just
+    pauses, and pressing the button again carries on from where it stopped.
+  </p>
+
+  <div class="mb-5 space-y-2" id="batch">
+    {% for row in rows %}
+      <div class="flex items-center gap-3 rounded-xl bg-white p-3 shadow-sm ring-1 ring-twilight/10"
+           data-check="{{ row.check.pk }}"
+           data-analyse-url="{% url 'homework_check:analyse_next' row.check.pk %}"
+           data-complete="{% if row.check.status == 'complete' %}1{% endif %}">
+        <div class="min-w-0 flex-1">
+          <p class="font-semibold text-twilight">{{ row.check.student.get_full_name|default:row.check.student.username }}</p>
+          <p class="text-xs text-twilight/50">{{ row.check.exercise_name }} · {{ row.total }} page{{ row.total|pluralize }}</p>
+        </div>
+        <span data-status class="text-sm text-twilight/60">
+          {% if row.check.status == 'complete' %}Done{% elif row.done %}{{ row.done }} / {{ row.total }}{% else %}Waiting{% endif %}
+        </span>
+        <a href="{% url 'homework_check:check_detail' row.check.pk %}"
+           class="rounded-lg bg-twilight/10 px-3 py-2 text-sm font-semibold text-twilight">Open</a>
+      </div>
+    {% endfor %}
+  </div>
+
+  <button type="button" id="runAll"
+          class="w-full rounded-xl bg-violet-royal px-4 py-4 text-base font-semibold text-white shadow-sm disabled:opacity-50">
+    Check all
+  </button>
+  <p id="runSummary" class="mt-2 hidden text-sm font-semibold text-violet-royal"></p>
+</div>
+
+<script>
+(function () {
+  var csrf = document.querySelector('[name=csrfmiddlewaretoken]').value;
+  var button = document.getElementById('runAll');
+  var summary = document.getElementById('runSummary');
+  var rows = Array.prototype.slice.call(document.querySelectorAll('[data-check]'));
+
+  /* One check at a time, one batch of pages per request -- the same loop the
+     check page runs, just walked down the list. A failure is shown on its row
+     and the next check carries on: one unreadable copy must not stop the
+     other twenty-four. */
+  function markOne(row, done) {
+    var status = row.querySelector('[data-status]');
+    status.textContent = 'Reading…';
+    status.className = 'text-sm font-semibold text-violet-royal';
+
+    function step() {
+      fetch(row.dataset.analyseUrl, { method: 'POST', headers: { 'X-CSRFToken': csrf } })
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+          if (!data.success) {
+            status.textContent = data.message || 'Something went wrong.';
+            status.className = 'text-sm font-semibold text-rose-pop';
+            return done(false);
+          }
+          if (data.complete) {
+            row.dataset.complete = '1';
+            status.textContent = 'Done';
+            status.className = 'text-sm font-semibold text-twilight';
+            return done(true);
+          }
+          status.textContent = data.done + ' / ' + data.total;
+          step();
+        })
+        .catch(function () {
+          status.textContent = 'Could not reach NumScoil.';
+          status.className = 'text-sm font-semibold text-rose-pop';
+          done(false);
+        });
+    }
+    step();
+  }
+
+  button.addEventListener('click', function () {
+    var todo = rows.filter(function (r) { return !r.dataset.complete; });
+    if (!todo.length) {
+      summary.textContent = 'All of these are marked. Open one to print its sheet.';
+      summary.classList.remove('hidden');
+      return;
+    }
+    button.disabled = true;
+    summary.classList.add('hidden');
+    var ok = 0, failed = 0;
+
+    (function next(i) {
+      if (i >= todo.length) {
+        button.disabled = false;
+        summary.textContent = failed
+          ? ok + ' marked, ' + failed + ' stopped — press Check all again to retry those.'
+          : 'All ' + ok + ' marked. Open each one to review and print its sheet.';
+        summary.classList.remove('hidden');
+        return;
+      }
+      markOne(todo[i], function (success) {
+        if (success) ok++; else failed++;
+        next(i + 1);
+      });
+    })(0);
+  });
+})();
+</script>
+{% endblock %}

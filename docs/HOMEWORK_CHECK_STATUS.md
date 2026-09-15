@@ -272,6 +272,45 @@ records `photos_deleted_at`/`photos_deleted_count`, its page says so, and
 upload and analysis refuse it. The upload and analysis controls are hidden
 rather than removed, because the page script binds to them by id.
 
+## Scans by email (added 2026-09-15)
+
+Homework on loose printed sheets goes through a copier's feeder in seconds, so
+scans can arrive by email instead of phone photos.
+
+**Flow.** Copier → `scans+<token>@numscoil.ie` → Cloudflare Email Routing →
+Email Worker `numscoil-scans` (source: `deploy/cloudflare/scan-inbox-worker.js`)
+→ `POST /homework-check/inbound-email/` with the raw email, `X-Scan-Secret` and
+`X-Scan-To` → `services/scans.store_email` saves each PDF attachment as an
+`InboundScan` (private storage, first-page thumbnail) → the teacher's **Scans**
+page (`/homework-check/scans/`): pick class, solutions and exercise once, a
+student beside each scan → `create_check_from_scan` renders the PDF's pages into
+`CheckPhoto` rows and deletes the scan → **Mark the batch**
+(`/homework-check/run/?ids=…`) runs `analyse_next` for each check in turn.
+
+**Locks.** The endpoint is a 404 unless `HOMEWORK_CHECK_INBOUND_SECRET` is set
+and the header matches. The `+token` (a `ScanAddress` per teacher, shown only on
+their own Scans page) says whose scans they are; an unknown token is accepted
+and dropped so the response never confirms a token. Scans are visible to their
+own teacher only, and unclaimed ones go with the daily purge after the photo
+retention period.
+
+**Traps.**
+- The Worker must post to `https://www.numscoil.ie/…` — the bare domain answers
+  with a 301 and a redirected POST loses its body.
+- The view reads the body with `request.read()`, not `request.body`, which
+  refuses anything over `DATA_UPLOAD_MAX_MEMORY_SIZE` (2.5 MB). A test posts a
+  3 MB+ email to hold that in place.
+- The Worker buffers the email into an ArrayBuffer so the POST has a length;
+  uWSGI on PythonAnywhere doesn't take chunked bodies.
+- An email with no usable PDF still makes one scan row with `problem` set, so
+  the teacher sees it arrived.
+
+**Setup (web dashboards only).** Cloudflare: Email Routing → Settings →
+Subaddressing on; Email Workers → create `numscoil-scans`, paste the script, add
+`NUMSCOIL_INBOUND_URL` and secret `SCAN_SECRET`; Routing rules → `scans@numscoil.ie`
+→ Send to Worker. Prod `.env`: `HOMEWORK_CHECK_INBOUND_SECRET` = the same value,
+then reload.
+
 ## Deploying — read this, it changed today
 
 **Production can no longer `git pull`.** `git fetch origin main` on the server

@@ -1,0 +1,121 @@
+{% extends "_base.html" %}
+{% block title %}Scans — Homework Check{% endblock %}
+
+{% block content %}
+<div class="mx-auto max-w-3xl px-4 py-6 sm:px-6">
+  <a href="{% url 'homework_check:index' %}" class="text-sm font-semibold text-twilight/60">← Homework Check</a>
+  <h1 class="mt-2 mb-3 text-2xl font-bold text-twilight">Scans</h1>
+
+  {% include "homework_check/_messages.html" %}
+
+  <section class="mb-6 rounded-2xl bg-white p-4 shadow-sm ring-1 ring-twilight/10">
+    <h2 class="font-semibold text-twilight">Email scans to</h2>
+    <div class="mt-2 flex flex-wrap items-center gap-2">
+      <code id="scanAddress" class="rounded-lg bg-mist/60 px-3 py-2 text-sm text-twilight">{{ address.address }}</code>
+      <button type="button" id="copyAddress"
+              class="rounded-lg bg-twilight/10 px-3 py-2 text-sm font-semibold text-twilight">Copy</button>
+    </div>
+    <p class="mt-2 text-sm text-twilight/70">
+      Save this in the copier's address book. Scan <strong>one student at a time</strong>
+      as a PDF — greyscale, single-sided — and send it here. Each PDF shows up
+      below within a minute, oldest first, so scanning in class-list order keeps them in order.
+    </p>
+    <p class="mt-1 text-xs text-twilight/50">
+      Keep this address to yourself: anything sent to it lands here. Scans you
+      don't use are deleted after {{ photo_retention_days }} days.
+    </p>
+  </section>
+
+  {% if not scans %}
+    <div class="rounded-2xl bg-white p-6 text-center text-sm text-twilight/70 shadow-sm ring-1 ring-twilight/10">
+      No scans waiting. Emailed scans appear here.
+    </div>
+  {% elif not solutions %}
+    <div class="rounded-2xl bg-rose-pop/10 p-5 text-sm text-twilight ring-1 ring-rose-pop/25">
+      <p class="font-semibold">There are no solution PDFs to check against yet.</p>
+      <p class="mt-1">Upload one in the admin under HW Solutions, then come back here.</p>
+    </div>
+  {% else %}
+  <form method="post" action="{% url 'homework_check:scans_assign' %}" class="space-y-5">
+    {% csrf_token %}
+
+    <section class="space-y-5 rounded-2xl bg-white p-4 shadow-sm ring-1 ring-twilight/10">
+      <h2 class="font-semibold text-twilight">1. The exercise, for all of them</h2>
+      <div>
+        <label class="mb-1 block text-sm font-semibold text-twilight">Class</label>
+        <select name="teacher_class" id="classSelect" required
+                class="w-full rounded-xl border-twilight/20 bg-white p-3 text-base">
+          {% for c in classes %}
+            <option value="{{ c.id }}" {% if selected_class.id == c.id %}selected{% endif %}>{{ c.name }}</option>
+          {% endfor %}
+        </select>
+        <p class="mt-1 text-xs text-twilight/50">Pick the class first — changing it clears the students below.</p>
+      </div>
+
+      {% include "homework_check/_exercise_fields.html" %}
+    </section>
+
+    <section class="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-twilight/10">
+      <h2 class="mb-3 font-semibold text-twilight">2. Whose is each scan?</h2>
+      <div class="space-y-3">
+        {% for scan in scans %}
+          <div class="flex gap-3 rounded-xl bg-mist/60 p-3">
+            {% if scan.thumbnail %}
+              <a href="{% url 'homework_check:scan_thumb' scan.pk %}" target="_blank" class="shrink-0">
+                <img src="{% url 'homework_check:scan_thumb' scan.pk %}" alt="First page of {{ scan.filename }}"
+                     class="w-36 rounded-lg ring-1 ring-twilight/10">
+              </a>
+            {% endif %}
+            <div class="min-w-0 flex-1">
+              <p class="text-sm font-semibold text-twilight">
+                {{ scan.page_count }} page{{ scan.page_count|pluralize }}
+                <span class="font-normal text-twilight/50">· {{ scan.received_at|date:"D j M, H:i" }}</span>
+              </p>
+              <p class="truncate text-xs text-twilight/50">{{ scan.filename }}{% if scan.sender %} · from {{ scan.sender }}{% endif %}</p>
+
+              {% if scan.problem %}
+                <p class="mt-2 text-sm font-semibold text-rose-pop">{{ scan.problem }}</p>
+              {% else %}
+                <select name="student_{{ scan.pk }}" data-roster data-roster-blank="— skip for now —"
+                        class="mt-2 w-full rounded-xl border-twilight/20 bg-white p-3 text-base">
+                </select>
+              {% endif %}
+
+              <button type="submit" form="discard-{{ scan.pk }}"
+                      class="mt-2 text-xs font-semibold text-rose-pop/70">Discard</button>
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+    </section>
+
+    <button type="submit"
+            class="w-full rounded-xl bg-violet-royal px-4 py-4 text-base font-semibold text-white shadow-sm">
+      Make checks for the scans with a student
+    </button>
+  </form>
+
+  {# Outside the main form -- forms cannot nest -- and reached by form="…". #}
+  {% for scan in scans %}
+    <form id="discard-{{ scan.pk }}" method="post" action="{% url 'homework_check:scan_delete' scan.pk %}"
+          onsubmit="return confirm('Discard this scan? It is deleted for good.');">
+      {% csrf_token %}
+    </form>
+  {% endfor %}
+  {% endif %}
+</div>
+
+{% if scans and solutions %}
+  {% include "homework_check/_exercise_script.html" %}
+{% endif %}
+<script>
+(function () {
+  var btn = document.getElementById('copyAddress');
+  if (!btn || !navigator.clipboard) return;
+  btn.addEventListener('click', function () {
+    navigator.clipboard.writeText(document.getElementById('scanAddress').textContent.trim())
+      .then(function () { btn.textContent = 'Copied'; });
+  });
+})();
+</script>
+{% endblock %}

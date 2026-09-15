@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import CheckPhoto, HomeworkCheck
+from .models import CheckPhoto, HomeworkCheck, InboundScan, ScanAddress
 
 
 class CheckPhotoInline(admin.TabularInline):
@@ -49,3 +49,20 @@ class HomeworkCheckAdmin(admin.ModelAdmin):
                        'photos_deleted_count')
         }),
     )
+
+
+@admin.register(ScanAddress)
+class ScanAddressAdmin(admin.ModelAdmin):
+    list_display = ['teacher', 'address', 'created_at']
+    readonly_fields = ['token', 'created_at']
+
+
+@admin.register(InboundScan)
+class InboundScanAdmin(admin.ModelAdmin):
+    """Waiting scans, for support. No file links: they are private storage,
+    and PrivateStorage.url() raises by design."""
+    list_display = ['teacher', 'filename', 'page_count', 'problem', 'received_at']
+    list_filter = ['teacher']
+    fields = ['teacher', 'received_at', 'sender', 'subject', 'filename',
+              'page_count', 'problem']
+    readonly_fields = fields

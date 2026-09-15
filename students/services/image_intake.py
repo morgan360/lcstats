@@ -115,6 +115,96 @@ def process_upload(uploaded_file):
     return ContentFile(data), width, height, len(data)
 
 
+# ---------------------------------------------------------------------------
+# Scanned PDFs
+#
+# A scan arrives as one PDF of several pages rather than one photo per page.
+# Each page is rendered and then stored exactly as a photo would be, so nothing
+# downstream -- the vision call, the report, the purge -- can tell them apart.
+# process_upload above is left alone: the student photo path depends on it.
+# ---------------------------------------------------------------------------
+
+# A4 at 150 DPI is about 1750px on the long edge, just above the 1600px store
+# size. More would only be thrown away by the downscale that follows.
+PDF_RENDER_DPI = 150
+
+
+def is_pdf(data):
+    """True if the bytes are a PDF. The spec allows the header anywhere in the
+    first 1024 bytes, and filenames and declared types mean nothing."""
+    return b"%PDF-" in bytes(data[:1024])
+
+
+def _open_pdf(data):
+    import fitz  # PyMuPDF; imported here so photo-only callers never load it
+
+    try:
+        doc = fitz.open(stream=bytes(data), filetype="pdf")
+    except Exception:
+        raise ImageIntakeError("That PDF couldn't be opened. Try scanning it again.")
+    if doc.needs_pass:
+        doc.close()
+        raise ImageIntakeError(
+            "That PDF is password-protected, so it can't be read. Scan it again "
+            "without a password.")
+    if doc.page_count == 0:
+        doc.close()
+        raise ImageIntakeError("That PDF has no pages.")
+    return doc
+
+
+def _render_pdf_page(doc, index, dpi=PDF_RENDER_DPI):
+    try:
+        pix = doc[index].get_pixmap(dpi=dpi, alpha=False)
+        return Image.frombytes("RGB", (pix.width, pix.height), pix.samples)
+    except Exception:
+        logger.exception("Could not render page %s of a scanned PDF", index + 1)
+        raise ImageIntakeError(
+            f"Page {index + 1} of that PDF couldn't be read. Try scanning it again.")
+
+
+def pdf_page_count(data):
+    """Pages in a PDF, raising ImageIntakeError if it can't be read."""
+    doc = _open_pdf(data)
+    try:
+        return doc.page_count
+    finally:
+        doc.close()
+
+
+def pdf_thumbnail(data, max_edge=900):
+    """The first page as a JPEG, big enough to read the name written on it."""
+    doc = _open_pdf(data)
+    try:
+        img, _, _ = _to_jpeg(_render_pdf_page(doc, 0), max_edge)
+        return ContentFile(img)
+    finally:
+        doc.close()
+
+
+def process_pdf_pages(data, max_pages):
+    """Every page of a scanned PDF, ready to store as photos.
+
+    Returns a list of ``(ContentFile, width, height, byte_size)``, the same
+    shape ``process_upload`` gives for one photo. Raises ``ImageIntakeError``
+    with wording a teacher can act on.
+    """
+    doc = _open_pdf(data)
+    try:
+        if doc.page_count > max_pages:
+            raise ImageIntakeError(
+                f"That PDF has {doc.page_count} pages, and a check takes at most "
+                f"{max_pages}. Scan single-sided, or split it.")
+        max_edge = getattr(settings, "WORK_PHOTO_STORE_MAX_EDGE", 1600)
+        pages = []
+        for index in range(doc.page_count):
+            img, width, height = _to_jpeg(_render_pdf_page(doc, index), max_edge)
+            pages.append((ContentFile(img), width, height, len(img)))
+        return pages
+    finally:
+        doc.close()
+
+
 def encode_for_api(image_field, max_edge=None):
     """Base64 a stored photo, downscaled again for the vision call.
 

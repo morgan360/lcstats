@@ -4,6 +4,7 @@ Access is layered the way the reports app does it: @teacher_required for the
 group, then object-level ownership on every view, because a teacher must not
 reach another teacher's class or a student who is not in one of their own.
 """
+import hmac
 import json
 import logging
 
@@ -11,10 +12,11 @@ from django.conf import settings
 from django.contrib import messages
 from django.core.exceptions import PermissionDenied
 from django.db.models import Q
-from django.http import FileResponse, HttpResponseForbidden, JsonResponse
+from django.http import FileResponse, Http404, HttpResponseForbidden, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
+from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_GET, require_POST
 
 from homework.models import TeacherClass
@@ -23,8 +25,8 @@ from hw_solutions.services import build_sections
 from students.decorators import teacher_required
 from students.services.image_intake import ImageIntakeError, process_upload
 
-from .models import CheckPhoto, HomeworkCheck, Rating
-from .services import runner
+from .models import CheckPhoto, HomeworkCheck, InboundScan, Rating, ScanAddress
+from .services import runner, scans as scan_service
 
 logger = logging.getLogger(__name__)
 
@@ -120,28 +122,40 @@ def index(request):
         'checks': checks[:60],
         'classes': classes,
         'current_class': current_class,
+        'scans_waiting': InboundScan.objects.filter(teacher=request.user).count(),
     })
 
 
-@teacher_required
-def check_new(request):
-    """Pick a student, name the exercise, choose the solutions to check against."""
-    classes = _pickable_classes(request)
+def _solutions_for(request, index=True):
+    """The solution PDFs a teacher may pick, for the subject they are in.
 
+    Shared by the new-check form and the scans page, so both offer the same
+    list. ``index`` builds the exercise list of any PDF not yet indexed, so one
+    uploaded through the admin needs no extra step; it reads the text layer
+    only -- cheap, and cached after the first time.
+    """
     solutions = HWSolution.objects.select_related('subject').prefetch_related('sections')
     current_subject = getattr(request, 'current_subject', None)
     if current_subject:
         solutions = solutions.filter(
             Q(subject=current_subject) | Q(subject__isnull=True))
 
-    # Index on demand, so a PDF uploaded through the admin needs no extra step.
-    # Reads the text layer only -- cheap, and cached after the first time.
-    for solution in solutions:
-        if not solution.sections.all():
-            try:
-                build_sections(solution)
-            except Exception:
-                logger.exception("Could not index solution %s", solution.pk)
+    if index:
+        for solution in solutions:
+            if not solution.sections.all():
+                try:
+                    build_sections(solution)
+                except Exception:
+                    logger.exception("Could not index solution %s", solution.pk)
+    return solutions
+
+
+@teacher_required
+def check_new(request):
+    """Pick a student, name the exercise, choose the solutions to check against."""
+    classes = _pickable_classes(request)
+    solutions = _solutions_for(request)
+    current_subject = getattr(request, 'current_subject', None)
 
     if request.method == 'POST':
         if _rate_limited(request.user):
@@ -475,3 +489,182 @@ def check_delete(request, pk):
     if class_id.isdigit():
         return redirect(f"{reverse('homework_check:index')}?class={class_id}")
     return redirect('homework_check:index')
+
+
+# ---------------------------------------------------------------------------
+# Scans by email
+# ---------------------------------------------------------------------------
+
+@csrf_exempt
+@require_POST
+def inbound_email(request):
+    """Take one raw email from the Cloudflare Email Worker.
+
+    Not a page anyone visits, so it answers the Worker only. With no secret
+    configured, or the wrong one, it is a 404 -- indistinguishable from there
+    being no endpoint at all. An address that matches no teacher is accepted
+    and dropped, so the response never confirms which tokens exist.
+
+    The body is read with request.read(), not request.body: body refuses
+    anything over DATA_UPLOAD_MAX_MEMORY_SIZE (2.5MB), and a scanned class
+    set is routinely ten times that.
+    """
+    secret = getattr(settings, 'HOMEWORK_CHECK_INBOUND_SECRET', '')
+    given = request.headers.get('X-Scan-Secret', '')
+    if not secret or not hmac.compare_digest(given.encode(), secret.encode()):
+        raise Http404
+
+    limit = getattr(settings, 'HOMEWORK_CHECK_INBOUND_MAX_BYTES', 26 * 1024 * 1024)
+    try:
+        length = int(request.META.get('CONTENT_LENGTH') or 0)
+    except ValueError:
+        length = 0
+    if length <= 0 or length > limit:
+        return JsonResponse({'ok': False, 'message': 'Too large.'}, status=413)
+
+    teacher = scan_service.teacher_for_recipient(request.headers.get('X-Scan-To', ''))
+    if teacher is None:
+        return JsonResponse({'ok': True, 'stored': 0})
+
+    raw = request.read(limit + 1)
+    try:
+        stored = scan_service.store_email(teacher, raw)
+    except Exception:
+        # A 500 makes the Worker bounce the email, so the sender learns it did
+        # not arrive -- better than a scan silently going nowhere.
+        logger.exception("Could not store an emailed scan for %s", teacher.pk)
+        return JsonResponse({'ok': False, 'message': 'Could not store it.'}, status=500)
+
+    logger.info("Stored %s scan(s) by email for teacher %s", stored, teacher.pk)
+    return JsonResponse({'ok': True, 'stored': stored})
+
+
+def _own_scans(request):
+    return InboundScan.objects.filter(teacher=request.user)
+
+
+@teacher_required
+@require_GET
+def scans(request):
+    """Emailed scans waiting to be matched to students."""
+    classes = _pickable_classes(request)
+    solutions = _solutions_for(request)
+    class_id = request.GET.get('class')
+    selected_class = None
+    if class_id and class_id.isdigit():
+        selected_class = classes.filter(pk=int(class_id)).first()
+
+    return render(request, 'homework_check/scans.html', {
+        'address': ScanAddress.for_teacher(request.user),
+        'scans': _own_scans(request),
+        'classes': classes,
+        'solutions': solutions,
+        'selected_class': selected_class,
+        'carried': None,
+        'max_solution_pages': getattr(
+            settings, 'HOMEWORK_CHECK_MAX_SOLUTION_PAGES', 30),
+        'photo_retention_days': getattr(
+            settings, 'HOMEWORK_CHECK_PHOTO_RETENTION_DAYS', 7),
+    })
+
+
+@teacher_required
+@require_POST
+def scans_assign(request):
+    """Make a check from every scan a student was picked for.
+
+    One form for the whole class: the exercise and solutions are chosen once,
+    and each scan carries its own student. Scans left on "skip" stay waiting.
+    Only this teacher's scans are ever looked at, whatever ids the form sends.
+    """
+    classes = _pickable_classes(request)
+    teacher_class = get_object_or_404(classes, pk=request.POST.get('teacher_class'))
+    solution = get_object_or_404(
+        _solutions_for(request, index=False), pk=request.POST.get('solution'))
+    exercise = (request.POST.get('exercise_name') or '').strip()
+    pages = (request.POST.get('solution_pages') or '').strip()
+
+    if not exercise:
+        messages.error(request, "Give the exercise a name so you can find it later.")
+        return redirect('homework_check:scans')
+
+    roster = {str(s.pk): s for s in teacher_class.students.all()}
+    created, failed = [], 0
+    for scan in _own_scans(request).filter(problem=''):
+        student = roster.get(request.POST.get(f'student_{scan.pk}', ''))
+        if student is None:
+            continue
+        try:
+            check = scan_service.create_check_from_scan(
+                scan, teacher=request.user, teacher_class=teacher_class,
+                student=student, solution=solution, exercise_name=exercise,
+                solution_pages=pages,
+            )
+        except ImageIntakeError as e:
+            scan.problem = str(e)[:200]
+            scan.save(update_fields=['problem'])
+            failed += 1
+            continue
+        created.append(check.pk)
+
+    if failed:
+        messages.error(request, f"{failed} scan(s) couldn't be read — the reason is shown on each.")
+    if not created:
+        if not failed:
+            messages.error(request, "Pick a student beside at least one scan.")
+        return redirect('homework_check:scans')
+
+    messages.success(request, f"Made {len(created)} check(s). Press “Check all” to mark them.")
+    ids = ','.join(str(pk) for pk in created)
+    return redirect(f"{reverse('homework_check:run')}?ids={ids}")
+
+
+@teacher_required
+@require_GET
+def scan_thumb(request, pk):
+    """A scan's first page, to its own teacher only. Private, like the photos."""
+    scan = get_object_or_404(_own_scans(request), pk=pk)
+    if not scan.thumbnail:
+        raise Http404
+    response = FileResponse(scan.thumbnail.open("rb"), content_type="image/jpeg")
+    response["Cache-Control"] = "private, no-store"
+    return response
+
+
+@teacher_required
+@require_POST
+def scan_delete(request, pk):
+    """Discard a scan that isn't wanted. Its files go with it."""
+    get_object_or_404(_own_scans(request), pk=pk).delete()
+    messages.success(request, "Scan discarded.")
+    return redirect('homework_check:scans')
+
+
+@teacher_required
+@require_GET
+def run(request):
+    """Mark a batch of checks one after another, from one page.
+
+    The checks made from a class's scans, in the order they were made. The
+    page drives the same analyse-next endpoint the check page does, one check
+    at a time, so nothing about the marking itself differs.
+    """
+    ids = [int(i) for i in (request.GET.get('ids') or '').split(',') if i.isdigit()]
+    checks = HomeworkCheck.objects.filter(pk__in=ids).select_related(
+        'student', 'teacher_class')
+    if not request.user.is_superuser:
+        profile = getattr(request.user, 'teacher_profile', None)
+        if profile is None:
+            raise PermissionDenied
+        checks = checks.filter(teacher_class__teacher=profile)
+
+    order = {pk: n for n, pk in enumerate(ids)}
+    checks = sorted(checks, key=lambda c: order.get(c.pk, 0))
+    if not checks:
+        raise Http404
+
+    rows = []
+    for check in checks:
+        done, total = check.progress()
+        rows.append({'check': check, 'done': done, 'total': total})
+    return render(request, 'homework_check/run.html', {'rows': rows})

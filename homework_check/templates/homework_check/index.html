@@ -13,10 +13,16 @@
         Photograph a student's copy and check it against a solutions PDF.
       </p>
     </div>
-    <a href="{% url 'homework_check:check_new' %}{% if current_class %}?class={{ current_class.id }}{% endif %}"
-       class="rounded-xl bg-violet-royal px-4 py-3 text-sm font-semibold text-white shadow-sm">
-      + New check
-    </a>
+    <div class="flex flex-wrap gap-2">
+      <a href="{% url 'homework_check:scans' %}{% if current_class %}?class={{ current_class.id }}{% endif %}"
+         class="rounded-xl bg-white px-4 py-3 text-sm font-semibold text-twilight shadow-sm ring-1 ring-twilight/15">
+        Scans{% if scans_waiting %} ({{ scans_waiting }}){% endif %}
+      </a>
+      <a href="{% url 'homework_check:check_new' %}{% if current_class %}?class={{ current_class.id }}{% endif %}"
+         class="rounded-xl bg-violet-royal px-4 py-3 text-sm font-semibold text-white shadow-sm">
+        + New check
+      </a>
+    </div>
   </div>
 
   {% if classes %}

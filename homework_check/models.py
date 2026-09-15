@@ -7,6 +7,7 @@ question. This is owned by a teacher, spans up to sixteen photos and many
 questions, and has no question part at all. The *services* are shared --
 private storage, image intake, the vision wrapper -- but the row is not.
 """
+import secrets
 import uuid
 
 from django.conf import settings
@@ -212,3 +213,93 @@ class CheckPhoto(models.Model):
 
     def __str__(self):
         return f"Photo {self.order + 1} of check #{self.hw_check_id}"
+
+
+# ---------------------------------------------------------------------------
+# Scans by email
+#
+# A copier (or a phone scanning app) emails a PDF to scans+<token>@numscoil.ie.
+# Cloudflare Email Routing hands it to a Worker, which posts the raw email to
+# the inbound view. Each PDF waits here until the teacher says whose it is.
+# ---------------------------------------------------------------------------
+
+# Lower-case letters and digits only: this ends up in an email address, which
+# some copier keyboards and address books handle badly in any other form.
+_TOKEN_ALPHABET = 'abcdefghijkmnpqrstuvwxyz23456789'
+
+
+def _new_token():
+    return ''.join(secrets.choice(_TOKEN_ALPHABET) for _ in range(10))
+
+
+def scan_file_path(instance, filename):
+    """Random names, outside the per-check photo directories."""
+    ext = 'jpg' if filename.endswith('.jpg') else 'pdf'
+    return f"homework_check_scans/{uuid.uuid4().hex}.{ext}"
+
+
+class ScanAddress(models.Model):
+    """A teacher's private address for emailing in scans.
+
+    The token is the whole of the identification: whoever sends to it is
+    trusted to be sending that teacher's scans, the same way anyone holding a
+    work-photo QR is trusted to be that student. So it is random, long enough
+    not to be guessed, and never shown to anyone but its teacher.
+    """
+    teacher = models.OneToOneField(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE,
+        related_name='scan_address',
+    )
+    token = models.CharField(max_length=16, unique=True, default=_new_token)
+    created_at = models.DateTimeField(default=timezone.now)
+
+    def __str__(self):
+        return self.address
+
+    @property
+    def address(self):
+        domain = getattr(settings, 'HOMEWORK_CHECK_SCAN_DOMAIN', 'numscoil.ie')
+        return f"scans+{self.token}@{domain}"
+
+    @classmethod
+    def for_teacher(cls, user):
+        address, _ = cls.objects.get_or_create(teacher=user)
+        return address
+
+
+class InboundScan(models.Model):
+    """One emailed PDF, waiting to be matched to a student.
+
+    Only exists while it waits. Turning it into a check copies its pages into
+    CheckPhoto rows and deletes this row, and its files with it, so a scan is
+    never held in two places. Unclaimed ones go after the photo retention
+    period, with the daily purge.
+
+    ``problem`` is set when something arrived that can't be checked -- not a
+    PDF, too many pages, unreadable -- so the teacher sees that the email came
+    and why it can't be used, rather than wondering if it was sent at all.
+    """
+    teacher = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE,
+        related_name='inbound_scans',
+    )
+    received_at = models.DateTimeField(default=timezone.now)
+    sender = models.CharField(max_length=254, blank=True)
+    subject = models.CharField(max_length=200, blank=True)
+    filename = models.CharField(max_length=200, blank=True)
+    pdf = models.FileField(
+        upload_to=scan_file_path, storage=private_storage, blank=True,
+    )
+    thumbnail = models.ImageField(
+        upload_to=scan_file_path, storage=private_storage, blank=True,
+        help_text="First page, so the teacher can read the student's name.",
+    )
+    page_count = models.PositiveSmallIntegerField(default=0)
+    problem = models.CharField(max_length=200, blank=True)
+
+    class Meta:
+        # Oldest first: a class scanned in roll order arrives in roll order.
+        ordering = ['received_at', 'pk']
+
+    def __str__(self):
+        return f"{self.filename or 'Scan'} for {self.teacher}"
