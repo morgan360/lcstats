@@ -8,7 +8,7 @@ without mocking anything -- the same reasoning as
 import logging
 import re
 
-from .check_analysis import RATING_BANDS, VERDICT_CREDIT, VERDICTS
+from .check_analysis import RATING_BANDS, UNRATED_VERDICTS, VERDICT_CREDIT, VERDICTS
 
 logger = logging.getLogger(__name__)
 
@@ -20,6 +20,9 @@ MIN_QUESTIONS_FOR_RATING = 2
 # both have something to say, the less flattering verdict wins -- an error
 # seen on the second page is still an error.
 _VERDICT_SEVERITY = {
+    # Below everything: a batch that saw only the question gives way to one
+    # that saw the student's working on it, whatever that working earned.
+    "not_attempted": -1,
     "correct": 0,
     "slip": 1,
     "incomplete": 2,
@@ -117,7 +120,7 @@ def derive_rating(questions, chunks, failed_photos=0):
         if str(chunk.get("confidence") or "").lower() == "low":
             return "", "the model was not confident it read the pages correctly"
 
-    judged = [q for q in questions if q["verdict"] != "unclear"]
+    judged = [q for q in questions if q["verdict"] not in UNRATED_VERDICTS]
     if len(judged) < MIN_QUESTIONS_FOR_RATING:
         return "", (
             "too few questions could be matched to the solutions to rate the "
@@ -173,7 +176,9 @@ def fallback_summary(questions, counts):
     if not questions:
         return "No questions could be read from these photos."
 
-    judged = counts["total"] - counts["unclear"]
+    judged = counts["total"] - sum(counts.get(v, 0) for v in UNRATED_VERDICTS)
+    if not judged and counts.get("not_attempted") == counts["total"]:
+        return "None of the questions on these pages were attempted."
     if not judged:
         return (
             f"{counts['total']} question(s) were found, but none could be "
@@ -191,6 +196,8 @@ def fallback_summary(questions, counts):
         bits.append(f"{counts['wrong']} used the wrong approach.")
     if counts["incomplete"]:
         bits.append(f"{counts['incomplete']} were left unfinished.")
+    if counts.get("not_attempted"):
+        bits.append(f"{counts['not_attempted']} were not attempted.")
     return " ".join(bits)
 
 

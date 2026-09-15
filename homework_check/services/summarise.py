@@ -49,7 +49,7 @@ def _completion(messages, max_tokens, temperature, **extra):
 def _findings_text(questions):
     lines = []
     for q in questions:
-        bits = [f"{q['label']}: {q['verdict']}"]
+        bits = [f"{q['label']}: {q['verdict'].replace('_', ' ')}"]
         if q["student_answer"]:
             bits.append(f"they answered {q['student_answer']}")
         if q["correct_answer"]:

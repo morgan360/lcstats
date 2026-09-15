@@ -154,6 +154,7 @@ COUNT_PHRASES = [
     ('slip', 'slip', 'slips'),
     ('wrong', 'wrong', 'wrong'),
     ('incomplete', 'incomplete', 'incomplete'),
+    ('not_attempted', 'not attempted', 'not attempted'),
     ('not_in_solutions', 'not in the solutions', 'not in the solutions'),
 ]
 

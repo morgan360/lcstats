@@ -54,7 +54,7 @@ and it printed at the top of a student's sheet.{% endcomment %}
     .v.correct { background: #e8f5e0; }
     .v.slip { background: #fdf0d5; }
     .v.wrong { background: #fbe0e0; }
-    .v.incomplete, .v.unclear { background: #eeeef4; color: var(--muted); }
+    .v.incomplete, .v.unclear, .v.not_attempted { background: #eeeef4; color: var(--muted); }
     .muted { color: var(--muted); }
 
     h2 { font-size: 10pt; text-transform: uppercase; letter-spacing: .05em;
@@ -115,7 +115,7 @@ and it printed at the top of a student's sheet.{% endcomment %}
       {% for q in questions %}
         <tr>
           <td class="q">{{ q.label }}</td>
-          <td><span class="v {{ q.verdict }}">{{ q.verdict }}</span></td>
+          <td><span class="v {{ q.verdict }}">{% if q.verdict == 'not_attempted' %}not attempted{% else %}{{ q.verdict }}{% endif %}</span></td>
           <td class="a maths">{{ q.student_answer|default:"—" }}</td>
           <td class="a maths">
             {% if q.correct_answer %}{{ q.correct_answer }}

@@ -110,6 +110,9 @@ class FullLabelTests(SimpleTestCase):
         self.assertEqual(tidy_label('2.1  Q5.'), '2.1 Q5')
         self.assertEqual(tidy_label('(iii)'), '(iii)')
         self.assertEqual(tidy_label('2.1'), '2.1')
+        self.assertEqual(tidy_label('Exercise 2.1 Q5'), '2.1 Q5')
+        self.assertEqual(tidy_label('Ex. 2.2 Q4'), '2.2 Q4')
+        self.assertEqual(tidy_label('Extra'), 'Extra')
         self.assertEqual(tidy_label(None), '')
 
     def test_two_spellings_from_two_batches_merge_into_one_row(self):

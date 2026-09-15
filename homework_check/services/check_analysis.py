@@ -78,7 +78,15 @@ class EmptyResponse(Exception):
     """
 
 
-VERDICTS = ("correct", "slip", "wrong", "incomplete", "unclear")
+VERDICTS = ("correct", "slip", "wrong", "incomplete", "unclear", "not_attempted")
+
+# Questions that say nothing about how well the student did, so the rating is
+# worked out without them: "unclear" could not be judged, "not_attempted" had
+# no working at all. A not-attempted question is still listed on the sheet --
+# that is feedback -- but it neither drags the rating down nor withholds it.
+# Added after check 33 (2026-09-15), where a page showing only the printed
+# question was reported as unreadable and the whole copy lost its rating.
+UNRATED_VERDICTS = ("unclear", "not_attempted")
 
 # What each verdict is worth when the rating is computed. A slip -- an
 # arithmetic or sign error in an otherwise sound method -- is deliberately
@@ -192,7 +200,11 @@ def build_prompt(exercise_name, page_numbers):
         '- "slip": the method is sound but an arithmetic or sign error changed '
         "the answer. Say which line.",
         '- "wrong": the method itself is not right for this question.',
-        '- "incomplete": they started sensibly but did not finish.',
+        '- "incomplete": they started working towards an answer but did not finish.',
+        '- "not_attempted": the question is on the student\'s page -- printed in '
+        "the workbook, or copied out -- but there is no working towards it at "
+        "all. Copying the question out is not an attempt. Say so plainly in "
+        'the comment, e.g. "Not attempted."',
         '- "unclear": you cannot read it, or it is not in the solutions.',
         "That distinction between a slip and a wrong method is the whole value "
         "of this report -- a student who keeps making sign errors needs to hear "
@@ -214,8 +226,12 @@ def build_prompt(exercise_name, page_numbers):
         "**Be honest about what you cannot see.** Never state anything about "
         "working you cannot actually read. If a photo is blurry, angled, cut "
         'off, or the handwriting is ambiguous, say so plainly, set "readable" '
-        'to false and "confidence" to "low". If a page is blank or is not maths '
-        "working at all, report no questions for it rather than inventing any.",
+        'to false and "confidence" to "low". A page with no working on it is '
+        "not a reading problem: if it is blank, or is not maths at all, report "
+        "no questions for it; if it shows a question with no working -- the "
+        "printed workbook question, or the question copied out -- report that "
+        'question as "not_attempted". Either way leave "readable" and '
+        '"confidence" as the rest of the pages deserve.',
         "",
         "**Every question you report must be one this student actually wrote on "
         "these pages.** Do not list questions from the solutions PDF that the "
@@ -233,7 +249,8 @@ def build_prompt(exercise_name, page_numbers):
         '    "found_in_solutions": boolean',
         '    "student_answer": their final answer, or "" if they reached none',
         '    "correct_answer": the answer from the solutions, or "" if not found',
-        '    "verdict": one of "correct", "slip", "wrong", "incomplete", "unclear"',
+        '    "verdict": one of "correct", "slip", "wrong", "incomplete", '
+        '"not_attempted", "unclear"',
         '    "comment": one or two sentences for the student on what went wrong',
         '    "continues": boolean, true if the working ran on past this batch',
         '- "notes": anything the teacher should know, e.g. a photo that could '
@@ -397,6 +414,9 @@ def tidy_label(label):
     spellings of one question printed as two half-filled rows.
     """
     label = re.sub(r"\s+", " ", str(label or "")).strip()
+    # "Exercise 2.1 Q5" -> "2.1 Q5": the word crept in on check 33 and sorted
+    # those rows after every other one.
+    label = re.sub(r"^(?:exercise|ex)\.?\s+(?=\d)", "", label, flags=re.I)
     label = re.sub(r"\s+(?=[(\[])", "", label)       # "5 (i)" -> "5(i)"
     label = re.sub(r"\b([Qq])\s+(?=\d)", r"\1", label)  # "Q 7" -> "Q7"
     return label.rstrip(" .:")                        # "5." -> "5"
@@ -425,9 +445,11 @@ def _clean_questions(raw):
         correct = str(row.get("correct_answer") or "").strip()
         # An answer for a question the model says it could not find is exactly
         # the invention the prompt forbids. Drop it rather than print it.
+        # "Not attempted" stays true either way -- there is nothing to judge.
         if not found:
             correct = ""
-            verdict = "unclear"
+            if verdict != "not_attempted":
+                verdict = "unclear"
 
         cleaned.append({
             "label": label,

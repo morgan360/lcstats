@@ -165,7 +165,7 @@
                 {% elif q.verdict == 'slip' %}bg-amber-100 text-amber-800
                 {% elif q.verdict == 'wrong' %}bg-rose-pop/20 text-rose-pop
                 {% else %}bg-twilight/10 text-twilight/70{% endif %}">
-                {{ q.verdict }}
+                {% if q.verdict == 'not_attempted' %}not attempted{% else %}{{ q.verdict }}{% endif %}
               </span>
               <span class="font-semibold text-twilight">{{ q.label }}</span>
               <button type="button" data-drop-question="{{ q.label }}"

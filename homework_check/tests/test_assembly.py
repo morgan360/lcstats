@@ -246,6 +246,55 @@ class WrongSolutionsTests(SimpleTestCase):
         self.assertFalse(looks_like_wrong_solutions({"total": 0, "not_in_solutions": 0}))
 
 
+class NotAttemptedTests(SimpleTestCase):
+    """A question with no working is feedback, not a reason to withhold.
+
+    Check 33: Exercise 2.3 Q11 was on the page but not attempted. It was
+    reported as an unreadable photo, and the whole copy lost its rating.
+    """
+
+    def test_it_neither_lowers_nor_withholds_the_rating(self):
+        qs = [q("1"), q("2"), q("3"), q("11", verdict="not_attempted")]
+        self.assertEqual(derive_rating(qs, [chunk(qs)]), ("excellent", ""))
+
+    def test_it_does_not_count_towards_the_minimum_to_rate(self):
+        qs = [q("1"), q("2", verdict="not_attempted"), q("3", verdict="not_attempted")]
+        rating, reason = derive_rating(qs, [chunk(qs)])
+        self.assertEqual(rating, "")
+        self.assertIn("too few questions", reason)
+
+    def test_working_seen_in_another_batch_wins(self):
+        merged = merge_questions([
+            chunk([q("11", verdict="not_attempted")]),
+            chunk([q("11", verdict="slip")]),
+        ])
+        self.assertEqual(merged[0]["verdict"], "slip")
+
+    def test_it_survives_being_outside_the_solution_pages(self):
+        rows = _clean_questions([{"label": "11", "verdict": "not_attempted",
+                                  "found_in_solutions": False}])
+        self.assertEqual(rows[0]["verdict"], "not_attempted")
+
+    def test_it_is_counted_and_summarised(self):
+        qs = [q("1"), q("2", verdict="not_attempted")]
+        counts = tally(qs)
+        self.assertEqual(counts["not_attempted"], 1)
+        self.assertIn("1 were not attempted", fallback_summary(qs, counts))
+        self.assertIn("1 of 1 question(s) fully correct", fallback_summary(qs, counts))
+
+    def test_nothing_attempted_says_so(self):
+        qs = [q("1", verdict="not_attempted")]
+        self.assertEqual(fallback_summary(qs, tally(qs)),
+                         "None of the questions on these pages were attempted.")
+
+    def test_the_prompt_keeps_an_empty_page_readable(self):
+        from homework_check.services.check_analysis import build_prompt
+        prompt = build_prompt("Ex 2.3", [1])
+        self.assertIn('"not_attempted"', prompt)
+        self.assertIn("not a reading problem", prompt)
+        self.assertIn("Copying the question out is not an attempt", prompt)
+
+
 class TallyTests(SimpleTestCase):
     def test_counts_every_verdict_and_the_gaps_in_the_solutions(self):
         counts = tally([
