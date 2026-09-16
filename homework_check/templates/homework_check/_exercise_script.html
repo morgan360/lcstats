@@ -34,8 +34,10 @@
     autoFilled = label;
   }
 
+  /* The check page changes the solutions of a check that already has its
+     student, so it has the exercise fields with no class picker above them.
+     Everything below the roster block works without one. */
   var classSelect = document.getElementById('classSelect');
-  if (!classSelect) return;
 
   /* Every student picker on the page follows the class: one on the new-check
      form, one per scan on the scans page. A picker with data-roster-blank
@@ -67,8 +69,10 @@
     });
   }
 
-  classSelect.addEventListener('change', fillStudents);
-  fillStudents();
+  if (classSelect) {
+    classSelect.addEventListener('change', fillStudents);
+    fillStudents();
+  }
 
   /* ---- Exercises -> page range --------------------------------------- */
   /* A homework often spans several exercises (2.1, 2.2 and 2.3), so they are

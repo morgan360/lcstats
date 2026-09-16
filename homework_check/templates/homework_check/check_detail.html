@@ -96,6 +96,28 @@
     </button>
     <p id="analyseStatus" class="mt-2 hidden text-sm font-semibold text-violet-royal"></p>
     <p id="analyseError" class="mt-2 hidden text-sm font-semibold text-rose-pop"></p>
+
+    {% comment %}
+      The solutions are chosen when the check is made, and a check set against
+      the wrong chapter -- or an exercise longer than the page limit -- could
+      not be marked at all and could not be repointed. With a scan there is
+      nothing to start again from either: the scan becomes the check.
+    {% endcomment %}
+    <details class="mt-4 rounded-xl bg-mist/60 p-3">
+      <summary class="cursor-pointer text-sm font-semibold text-twilight">
+        Change the solutions or pages
+      </summary>
+      <form method="post" action="{% url 'homework_check:check_solutions' check.pk %}"
+            class="mt-3 space-y-5"
+            onsubmit="return confirm('Mark this copy again against the solutions you picked?\n\nThe current report is replaced.');">
+        {% csrf_token %}
+        {% include "homework_check/_exercise_fields.html" %}
+        <button type="submit"
+                class="w-full rounded-xl bg-twilight px-4 py-3 text-sm font-semibold text-white shadow-sm">
+          Use these solutions
+        </button>
+      </form>
+    </details>
   </section>
 
   {# ---- Result ---------------------------------------------------------- #}
@@ -224,6 +246,9 @@
     <button type="submit" class="text-sm font-semibold text-rose-pop/70">Delete this check</button>
   </form>
 </div>
+
+{# Drives the exercise tick list in "Change the solutions or pages" above. #}
+{% include "homework_check/_exercise_script.html" %}
 {% endblock %}
 
 {% block extra_scripts %}

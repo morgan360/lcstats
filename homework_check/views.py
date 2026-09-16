@@ -333,11 +333,67 @@ def check_detail(request, pk):
         'photos': check.photos.all(),
         'done': done,
         'total': total,
+        # For the "change the solutions" form: the same picker the new-check
+        # page uses, starting on what this check is set to.
+        'solutions': _solutions_for(request),
+        'classes': [],
+        'carried': {'solution_id': check.solution_id,
+                    'pages': check.solution_pages,
+                    'exercise_name': check.exercise_name},
+        'max_solution_pages': getattr(
+            settings, 'HOMEWORK_CHECK_MAX_SOLUTION_PAGES', 30),
         'max_photos': getattr(settings, 'HOMEWORK_CHECK_MAX_PHOTOS', 16),
         'photo_retention_days': getattr(
             settings, 'HOMEWORK_CHECK_PHOTO_RETENTION_DAYS', 7),
         'ratings': Rating.choices,
     })
+
+
+@teacher_required
+@require_POST
+def check_solutions(request, pk):
+    """Point an existing check at different solutions, and mark it again.
+
+    The solutions and page range are chosen when a check is made, and until
+    now nothing could change them afterwards. That left a teacher stuck: a
+    check whose exercise runs past HOMEWORK_CHECK_MAX_SOLUTION_PAGES, or one
+    set against the wrong chapter, could not be marked at all, and with an
+    emailed scan there was nothing to start again from -- the scan becomes
+    the check.
+
+    Clears the report and puts every photo back to pending, because the point
+    is to read the pages again; "Check again" on its own rebuilds from the
+    batches already stored. The teacher's own note and rating are kept.
+    """
+    check = _get_owned_check(request, pk)
+
+    if check.photos_deleted:
+        messages.error(request, PHOTOS_DELETED_MESSAGE)
+        return redirect('homework_check:check_detail', pk=check.pk)
+
+    solution = get_object_or_404(
+        _solutions_for(request, index=False), pk=request.POST.get('solution'))
+    pages = (request.POST.get('solution_pages') or '').strip()[:60]
+    exercise = (request.POST.get('exercise_name') or '').strip()[:200]
+
+    check.solution = solution
+    check.solution_pages = pages
+    if exercise:
+        check.exercise_name = exercise
+    check.analysis, check.findings, check.counts, check.notes = [], [], {}, []
+    check.rating = check.rating_reason = check.summary = ''
+    check.diagram_feedback = check.error_message = check.confidence = ''
+    check.has_diagram, check.readable, check.analysed_at = False, True, None
+    check.status = HomeworkCheck.Status.DRAFT
+    check.save()
+    check.photos.update(status=CheckPhoto.Status.PENDING)
+
+    messages.success(
+        request,
+        f"Now checking against {solution.title}"
+        f"{', pages ' + pages if pages else ''}. "
+        "Press “Check this homework” to mark it again.")
+    return redirect('homework_check:check_detail', pk=check.pk)
 
 
 @teacher_required

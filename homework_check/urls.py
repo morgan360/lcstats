@@ -12,6 +12,7 @@ urlpatterns = [
     path('<int:pk>/upload/', views.check_upload, name='check_upload'),
     path('<int:pk>/analyse-next/', views.analyse_next, name='analyse_next'),
     path('<int:pk>/edit/', views.check_edit, name='check_edit'),
+    path('<int:pk>/solutions/', views.check_solutions, name='check_solutions'),
     path('<int:pk>/report/', views.report_print, name='report_print'),
     path('<int:pk>/delete/', views.check_delete, name='check_delete'),
     path('photo/<int:pk>/', views.check_photo, name='check_photo'),
