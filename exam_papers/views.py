@@ -1,6 +1,8 @@
 from django.shortcuts import render, get_object_or_404, redirect
+from django.contrib.admin.views.decorators import staff_member_required
 from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
+from django.urls import reverse
 from django.utils import timezone
 from django.db.models import Q, Count, Sum, Prefetch
 from django.views.decorators.http import require_POST
@@ -14,6 +16,9 @@ from .models import (
 from interactive_lessons.models import Topic
 from students.work_access import work_capture_visible
 from .services.vision_grading import grade_with_vision_marking_scheme
+from .services.topic_parts import (
+    attach_matching_parts, best_part_attempts, questions_for_topic, topic_filter,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -125,9 +130,16 @@ def start_paper_attempt(request, slug):
         target_question = paper.questions.order_by('order').first()
 
     if target_question:
-        return redirect('exam_papers:question_interface',
-                       attempt_id=attempt.id,
-                       question_id=target_question.id)
+        url = reverse('exam_papers:question_interface',
+                      kwargs={'attempt_id': attempt.id,
+                              'question_id': target_question.id})
+        # Arriving from a topic page to practise one part: carry it through so
+        # the interface opens on that part. A part from another question is
+        # ignored rather than trusted.
+        part_id = request.POST.get('part_id')
+        if part_id and target_question.parts.filter(id=part_id).exists():
+            url += f'?part={part_id}'
+        return redirect(url)
     else:
         return redirect('exam_papers:paper_detail', slug=slug)
 
@@ -139,7 +151,13 @@ def question_interface(request, attempt_id, question_id):
     question = get_object_or_404(ExamQuestion, id=question_id, exam_paper=attempt.exam_paper)
 
     # Get all parts for this question
-    parts = question.parts.order_by('order')
+    parts = question.parts.order_by('order').prefetch_related('topics')
+
+    # ?part=<id> narrows the page to one part, opened from a topic page
+    focus_part = None
+    focus_id = request.GET.get('part')
+    if focus_id and focus_id.isdigit():
+        focus_part = next((p for p in parts if p.id == int(focus_id)), None)
 
     # Get previous attempts for each part
     parts_with_attempts = []
@@ -172,6 +190,7 @@ def question_interface(request, attempt_id, question_id):
             'attempt_count': attempt_count,
             'solution_unlocked': solution_unlocked,
             'latest_attempt': latest_attempt,
+            'is_focused': focus_part is not None and part.id == focus_part.id,
         })
 
     # Calculate time remaining (for timed mode)
@@ -214,6 +233,7 @@ def question_interface(request, attempt_id, question_id):
         'attempt': attempt,
         'question': question,
         'parts_with_attempts': parts_with_attempts,
+        'focus_part': focus_part,
         'time_remaining': time_remaining,
         'timer_percentage': timer_percentage,
         'is_paused': is_paused,
@@ -420,28 +440,19 @@ def view_results(request, attempt_id):
 
 @login_required
 def topic_practice(request, topic_id):
-    """Display exam questions filtered by topic for practice"""
+    """Display exam questions touching a topic, by question or by part"""
     topic = get_object_or_404(Topic, id=topic_id)
 
-    # Get all published exam questions for this topic
-    questions = ExamQuestion.objects.filter(
-        topic=topic,
-        exam_paper__is_published=True
-    ).select_related('exam_paper').prefetch_related('parts').order_by('-exam_paper__year', 'order')
+    questions = list(questions_for_topic(topic).order_by('-exam_paper__year', 'order'))
+    attach_matching_parts(questions, topic)
 
-    # Get user's attempts for these questions
     user_attempts = {}
     if request.user.is_authenticated:
-        for question in questions:
-            for part in question.parts.all():
-                attempts = ExamQuestionAttempt.objects.filter(
-                    exam_attempt__student=request.user,
-                    question_part=part
-                )
-                user_attempts[part.id] = {
-                    'count': attempts.count(),
-                    'best_score': attempts.order_by('-marks_awarded').first()
-                }
+        parts = [part for question in questions for part in question.parts.all()]
+        user_attempts = {
+            part_id: {'count': info['count'], 'best_score': info['best']}
+            for part_id, info in best_part_attempts(request.user, parts).items()
+        }
 
     context = {
         'topic': topic,
@@ -610,11 +621,12 @@ def worksheet_generator(request):
     selected_topic_id = request.GET.get('topic')
     selected_subject_id = request.GET.get('subject')
 
-    # Only show topics that have questions with images
+    # Only show topics that have questions with images, filed either on the
+    # question or on one of its parts
+    with_images = ExamQuestion.objects.exclude(image='').exclude(image__isnull=True)
     topics = Topic.objects.filter(
-        exam_questions__image__isnull=False
-    ).exclude(
-        exam_questions__image=''
+        Q(exam_questions__in=with_images)
+        | Q(exam_question_parts__question__in=with_images)
     ).distinct().select_related('subject').order_by('subject__name', 'name')
 
     if selected_subject_id:
@@ -628,8 +640,8 @@ def worksheet_generator(request):
             ).exclude(image='').exclude(image__isnull=True)
         else:
             questions = ExamQuestion.objects.filter(
-                topic_id=selected_topic_id
-            ).exclude(image='').exclude(image__isnull=True)
+                topic_filter(selected_topic_id)
+            ).exclude(image='').exclude(image__isnull=True).distinct()
         questions = questions.select_related(
             'exam_paper', 'topic'
         ).prefetch_related('parts').order_by('-exam_paper__year', 'question_number')
@@ -674,3 +686,84 @@ def worksheet_print(request):
         'title': 'Worksheet',
     }
     return render(request, 'exam_papers/worksheet_print.html', context)
+
+@staff_member_required
+def topic_cross_reference(request):
+    """Grid of where each topic has been examined, part by part.
+
+    One table per paper: its topics down the side, that paper's sittings across
+    the top, and in each cell the parts filed under the topic - Q6(b), Q8(c) -
+    with their marks. Parts with no topic get a row of their own, so the gaps
+    in the tagging are as visible as the tagging.
+    """
+    subject = getattr(request, 'current_subject', None)
+    include_unpublished = request.GET.get('all') == '1'
+
+    papers = ExamPaper.objects.all()
+    if subject:
+        papers = papers.filter(subject=subject)
+    if not include_unpublished:
+        papers = papers.filter(is_published=True)
+    papers = list(papers.order_by('-year', 'is_deferred'))
+
+    parts = (ExamQuestionPart.objects
+             .filter(question__exam_paper__in=papers)
+             .select_related('question')
+             .prefetch_related('topics')
+             .order_by('question__question_number', 'order'))
+
+    # cells[(topic_id or None, paper_id)] -> [part, ...]
+    cells = {}
+    for part in parts:
+        paper_id = part.question.exam_paper_id
+        for topic_id in [t.id for t in part.topics.all()] or [None]:
+            cells.setdefault((topic_id, paper_id), []).append(part)
+
+    topics = Topic.objects.all()
+    if subject:
+        topics = topics.filter(subject=subject)
+    topics = list(topics.order_by('order', 'name'))
+
+    def build_rows(row_topics, row_papers):
+        rows = []
+        for topic in row_topics + [None]:
+            topic_id = topic.id if topic else None
+            row_cells = []
+            for paper in row_papers:
+                cell_parts = cells.get((topic_id, paper.id), [])
+                row_cells.append({
+                    'parts': cell_parts,
+                    'marks': sum(p.max_marks or 0 for p in cell_parts),
+                })
+            total_parts = sum(len(c['parts']) for c in row_cells)
+            if topic is None and not total_parts:
+                continue
+            rows.append({
+                'topic': topic,
+                'cells': row_cells,
+                'total_parts': total_parts,
+                'total_marks': sum(c['marks'] for c in row_cells),
+            })
+        return rows
+
+    tables = []
+    for code, label in ExamPaper.PAPER_TYPE_CHOICES:
+        table_papers = [p for p in papers if p.paper_type == code]
+        if not table_papers:
+            continue
+        # A topic belongs to one paper, but one filed on the other paper - or
+        # left unassigned - still shows wherever it has actually been used.
+        used = {tid for (tid, pid) in cells if tid and pid in {p.id for p in table_papers}}
+        table_topics = [t for t in topics if t.paper == code or t.id in used]
+        tables.append({
+            'label': label,
+            'papers': table_papers,
+            'rows': build_rows(table_topics, table_papers),
+        })
+
+    context = {
+        'tables': tables,
+        'include_unpublished': include_unpublished,
+        'subject': subject,
+    }
+    return render(request, 'exam_papers/topic_cross_reference.html', context)

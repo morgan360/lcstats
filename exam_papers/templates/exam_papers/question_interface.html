@@ -133,7 +133,13 @@
             <span class="marks-badge">{{ question.total_marks }} marks</span>
         </div>
 
-        {% if question.topic %}
+        {% if focus_part %}
+        <div class="focus-banner">
+            You're answering part <strong>{{ focus_part.label }}</strong>
+            {% if focus_part.topics.all %}&mdash; {% for t in focus_part.topics.all %}{{ t.name }}{% if not forloop.last %}, {% endif %}{% endfor %}{% endif %}.
+            The full question is shown for context; its other parts are hidden below.
+        </div>
+        {% elif question.topic %}
         <div class="topic-tag">{{ question.topic.name }}</div>
         {% endif %}
 
@@ -147,11 +153,16 @@
     <!-- Question Parts -->
     <div class="question-parts">
         {% for part_data in parts_with_attempts %}
-        <div class="part-container" id="part-{{ part_data.part.id }}" data-part-label="{{ part_data.part.label }}">
+        <div class="part-container{% if focus_part and not part_data.is_focused %} part-unfocused{% endif %}{% if part_data.is_focused %} part-focused{% endif %}" id="part-{{ part_data.part.id }}" data-part-label="{{ part_data.part.label }}">
             <div class="part-header">
                 <h3>{{ part_data.part.label }}</h3>
                 <span class="part-marks">{{ part_data.part.max_marks }} marks</span>
             </div>
+            {% if part_data.part.topics.all %}
+            <div class="part-topics">
+                {% for t in part_data.part.topics.all %}<span class="topic-tag">{{ t.name }}</span>{% endfor %}
+            </div>
+            {% endif %}
 
             {% if part_data.part.image %}
             <div class="part-image">
@@ -197,6 +208,11 @@
             <!-- Previous Attempts (Hidden - shown in results page) -->
         </div>
         {% endfor %}
+        {% if focus_part and parts_with_attempts|length > 1 %}
+        <button type="button" class="btn btn-show-parts" id="show-all-parts" onclick="showAllParts()">
+            Show all parts of Question {{ question.question_number }}
+        </button>
+        {% endif %}
     </div>
 
     <!-- Navigation -->
@@ -386,6 +402,44 @@
     border: 1px solid #dee2e6;
     border-radius: 8px;
     margin: 15px 0;
+}
+
+.focus-banner {
+    background: #fff0f5;
+    border-left: 4px solid #fa709a;
+    color: #2c3e50;
+    padding: 12px 16px;
+    border-radius: 4px;
+    margin-bottom: 15px;
+}
+
+.part-topics {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 10px;
+}
+
+.part-topics .topic-tag {
+    margin-bottom: 0;
+    font-size: 0.85em;
+}
+
+/* Hidden rather than left out, so answer and solution scripts still find
+   every part once "Show all parts" reveals them. */
+.part-unfocused {
+    display: none;
+}
+
+.part-focused {
+    border: 2px solid #fa709a;
+}
+
+.btn-show-parts {
+    align-self: flex-start;
+    background: #f8f9fa;
+    border: 1px solid #dee2e6;
+    color: #333;
 }
 
 .question-parts {
@@ -621,6 +675,14 @@
 {% block extra_scripts %}
 {% if show_work_capture %}{% include "includes/work_capture_assets.html" %}{% endif %}
 <script>
+function showAllParts() {
+    document.querySelectorAll('.part-unfocused').forEach(function (el) {
+        el.classList.remove('part-unfocused');
+    });
+    var button = document.getElementById('show-all-parts');
+    if (button) button.remove();
+}
+
 // Timer functionality
 {% if time_remaining is not None %}
 let timeRemaining = {{ time_remaining }};

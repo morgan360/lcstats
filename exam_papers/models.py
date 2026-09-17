@@ -181,6 +181,11 @@ class ExamQuestion(models.Model):
             return None
         return f"{seconds // 60}:{seconds % 60:02d}"
 
+    def parts_on_topic(self, topic):
+        """Parts tagged with topic, in display order."""
+        return [part for part in self.parts.all()
+                if any(t.pk == topic.pk for t in part.topics.all())]
+
     def solution_images_status(self):
         """Returns a tuple of (parts_with_images, total_parts)"""
         total_parts = self.parts.count()
@@ -225,6 +230,17 @@ class ExamQuestionPart(models.Model):
         blank=True,
         null=True,
         help_text="Marking scheme image - used by GPT-4 Vision for grading and extracting max marks"
+    )
+
+    # Topics this part draws on. A question files under one dominant topic, but
+    # its parts often span several - (a) Functions, (b) Differential Calculus -
+    # and a part is listed under every topic here. Main topic first is only a
+    # convention of the classifier; the relation itself is unordered.
+    topics = models.ManyToManyField(
+        Topic,
+        blank=True,
+        related_name='exam_question_parts',
+        help_text="Every topic this part draws on"
     )
 
     # Marking (optional - auto-extracted from marking scheme if not set)

@@ -1,4 +1,5 @@
 {% extends "_base.html" %}
+{% load dict_filters %}
 
 {% block title %}{{ topic.name }} - Exam Questions - NumScoil{% endblock %}
 
@@ -11,7 +12,7 @@
 
     <div class="practice-intro">
         <p>
-            <strong>Found {{ questions.count }} exam question{{ questions.count|pluralize }}</strong> from past Leaving Certificate papers.
+            <strong>Found {{ questions|length }} exam question{{ questions|length|pluralize }}</strong> from past Leaving Certificate papers.
             Practice these questions to prepare for your exams!
         </p>
     </div>
@@ -44,9 +45,18 @@
             <div class="question-parts-list">
                 <strong>Parts:</strong>
                 {% for part in question.parts.all %}
-                <div class="part-item">
+                <div class="part-item{% if part in question.matching_parts %} part-on-topic{% endif %}">
                     <span class="part-label">{{ part.label }}</span>
                     <span class="part-marks">{{ part.max_marks }} marks</span>
+                    {% if part in question.matching_parts %}
+                    <form method="post" action="{% url 'exam_papers:start_paper_attempt' question.exam_paper.slug %}" style="display: inline;">
+                        {% csrf_token %}
+                        <input type="hidden" name="mode" value="question_practice">
+                        <input type="hidden" name="question_id" value="{{ question.id }}">
+                        <input type="hidden" name="part_id" value="{{ part.id }}">
+                        <button type="submit" class="btn-part">Practise this part</button>
+                    </form>
+                    {% endif %}
 
                     {% if user_attempts and part.id in user_attempts %}
                     <div class="part-attempts">
@@ -68,6 +78,7 @@
                 <form method="post" action="{% url 'exam_papers:start_paper_attempt' question.exam_paper.slug %}" style="display: inline;">
                     {% csrf_token %}
                     <input type="hidden" name="mode" value="question_practice">
+                    <input type="hidden" name="question_id" value="{{ question.id }}">
                     <button type="submit" class="btn btn-practice">Practice This Question</button>
                 </form>
                 <a href="{% url 'exam_papers:paper_detail' question.exam_paper.slug %}" class="btn btn-secondary">
@@ -220,6 +231,20 @@
     gap: 10px;
     padding: 8px 0;
     border-bottom: 1px solid #dee2e6;
+}
+
+.part-on-topic .part-label {
+    color: #0056b3;
+}
+
+.btn-part {
+    background: #e7f3ff;
+    color: #0056b3;
+    border: 1px solid #cfe2ff;
+    border-radius: 4px;
+    padding: 2px 10px;
+    font-size: 0.85em;
+    cursor: pointer;
 }
 
 .part-item:last-child {

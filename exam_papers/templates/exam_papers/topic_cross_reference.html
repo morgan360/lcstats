@@ -1,0 +1,127 @@
+{% extends "_base.html" %}
+
+{% block title %}Topic Map - NumScoil{% endblock %}
+
+{% block content %}
+<div class="topic-map">
+    <div class="topic-map-header">
+        <h1>Topic map{% if subject %} &mdash; {{ subject.name }}{% endif %}</h1>
+        <p>
+            Every exam question part, filed under each topic it draws on. A part on two topics appears in both rows.
+            Click a part to fix its topics in admin.
+        </p>
+        <p>
+            {% if include_unpublished %}
+            Showing all papers &middot; <a href="?">Published only</a>
+            {% else %}
+            Showing published papers &middot; <a href="?all=1">Include unpublished</a>
+            {% endif %}
+        </p>
+    </div>
+
+    {% for table in tables %}
+    <h2>{{ table.label }}</h2>
+    <div class="topic-map-scroll">
+        <table>
+            <thead>
+                <tr>
+                    <th class="topic-col">Topic</th>
+                    {% for paper in table.papers %}
+                    <th>{{ paper.year }}{% if paper.is_deferred %}<br><small>Deferred</small>{% endif %}{% if not paper.is_published %}<br><small>unpublished</small>{% endif %}</th>
+                    {% endfor %}
+                    <th>Total</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in table.rows %}
+                <tr{% if not row.topic %} class="untagged"{% endif %}>
+                    <th class="topic-col">{% if row.topic %}{{ row.topic.name }}{% else %}No topic{% endif %}</th>
+                    {% for cell in row.cells %}
+                    <td>
+                        {% for part in cell.parts %}
+                        <a href="{% url 'admin:exam_papers_examquestionpart_change' part.id %}" title="{{ part.max_marks|default:'?' }} marks">Q{{ part.question.question_number }}{{ part.label }}</a>
+                        {% endfor %}
+                        {% if cell.marks %}<div class="marks">{{ cell.marks }}m</div>{% endif %}
+                    </td>
+                    {% endfor %}
+                    <td class="total">{% if row.total_parts %}{{ row.total_parts }} part{{ row.total_parts|pluralize }}<div class="marks">{{ row.total_marks }}m</div>{% else %}&mdash;{% endif %}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% empty %}
+    <p>No exam papers yet.</p>
+    {% endfor %}
+</div>
+
+<style>
+.topic-map {
+    max-width: 100%;
+    margin: 0 auto;
+    padding: 20px 16px;
+    color: #2c3e50;
+}
+.topic-map-header p {
+    color: #6c757d;
+    margin: 6px 0;
+}
+.topic-map h2 {
+    margin: 30px 0 10px;
+}
+.topic-map-scroll {
+    overflow-x: auto;
+    background: white;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+}
+.topic-map table {
+    border-collapse: collapse;
+    font-size: 0.85em;
+    min-width: 100%;
+}
+.topic-map th,
+.topic-map td {
+    border-bottom: 1px solid #e9ecef;
+    border-right: 1px solid #f1f3f5;
+    padding: 6px 8px;
+    vertical-align: top;
+    text-align: left;
+    white-space: nowrap;
+}
+.topic-map thead th {
+    background: #f8f9fa;
+    position: sticky;
+    top: 0;
+}
+.topic-map .topic-col {
+    position: sticky;
+    left: 0;
+    background: #f8f9fa;
+    min-width: 180px;
+    white-space: normal;
+    z-index: 1;
+}
+.topic-map td a {
+    display: block;
+    color: #0056b3;
+    text-decoration: none;
+}
+.topic-map td a:hover {
+    text-decoration: underline;
+}
+.topic-map .marks {
+    color: #6c757d;
+    font-size: 0.85em;
+    margin-top: 2px;
+}
+.topic-map .total {
+    background: #f8f9fa;
+    font-weight: 600;
+}
+.topic-map tr.untagged th,
+.topic-map tr.untagged td {
+    background: #fff3cd;
+}
+</style>
+{% endblock %}

@@ -23,8 +23,9 @@ class ExamQuestionPartInline(admin.StackedInline):
     """Inline admin for question parts"""
     model = ExamQuestionPart
     extra = 1
-    fields = ('label', 'solution_image', 'solution_status', 'max_marks', 'solution_unlock_after_attempts', 'order')
+    fields = ('label', 'topics', 'solution_image', 'solution_status', 'max_marks', 'solution_unlock_after_attempts', 'order')
     readonly_fields = ('solution_status',)
+    autocomplete_fields = ['topics']
     ordering = ['order']
 
     classes = ['collapse']  # Makes inlines collapsible to save space
@@ -319,11 +320,14 @@ class ExamQuestionAdmin(admin.ModelAdmin):
         selected_topic_id = request.GET.get('topic')
         selected_subject_id = request.GET.get('subject')
 
-        # Only show topics that have questions with images
+        from .services.topic_parts import topic_filter
+
+        # Only show topics that have questions with images, filed either on
+        # the question or on one of its parts
+        with_images = ExamQuestion.objects.exclude(image='').exclude(image__isnull=True)
         topics = Topic.objects.filter(
-            exam_questions__image__isnull=False
-        ).exclude(
-            exam_questions__image=''
+            Q(exam_questions__in=with_images)
+            | Q(exam_question_parts__question__in=with_images)
         ).distinct().select_related('subject').order_by('subject__name', 'name')
 
         if selected_subject_id:
@@ -337,8 +341,8 @@ class ExamQuestionAdmin(admin.ModelAdmin):
                 ).exclude(image='').exclude(image__isnull=True)
             else:
                 questions = ExamQuestion.objects.filter(
-                    topic_id=selected_topic_id
-                ).exclude(image='').exclude(image__isnull=True)
+                    topic_filter(selected_topic_id)
+                ).exclude(image='').exclude(image__isnull=True).distinct()
             questions = questions.select_related(
                 'exam_paper', 'topic'
             ).prefetch_related('parts').order_by('-exam_paper__year', 'question_number')
@@ -464,6 +468,7 @@ class ExamQuestionPartAdmin(admin.ModelAdmin):
         'part_label',
         'exam_paper',
         'topic',
+        'part_topics',
         'max_marks',
         'has_solution_image',
         'solution_unlock_after_attempts',
@@ -473,6 +478,8 @@ class ExamQuestionPartAdmin(admin.ModelAdmin):
         'question__exam_paper__year',
         'question__exam_paper__paper_type',
         ('question__exam_paper', admin.RelatedOnlyFieldListFilter),
+        ('topics', admin.RelatedOnlyFieldListFilter),
+        ('topics', admin.EmptyFieldListFilter),
     )
     search_fields = (
         'label',
@@ -481,7 +488,7 @@ class ExamQuestionPartAdmin(admin.ModelAdmin):
         'question__exam_paper__title',
         'question__topic__name',
     )
-    autocomplete_fields = ['question']
+    autocomplete_fields = ['question', 'topics']
     list_select_related = (
         'question', 'question__exam_paper', 'question__topic',
     )
@@ -502,6 +509,13 @@ class ExamQuestionPartAdmin(admin.ModelAdmin):
     @admin.display(description='Topic', ordering='question__topic__name')
     def topic(self, obj):
         return obj.question.topic
+
+    def get_queryset(self, request):
+        return super().get_queryset(request).prefetch_related('topics')
+
+    @admin.display(description='Part topics')
+    def part_topics(self, obj):
+        return ', '.join(t.name for t in obj.topics.all()) or '-'
 
     @admin.display(description='Scheme image', boolean=True)
     def has_solution_image(self, obj):

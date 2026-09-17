@@ -12,7 +12,7 @@
         </div>
         <h1 style="margin: 0 0 10px 0; color: #2c3e50;">{{ topic.name}} - Past Exam Questions</h1>
         <p style="color: #6c757d; font-size: 1.1em;">
-            Practice with real Leaving Certificate exam questions ({{ total_questions }} question{{ total_questions|pluralize }})
+            Practice with real Leaving Certificate exam questions ({{ total_questions }} question{{ total_questions|pluralize }}{% if total_parts %}, {{ total_parts }} part{{ total_parts|pluralize }} on {{ topic.name }}{% endif %})
         </p>
     </div>
 
@@ -46,7 +46,7 @@
                                 {% if question.suggested_time_minutes %}
                                 • Suggested time: {{ question.suggested_time_minutes }} min
                                 {% endif %}
-                                • {{ question.parts.count }} part{{ question.parts.count|pluralize }}
+                                • {{ question.parts.all|length }} part{{ question.parts.all|length|pluralize }}
                             </div>
                         </div>
 
@@ -97,12 +97,37 @@
                                 </button>
                             </form>
                         </div>
+                        {% if question.matching_parts %}
+                        <p style="color: #6c757d; font-size: 0.9em; margin: 0 0 10px 0;">Parts on {{ topic.name }} are highlighted &mdash; click one to practise just that part.</p>
+                        {% endif %}
                         <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px;">
                             {% for part in question.parts.all %}
-                            <div class="part-badge" style="background: #e7f3ff; border: 1px solid #cfe2ff; color: #0056b3; padding: 10px; border-radius: 8px;">
+                            {% if part in question.matching_parts %}
+                            <form method="post" action="{% url 'exam_papers:start_paper_attempt' question.exam_paper.slug %}" style="margin: 0;">
+                                {% csrf_token %}
+                                <input type="hidden" name="mode" value="question_practice">
+                                <input type="hidden" name="question_id" value="{{ question.id }}">
+                                <input type="hidden" name="part_id" value="{{ part.id }}">
+                                <button type="submit" class="part-badge part-badge-link" style="width: 100%; text-align: left; background: #fff0f5; border: 2px solid #fa709a; color: #2c3e50; padding: 10px; border-radius: 8px; cursor: pointer; font: inherit;">
+                                    <div style="font-weight: 600; margin-bottom: 5px; display: flex; justify-content: space-between;">
+                                        <span>{{ part.label }}</span>
+                                        {% if part.best_attempt %}
+                                        <span style="font-size: 0.85em; color: {% if part.best_attempt.is_correct %}#155724{% else %}#856404{% endif %};">{% if part.best_attempt.is_correct %}✓{% else %}{{ part.best_attempt.marks_awarded|floatformat:0 }}/{{ part.best_attempt.max_marks }}{% endif %}</span>
+                                        {% endif %}
+                                    </div>
+                                    <div style="font-size: 0.85em;">{{ part.max_marks|default:"?" }} mark{{ part.max_marks|pluralize }}</div>
+                                    {% if part.topics.all|length > 1 %}
+                                    <div style="font-size: 0.75em; color: #6c757d; margin-top: 4px;">{% for t in part.topics.all %}{% if t != topic %}+ {{ t.name }} {% endif %}{% endfor %}</div>
+                                    {% endif %}
+                                    <div style="font-size: 0.8em; color: #fa709a; font-weight: 600; margin-top: 4px;">Practise this part →</div>
+                                </button>
+                            </form>
+                            {% else %}
+                            <div class="part-badge" style="background: #f8f9fa; border: 1px solid #e0e0e0; color: #6c757d; padding: 10px; border-radius: 8px;">
                                 <div style="font-weight: 600; margin-bottom: 5px;">{{ part.label }}</div>
-                                <div style="font-size: 0.85em;">{{ part.max_marks }} mark{{ part.max_marks|pluralize }}</div>
+                                <div style="font-size: 0.85em;">{{ part.max_marks|default:"?" }} mark{{ part.max_marks|pluralize }}</div>
                             </div>
+                            {% endif %}
                             {% endfor %}
                         </div>
                     </div>
@@ -120,6 +145,9 @@
 </div>
 
 <style>
+.part-badge-link:hover {
+    box-shadow: 0 4px 12px rgba(250, 112, 154, 0.35);
+}
 .practice-btn:hover {
     transform: translateY(-2px);
     box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);

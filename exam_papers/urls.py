@@ -14,6 +14,9 @@ urlpatterns = [
     path('worksheet/', views.worksheet_generator, name='worksheet_generator'),
     path('worksheet/print/', views.worksheet_print, name='worksheet_print'),
 
+    # Staff cross-reference of topics against papers, part by part
+    path('topic-map/', views.topic_cross_reference, name='topic_cross_reference'),
+
     # Full paper attempt (timed or practice) - slug catch-all must come after specific routes
     path('<slug:slug>/', views.paper_detail, name='paper_detail'),
     path('<slug:slug>/start/', views.start_paper_attempt, name='start_paper_attempt'),
