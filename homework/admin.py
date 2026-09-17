@@ -254,7 +254,11 @@ class HomeworkAssignmentAdmin(admin.ModelAdmin):
         long page where it was missed.
         """
         if not obj or not obj.pk:
-            return 'Save the assignment first, then parts can be picked here.'
+            return format_html(
+                'Press <strong>Save and continue editing</strong> at the foot of '
+                'this page first. A button appears here afterwards that shows '
+                'each question with its parts, so single parts such as Q6(b) '
+                'can be picked by eye.')
         url = reverse('homework:pick_exam_parts', args=[obj.pk])
         return format_html(
             '<a class="button" href="{}" target="_blank">📷 Browse exam question '
