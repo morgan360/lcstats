@@ -1,0 +1,169 @@
+{% extends "_base.html" %}
+
+{% block title %}Choose exam question parts - NumScoil{% endblock %}
+
+{% block content %}
+<div class="part-picker">
+    <h1>Choose exam question parts</h1>
+    <p class="lead">
+        Adding to <strong>{{ assignment.title }}</strong>. Each question is shown whole, with the
+        parts on this topic beside it. Open a part's marking scheme if you want to see what it asks.
+    </p>
+
+    <form method="get" class="topic-form">
+        <label for="topic">Topic</label>
+        <select name="topic" id="topic" onchange="this.form.submit()">
+            <option value="">-- choose a topic --</option>
+            {% for t in topics %}
+            <option value="{{ t.id }}" {% if topic and t.id == topic.id %}selected{% endif %}>{{ t.name }}</option>
+            {% endfor %}
+        </select>
+        <noscript><button type="submit">Show</button></noscript>
+    </form>
+
+    {% if topic and questions %}
+    <form method="post">
+        {% csrf_token %}
+        <div class="toolbar">
+            <span id="count">0</span> selected
+            <button type="submit" class="btn-primary">Add selected parts</button>
+        </div>
+
+        {% for question in questions %}
+        {% if question.matching_parts %}
+        <div class="question-card">
+            <h2>
+                {{ question.exam_paper.year }} {{ question.exam_paper.get_paper_type_display }}
+                &mdash; Question {{ question.question_number }}
+                <span class="marks">{{ question.total_marks }} marks</span>
+            </h2>
+            <div class="question-body">
+                {% if question.image %}
+                <div class="question-image">
+                    <img src="{{ question.image.url }}" alt="Question {{ question.question_number }}" loading="lazy">
+                </div>
+                {% else %}
+                <div class="question-image no-image">No image of this question on file.</div>
+                {% endif %}
+
+                <div class="parts">
+                    {% for part in question.matching_parts %}
+                    <div class="part">
+                        <label class="part-head">
+                            <input type="checkbox" name="part_ids" value="{{ part.id }}"
+                                   onchange="updateCount()"
+                                   {% if part.id in already %}checked disabled{% endif %}>
+                            <span class="label">{{ part.label }}</span>
+                            <span class="marks">{{ part.max_marks|default:"?" }} marks</span>
+                            {% if part.id in already %}<span class="already">already set</span>{% endif %}
+                        </label>
+                        <div class="topics">
+                            {% for t in part.topics.all %}<span class="topic-chip">{{ t.name }}</span>{% endfor %}
+                        </div>
+                        {% if part.solution_image %}
+                        <details>
+                            <summary>Marking scheme</summary>
+                            <img src="{{ part.solution_image.url }}" alt="Marking scheme for {{ part.label }}" loading="lazy">
+                        </details>
+                        {% else %}
+                        <p class="no-scheme">No marking scheme image for this part.</p>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+        {% endif %}
+        {% endfor %}
+
+        <div class="toolbar bottom">
+            <span id="count-bottom">0</span> selected
+            <button type="submit" class="btn-primary">Add selected parts</button>
+        </div>
+    </form>
+    {% elif topic %}
+    <p class="empty">No exam question parts are filed under {{ topic.name }} yet.</p>
+    {% endif %}
+</div>
+
+<style>
+.part-picker {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 20px 16px;
+    color: #2c3e50;
+}
+.part-picker h1 { margin-bottom: 8px; }
+.part-picker .lead { color: #6c757d; margin-bottom: 20px; }
+.topic-form {
+    background: white;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    padding: 14px 16px;
+    margin-bottom: 20px;
+}
+.topic-form select { padding: 6px 10px; margin-left: 8px; }
+.toolbar {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    background: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    padding: 10px 16px;
+    margin-bottom: 16px;
+}
+.toolbar.bottom { position: static; }
+.btn-primary {
+    background: #6f42c1;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    padding: 8px 18px;
+    font-weight: 600;
+    cursor: pointer;
+}
+.question-card {
+    background: white;
+    border: 1px solid #dee2e6;
+    border-radius: 10px;
+    padding: 16px;
+    margin-bottom: 20px;
+}
+.question-card h2 { font-size: 1.05em; margin: 0 0 12px; }
+.question-card .marks { color: #6c757d; font-weight: normal; font-size: 0.9em; }
+.question-body { display: flex; gap: 20px; flex-wrap: wrap; }
+.question-image { flex: 1 1 380px; }
+.question-image img { width: 100%; border: 1px solid #e9ecef; border-radius: 6px; }
+.question-image.no-image { color: #856404; background: #fff3cd; padding: 12px; border-radius: 6px; }
+.parts { flex: 1 1 300px; display: flex; flex-direction: column; gap: 12px; }
+.part {
+    border: 1px solid #e9ecef;
+    border-left: 4px solid #6f42c1;
+    border-radius: 6px;
+    padding: 10px 12px;
+}
+.part-head { display: flex; align-items: center; gap: 8px; cursor: pointer; }
+.part-head .label { font-weight: 700; }
+.part-head .already { color: #155724; background: #d4edda; border-radius: 4px; padding: 1px 6px; font-size: 0.8em; }
+.topics { margin: 6px 0; display: flex; flex-wrap: wrap; gap: 4px; }
+.topic-chip { background: #e7f3ff; color: #0056b3; border-radius: 4px; padding: 1px 8px; font-size: 0.8em; }
+.part details img { width: 100%; margin-top: 8px; border: 1px solid #e9ecef; border-radius: 4px; }
+.part summary { cursor: pointer; color: #0056b3; font-size: 0.9em; }
+.no-scheme { color: #6c757d; font-size: 0.85em; margin: 0; }
+.empty { background: #fff3cd; padding: 20px; border-radius: 8px; }
+</style>
+
+<script>
+function updateCount() {
+    var n = document.querySelectorAll('input[name="part_ids"]:checked:not(:disabled)').length;
+    document.getElementById('count').textContent = n;
+    document.getElementById('count-bottom').textContent = n;
+}
+document.addEventListener('DOMContentLoaded', updateCount);
+</script>
+{% endblock %}

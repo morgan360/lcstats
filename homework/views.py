@@ -5,7 +5,9 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
 from django.http import JsonResponse
 from django.utils import timezone
+from django.contrib import messages
 from django.db.models import Q, Count, Case, When, IntegerField
+from django.urls import reverse
 from datetime import timedelta
 from students.decorators import teacher_required, student_required, student_or_teacher_required
 from .models import (
@@ -711,7 +713,7 @@ def topic_content_options(request, topic_id):
     dropdowns when the teacher picks a topic, avoiding the save-first step.
     """
     from interactive_lessons.models import Section
-    from exam_papers.models import ExamQuestion
+    from exam_papers.models import ExamQuestion, ExamQuestionPart
     from quickkicks.models import QuickKick
     from flashcards.models import FlashcardSet
 
@@ -744,6 +746,12 @@ def topic_content_options(request, topic_id):
         topic = obj.topic.name if obj.topic else "No Topic"
         return f"[{subject}] {year} - Q{obj.question_number} - {topic}"
 
+    def exam_part_label(obj):
+        paper = obj.question.exam_paper
+        marks = f'{obj.max_marks} marks' if obj.max_marks else 'marks not set'
+        return (f'{paper.year} {paper.get_paper_type_display()} '
+                f'Q{obj.question.question_number}{obj.label} - {marks}')
+
     return JsonResponse({
         'section': options(Section.objects.filter(topic_id=topic_id), 'section'),
         'exam_question': options(
@@ -751,6 +759,77 @@ def topic_content_options(request, topic_id):
             'exam_question',
             exam_question_label,
         ),
+        'exam_question_part': options(
+            ExamQuestionPart.objects.filter(topics__id=topic_id)
+            .select_related('question__exam_paper')
+            .order_by('-question__exam_paper__year', 'question__question_number', 'order'),
+            'exam_question_part',
+            exam_part_label,
+        ),
         'quickkick': options(QuickKick.objects.filter(topic_id=topic_id), 'quickkick'),
         'flashcard_set': options(FlashcardSet.objects.filter(topic_id=topic_id), 'flashcard_set'),
     })
+
+
+@staff_member_required
+def pick_exam_parts(request, assignment_id):
+    """Choose exam question parts for an assignment, with the questions in view.
+
+    A part is a line in a dropdown and nothing more, so picking one blind is
+    guesswork. Here each question's image is shown beside its parts, and each
+    part can show its marking scheme, which is the closest thing on file to a
+    picture of the part itself.
+    """
+    from exam_papers.models import ExamQuestionPart
+    from exam_papers.services.topic_parts import (
+        attach_matching_parts, questions_for_topic,
+    )
+    from interactive_lessons.models import Topic
+
+    assignment = get_object_or_404(HomeworkAssignment, id=assignment_id)
+    topics = Topic.objects.filter(subject=assignment.topic.subject) if assignment.topic \
+        else Topic.objects.all()
+    topics = topics.order_by('paper', 'order', 'name')
+
+    topic_id = request.GET.get('topic') or (assignment.topic_id if assignment.topic else None)
+    topic = topics.filter(id=topic_id).first() if topic_id else None
+
+    already = set(HomeworkTask.objects
+                  .filter(assignment=assignment, task_type='exam_part')
+                  .values_list('exam_question_part_id', flat=True))
+
+    if request.method == 'POST':
+        wanted = [int(i) for i in request.POST.getlist('part_ids') if i.isdigit()]
+        parts = (ExamQuestionPart.objects
+                 .filter(id__in=wanted)
+                 .exclude(id__in=already)
+                 .select_related('question'))
+        order = (HomeworkTask.objects.filter(assignment=assignment)
+                 .aggregate(Count('id'))['id__count'] or 0)
+        added = 0
+        for part in parts:
+            HomeworkTask.objects.create(
+                assignment=assignment,
+                task_type='exam_part',
+                exam_question_part=part,
+                order=order + added,
+            )
+            added += 1
+        messages.success(request, f'Added {added} exam question part{"" if added == 1 else "s"} '
+                                  f'to "{assignment.title}".')
+        return redirect(reverse('admin:homework_homeworkassignment_change', args=[assignment.id]))
+
+    questions = []
+    if topic:
+        questions = list(questions_for_topic(topic).order_by(
+            '-exam_paper__year', 'exam_paper__paper_type', 'question_number'))
+        attach_matching_parts(questions, topic)
+
+    context = {
+        'assignment': assignment,
+        'topics': topics,
+        'topic': topic,
+        'questions': questions,
+        'already': already,
+    }
+    return render(request, 'homework/pick_exam_parts.html', context)

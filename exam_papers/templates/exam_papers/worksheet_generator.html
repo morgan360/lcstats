@@ -72,6 +72,11 @@
                         class="h-4 w-4 rounded accent-violet-royal">
                     Include marking schemes
                 </label>
+                <button type="submit" id="pdf-btn" disabled
+                    formaction="{% url 'exam_papers:worksheet_pdf' %}" formtarget="_self"
+                    class="rounded-lg border border-mist/25 bg-mist/10 px-5 py-2 text-sm font-semibold text-mist transition hover:bg-mist/20 disabled:opacity-40 disabled:cursor-not-allowed">
+                    Download PDF
+                </button>
                 <button type="submit" id="print-btn" disabled
                     class="rounded-lg bg-gradient-to-b from-violet-royal to-indigo-deep px-5 py-2 text-sm font-semibold text-mist shadow-[0_6px_20px_rgba(0,0,0,0.15)] transition hover:-translate-y-0.5 hover:shadow-[0_10px_26px_rgba(0,0,0,0.2)] disabled:opacity-40 disabled:hover:translate-y-0 disabled:cursor-not-allowed">
                     Generate Printable Worksheet
@@ -173,6 +178,7 @@ function updateCount() {
     const checked = document.querySelectorAll('.question-card input[type="checkbox"][name="question_ids"]:checked').length;
     document.getElementById('count').textContent = checked;
     document.getElementById('print-btn').disabled = checked === 0;
+    document.getElementById('pdf-btn').disabled = checked === 0;
 
     document.querySelectorAll('.question-card').forEach(card => {
         const cb = card.querySelector('input[type="checkbox"]');

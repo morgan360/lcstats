@@ -5,7 +5,7 @@
 (function () {
     'use strict';
 
-    var FIELDS = ['section', 'exam_question', 'quickkick', 'flashcard_set'];
+    var FIELDS = ['section', 'exam_question', 'exam_question_part', 'quickkick', 'flashcard_set'];
     var cachedOptions = null;
 
     function selectedTopic() {

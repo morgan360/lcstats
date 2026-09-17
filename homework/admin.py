@@ -18,6 +18,7 @@ from .models import (
 from .forms import (
     PracticeQuestionsTaskForm,
     ExamQuestionsTaskForm,
+    ExamQuestionPartsTaskForm,
     QuickKicksTaskForm,
     FlashcardsTaskForm,
     CustomTaskForm
@@ -166,6 +167,18 @@ class ExamQuestionsTaskInline(BaseHomeworkTaskInline):
         return qs.filter(task_type='exam_question')
 
 
+class ExamQuestionPartsTaskInline(BaseHomeworkTaskInline):
+    form = ExamQuestionPartsTaskForm
+    verbose_name = "Exam Question Part Task"
+    verbose_name_plural = "🔎 Exam Question Parts"
+
+    fields = ('exam_question_part',)
+
+    def get_queryset(self, request):
+        qs = super().get_queryset(request)
+        return qs.filter(task_type='exam_part')
+
+
 class QuickKicksTaskInline(BaseHomeworkTaskInline):
     form = QuickKicksTaskForm
     verbose_name = "QuickKick Task"
@@ -218,10 +231,11 @@ class HomeworkAssignmentAdmin(admin.ModelAdmin):
     list_filter = ('teacher', 'topic__subject', 'topic', 'is_published', 'due_date', 'assigned_date')
     search_fields = ('title', 'description', 'teacher__display_name', 'topic__name')
     filter_horizontal = ('assigned_students',)
-    readonly_fields = ('created_at', 'updated_at', 'progress_summary', 'notification_sent')
+    readonly_fields = ('created_at', 'updated_at', 'progress_summary', 'notification_sent', 'parts_picker')
     inlines = [
         PracticeQuestionsTaskInline,
         ExamQuestionsTaskInline,
+        ExamQuestionPartsTaskInline,
         QuickKicksTaskInline,
         FlashcardsTaskInline,
         CustomTaskInline
@@ -230,6 +244,17 @@ class HomeworkAssignmentAdmin(admin.ModelAdmin):
 
     class Media:
         js = ('admin/js/homework_topic_filter.js',)
+
+    @admin.display(description='Exam question parts')
+    def parts_picker(self, obj):
+        """Link to the picker, which shows each question while parts are chosen"""
+        if not obj or not obj.pk:
+            return 'Save the assignment first, then parts can be picked here.'
+        url = reverse('homework:pick_exam_parts', args=[obj.pk])
+        return format_html(
+            '<a class="button" href="{}" target="_blank">Browse exam question parts</a>'
+            '<p class="help">Shows each question with its parts, so you can see '
+            'what you are setting.</p>', url)
 
     formfield_overrides = {
         models.TextField: {'widget': forms.Textarea(attrs={'rows': 3})},
@@ -256,6 +281,10 @@ class HomeworkAssignmentAdmin(admin.ModelAdmin):
             'fields': ('assigned_students',),
             'classes': ('collapse',),
             'description': 'Rarely needed — assign to specific students outside of (or in addition to) the classes above.'
+        }),
+        ('Exam question parts', {
+            'fields': ('parts_picker',),
+            'description': 'Set a single part, such as Q6(b), rather than a whole question.'
         }),
         ('Status', {
             'fields': ('is_published', 'notification_sent', 'progress_summary')

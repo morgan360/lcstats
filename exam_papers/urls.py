@@ -13,6 +13,7 @@ urlpatterns = [
     # Worksheet generator (public, for all logged-in users)
     path('worksheet/', views.worksheet_generator, name='worksheet_generator'),
     path('worksheet/print/', views.worksheet_print, name='worksheet_print'),
+    path('worksheet/pdf/', views.worksheet_pdf, name='worksheet_pdf'),
 
     # Staff cross-reference of topics against papers, part by part
     path('topic-map/', views.topic_cross_reference, name='topic_cross_reference'),
@@ -20,6 +21,9 @@ urlpatterns = [
     # Full paper attempt (timed or practice) - slug catch-all must come after specific routes
     path('<slug:slug>/', views.paper_detail, name='paper_detail'),
     path('<slug:slug>/start/', views.start_paper_attempt, name='start_paper_attempt'),
+
+    # Open a single question part for practice, straight from a link
+    path('part/<int:part_id>/practise/', views.practise_part, name='practise_part'),
 
     # Question interface
     path('attempt/<int:attempt_id>/question/<int:question_id>/',

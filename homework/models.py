@@ -2,8 +2,9 @@ from django.db import models
 from django.contrib.auth.models import User
 from django.utils import timezone
 from django.core.exceptions import ValidationError
+from django.urls import reverse
 from interactive_lessons.models import Topic, Section
-from exam_papers.models import ExamQuestion
+from exam_papers.models import ExamQuestion, ExamQuestionPart
 from quickkicks.models import QuickKick
 from flashcards.models import FlashcardSet
 from schools.models import School
@@ -256,6 +257,7 @@ class HomeworkTask(models.Model):
     TASK_TYPE_CHOICES = [
         ('section', 'Topic Section'),
         ('exam_question', 'Exam Question'),
+        ('exam_part', 'Exam Question Part'),
         ('quickkick', 'QuickFlicks Video/Applet'),
         ('flashcard', 'Flashcard Set'),
         ('custom', 'Written Exercise'),
@@ -290,6 +292,14 @@ class HomeworkTask(models.Model):
         blank=True,
         related_name='homework_tasks',
         help_text="Exam question to practice (if task_type='exam_question')"
+    )
+    exam_question_part = models.ForeignKey(
+        ExamQuestionPart,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name='homework_tasks',
+        help_text="Single exam question part to practice (if task_type='exam_part')"
     )
     quickkick = models.ForeignKey(
         QuickKick,
@@ -339,6 +349,13 @@ class HomeworkTask(models.Model):
             year = self.exam_question.exam_paper.year if self.exam_question.exam_paper else "Unknown"
             topic = self.exam_question.topic.name if self.exam_question.topic else "No Topic"
             return f"[{subject}] {year} - Q{self.exam_question.question_number} - {topic}"
+        elif self.task_type == 'exam_part' and self.exam_question_part:
+            part = self.exam_question_part
+            paper = part.question.exam_paper
+            subject = paper.subject.name if paper and paper.subject else "No Subject"
+            topics = ', '.join(t.name for t in part.topics.all()) or "No Topic"
+            return (f"[{subject}] {paper.year} {paper.get_paper_type_display()} - "
+                    f"Q{part.question.question_number}{part.label} - {topics}")
         elif self.task_type == 'quickkick' and self.quickkick:
             subject = self.quickkick.topic.subject.name if self.quickkick.topic and self.quickkick.topic.subject else "No Subject"
             return f"QuickFlicks: {self.quickkick.topic.name} > {self.quickkick.title} ({subject})"
@@ -363,6 +380,10 @@ class HomeworkTask(models.Model):
                 # Add anchor to scroll to the specific question
                 return f"/interactive/{self.exam_question.topic.slug}/exam-questions/?subject={subject_slug}#question-{self.exam_question.id}"
             return f"/exam-papers/"
+        elif self.task_type == 'exam_part' and self.exam_question_part:
+            # Straight into the question interface, opened on this part
+            return reverse('exam_papers:practise_part',
+                           args=[self.exam_question_part_id])
         elif self.task_type == 'quickkick' and self.quickkick:
             # QuickKicks are accessed via topic slug with subject parameter
             subject_slug = self.quickkick.topic.subject.slug if self.quickkick.topic.subject else 'maths'
@@ -379,6 +400,8 @@ class HomeworkTask(models.Model):
             raise ValidationError({'section': 'Section is required when task type is "section"'})
         elif self.task_type == 'exam_question' and not self.exam_question:
             raise ValidationError({'exam_question': 'Exam question is required when task type is "exam_question"'})
+        elif self.task_type == 'exam_part' and not self.exam_question_part:
+            raise ValidationError({'exam_question_part': 'Exam question part is required when task type is "exam_part"'})
         elif self.task_type == 'quickkick' and not self.quickkick:
             raise ValidationError({'quickkick': 'QuickFlicks is required when task type is "quickkick"'})
         elif self.task_type == 'flashcard' and not self.flashcard_set:
@@ -391,6 +414,8 @@ class HomeworkTask(models.Model):
             self.section = None
         if self.task_type != 'exam_question':
             self.exam_question = None
+        if self.task_type != 'exam_part':
+            self.exam_question_part = None
         if self.task_type != 'quickkick':
             self.quickkick = None
         if self.task_type != 'flashcard':
@@ -487,6 +512,17 @@ class StudentHomeworkProgress(models.Model):
             attempts = ExamQuestionAttempt.objects.filter(
                 exam_attempt__student=student,
                 question_part__question=task.exam_question
+            ).exists()
+            if attempts:
+                self.mark_complete()
+                return True
+
+        # Check Exam Question Part completion - this part alone, not its siblings
+        elif task.task_type == 'exam_part' and task.exam_question_part:
+            from exam_papers.models import ExamQuestionAttempt
+            attempts = ExamQuestionAttempt.objects.filter(
+                exam_attempt__student=student,
+                question_part=task.exam_question_part
             ).exists()
             if attempts:
                 self.mark_complete()

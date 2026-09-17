@@ -1,9 +1,10 @@
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.admin.views.decorators import staff_member_required
 from django.contrib.auth.decorators import login_required
-from django.http import JsonResponse
+from django.http import HttpResponse, JsonResponse
 from django.urls import reverse
 from django.utils import timezone
+from django.utils.text import slugify
 from django.db.models import Q, Count, Sum, Prefetch
 from django.views.decorators.http import require_POST
 import json
@@ -93,6 +94,28 @@ def paper_detail(request, slug):
     return render(request, 'exam_papers/paper_detail.html', context)
 
 
+def get_or_create_attempt(student, paper, mode):
+    """The student's open attempt at a paper in this mode, or a new one.
+
+    Modes are kept apart: a half-finished timed exam is not resumed by someone
+    who came to practise one question.
+    """
+    attempt = ExamAttempt.objects.filter(
+        student=student,
+        exam_paper=paper,
+        is_completed=False,
+        attempt_mode=mode,
+    ).first()
+    if attempt:
+        return attempt
+    return ExamAttempt.objects.create(
+        student=student,
+        exam_paper=paper,
+        attempt_mode=mode,
+        total_marks_possible=paper.total_marks,
+    )
+
+
 @login_required
 @require_POST
 def start_paper_attempt(request, slug):
@@ -102,25 +125,7 @@ def start_paper_attempt(request, slug):
     # Get mode from POST data
     mode = request.POST.get('mode', 'question_practice')
 
-    # Check if user already has an incomplete attempt for THIS MODE
-    active_attempt = ExamAttempt.objects.filter(
-        student=request.user,
-        exam_paper=paper,
-        is_completed=False,
-        attempt_mode=mode  # Only resume if same mode
-    ).first()
-
-    if active_attempt:
-        # Resume existing attempt of the same mode
-        attempt = active_attempt
-    else:
-        # Create new attempt
-        attempt = ExamAttempt.objects.create(
-            student=request.user,
-            exam_paper=paper,
-            attempt_mode=mode,
-            total_marks_possible=paper.total_marks
-        )
+    attempt = get_or_create_attempt(request.user, paper, mode)
 
     # Redirect to specific question if provided, otherwise first question
     question_id = request.POST.get('question_id')
@@ -142,6 +147,25 @@ def start_paper_attempt(request, slug):
         return redirect(url)
     else:
         return redirect('exam_papers:paper_detail', slug=slug)
+
+
+@login_required
+def practise_part(request, part_id):
+    """Open one question part for practice, from a link rather than a form.
+
+    Homework tasks and topic pages both want to send a student straight to a
+    part; without this they would have to POST a form to get an attempt first.
+    """
+    part = get_object_or_404(
+        ExamQuestionPart.objects.select_related('question__exam_paper'),
+        id=part_id,
+        question__exam_paper__is_published=True,
+    )
+    question = part.question
+    attempt = get_or_create_attempt(request.user, question.exam_paper, 'question_practice')
+    url = reverse('exam_papers:question_interface',
+                  kwargs={'attempt_id': attempt.id, 'question_id': question.id})
+    return redirect(f'{url}?part={part.id}')
 
 
 @login_required
@@ -664,21 +688,29 @@ def worksheet_generator(request):
 
 @login_required
 @require_POST
-def worksheet_print(request):
-    """Render a clean printable page with selected exam question images and optional marking schemes."""
+def selected_worksheet_questions(request):
+    """The questions ticked on the worksheet form, in print order."""
     question_ids = request.POST.getlist('question_ids')
-    include_solutions = request.POST.get('include_solutions') == '1'
-
     if not question_ids:
-        from django.contrib import messages
-        messages.error(request, 'No questions selected.')
-        return redirect('exam_papers:worksheet_generator')
-
-    questions = ExamQuestion.objects.filter(
+        return None
+    return ExamQuestion.objects.filter(
         id__in=question_ids
     ).select_related('exam_paper', 'topic').prefetch_related(
         'parts'
     ).order_by('topic__name', 'exam_paper__year', 'question_number')
+
+
+@login_required
+@require_POST
+def worksheet_print(request):
+    """Render a clean printable page with selected exam question images and optional marking schemes."""
+    include_solutions = request.POST.get('include_solutions') == '1'
+
+    questions = selected_worksheet_questions(request)
+    if questions is None:
+        from django.contrib import messages
+        messages.error(request, 'No questions selected.')
+        return redirect('exam_papers:worksheet_generator')
 
     context = {
         'questions': questions,
@@ -767,3 +799,28 @@ def topic_cross_reference(request):
         'subject': subject,
     }
     return render(request, 'exam_papers/topic_cross_reference.html', context)
+
+
+@login_required
+@require_POST
+def worksheet_pdf(request):
+    """The same selection as the printable page, as a PDF file to keep or send."""
+    from django.contrib import messages
+
+    from .services.worksheet_pdf import build_worksheet_pdf
+
+    include_solutions = request.POST.get('include_solutions') == '1'
+    questions = selected_worksheet_questions(request)
+    if questions is None:
+        messages.error(request, 'No questions selected.')
+        return redirect('exam_papers:worksheet_generator')
+
+    questions = list(questions)
+    topic = next((q.topic for q in questions if q.topic), None)
+    title = f'{topic.name} - exam questions' if topic else 'Exam questions'
+    filename = slugify(title) or 'worksheet'
+
+    pdf = build_worksheet_pdf(questions, include_solutions=include_solutions, title=title)
+    response = HttpResponse(pdf, content_type='application/pdf')
+    response['Content-Disposition'] = f'attachment; filename="{filename}.pdf"'
+    return response

@@ -1,7 +1,7 @@
 from django import forms
 from .models import HomeworkTask
 from interactive_lessons.models import Section
-from exam_papers.models import ExamQuestion
+from exam_papers.models import ExamQuestion, ExamQuestionPart
 from quickkicks.models import QuickKick
 from flashcards.models import FlashcardSet
 
@@ -13,6 +13,15 @@ class ExamQuestionChoiceField(forms.ModelChoiceField):
         year = obj.exam_paper.year if obj.exam_paper else "Unknown"
         topic = obj.topic.name if obj.topic else "No Topic"
         return f"[{subject}] {year} - Q{obj.question_number} - {topic}"
+
+
+class ExamQuestionPartChoiceField(forms.ModelChoiceField):
+    """Shows a part as the paper, question and label a teacher would say aloud"""
+    def label_from_instance(self, obj):
+        paper = obj.question.exam_paper
+        marks = f"{obj.max_marks} marks" if obj.max_marks else "marks not set"
+        return (f"{paper.year} {paper.get_paper_type_display()} "
+                f"Q{obj.question.question_number}{obj.label} - {marks}")
 
 
 # Base form class with common functionality
@@ -129,6 +138,47 @@ class ExamQuestionsTaskForm(BaseHomeworkTaskForm):
         # Ensure task_type is set (already set in __init__, but confirm in cleaned_data)
         cleaned_data['task_type'] = 'exam_question'
 
+        return cleaned_data
+
+
+class ExamQuestionPartsTaskForm(BaseHomeworkTaskForm):
+    """Form for single exam question part tasks
+
+    The parts picker is the usual way in, since it shows the question; this is
+    here so parts can be reordered or removed alongside the other task types.
+    """
+
+    exam_question_part = ExamQuestionPartChoiceField(
+        queryset=ExamQuestionPart.objects.all(),
+        required=False
+    )
+
+    class Meta:
+        model = HomeworkTask
+        fields = ['assignment', 'task_type', 'exam_question_part', 'is_required', 'order']
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.instance.task_type = 'exam_part'
+
+        parts = ExamQuestionPart.objects.select_related('question__exam_paper')
+        if self.topic:
+            parts = parts.filter(topics=self.topic)
+            self.fields['exam_question_part'].help_text = (
+                f"Parts filed under {self.topic.name}"
+            )
+        else:
+            self.fields['exam_question_part'].help_text = (
+                "Select a topic above to filter these options"
+            )
+        self.fields['exam_question_part'].queryset = parts.order_by(
+            '-question__exam_paper__year', 'question__question_number', 'order')
+
+    def clean(self):
+        cleaned_data = super().clean()
+        if not cleaned_data.get('exam_question_part'):
+            raise forms.ValidationError("Please select an Exam Question Part")
+        cleaned_data['task_type'] = 'exam_part'
         return cleaned_data
 
 
