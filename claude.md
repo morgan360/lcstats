@@ -64,7 +64,8 @@ The project follows a modular Django app pattern:
 
 7. **`homework/`** - Teacher-student homework assignment system
    - Models: `TeacherProfile`, `TeacherClass`, `HomeworkAssignment`, `HomeworkTask`, `StudentHomeworkProgress`
-   - Teachers create assignments with tasks (topics, sections, exam questions, QuickKicks)
+   - Teachers create assignments with tasks (topics, sections, exam questions, single exam question **parts**, QuickKicks)
+   - A part task is picked in `/homework/teacher/assignment/<id>/parts/`, which shows each question and its marking schemes; it completes when that part alone is attempted
    - Students see assignments on dashboard with progress tracking
    - Notification snooze system for homework reminders
    - Auto-calculates completion percentage and overdue status
@@ -131,7 +132,7 @@ The project follows a modular Django app pattern:
   - Full marking scheme PDFs uploaded to `ExamPaper.marking_scheme_pdf` (accessible anytime)
   - Solutions unlock after: correct answer OR attempts >= threshold OR threshold = 0
 - **Shared Grading**: Exam questions use same `mark_student_answer()` from `stats_tutor.py`
-- **Topic Linking**: `ExamQuestion.topic` links to `Topic` for cross-app integration
+- **Topic Linking**: `ExamQuestion.topic` is the question's dominant topic; `ExamQuestionPart.topics` (M2M) holds every topic each part draws on. Topic pages list a question if either matches (`exam_papers/services/topic_parts.py`), and a part opens on its own via `?part=<id>` on the question interface. Staff grid at `/exam-papers/topic-map/`
 
 **News & Announcements System** (`home/models.py:NewsItem`):
 - **Audience Targeting**:
@@ -236,6 +237,12 @@ python manage.py extract_exam_questions <paper_id> --legacy --dry-run
 # --overwrite. Needs solution_image set on the parts.
 python manage.py auto_extract_marking_info <paper_id> --dry-run
 
+# Propose topics for every question part (a part can have several). Writes a
+# JSON file to review and edit; nothing is saved until the file is applied.
+# --apply leaves parts tagged by hand alone unless --overwrite.
+python manage.py suggest_part_topics <paper_id>
+python manage.py suggest_part_topics --apply exam_papers/data/part_topics/<slug>.json
+
 # Populate answer format fields
 python manage.py populate_answer_formats
 
@@ -244,6 +251,13 @@ python manage.py import_exam_paper
 
 # Import marking scheme (interactive_lessons)
 python manage.py import_marking_scheme
+```
+
+**Worksheets:**
+`/exam-papers/worksheet/` picks questions by topic and either prints them or
+downloads a PDF (`exam_papers/services/worksheet_pdf.py`, images re-encoded at
+150 DPI so a sheet stays emailable).
+```bash
 ```
 
 **Student Management:**
