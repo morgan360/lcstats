@@ -27,7 +27,9 @@ import fitz
 from django.conf import settings
 from django.core.management.base import BaseCommand, CommandError
 
-from exam_papers.management.commands.suggest_question_topics import load_examples
+from exam_papers.management.commands.suggest_question_topics import (
+    algebra_rule, load_examples,
+)
 from exam_papers.models import ExamPaper, ExamQuestionPart
 from exam_papers.utils import (
     detect_legacy_question_layout, detect_marking_scheme_layout,
@@ -57,10 +59,7 @@ Topics - copy names character for character:
   for context.
 - A part set in an applied context keeps that context's topic: a mortgage part
   that needs differentiation is Finance first, Differential Calculus second.
-- Inequalities are algebra: "Algebra-Inequalities and Factorisation" for
-  inequalities and factorising, "Algebra (1)" for other algebraic manipulation.
-  Never file an inequality under Functions because it mentions f(x).
-- Reserve "Integration" for parts substantially about integrating. Where
+{algebra_rule}- Reserve "Integration" for parts substantially about integrating. Where
   differentiation and integration mix and neither dominates, lead with
   "Differential Calculus".
 - Only use "Random" if a part fits nothing else.
@@ -246,6 +245,7 @@ class Command(BaseCommand):
         prompt = PROMPT.format(
             topics='\n'.join(f'- {t.name}' for t in topics),
             examples=examples,
+            algebra_rule=algebra_rule(topics, subject='part'),
             number=question.question_number,
             question_text=text[:5000] or '(not available)',
             parts='\n\n'.join(part_blocks),

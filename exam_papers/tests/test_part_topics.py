@@ -182,3 +182,22 @@ class CrossReferenceTests(PartTopicsTestBase):
         self.assertEqual(cells['Functions'], [self.part_a, self.part_b])
         self.assertEqual(cells[None], [self.other_part])
         self.assertContains(response, 'Q6(b)')
+
+
+class AlgebraRuleTests(PartTopicsTestBase):
+    def test_names_come_from_the_database_not_the_prompt(self):
+        from exam_papers.management.commands.suggest_question_topics import algebra_rule
+        general = Topic.objects.create(
+            name='Algebra - Fractions Binomial,Long Division...', slug='algebra', subject=self.maths)
+        inequalities = Topic.objects.create(
+            name='Algebra-Simultaneous Equations_Inequalities...',
+            slug='algebra-inequalities-and-factorisation', subject=self.maths)
+
+        rule = algebra_rule([self.functions, general, inequalities], 'part')
+        self.assertIn(f'"{inequalities.name}"', rule)
+        self.assertIn(f'"{general.name}"', rule)
+        self.assertNotIn('Algebra (1)', rule)
+
+    def test_rule_is_dropped_when_there_is_no_inequalities_topic(self):
+        from exam_papers.management.commands.suggest_question_topics import algebra_rule
+        self.assertEqual(algebra_rule([self.functions]), '')

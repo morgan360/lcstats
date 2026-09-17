@@ -36,12 +36,7 @@ Choose exactly one topic from this list, copying the name character for characte
 - A question set in an applied context keeps that context's topic even when the
   technique needed comes from elsewhere: a mortgage question that requires
   differentiation is still Finance.
-- Inequalities are algebra. A question whose real work is solving or
-  manipulating an inequality goes to an Algebra topic - use
-  "Algebra-Inequalities and Factorisation" for inequalities and factorising,
-  and "Algebra (1)" for other algebraic manipulation. Never file an inequality
-  under Functions because it happens to mention f(x).
-- Integration and differentiation are mixed together constantly. When a question
+{algebra_rule}- Integration and differentiation are mixed together constantly. When a question
   uses both and neither plainly dominates, choose "Differential Calculus".
   Reserve "Integration" for questions that are substantially about integrating -
   areas under curves, definite integrals as the point of the exercise.
@@ -63,6 +58,31 @@ Respond with JSON only:
 {{"topic": "<exact name from the list>", "confidence": "high|medium|low", "reason": "<at most 12 words>"}}"""
 
 EXAMPLES_PATH = Path(settings.BASE_DIR) / 'exam_papers' / 'data' / 'topic_examples.json'
+
+
+# The two algebra topics are found by slug, which is the same everywhere; their
+# names are not - production calls them "Algebra - Fractions Binomial,Long
+# Division..." and "Algebra-Simultaneous Equations_Inequalities...", this repo's
+# fixtures "Algebra (1)" and "Algebra-Inequalities and Factorisation". A rule
+# naming a topic that is not on the list gets that name copied back as an answer.
+ALGEBRA_SLUG = 'algebra'
+INEQUALITIES_SLUG = 'algebra-inequalities-and-factorisation'
+
+
+def algebra_rule(topics, subject='question'):
+    """The prompt rule sending inequalities to algebra, with this database's names."""
+    by_slug = {t.slug: t.name for t in topics}
+    general = by_slug.get(ALGEBRA_SLUG)
+    inequalities = by_slug.get(INEQUALITIES_SLUG)
+    if not inequalities:
+        return ''
+
+    rule = (f'- Inequalities are algebra. A {subject} whose real work is solving '
+            f'or manipulating an inequality goes to "{inequalities}", which also '
+            f'covers factorising')
+    if general:
+        rule += f'; use "{general}" for other algebraic manipulation'
+    return rule + '. Never file an inequality under Functions because it mentions f(x).\n'
 
 
 def load_examples(topics):
@@ -187,6 +207,7 @@ class Command(BaseCommand):
             prompt = PROMPT.format(
                 topics='\n'.join(f'- {t.name}' for t in topics),
                 examples=examples,
+                algebra_rule=algebra_rule(topics),
                 number=question.question_number,
                 text=text[:6000],
             )
