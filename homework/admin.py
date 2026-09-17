@@ -243,7 +243,7 @@ class HomeworkAssignmentAdmin(admin.ModelAdmin):
     date_hierarchy = 'due_date'
 
     class Media:
-        js = ('admin/js/homework_topic_filter.js',)
+        js = ('admin/js/homework_topic_filter.js', 'admin/js/homework_parts_picker.js')
 
     @admin.display(description='Exam question parts')
     def parts_picker(self, obj):
@@ -251,20 +251,19 @@ class HomeworkAssignmentAdmin(admin.ModelAdmin):
 
         It sits beside Topic rather than with the part inline: the inlines render
         below every fieldset, so anything filed with them lands at the foot of a
-        long page where it was missed.
+        long page where it was missed. The picker hands its ticks back to this
+        form (admin/js/homework_parts_picker.js), so an assignment and its parts
+        are still created in one save.
         """
-        if not obj or not obj.pk:
-            return format_html(
-                'Press <strong>Save and continue editing</strong> at the foot of '
-                'this page first. A button appears here afterwards that shows '
-                'each question with its parts, so single parts such as Q6(b) '
-                'can be picked by eye.')
-        url = reverse('homework:pick_exam_parts', args=[obj.pk])
+        url = (reverse('homework:pick_exam_parts', args=[obj.pk]) if obj and obj.pk
+               else reverse('homework:pick_exam_parts_unsaved'))
         return format_html(
-            '<a class="button" href="{}" target="_blank">📷 Browse exam question '
-            'parts (shows the questions)</a>'
-            '<p class="help">Pick single parts, such as Q6(b), seeing each '
-            'question and its marking schemes as you choose.</p>', url)
+            '<a class="button" id="parts-picker-link" href="{}" data-url="{}" '
+            'target="_blank">\U0001F4F7 Browse exam question parts (shows the questions)</a>'
+            '<p class="help" id="parts-picker-note">Pick single parts, such as Q6(b), '
+            'seeing each question and its marking schemes as you choose. They are '
+            'added to the "Exam Question Parts" section below, and saved with the '
+            'assignment.</p>', url, url)
 
     formfield_overrides = {
         models.TextField: {'widget': forms.Textarea(attrs={'rows': 3})},

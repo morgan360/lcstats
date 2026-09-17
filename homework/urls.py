@@ -22,6 +22,7 @@ urlpatterns = [
     path('teacher/class/<int:class_id>/report/', views.class_homework_report, name='class_homework_report'),
     path('teacher/class/<int:class_id>/weekly-report/', views.weekly_class_homework_report, name='weekly_class_report'),
     path('teacher/student/<int:student_id>/weekly-report/', views.weekly_student_homework_report, name='weekly_student_report'),
+    path('teacher/parts/', views.pick_exam_parts, name='pick_exam_parts_unsaved'),
     path('teacher/assignment/<int:assignment_id>/parts/', views.pick_exam_parts, name='pick_exam_parts'),
     path('teacher/assignment/<int:assignment_id>/progress/', views.assignment_progress, name='assignment_progress'),
 ]

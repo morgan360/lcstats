@@ -171,8 +171,19 @@ class ExamQuestionPartsTaskForm(BaseHomeworkTaskForm):
             self.fields['exam_question_part'].help_text = (
                 "Select a topic above to filter these options"
             )
-        self.fields['exam_question_part'].queryset = parts.order_by(
+        parts = parts.order_by(
             '-question__exam_paper__year', 'question__question_number', 'order')
+
+        # The picker can be pointed at another topic - a part of Q6 that is
+        # mostly Integration may still be the Functions one you want - so a
+        # chosen part is kept valid even when it falls outside the filter.
+        chosen = self.data.get(self.add_prefix('exam_question_part')) if self.data else None
+        if not chosen and self.instance.pk:
+            chosen = self.instance.exam_question_part_id
+        if chosen:
+            parts = parts | ExamQuestionPart.objects.filter(pk=chosen)
+
+        self.fields['exam_question_part'].queryset = parts.distinct()
 
     def clean(self):
         cleaned_data = super().clean()

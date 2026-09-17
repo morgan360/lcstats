@@ -149,3 +149,43 @@ class PickerTests(ExamPartTaskTestBase):
             sorted(t.exam_question_part_id for t in tasks),
             sorted([self.part_a.id, self.part_b.id]),
         )
+
+
+class PickerReturnsToFormTests(ExamPartTaskTestBase):
+    """The picker can run before an assignment exists, handing its ticks back to
+    the form so an assignment and its parts are saved together."""
+
+    def setUp(self):
+        self.client.force_login(self.staff)
+
+    def test_it_opens_without_an_assignment(self):
+        response = self.client.get(
+            reverse('homework:pick_exam_parts_unsaved'),
+            {'topic': self.integration.id, 'return': 'form'},
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertIsNone(response.context['assignment'])
+        self.assertTrue(response.context['return_to_form'])
+        self.assertContains(response, 'Add to the assignment form')
+
+    def test_a_part_from_another_topic_still_validates(self):
+        from homework.forms import ExamQuestionPartsTaskForm
+
+        form = ExamQuestionPartsTaskForm(
+            data={
+                'assignment': self.assignment.id,
+                'task_type': 'exam_part',
+                'exam_question_part': self.part_a.id,  # Functions, not Integration
+                'order': 0,
+            },
+            parent_assignment=self.assignment,
+        )
+        self.assertTrue(form.is_valid(), form.errors)
+        self.assertEqual(form.cleaned_data['exam_question_part'], self.part_a)
+
+    def test_the_admin_form_carries_the_picker_link_and_its_script(self):
+        admin = User.objects.create_superuser('admin', 'admin@example.com', 'pw')
+        self.client.force_login(admin)
+        response = self.client.get('/admin/homework/homeworkassignment/add/')
+        self.assertContains(response, 'id="parts-picker-link"')
+        self.assertContains(response, 'homework_parts_picker.js')

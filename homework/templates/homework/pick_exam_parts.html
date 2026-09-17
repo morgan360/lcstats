@@ -6,8 +6,11 @@
 <div class="part-picker">
     <h1>Choose exam question parts</h1>
     <p class="lead">
-        Adding to <strong>{{ assignment.title }}</strong>. Each question is shown whole, with the
-        parts on this topic beside it. Open a part's marking scheme if you want to see what it asks.
+        {% if assignment %}Adding to <strong>{{ assignment.title }}</strong>.{% endif %}
+        Each question is shown whole, with the parts on this topic beside it.
+        Open a part's marking scheme if you want to see what it asks.
+        {% if return_to_form %}The parts you tick are handed back to the assignment
+        form, which you then save as usual.{% endif %}
     </p>
 
     <form method="get" class="topic-form">
@@ -18,15 +21,16 @@
             <option value="{{ t.id }}" {% if topic and t.id == topic.id %}selected{% endif %}>{{ t.name }}</option>
             {% endfor %}
         </select>
+        {% if return_to_form %}<input type="hidden" name="return" value="form">{% endif %}
         <noscript><button type="submit">Show</button></noscript>
     </form>
 
     {% if topic and questions %}
-    <form method="post">
+    <form method="post" id="parts-form">
         {% csrf_token %}
         <div class="toolbar">
             <span id="count">0</span> selected
-            <button type="submit" class="btn-primary">Add selected parts</button>
+            <button type="submit" class="btn-primary">{% if return_to_form %}Add to the assignment form{% else %}Add selected parts{% endif %}</button>
         </div>
 
         {% for question in questions %}
@@ -51,6 +55,7 @@
                     <div class="part">
                         <label class="part-head">
                             <input type="checkbox" name="part_ids" value="{{ part.id }}"
+                                   data-label="{{ question.exam_paper.year }} {{ question.exam_paper.get_paper_type_display }} Q{{ question.question_number }}{{ part.label }} - {% if part.max_marks %}{{ part.max_marks }} marks{% else %}marks not set{% endif %}"
                                    onchange="updateCount()"
                                    {% if part.id in already %}checked disabled{% endif %}>
                             <span class="label">{{ part.label }}</span>
@@ -78,7 +83,7 @@
 
         <div class="toolbar bottom">
             <span id="count-bottom">0</span> selected
-            <button type="submit" class="btn-primary">Add selected parts</button>
+            <button type="submit" class="btn-primary">{% if return_to_form %}Add to the assignment form{% else %}Add selected parts{% endif %}</button>
         </div>
     </form>
     {% elif topic %}
@@ -159,11 +164,36 @@
 </style>
 
 <script>
+var RETURN_TO_FORM = {{ return_to_form|yesno:"true,false" }};
+
+// Opened from the assignment form: send the ticks back to it rather than
+// saving here, so a new assignment and its parts are created in one save.
+function sendToForm(event) {
+    event.preventDefault();
+    var parts = [];
+    document.querySelectorAll('input[name="part_ids"]:checked:not(:disabled)').forEach(function (box) {
+        parts.push({id: box.value, label: box.dataset.label || box.value});
+    });
+    if (!parts.length) return;
+    if (!window.opener || window.opener.closed) {
+        alert('The assignment form is no longer open. Reopen the picker from it.');
+        return;
+    }
+    window.opener.postMessage({numscoilExamParts: parts}, window.location.origin);
+    window.close();
+}
+
 function updateCount() {
     var n = document.querySelectorAll('input[name="part_ids"]:checked:not(:disabled)').length;
     document.getElementById('count').textContent = n;
     document.getElementById('count-bottom').textContent = n;
 }
-document.addEventListener('DOMContentLoaded', updateCount);
+document.addEventListener('DOMContentLoaded', function () {
+    updateCount();
+    var form = document.getElementById('parts-form');
+    if (form && RETURN_TO_FORM) {
+        form.addEventListener('submit', sendToForm);
+    }
+});
 </script>
 {% endblock %}

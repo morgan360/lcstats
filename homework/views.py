@@ -772,13 +772,18 @@ def topic_content_options(request, topic_id):
 
 
 @staff_member_required
-def pick_exam_parts(request, assignment_id):
-    """Choose exam question parts for an assignment, with the questions in view.
+def pick_exam_parts(request, assignment_id=None):
+    """Choose exam question parts, with the questions in view.
 
     A part is a line in a dropdown and nothing more, so picking one blind is
     guesswork. Here each question's image is shown beside its parts, and each
     part can show its marking scheme, which is the closest thing on file to a
     picture of the part itself.
+
+    Opened from the assignment form with ?return=form, the ticks are handed
+    back to that form rather than saved here, so a new assignment and its parts
+    are still created in one save - which is how every other task type works.
+    Opened on its own for a saved assignment, it writes the tasks itself.
     """
     from exam_papers.models import ExamQuestionPart
     from exam_papers.services.topic_parts import (
@@ -786,19 +791,25 @@ def pick_exam_parts(request, assignment_id):
     )
     from interactive_lessons.models import Topic
 
-    assignment = get_object_or_404(HomeworkAssignment, id=assignment_id)
-    topics = Topic.objects.filter(subject=assignment.topic.subject) if assignment.topic \
-        else Topic.objects.all()
+    assignment = (get_object_or_404(HomeworkAssignment, id=assignment_id)
+                  if assignment_id else None)
+    return_to_form = request.GET.get('return') == 'form'
+
+    topics = Topic.objects.all()
+    if assignment and assignment.topic:
+        topics = topics.filter(subject=assignment.topic.subject)
     topics = topics.order_by('paper', 'order', 'name')
 
-    topic_id = request.GET.get('topic') or (assignment.topic_id if assignment.topic else None)
+    topic_id = request.GET.get('topic') or (assignment.topic_id if assignment else None)
     topic = topics.filter(id=topic_id).first() if topic_id else None
 
-    already = set(HomeworkTask.objects
-                  .filter(assignment=assignment, task_type='exam_part')
-                  .values_list('exam_question_part_id', flat=True))
+    already = set()
+    if assignment:
+        already = set(HomeworkTask.objects
+                      .filter(assignment=assignment, task_type='exam_part')
+                      .values_list('exam_question_part_id', flat=True))
 
-    if request.method == 'POST':
+    if request.method == 'POST' and assignment:
         wanted = [int(i) for i in request.POST.getlist('part_ids') if i.isdigit()]
         parts = (ExamQuestionPart.objects
                  .filter(id__in=wanted)
@@ -831,5 +842,6 @@ def pick_exam_parts(request, assignment_id):
         'topic': topic,
         'questions': questions,
         'already': already,
+        'return_to_form': return_to_form,
     }
     return render(request, 'homework/pick_exam_parts.html', context)
