@@ -247,14 +247,20 @@ class HomeworkAssignmentAdmin(admin.ModelAdmin):
 
     @admin.display(description='Exam question parts')
     def parts_picker(self, obj):
-        """Link to the picker, which shows each question while parts are chosen"""
+        """Link to the picker, which shows each question while parts are chosen
+
+        It sits beside Topic rather than with the part inline: the inlines render
+        below every fieldset, so anything filed with them lands at the foot of a
+        long page where it was missed.
+        """
         if not obj or not obj.pk:
             return 'Save the assignment first, then parts can be picked here.'
         url = reverse('homework:pick_exam_parts', args=[obj.pk])
         return format_html(
-            '<a class="button" href="{}" target="_blank">Browse exam question parts</a>'
-            '<p class="help">Shows each question with its parts, so you can see '
-            'what you are setting.</p>', url)
+            '<a class="button" href="{}" target="_blank">📷 Browse exam question '
+            'parts (shows the questions)</a>'
+            '<p class="help">Pick single parts, such as Q6(b), seeing each '
+            'question and its marking schemes as you choose.</p>', url)
 
     formfield_overrides = {
         models.TextField: {'widget': forms.Textarea(attrs={'rows': 3})},
@@ -271,7 +277,8 @@ class HomeworkAssignmentAdmin(admin.ModelAdmin):
 
     fieldsets = (
         ('Assignment Details', {
-            'fields': ('teacher', 'topic', 'title', 'description', 'assigned_date', 'due_date')
+            'fields': ('teacher', 'topic', 'parts_picker', 'title', 'description',
+                       'assigned_date', 'due_date')
         }),
         ('Assign To', {
             'fields': ('assigned_classes',),
@@ -281,10 +288,6 @@ class HomeworkAssignmentAdmin(admin.ModelAdmin):
             'fields': ('assigned_students',),
             'classes': ('collapse',),
             'description': 'Rarely needed — assign to specific students outside of (or in addition to) the classes above.'
-        }),
-        ('Exam question parts', {
-            'fields': ('parts_picker',),
-            'description': 'Set a single part, such as Q6(b), rather than a whole question.'
         }),
         ('Status', {
             'fields': ('is_published', 'notification_sent', 'progress_summary')
