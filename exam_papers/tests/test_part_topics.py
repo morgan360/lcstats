@@ -250,7 +250,22 @@ class PartsPageTests(PartTopicsTestBase):
     def test_lists_only_parts_on_the_chosen_topic(self):
         self.client.force_login(self.admin)
         response = self.client.get(self.url, {'topic': self.calculus.id})
-        self.assertEqual(list(response.context['parts']), [self.part_b])
+        self.assertEqual(response.context['groups'],
+                         [(self.question, [self.part_b])])
+        self.assertEqual(response.context['part_count'], 1)
+
+    def test_parts_of_one_question_share_a_single_card(self):
+        """The question image is shown once, not once per part."""
+        self.part_a.topic = self.calculus
+        self.part_a.save(update_fields=['topic'])
+
+        self.client.force_login(self.admin)
+        response = self.client.get(self.url, {'topic': self.calculus.id})
+
+        self.assertEqual(response.context['groups'],
+                         [(self.question, [self.part_a, self.part_b])])
+        self.assertEqual(response.context['part_count'], 2)
+        self.assertEqual(response.content.decode().count('data-question'), 1)
 
     def test_the_dropdown_is_for_superusers_only(self):
         self.client.force_login(self.admin)

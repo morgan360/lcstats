@@ -1,8 +1,9 @@
 /* Ticking, counting and retagging on the two worksheet pages.
  *
- * Both pages lay cards out the same way -- a .question-card label wrapping a
- * hidden checkbox -- and differ only in what the checkbox is called, so the
- * name is read from the page rather than hard-coded.
+ * The questions page ticks a whole card; the parts page ticks one row inside
+ * a card, because a question's parts share its picture. So the element that
+ * gets the .selected styling is whatever carries data-selectable, and the
+ * checkbox name is read from the page rather than hard-coded.
  */
 (function () {
     var holder = document.querySelector('[data-worksheet-checkbox]');
@@ -10,13 +11,18 @@
 
     function boxes() {
         return document.querySelectorAll(
-            '.question-card input[type="checkbox"][name="' + boxName + '"]');
+            'input[type="checkbox"][name="' + boxName + '"]');
+    }
+
+    function mark(box) {
+        var target = box.closest('[data-selectable]');
+        if (target) target.classList.toggle('selected', box.checked);
     }
 
     function setAll(checked) {
         boxes().forEach(function (box) {
             box.checked = checked;
-            box.closest('.question-card').classList.toggle('selected', checked);
+            mark(box);
         });
         updateCount();
     }
@@ -28,7 +34,7 @@
         var checked = 0;
         boxes().forEach(function (box) {
             if (box.checked) checked++;
-            box.closest('.question-card').classList.toggle('selected', box.checked);
+            mark(box);
         });
         document.getElementById('count').textContent = checked;
         ['print-btn', 'pdf-btn'].forEach(function (id) {
@@ -81,6 +87,14 @@
             state.style.color = '#FA709A';
         });
     });
+
+    /* Tick every part of one question, from the button on its card. */
+    window.selectQuestion = function (button, on) {
+        button.closest('[data-question]')
+            .querySelectorAll('input[type="checkbox"][name="' + boxName + '"]')
+            .forEach(function (box) { box.checked = on; mark(box); });
+        updateCount();
+    };
 
     document.addEventListener('DOMContentLoaded', function () {
         if (document.getElementById('count')) updateCount();

@@ -779,11 +779,13 @@ def parts_generator(request):
                            'question__question_number', 'order', 'id'))
 
     untagged_count = ExamQuestionPart.objects.filter(topic__isnull=True).count()
+    parts = list(parts)
 
     context = {
         'subjects': subjects,
         'topics': topics,
-        'parts': parts,
+        'groups': group_parts_by_question(parts),
+        'part_count': len(parts),
         'selected_topic_id': selected_topic_id,
         'selected_subject_id': int(selected_subject_id) if selected_subject_id else None,
         'untagged_count': untagged_count,
@@ -794,12 +796,24 @@ def parts_generator(request):
     return render(request, 'exam_papers/parts_generator.html', context)
 
 
-def selected_worksheet_parts(request):
-    """The parts ticked on the parts form, grouped under their question.
+def group_parts_by_question(parts):
+    """[(question, [part, ...]), ...] from parts already in question order.
 
-    Returns [(question, [part, ...]), ...] in print order, so the question
-    image is emitted once however many of its parts were ticked.
+    A part has no picture of its own, so both the page and the printed sheet
+    show its question once with its parts underneath. Ten cards of the same
+    Q7 image told you nothing about which part was which.
     """
+    groups = []
+    for part in parts:
+        if groups and groups[-1][0].pk == part.question_id:
+            groups[-1][1].append(part)
+        else:
+            groups.append((part.question, [part]))
+    return groups
+
+
+def selected_worksheet_parts(request):
+    """The parts ticked on the parts form, grouped under their question."""
     part_ids = request.POST.getlist('part_ids')
     if not part_ids:
         return None
@@ -808,14 +822,7 @@ def selected_worksheet_parts(request):
              .prefetch_related('extra_solution_images')
              .order_by('question__exam_paper__year',
                        'question__question_number', 'order', 'id'))
-
-    groups = []
-    for part in parts:
-        if groups and groups[-1][0].pk == part.question_id:
-            groups[-1][1].append(part)
-        else:
-            groups.append((part.question, [part]))
-    return groups
+    return group_parts_by_question(parts)
 
 
 @login_required

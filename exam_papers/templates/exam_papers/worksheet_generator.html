@@ -32,7 +32,7 @@
         <div class="mt-6 grid grid-cols-1 gap-5 md:grid-cols-2">
             {% for question in questions %}
             <div>
-                <label class="question-card block cursor-pointer rounded-xl border-2 border-mist/15 p-4 transition hover:border-mist/30" for="q-{{ question.id }}">
+                <label data-selectable class="question-card block cursor-pointer rounded-xl border-2 border-mist/15 p-4 transition hover:border-mist/30" for="q-{{ question.id }}">
                     <input type="checkbox" name="question_ids" value="{{ question.id }}" id="q-{{ question.id }}" onchange="updateCount()">
                     <div class="mb-3 flex items-center justify-between text-sm">
                         <span class="flex items-center gap-2">

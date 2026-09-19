@@ -4,90 +4,116 @@
 {% block title %}Print Question Parts - NumScoil{% endblock %}
 
 {% block content %}
+{% comment %}
+  One card per question, its parts as rows underneath. A part has no picture of
+  its own -- the question image covers all of them -- so a card per part showed
+  the same picture over and over, and two parts of one question were
+  indistinguishable at a glance. The picture is shown once; the rows carry what
+  actually differs, which is the label, the marks, the topic and the scheme.
+{% endcomment %}
 <style>
-    .question-card input[type="checkbox"] { display: none; }
-    .question-card.selected { border-color: #9448B0 !important; background: rgba(148, 72, 176, 0.1); }
-    .question-card.selected .check-indicator { background: #9448B0; border-color: #9448B0; }
-    .question-card.selected .check-indicator::after { content: '\2713'; color: white; position: absolute; top: -2px; left: 3px; font-size: 14px; font-weight: bold; }
+    .part-row input[type="checkbox"] { display: none; }
+    .part-row.selected { border-color: #9448B0 !important; background: rgba(148, 72, 176, 0.14); }
+    .part-row.selected .check-indicator { background: #9448B0; border-color: #9448B0; }
+    .part-row.selected .check-indicator::after { content: '\2713'; color: white; position: absolute; top: -2px; left: 3px; font-size: 14px; font-weight: bold; }
     select option { background: #001C3D; color: #F0EFEB; }
     .ms-preview.open .ms-preview-content { display: block !important; }
 </style>
 
-<div class="mx-auto max-w-6xl px-4 py-8">
+<div class="mx-auto max-w-5xl px-4 py-8">
     <h1 class="text-2xl font-semibold text-mist text-center">Print Question Parts</h1>
     <p class="mt-4 rounded-xl border border-indigo-deep/20 bg-mist px-5 py-4 text-sm text-indigo-deep shadow-[0_8px_24px_rgba(0,0,0,0.08)]">
-        Every part filed under a topic, one card each. A part has no picture of its own, so a
-        card shows the question it belongs to and that part's marking scheme.
-        {% if can_edit_topics %}Change a part's topic with the dropdown on its card — it saves as you pick.{% endif %}
+        Parts filed under a topic, gathered under the question they belong to. Tick the parts you
+        want, then print them or download a PDF.
+        {% if can_edit_topics %}Change a part's topic with the dropdown on its row — it saves as you pick.{% endif %}
     </p>
 
     {% include "exam_papers/_worksheet_filters.html" with untagged_noun="parts" untagged_count=untagged_count %}
 
-    {% if parts %}
+    {% if groups %}
     <form method="post" action="{% url 'exam_papers:parts_print' %}" target="_blank"
           data-worksheet-checkbox="part_ids">
         {% csrf_token %}
 
-        {% include "exam_papers/_worksheet_toolbar.html" with total=parts|length pdf_url=pdf_url print_label="Generate Printable Sheet" %}
+        {% include "exam_papers/_worksheet_toolbar.html" with total=part_count pdf_url=pdf_url print_label="Generate Printable Sheet" %}
 
-        <div class="mt-6 grid grid-cols-1 gap-5 md:grid-cols-2">
-            {% for part in parts %}
-            <div>
-                <label class="question-card block cursor-pointer rounded-xl border-2 border-mist/15 p-4 transition hover:border-mist/30" for="p-{{ part.id }}">
-                    <input type="checkbox" name="part_ids" value="{{ part.id }}" id="p-{{ part.id }}" onchange="updateCount()">
-                    <div class="mb-3 flex items-center justify-between text-sm">
-                        <span class="flex items-center gap-2">
-                            <span class="check-indicator relative inline-block h-5 w-5 rounded border-2 border-mist/30"></span>
-                            <span class="font-semibold text-violet-royal">
-                                {{ part.question.exam_paper }} - Q{{ part.question.question_number }} {{ part.label }}
-                            </span>
-                        </span>
-                        <span class="flex items-center gap-1.5">
-                            {% comment %}
-                              Zero and blank are different faults and want
-                              different words: a part left at 0 marks student
-                              answers out of nothing, and reads as "no marks"
-                              rather than "marks unknown".
-                            {% endcomment %}
-                            {% if part.max_marks %}
-                            <span class="rounded-full bg-indigo-deep/30 px-2.5 py-0.5 text-xs font-semibold text-mist/80">{{ part.max_marks }} marks</span>
-                            {% elif part.max_marks == 0 %}
-                            <span title="Answers to this part are marked out of nothing"
-                                class="rounded-full bg-rose-pop/25 px-2.5 py-0.5 text-xs font-semibold text-rose-pop">0 marks</span>
-                            {% else %}
-                            <span title="No marks recorded for this part yet"
-                                class="rounded-full bg-mist/15 px-2.5 py-0.5 text-xs font-semibold text-mist/60">marks not set</span>
-                            {% endif %}
-                            {% if part.solution_images|length > 1 %}
-                            <span class="rounded-full bg-lime-glow/20 px-2.5 py-0.5 text-xs font-semibold text-lime-glow">{{ part.solution_images|length }} crops</span>
-                            {% endif %}
-                        </span>
-                    </div>
-                    {% if part.question.image %}
-                    <img src="{{ part.question.image.url }}" alt="Question {{ part.question.question_number }}" loading="lazy"
-                        class="w-full rounded-lg border border-mist/10">
-                    {% endif %}
-                </label>
-
-                {# Outside the label above, or picking a topic would tick the card. #}
-                {% include "exam_papers/_topic_select.html" with retag_object=part retag_url=part.get_retag_url %}
-
-                {% if part.solution_images %}
-                <div class="ms-preview mt-2 rounded-xl border-2 border-mist/15 overflow-hidden">
-                    <button type="button" onclick="this.parentElement.classList.toggle('open')"
-                        style="width:100%; padding:8px 16px; background:rgba(255,255,255,0.05); border:none; color:#F0EFEB; font-size:13px; cursor:pointer; text-align:left; font-weight:600;">
-                        Marking Scheme &#9662;
-                    </button>
-                    <div class="ms-preview-content" style="display:none; padding:12px 16px;">
-                        {% for image in part.solution_images %}
-                        <img src="{{ image.url }}" alt="Marking scheme for {{ part.label }}" loading="lazy"
-                            style="max-width:100%; margin-bottom:8px; border:1px solid rgba(255,255,255,0.1); border-radius:6px;">
-                        {% endfor %}
-                    </div>
+        <div class="mt-6 space-y-5">
+            {% for question, parts in groups %}
+            <div data-question class="rounded-xl border-2 border-mist/15 p-4">
+                <div class="mb-3 flex flex-wrap items-center justify-between gap-2 text-sm">
+                    <span class="font-semibold text-violet-royal">
+                        {{ question.exam_paper }} — Question {{ question.question_number }}
+                        <span class="ml-1 font-normal text-mist/50">{{ parts|length }} part{{ parts|pluralize }} here</span>
+                    </span>
+                    <span class="flex items-center gap-2">
+                        {% if question.total_marks %}
+                        <span class="rounded-full bg-indigo-deep/30 px-2.5 py-0.5 text-xs font-semibold text-mist/80">{{ question.total_marks }} marks</span>
+                        {% endif %}
+                        <button type="button" onclick="selectQuestion(this, true)"
+                            class="rounded-lg border border-mist/20 bg-mist/10 px-2.5 py-1 text-xs font-semibold text-mist transition hover:bg-mist/20">Tick all</button>
+                        <button type="button" onclick="selectQuestion(this, false)"
+                            class="rounded-lg border border-mist/20 bg-mist/10 px-2.5 py-1 text-xs font-semibold text-mist transition hover:bg-mist/20">Clear</button>
+                    </span>
                 </div>
-                {% else %}
-                <p class="mt-2 text-xs text-mist/40">No marking scheme image for this part.</p>
+
+                {% if question.image %}
+                <img src="{{ question.image.url }}" alt="Question {{ question.question_number }}" loading="lazy"
+                    class="w-full rounded-lg border border-mist/10">
                 {% endif %}
+
+                <div class="mt-3 space-y-2">
+                    {% for part in parts %}
+                    <div class="rounded-lg border border-mist/10 bg-twilight/40 p-3">
+                        <div class="flex flex-wrap items-center gap-3">
+                            <label data-selectable for="p-{{ part.id }}"
+                                class="part-row flex flex-1 min-w-[10rem] cursor-pointer items-center gap-2 rounded-lg border-2 border-mist/15 px-3 py-2 transition hover:border-mist/30">
+                                <input type="checkbox" name="part_ids" value="{{ part.id }}" id="p-{{ part.id }}" onchange="updateCount()">
+                                <span class="check-indicator relative inline-block h-5 w-5 shrink-0 rounded border-2 border-mist/30"></span>
+                                <span class="font-semibold text-mist">{{ part.label }}</span>
+                                {% comment %}
+                                  Zero and blank are different faults and want different
+                                  words: a part left at 0 marks a student's answer out of
+                                  nothing, and reads as "no marks", not "marks unknown".
+                                {% endcomment %}
+                                {% if part.max_marks %}
+                                <span class="rounded-full bg-indigo-deep/30 px-2.5 py-0.5 text-xs font-semibold text-mist/80">{{ part.max_marks }} marks</span>
+                                {% elif part.max_marks == 0 %}
+                                <span title="Answers to this part are marked out of nothing"
+                                    class="rounded-full bg-rose-pop/25 px-2.5 py-0.5 text-xs font-semibold text-rose-pop">0 marks</span>
+                                {% else %}
+                                <span title="No marks recorded for this part yet"
+                                    class="rounded-full bg-mist/15 px-2.5 py-0.5 text-xs font-semibold text-mist/60">marks not set</span>
+                                {% endif %}
+                                {% if part.solution_images|length > 1 %}
+                                <span class="rounded-full bg-lime-glow/20 px-2.5 py-0.5 text-xs font-semibold text-lime-glow">{{ part.solution_images|length }} crops</span>
+                                {% endif %}
+                            </label>
+
+                            {# Outside the label, or picking a topic would tick the part. #}
+                            <div class="min-w-[14rem] flex-1">
+                                {% include "exam_papers/_topic_select.html" with retag_object=part retag_url=part.get_retag_url %}
+                            </div>
+                        </div>
+
+                        {% if part.solution_images %}
+                        <div class="ms-preview mt-2 rounded-lg border border-mist/10 overflow-hidden">
+                            <button type="button" onclick="this.parentElement.classList.toggle('open')"
+                                style="width:100%; padding:6px 12px; background:rgba(255,255,255,0.05); border:none; color:#F0EFEB; font-size:12px; cursor:pointer; text-align:left; font-weight:600;">
+                                Marking Scheme for {{ part.label }} &#9662;
+                            </button>
+                            <div class="ms-preview-content" style="display:none; padding:10px 12px;">
+                                {% for image in part.solution_images %}
+                                <img src="{{ image.url }}" alt="Marking scheme for {{ part.label }}" loading="lazy"
+                                    style="max-width:100%; margin-bottom:8px; border:1px solid rgba(255,255,255,0.1); border-radius:6px;">
+                                {% endfor %}
+                            </div>
+                        </div>
+                        {% else %}
+                        <p class="mt-2 text-xs text-rose-pop/70">No marking scheme image for this part — it can't be graded.</p>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
             </div>
             {% endfor %}
         </div>
