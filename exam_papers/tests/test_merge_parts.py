@@ -3,12 +3,13 @@
 The command deletes rows, and every foreign key pointing at a part cascades,
 so most of what is tested here is that nothing a student did goes with them.
 """
+import tempfile
 from io import StringIO
 
 from django.contrib.auth.models import User
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.core.management import call_command
-from django.test import TestCase
+from django.test import TestCase, override_settings
 
 from core.models import Subject
 from exam_papers.models import (
@@ -27,6 +28,10 @@ def image(name):
     return SimpleUploadedFile(name, PNG, content_type='image/png')
 
 
+# Saving an ImageField in a test writes a real file, and the test runner does
+# not isolate MEDIA_ROOT -- so without this the crop tests below quietly litter
+# the project's own media/exam_papers/marking_schemes with 1x1 PNGs.
+@override_settings(MEDIA_ROOT=tempfile.mkdtemp(prefix='merge-parts-test-'))
 class MergeTestBase(TestCase):
     @classmethod
     def setUpTestData(cls):
