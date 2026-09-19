@@ -37,6 +37,12 @@ ROMAN_RANK = {None: 0, 'i': 1, 'ii': 2, 'iii': 3, 'iv': 4,
 # letter is flanked by other letters and say so in the report.
 _FLANKED = re.compile(r'[a-z][a-h]|[a-h][a-z]', re.I)
 
+# A part can be one letter's worth of work or several sub-steps of one letter,
+# but "(a), (b)" is one part covering two letters, with no (b) of its own in
+# the question. Calling that (a) would tell a student to answer half of what
+# its marking scheme covers, so it is left exactly as typed and reported.
+_TWO_LETTERS = re.compile(r'\(\s*([a-h])\s*\).*?\(\s*([a-h])\s*\)', re.I)
+
 
 class Command(BaseCommand):
     help = "Merge a question's sub-parts into one part per letter."
@@ -119,6 +125,9 @@ class Command(BaseCommand):
     def _letter(self, part):
         label = (part.label or '').strip()
         if _FLANKED.search(label):
+            return None
+        match = _TWO_LETTERS.search(label)
+        if match and match.group(1).lower() != match.group(2).lower():
             return None
         parsed = parse_part_label(label)
         return parsed[0] if parsed else None
@@ -314,9 +323,15 @@ class Command(BaseCommand):
         if not unreadable:
             return
         self.stdout.write(self.style.WARNING(
-            f'\n{len(unreadable)} part(s) skipped, label unreadable:'))
+            f'\n{len(unreadable)} part(s) skipped, left exactly as they are:'))
         for part in unreadable:
-            self.stdout.write(f'  {part.question} {part.label!r} (id {part.pk})')
+            label = (part.label or '').strip()
+            match = _TWO_LETTERS.search(label)
+            why = ('covers two letters' if match
+                   and match.group(1).lower() != match.group(2).lower()
+                   else 'label unreadable')
+            self.stdout.write(
+                f'  {part.question} {part.label!r} (id {part.pk}) - {why}')
 
     def _report_marks_to_check(self, totals):
         parts = ExamQuestionPart.objects.filter(

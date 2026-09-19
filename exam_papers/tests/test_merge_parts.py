@@ -82,6 +82,29 @@ class LabelTests(MergeTestBase):
         self.assertEqual(part.label, '(b)')
         self.assertEqual(ExamQuestionPart.objects.count(), 1)
 
+    def test_a_part_covering_two_letters_is_left_alone(self):
+        """"(a), (b)" is one part covering both, with no (b) of its own.
+
+        Relabelling it (a) would tell a student to answer half of what its
+        marking scheme covers.
+        """
+        part = self.part('(a), (b)', max_marks=10)
+        output = self.merge('--apply')
+
+        part.refresh_from_db()
+        self.assertEqual(part.label, '(a), (b)')
+        self.assertEqual(part.max_marks, 10)
+        self.assertIn('covers two letters', output)
+
+    def test_sub_steps_of_one_letter_still_merge(self):
+        """The two-letter guard must not catch (b)(i) + (b)(ii)."""
+        self.part('(b),(i)', max_marks=10, order=1)
+        self.part('(b),(ii)', max_marks=15, order=2)
+        self.merge('--apply')
+
+        self.assertEqual(self.labels(), ['(b)'])
+        self.assertEqual(ExamQuestionPart.objects.get().max_marks, 25)
+
     def test_a_label_whose_letter_is_inside_a_word_is_skipped(self):
         """parse_part_label reads "Part (b)" as letter a, the a of Part."""
         part = self.part('Part (b)')
