@@ -630,6 +630,29 @@ def parse_part_label(label):
     return letter.group(1), (roman.group(1) if roman else None)
 
 
+_ROMAN_ORDER = {None: 0, 'i': 1, 'ii': 2, 'iii': 3, 'iv': 4,
+                'v': 5, 'vi': 6, 'vii': 7, 'viii': 8}
+
+
+def regions_for_letter(regions, question_number, letter):
+    """Every marking-scheme region covering one part letter, in reading order.
+
+    A part is a letter now, so where the scheme still splits (b) into (b)(i)
+    and (b)(ii) there is no (b) region to find and a plain lookup comes back
+    empty. That would quietly classify or crop a merged part from nothing.
+    Whole-letter region if there is one, otherwise all of its sub-regions.
+    """
+    if not regions:
+        return []
+    whole = regions.get((question_number, letter, None))
+    if whole is not None:
+        return [whole]
+    found = [(roman, region) for (number, key, roman), region in regions.items()
+             if number == question_number and key == letter]
+    found.sort(key=lambda pair: _ROMAN_ORDER.get(pair[0], 99))
+    return [region for _, region in found]
+
+
 def question_text(pdf_path, item, legacy=False):
     """Return the text layer for one question from a detected layout item.
 

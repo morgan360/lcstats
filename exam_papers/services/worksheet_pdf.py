@@ -167,15 +167,67 @@ def build_worksheet_pdf(questions, include_solutions=False, title=None):
             sheet.y += GAP
 
         if include_solutions:
-            parts = [(part, _image_path(part.solution_image))
-                     for part in question.parts.all()]
-            parts = [(part, path) for part, path in parts if path]
-            if parts:
-                first, first_path = parts[0]
+            crops = _scheme_crops(question.parts.all())
+            if crops:
                 sheet.ensure(LINE_HEIGHT * 2)
                 sheet.text('Marking scheme')
-                sheet.labelled_image(first.label, first_path, size=10)
-                for part, part_path in parts[1:]:
-                    sheet.labelled_image(part.label, part_path, size=10)
+                for label, path in crops:
+                    sheet.labelled_image(label, path, size=10)
+
+    return sheet.bytes()
+
+
+def _scheme_crops(parts):
+    """[(label, path)] for every marking-scheme crop these parts have.
+
+    A part that covers what used to be (b)(i) and (b)(ii) carries a crop for
+    each; the second and later ones are labelled "(cont.)" so the sheet reads
+    as one scheme rather than as two parts with the same name.
+    """
+    crops = []
+    for part in parts:
+        for index, image in enumerate(part.solution_images):
+            path = _image_path(image)
+            if not path:
+                continue
+            crops.append((part.label if not index else f'{part.label} (cont.)',
+                          path))
+    return crops
+
+
+def build_parts_worksheet_pdf(groups, title=None):
+    """A sheet of selected question parts, under the question they belong to.
+
+    ``groups`` is [(question, [part, ...])], as the parts page posts them. A
+    part has no image of its own, so its question's image is printed once and
+    the ticked parts' marking schemes follow it -- which is the only way a
+    part-level sheet says what was actually asked.
+    """
+    sheet = _Sheet()
+    if title:
+        sheet.text(title, size=HEADING_SIZE + 2)
+        sheet.y += GAP
+
+    for question, parts in groups:
+        labels = ', '.join(part.label for part in parts)
+        heading = (f'{question.exam_paper.year} '
+                   f'{question.exam_paper.get_paper_type_display()} - '
+                   f'Question {question.question_number} {labels}'.strip())
+
+        path = _image_path(question.image)
+        if path:
+            sheet.labelled_image(heading, path)
+        else:
+            sheet.ensure(LINE_HEIGHT * 2)
+            sheet.text(heading)
+            sheet.text('No image of this question on file.', bold=False)
+            sheet.y += GAP
+
+        crops = _scheme_crops(parts)
+        if crops:
+            sheet.ensure(LINE_HEIGHT * 2)
+            sheet.text('Marking scheme')
+            for label, crop_path in crops:
+                sheet.labelled_image(label, crop_path, size=10)
 
     return sheet.bytes()

@@ -17,7 +17,7 @@ import re
 from django.conf import settings
 
 from .vision_grading import (
-    _vision_completion, encode_image_from_file, restore_eaten_latex,
+    _vision_completion, as_image_list, encode_image_from_file, restore_eaten_latex,
     vision_model,
 )
 
@@ -278,7 +278,9 @@ def analyse_student_work(work_image_b64, question_prompt, part_label="",
         work_image_b64: base64 JPEG of the student's page (see image_intake).
         question_prompt: text of the question part.
         part_label: e.g. "(b)", for context only.
-        question_image / marking_scheme_image: optional ImageFields for context.
+        question_image: optional ImageField for context.
+        marking_scheme_image: the part's marking scheme -- one ImageField, or
+            a list of crops where the part covers several rows of the scheme.
         expected_answer: the known answer, if the part has one.
         max_marks: marks this part is worth. Supplied only for exam parts, and
             only alongside a marking scheme -- together they are what switches
@@ -289,17 +291,19 @@ def analyse_student_work(work_image_b64, question_prompt, part_label="",
     'feedback' string. Raises on failure -- the caller decides what the student
     sees, so that no exception text can leak into feedback.
     """
-    scheme_b64 = encode_image_from_file(marking_scheme_image) if marking_scheme_image else None
+    scheme_b64s = [encode_image_from_file(image)
+                   for image in as_image_list(marking_scheme_image)]
+    scheme_b64s = [b64 for b64 in scheme_b64s if b64]
 
     # No scheme means nothing to mark against, whatever the caller passed.
-    if not scheme_b64:
+    if not scheme_b64s:
         max_marks = None
 
     content = [
         {
             "type": "text",
             "text": _build_prompt(question_prompt, part_label, expected_answer,
-                                  bool(scheme_b64), max_marks),
+                                  bool(scheme_b64s), max_marks),
         },
         {"type": "text", "text": "**The student's handwritten work:**"},
         {
@@ -321,9 +325,11 @@ def analyse_student_work(work_image_b64, question_prompt, part_label="",
                 },
             ]
 
-    if scheme_b64:
+    for index, scheme_b64 in enumerate(scheme_b64s):
+        label = ("**The marking scheme, for context:**" if not index
+                 else "**Marking scheme (continued):**")
         content += [
-            {"type": "text", "text": "**The marking scheme, for context:**"},
+            {"type": "text", "text": label},
             {
                 "type": "image_url",
                 "image_url": {"url": f"data:image/jpeg;base64,{scheme_b64}", "detail": "high"},

@@ -15,8 +15,15 @@ urlpatterns = [
     path('worksheet/print/', views.worksheet_print, name='worksheet_print'),
     path('worksheet/pdf/', views.worksheet_pdf, name='worksheet_pdf'),
 
-    # Staff cross-reference of topics against papers, part by part
-    path('topic-map/', views.topic_cross_reference, name='topic_cross_reference'),
+    # The same, one card per question part
+    path('worksheet/parts/', views.parts_generator, name='parts_generator'),
+    path('worksheet/parts/print/', views.parts_print, name='parts_print'),
+    path('worksheet/parts/pdf/', views.parts_pdf, name='parts_pdf'),
+
+    # Retagging from those two pages (superusers only; the views re-check)
+    path('question/<int:pk>/topic/',
+         views.set_question_topic, name='set_question_topic'),
+    path('part/<int:pk>/topic/', views.set_part_topic, name='set_part_topic'),
 
     # Full paper attempt (timed or practice) - slug catch-all must come after specific routes
     path('<slug:slug>/', views.paper_detail, name='paper_detail'),
@@ -44,9 +51,6 @@ urlpatterns = [
     # View results
     path('attempt/<int:attempt_id>/results/',
          views.view_results, name='view_results'),
-
-    # Topic-based practice
-    path('topic/<int:topic_id>/', views.topic_practice, name='topic_practice'),
 
     # Feedback on question grading
     path('attempt/<int:attempt_id>/feedback/',

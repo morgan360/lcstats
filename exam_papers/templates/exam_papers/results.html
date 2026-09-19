@@ -124,11 +124,11 @@
                             View Solution ▼
                         </button>
                         <div class="solution-content" id="solution-{{ part_data.part.id }}" style="display: none;">
-                            {% if part_data.part.solution_image %}
+                            {% for image in part_data.part.solution_images %}
                             <div class="solution-image">
-                                <img src="{{ part_data.part.solution_image.url }}" alt="Solution">
+                                <img src="{{ image.url }}" alt="Solution">
                             </div>
-                            {% endif %}
+                            {% endfor %}
                         </div>
                     </div>
                 </div>

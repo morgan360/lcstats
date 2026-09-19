@@ -1,8 +1,8 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="utf-8">
-    <title>Worksheet</title>
+{% comment %}
+  Print styles shared by the question worksheet and the parts sheet. Both
+  open in a new tab and are printed from the browser, so the on-screen
+  controls hide under @media print.
+{% endcomment %}
     <style>
         * {
             margin: 0;
@@ -109,41 +109,3 @@
             }
         }
     </style>
-</head>
-<body>
-    <div class="no-print">
-        <button class="primary" onclick="window.print()">Print / Save as PDF</button>
-        <button onclick="window.close()">Close</button>
-    </div>
-
-    {% for question in questions %}
-    <div class="question">
-        <div class="question-header">
-            {{ question.exam_paper }} &mdash; Question {{ question.question_number }}
-            {% if question.total_marks %}({{ question.total_marks }} marks){% endif %}
-        </div>
-        {% if question.image %}
-        <img src="{{ question.image.url }}" alt="Question {{ question.question_number }}">
-        {% endif %}
-    </div>
-
-    {% if include_solutions %}
-    {% with parts=question.parts.all %}
-    {% for part in parts %}
-    {% if part.solution_image %}
-    <div class="solution-group">
-        {% if forloop.first %}
-        <div class="solution-header">Marking Scheme &mdash; {{ question.exam_paper }} Q{{ question.question_number }}</div>
-        {% endif %}
-        <div class="solution-part">
-            <div class="part-label">Part {{ part.label }}{% if part.max_marks %} ({{ part.max_marks }} marks){% endif %}</div>
-            <img src="{{ part.solution_image.url }}" alt="Solution {{ part.label }}">
-        </div>
-    </div>
-    {% endif %}
-    {% endfor %}
-    {% endwith %}
-    {% endif %}
-    {% endfor %}
-</body>
-</html>

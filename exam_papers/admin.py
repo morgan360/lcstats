@@ -9,6 +9,7 @@ from django.db.models import Count, Q
 from django import forms
 from .models import (
     ExamPaper,
+    ExamPartSolutionImage,
     ExamQuestion,
     ExamQuestionPart,
     ExamAttempt,
@@ -23,9 +24,9 @@ class ExamQuestionPartInline(admin.StackedInline):
     """Inline admin for question parts"""
     model = ExamQuestionPart
     extra = 1
-    fields = ('label', 'topics', 'solution_image', 'solution_status', 'max_marks', 'solution_unlock_after_attempts', 'order')
+    fields = ('label', 'topic', 'solution_image', 'solution_status', 'max_marks', 'solution_unlock_after_attempts', 'order')
     readonly_fields = ('solution_status',)
-    autocomplete_fields = ['topics']
+    autocomplete_fields = ['topic']
     ordering = ['order']
 
     classes = ['collapse']  # Makes inlines collapsible to save space
@@ -272,7 +273,6 @@ class ExamQuestionAdmin(admin.ModelAdmin):
     # Annotating clears the model's default ordering for pagination purposes,
     # so state it here; these are the same three fields as Meta.ordering.
     ordering = ('exam_paper', 'order', 'question_number')
-    change_list_template = 'admin/exam_papers/examquestion_change_list.html'
 
     fieldsets = (
         ('Question Identification', {
@@ -294,101 +294,6 @@ class ExamQuestionAdmin(admin.ModelAdmin):
         # solution_progress renders on every row; annotate once instead of
         # letting each row run solution_images_status() for itself.
         return annotate_solution_counts(super().get_queryset(request))
-
-    def get_urls(self):
-        urls = super().get_urls()
-        custom_urls = [
-            path(
-                'worksheet-generator/',
-                self.admin_site.admin_view(self.worksheet_generator_view),
-                name='exam_papers_examquestion_worksheet_generator',
-            ),
-            path(
-                'worksheet-print/',
-                self.admin_site.admin_view(self.worksheet_print_view),
-                name='exam_papers_examquestion_worksheet_print',
-            ),
-        ]
-        return custom_urls + urls
-
-    def worksheet_generator_view(self, request):
-        """Custom admin view for selecting exam questions to print as a worksheet."""
-        from interactive_lessons.models import Topic
-        from core.models import Subject
-
-        subjects = Subject.objects.filter(is_active=True)
-        selected_topic_id = request.GET.get('topic')
-        selected_subject_id = request.GET.get('subject')
-
-        from .services.topic_parts import topic_filter
-
-        # Only show topics that have questions with images, filed either on
-        # the question or on one of its parts
-        with_images = ExamQuestion.objects.exclude(image='').exclude(image__isnull=True)
-        topics = Topic.objects.filter(
-            Q(exam_questions__in=with_images)
-            | Q(exam_question_parts__question__in=with_images)
-        ).distinct().select_related('subject').order_by('subject__name', 'name')
-
-        if selected_subject_id:
-            topics = topics.filter(subject_id=selected_subject_id)
-
-        questions = ExamQuestion.objects.none()
-        if selected_topic_id:
-            if selected_topic_id == 'none':
-                questions = ExamQuestion.objects.filter(
-                    topic__isnull=True
-                ).exclude(image='').exclude(image__isnull=True)
-            else:
-                questions = ExamQuestion.objects.filter(
-                    topic_filter(selected_topic_id)
-                ).exclude(image='').exclude(image__isnull=True).distinct()
-            questions = questions.select_related(
-                'exam_paper', 'topic'
-            ).prefetch_related('parts').order_by('-exam_paper__year', 'question_number')
-
-        # Count unassigned questions with images
-        unassigned_count = ExamQuestion.objects.filter(
-            topic__isnull=True
-        ).exclude(image='').exclude(image__isnull=True).count()
-
-        context = {
-            'title': 'Worksheet Generator',
-            'subjects': subjects,
-            'topics': topics,
-            'questions': questions,
-            'selected_topic_id': selected_topic_id,
-            'selected_subject_id': int(selected_subject_id) if selected_subject_id else None,
-            'unassigned_count': unassigned_count,
-            'opts': self.model._meta,
-            'has_view_permission': self.has_view_permission(request),
-            'site_header': self.admin_site.site_header,
-            'site_title': self.admin_site.site_title,
-        }
-        return render(request, 'admin/exam_papers/worksheet_generator.html', context)
-
-    def worksheet_print_view(self, request):
-        """Render a clean printable page with selected exam question images."""
-        question_ids = request.POST.getlist('question_ids')
-        include_solutions = request.POST.get('include_solutions') == '1'
-        if not question_ids:
-            messages.error(request, 'No questions selected.')
-            return redirect('admin:exam_papers_examquestion_worksheet_generator')
-
-        questions = ExamQuestion.objects.filter(
-            id__in=question_ids
-        ).select_related('exam_paper', 'topic').prefetch_related(
-            'parts'
-        ).order_by(
-            'topic__name', 'exam_paper__year', 'question_number'
-        )
-
-        context = {
-            'questions': questions,
-            'include_solutions': include_solutions,
-            'title': 'Worksheet',
-        }
-        return render(request, 'admin/exam_papers/worksheet_print.html', context)
 
     def has_image(self, obj):
         """Show if question has image"""
@@ -456,6 +361,14 @@ class ExamQuestionAttemptInline(admin.TabularInline):
     can_delete = False
 
 
+class ExamPartSolutionImageInline(admin.TabularInline):
+    """The second and later marking-scheme crops of a part that covers several."""
+    model = ExamPartSolutionImage
+    extra = 0
+    fields = ('image', 'order')
+    ordering = ['order', 'id']
+
+
 @admin.register(ExamQuestionPart)
 class ExamQuestionPartAdmin(admin.ModelAdmin):
     """
@@ -468,7 +381,7 @@ class ExamQuestionPartAdmin(admin.ModelAdmin):
         'part_label',
         'exam_paper',
         'topic',
-        'part_topics',
+        'question_topic',
         'max_marks',
         'has_solution_image',
         'solution_unlock_after_attempts',
@@ -478,8 +391,8 @@ class ExamQuestionPartAdmin(admin.ModelAdmin):
         'question__exam_paper__year',
         'question__exam_paper__paper_type',
         ('question__exam_paper', admin.RelatedOnlyFieldListFilter),
-        ('topics', admin.RelatedOnlyFieldListFilter),
-        ('topics', admin.EmptyFieldListFilter),
+        ('topic', admin.RelatedOnlyFieldListFilter),
+        ('topic', admin.EmptyFieldListFilter),
     )
     search_fields = (
         'label',
@@ -488,10 +401,11 @@ class ExamQuestionPartAdmin(admin.ModelAdmin):
         'question__exam_paper__title',
         'question__topic__name',
     )
-    autocomplete_fields = ['question', 'topics']
+    autocomplete_fields = ['question', 'topic']
     list_select_related = (
         'question', 'question__exam_paper', 'question__topic',
     )
+    inlines = [ExamPartSolutionImageInline]
     list_editable = ['max_marks']
     ordering = (
         '-question__exam_paper__year', 'question__order', 'order',
@@ -506,16 +420,15 @@ class ExamQuestionPartAdmin(admin.ModelAdmin):
     def exam_paper(self, obj):
         return obj.question.exam_paper
 
-    @admin.display(description='Topic', ordering='question__topic__name')
-    def topic(self, obj):
+    # Named question_topic, not topic: a display method called topic would
+    # silently shadow the real field of that name in list_display.
+    @admin.display(description="Question's topic",
+                   ordering='question__topic__name')
+    def question_topic(self, obj):
         return obj.question.topic
 
     def get_queryset(self, request):
-        return super().get_queryset(request).prefetch_related('topics')
-
-    @admin.display(description='Part topics')
-    def part_topics(self, obj):
-        return ', '.join(t.name for t in obj.topics.all()) or '-'
+        return super().get_queryset(request).select_related('topic')
 
     @admin.display(description='Scheme image', boolean=True)
     def has_solution_image(self, obj):

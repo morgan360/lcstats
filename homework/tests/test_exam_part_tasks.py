@@ -34,8 +34,10 @@ class ExamPartTaskTestBase(TestCase):
             question=cls.question, label='(a)', max_marks=10, order=1)
         cls.part_b = ExamQuestionPart.objects.create(
             question=cls.question, label='(b)', max_marks=20, order=2)
-        cls.part_a.topics.set([cls.functions])
-        cls.part_b.topics.set([cls.integration])
+        cls.part_a.topic = cls.functions
+        cls.part_a.save(update_fields=['topic'])
+        cls.part_b.topic = cls.integration
+        cls.part_b.save(update_fields=['topic'])
 
         cls.student = User.objects.create_user('student', password='pw')
         cls.staff = User.objects.create_user('teacher', password='pw', is_staff=True)
@@ -53,7 +55,7 @@ class ExamPartTaskTestBase(TestCase):
 
 
 class TaskContentTests(ExamPartTaskTestBase):
-    def test_display_names_the_paper_question_part_and_topics(self):
+    def test_display_names_the_paper_question_part_and_topic(self):
         self.assertEqual(
             self.task().get_content_display(),
             '[Maths] 2019 Paper 1 - Q6(b) - Integration',

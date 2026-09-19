@@ -42,7 +42,6 @@ class WorksheetPdfTests(TestCase):
             question=cls.question, label='(a)', max_marks=10, order=1,
             solution_image=png(900, 400),
         )
-        cls.part.topics.set([cls.topic])
         cls.student = User.objects.create_user('student', password='pw')
 
     def pdf(self, data):

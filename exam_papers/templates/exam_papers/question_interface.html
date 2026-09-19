@@ -136,7 +136,7 @@
         {% if focus_part %}
         <div class="focus-banner">
             You're answering part <strong>{{ focus_part.label }}</strong>
-            {% if focus_part.topics.all %}&mdash; {% for t in focus_part.topics.all %}{{ t.name }}{% if not forloop.last %}, {% endif %}{% endfor %}{% endif %}.
+            {% if focus_part.topic %}&mdash; {{ focus_part.topic.name }}{% endif %}.
             The full question is shown for context; its other parts are hidden below.
         </div>
         {% elif question.topic %}
@@ -158,9 +158,9 @@
                 <h3>{{ part_data.part.label }}</h3>
                 <span class="part-marks">{{ part_data.part.max_marks }} marks</span>
             </div>
-            {% if part_data.part.topics.all %}
+            {% if part_data.part.topic %}
             <div class="part-topics">
-                {% for t in part_data.part.topics.all %}<span class="topic-tag">{{ t.name }}</span>{% endfor %}
+                <span class="topic-tag">{{ part_data.part.topic.name }}</span>
             </div>
             {% endif %}
 
@@ -1002,8 +1002,12 @@ function toggleSolution(partId, attemptId, isUnlocked) {
         if (data.success) {
             solutionArea.style.display = 'block';
             let html = '<h4>📖 Marking Scheme</h4>';
-            if (data.solution_image_url) {
-                html += '<img src="' + data.solution_image_url + '" style="max-width: 100%; margin-top: 15px; border: 1px solid #ddd; border-radius: 4px;">';
+            // A part that covers what used to be (b)(i) and (b)(ii) carries a
+            // crop for each, shown one under the other in reading order.
+            if (data.solution_image_urls && data.solution_image_urls.length) {
+                data.solution_image_urls.forEach(function (url) {
+                    html += '<img src="' + url + '" style="max-width: 100%; margin-top: 15px; border: 1px solid #ddd; border-radius: 4px;">';
+                });
             } else {
                 html += '<p style="color: #999;">No marking scheme image available.</p>';
             }

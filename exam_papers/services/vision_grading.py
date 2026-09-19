@@ -106,6 +106,20 @@ def _vision_completion(messages, max_tokens, temperature, model=None,
     return (client or get_client()).chat.completions.create(**kwargs)
 
 
+def as_image_list(images):
+    """Normalise one image field, or a sequence of them, to a list.
+
+    A part that covers what used to be (b)(i) and (b)(ii) carries a marking
+    scheme crop for each, so callers now pass ExamQuestionPart.solution_images.
+    Older callers still pass a single field, and both have to work.
+    """
+    if not images:
+        return []
+    if hasattr(images, '__iter__') and not hasattr(images, 'read'):
+        return [image for image in images if image]
+    return [images]
+
+
 def encode_image_from_file(image_field):
     """
     Encode an image field to base64 for OpenAI Vision API.
@@ -236,7 +250,8 @@ def grade_with_vision_marking_scheme(
 
     Args:
         student_answer (str): The student's submitted answer
-        marking_scheme_image (ImageField): The marking scheme image for this question part
+        marking_scheme_image: The marking scheme crop for this part, or a list
+            of them where the part covers several sub-parts of the scheme
         question_part_label (str): Part label (e.g., "(a)", "(b)")
         max_marks (int, optional): Maximum marks available for this part (auto-extracted if None)
         question_image (ImageField, optional): Image of the question itself
@@ -263,7 +278,8 @@ def grade_with_vision_marking_scheme(
             'max_marks': max_marks or 0
         }
 
-    if not marking_scheme_image:
+    scheme_images = as_image_list(marking_scheme_image)
+    if not scheme_images:
         logger.error(f"No marking scheme image for part {question_part_label}")
         return {
             'score': 0,
@@ -276,7 +292,8 @@ def grade_with_vision_marking_scheme(
     # Auto-extract max_marks if not provided
     if max_marks is None:
         logger.info(f"Extracting max_marks for {question_part_label} from marking scheme...")
-        max_marks = extract_max_marks_from_scheme(marking_scheme_image, question_part_label)
+        # The primary crop only: the scale is printed at the head of the first.
+        max_marks = extract_max_marks_from_scheme(scheme_images[0], question_part_label)
 
         if max_marks is None or max_marks == 0:
             logger.error(f"Failed to extract max_marks for {question_part_label}")
@@ -289,9 +306,10 @@ def grade_with_vision_marking_scheme(
             }
 
     try:
-        # Encode the marking scheme image
-        marking_scheme_b64 = encode_image_from_file(marking_scheme_image)
-        if not marking_scheme_b64:
+        # Encode every marking scheme crop for this part
+        encoded_schemes = [encode_image_from_file(image) for image in scheme_images]
+        encoded_schemes = [b64 for b64 in encoded_schemes if b64]
+        if not encoded_schemes:
             raise ValueError("Failed to encode marking scheme image")
 
         # Build the content array for Vision API
@@ -334,14 +352,23 @@ def grade_with_vision_marking_scheme(
 Example response:
 {{"marks_awarded": 7, "feedback": "You correctly identified that $m = \\pm 6$. The marking scheme awards full marks for showing all three steps: using $b^2 - 4ac = 0$, substituting the values, and solving for $m$. You gave the correct final answer without the working, so this earns high partial credit. Next time set out the substitution before solving.", "is_correct": false}}"""
             },
-            {
+        ]
+
+        # One block per crop, in reading order, so a part that spans several
+        # rows of the scheme is marked against all of them.
+        for index, scheme_b64 in enumerate(encoded_schemes):
+            if index:
+                content.append({
+                    "type": "text",
+                    "text": "**Marking scheme (continued):**",
+                })
+            content.append({
                 "type": "image_url",
                 "image_url": {
-                    "url": f"data:image/jpeg;base64,{marking_scheme_b64}",
+                    "url": f"data:image/jpeg;base64,{scheme_b64}",
                     "detail": "high"  # Use high detail for better analysis
                 }
-            }
-        ]
+            })
 
         # Optionally include the question image for context
         if question_image:

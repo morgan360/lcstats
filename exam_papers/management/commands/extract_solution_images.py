@@ -18,9 +18,10 @@ import re
 from django.core.files.base import ContentFile
 from django.core.management.base import BaseCommand, CommandError
 
-from exam_papers.models import ExamPaper
+from exam_papers.models import ExamPaper, ExamPartSolutionImage
 from exam_papers.utils import (
-    detect_marking_scheme_layout, render_marking_scheme_region, parse_part_label,
+    detect_marking_scheme_layout, parse_part_label, regions_for_letter,
+    render_marking_scheme_region,
 )
 
 parse_label = parse_part_label
@@ -101,37 +102,40 @@ class Command(BaseCommand):
                     unparsed += 1
                     continue
 
-                letter, roman = parsed
-                key = (question.question_number, letter, roman)
-                region = regions.get(key)
-                how = 'exact'
+                letter, _ = parsed
+                # A part is a whole letter now, so where the scheme still
+                # splits (b) into (b)(i) and (b)(ii) it needs both regions --
+                # the first as its image, the rest stacked behind it, which is
+                # the shape merge_question_parts leaves too.
+                found = regions_for_letter(regions, question.question_number, letter)
+                how = 'exact' if len(found) == 1 else f'{len(found)} regions'
 
-                # A part entered as "(b) (i)" when the scheme never split (b)
-                # should still get the whole of (b).
-                if region is None and roman:
-                    region = regions.get((question.question_number, letter, None))
-                    how = 'letter only'
-
-                if region is None:
+                if not found:
                     self.stdout.write(self.style.ERROR(
                         f'  {tag:<22} no region for ({letter})'
-                        + (f'({roman})' if roman else '')
                     ))
                     unmatched += 1
                     continue
 
-                pages = {s[0] + 1 for s in region['slices']}
+                pages = {slice_[0] + 1 for region in found
+                         for slice_ in region['slices']}
                 where = f"p{min(pages)}" + (f"-{max(pages)}" if len(pages) > 1 else '')
-                self.stdout.write(
-                    f'  {tag:<22} -> ({letter}){f"({roman})" if roman else ""} '
-                    f'{where:<8} {how}'
-                )
+                self.stdout.write(f'  {tag:<22} -> ({letter}) {where:<8} {how}')
 
                 if apply_changes:
-                    data = render_marking_scheme_region(pdf_path, region)
-                    name = (f'{paper.slug}_q{question.question_number}_'
-                            f'{letter}{roman or ""}_ms.png')
-                    part.solution_image.save(name, ContentFile(data), save=True)
+                    part.extra_solution_images.all().delete()
+                    for index, region in enumerate(found):
+                        data = render_marking_scheme_region(pdf_path, region)
+                        name = (f'{paper.slug}_q{question.question_number}_'
+                                f'{letter}{index or ""}_ms.png')
+                        if index == 0:
+                            part.solution_image.save(name, ContentFile(data),
+                                                     save=True)
+                        else:
+                            extra = ExamPartSolutionImage(part=part,
+                                                          order=index - 1)
+                            extra.image.save(name, ContentFile(data), save=False)
+                            extra.save()
                     saved += 1
 
         self.stdout.write(self.style.SUCCESS('\n=== Done ==='))

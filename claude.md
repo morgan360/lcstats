@@ -132,7 +132,10 @@ The project follows a modular Django app pattern:
   - Full marking scheme PDFs uploaded to `ExamPaper.marking_scheme_pdf` (accessible anytime)
   - Solutions unlock after: correct answer OR attempts >= threshold OR threshold = 0
 - **Shared Grading**: Exam questions use same `mark_student_answer()` from `stats_tutor.py`
-- **Topic Linking**: `ExamQuestion.topic` is the question's dominant topic; `ExamQuestionPart.topics` (M2M) holds every topic each part draws on. Topic pages list a question if either matches (`exam_papers/services/topic_parts.py`), and a part opens on its own via `?part=<id>` on the question interface. Staff grid at `/exam-papers/topic-map/`
+- **One level of parts**: a part is a letter — `(a)`, `(b)` — never `(a)(i)`. `merge_question_parts` folds any sub-parts it finds back into their letter.
+- **Topic Linking**: `ExamQuestion.topic` is the question's dominant topic; `ExamQuestionPart.topic` is the one topic carrying most of that part's marks. Topic pages list a question if either matches (`exam_papers/services/topic_parts.py`), and a part opens on its own via `?part=<id>` on the question interface.
+- **Stacked marking schemes**: a part's first crop is `ExamQuestionPart.solution_image`; a merged part's further crops are `ExamPartSolutionImage` rows. Read them together through `part.solution_images` — that is what the grader, the printable sheets and the PDFs use.
+- **Retagging**: `/exam-papers/worksheet/` (questions) and `/exam-papers/worksheet/parts/` (parts) each carry a per-card topic dropdown for **superusers only** (`exam_papers/topic_editing.py`); the save endpoints re-check, so hiding the control is not the access control.
 
 **News & Announcements System** (`home/models.py:NewsItem`):
 - **Audience Targeting**:
@@ -237,11 +240,16 @@ python manage.py extract_exam_questions <paper_id> --legacy --dry-run
 # --overwrite. Needs solution_image set on the parts.
 python manage.py auto_extract_marking_info <paper_id> --dry-run
 
-# Propose topics for every question part (a part can have several). Writes a
-# JSON file to review and edit; nothing is saved until the file is applied.
-# --apply leaves parts tagged by hand alone unless --overwrite.
-python manage.py suggest_part_topics <paper_id>
-python manage.py suggest_part_topics --apply exam_papers/data/part_topics/<slug>.json
+# Give every question part its one topic. Writes straight to the database,
+# overwriting what is there; correct it afterwards from the parts page.
+python manage.py tag_part_topics <paper_id> --dry-run
+python manage.py tag_part_topics <paper_id>
+
+# Fold (b)(i) and (b)(ii) back into one (b), summing marks and keeping both
+# marking-scheme crops. Writes ONLY with --apply: every FK to a part cascades,
+# so the inert run is the default. --check exits 1 while any group is unmerged.
+python manage.py merge_question_parts --paper <paper_id>
+python manage.py merge_question_parts --paper <paper_id> --apply
 
 # Populate answer format fields
 python manage.py populate_answer_formats

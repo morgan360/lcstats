@@ -163,7 +163,7 @@ class ExamQuestionPartsTaskForm(BaseHomeworkTaskForm):
 
         parts = ExamQuestionPart.objects.select_related('question__exam_paper')
         if self.topic:
-            parts = parts.filter(topics=self.topic)
+            parts = parts.filter(topic=self.topic)
             self.fields['exam_question_part'].help_text = (
                 f"Parts filed under {self.topic.name}"
             )
@@ -172,7 +172,8 @@ class ExamQuestionPartsTaskForm(BaseHomeworkTaskForm):
                 "Select a topic above to filter these options"
             )
         parts = parts.order_by(
-            '-question__exam_paper__year', 'question__question_number', 'order')
+            '-question__exam_paper__year', 'question__question_number',
+            'order', 'id')
 
         # The picker can be pointed at another topic - a part of Q6 that is
         # mostly Integration may still be the Functions one you want - so a

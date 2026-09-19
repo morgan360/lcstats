@@ -63,12 +63,14 @@
                             {% if part.id in already %}<span class="already">already set</span>{% endif %}
                         </label>
                         <div class="topics">
-                            {% for t in part.topics.all %}<span class="topic-chip">{{ t.name }}</span>{% endfor %}
+                            {% if part.topic %}<span class="topic-chip">{{ part.topic.name }}</span>{% endif %}
                         </div>
-                        {% if part.solution_image %}
+                        {% if part.solution_images %}
                         <details>
                             <summary>Marking scheme</summary>
-                            <img src="{{ part.solution_image.url }}" alt="Marking scheme for {{ part.label }}" loading="lazy">
+                            {% for image in part.solution_images %}
+                            <img src="{{ image.url }}" alt="Marking scheme for {{ part.label }}" loading="lazy">
+                            {% endfor %}
                         </details>
                         {% else %}
                         <p class="no-scheme">No marking scheme image for this part.</p>

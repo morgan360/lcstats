@@ -353,9 +353,9 @@ class HomeworkTask(models.Model):
             part = self.exam_question_part
             paper = part.question.exam_paper
             subject = paper.subject.name if paper and paper.subject else "No Subject"
-            topics = ', '.join(t.name for t in part.topics.all()) or "No Topic"
+            topic = part.topic.name if part.topic else "No Topic"
             return (f"[{subject}] {paper.year} {paper.get_paper_type_display()} - "
-                    f"Q{part.question.question_number}{part.label} - {topics}")
+                    f"Q{part.question.question_number}{part.label} - {topic}")
         elif self.task_type == 'quickkick' and self.quickkick:
             subject = self.quickkick.topic.subject.name if self.quickkick.topic and self.quickkick.topic.subject else "No Subject"
             return f"QuickFlicks: {self.quickkick.topic.name} > {self.quickkick.title} ({subject})"

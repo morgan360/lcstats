@@ -116,9 +116,6 @@
                                         {% endif %}
                                     </div>
                                     <div style="font-size: 0.85em;">{{ part.max_marks|default:"?" }} mark{{ part.max_marks|pluralize }}</div>
-                                    {% if part.topics.all|length > 1 %}
-                                    <div style="font-size: 0.75em; color: #6c757d; margin-top: 4px;">{% for t in part.topics.all %}{% if t != topic %}+ {{ t.name }} {% endif %}{% endfor %}</div>
-                                    {% endif %}
                                     <div style="font-size: 0.8em; color: #fa709a; font-weight: 600; margin-top: 4px;">Practise this part →</div>
                                 </button>
                             </form>

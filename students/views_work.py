@@ -301,7 +301,7 @@ def _analyse(submission):
         # Exam parts carry no question text -- it exists only as an image.
         prompt = "Shown in the question image below."
         question_image = getattr(part.question, "image", None)
-        marking_scheme = part.solution_image
+        marking_scheme = part.solution_images
         expected = None
         # Roughly a quarter of exam parts have neither scheme nor marks yet;
         # those simply fall back to commentary with no estimate.

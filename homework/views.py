@@ -760,9 +760,10 @@ def topic_content_options(request, topic_id):
             exam_question_label,
         ),
         'exam_question_part': options(
-            ExamQuestionPart.objects.filter(topics__id=topic_id)
+            ExamQuestionPart.objects.filter(topic_id=topic_id)
             .select_related('question__exam_paper')
-            .order_by('-question__exam_paper__year', 'question__question_number', 'order'),
+            .order_by('-question__exam_paper__year', 'question__question_number',
+                      'order', 'id'),
             'exam_question_part',
             exam_part_label,
         ),

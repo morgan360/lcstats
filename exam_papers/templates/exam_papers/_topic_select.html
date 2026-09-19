@@ -1,0 +1,25 @@
+{% comment %}
+  The retagging dropdown on one card. Rendered only for superusers; the save
+  endpoint checks again, because hiding a control is not access control.
+
+  It sits OUTSIDE the card's <label>: the card is a label wrapping its
+  checkbox, so a select inside it would toggle the tick on every click.
+
+  Needs: can_edit_topics, all_topics, retag_url and retag_object.
+{% endcomment %}
+{% if can_edit_topics %}
+<div class="mt-2 flex items-center gap-2 rounded-lg border border-mist/10 bg-twilight/60 px-3 py-2">
+    <span class="text-xs font-semibold text-mist/70">Topic</span>
+    <select class="topic-retag flex-1 rounded-lg border border-mist/20 px-2 py-1 text-xs"
+        style="background: rgba(0,28,61,0.5); color: #F0EFEB;"
+        data-endpoint="{{ retag_url }}">
+        <option value="">-- no topic --</option>
+        {% for t in all_topics %}
+        <option value="{{ t.id }}" {% if retag_object.topic_id == t.id %}selected{% endif %}>{{ t.name }}</option>
+        {% endfor %}
+    </select>
+    <span class="retag-state text-xs text-mist/50"></span>
+</div>
+{% elif retag_object.topic %}
+<div class="mt-2 text-xs text-mist/50">{{ retag_object.topic.name }}</div>
+{% endif %}

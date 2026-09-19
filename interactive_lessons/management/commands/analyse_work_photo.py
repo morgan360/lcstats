@@ -186,7 +186,7 @@ class Command(BaseCommand):
             "question_prompt": "Shown in the question image below.",
             "part_label": part.label or "",
             "question_image": getattr(part.question, "image", None),
-            "marking_scheme_image": None if bare else part.solution_image,
+            "marking_scheme_image": None if bare else part.solution_images,
             "expected_answer": None,
             # Mirrors production: the mark needs both the scheme and the marks,
             # so --no-context suppresses the estimate along with the scheme.

@@ -2,7 +2,7 @@
 <html>
 <head>
     <meta charset="utf-8">
-    <title>Worksheet</title>
+    <title>{{ title }}</title>
     {% include "exam_papers/_print_styles.html" %}
 </head>
 <body>
@@ -11,37 +11,33 @@
         <button onclick="window.close()">Close</button>
     </div>
 
-    {% for question in questions %}
+    {# One block per question, however many of its parts were ticked: the
+       question image is what says what was asked, and printing it once per
+       part would repeat a whole page of it. #}
+    {% for question, parts in groups %}
     <div class="question">
         <div class="question-header">
             {{ question.exam_paper }} &mdash; Question {{ question.question_number }}
-            {% if question.total_marks %}({{ question.total_marks }} marks){% endif %}
+            {% for part in parts %}{% if forloop.first %}&mdash; {% endif %}{{ part.label }}{% if not forloop.last %}, {% endif %}{% endfor %}
         </div>
         {% if question.image %}
         <img src="{{ question.image.url }}" alt="Question {{ question.question_number }}">
         {% endif %}
     </div>
 
-    {% if include_solutions %}
-    {# The header used to hang off forloop.first, so it vanished whenever the
-       first part happened to have no crop. parts_with_schemes is the parts
-       that actually print, so the wrapper can sit outside the loop. #}
-    {% with scheme_parts=question.parts_with_schemes %}
-    {% if scheme_parts %}
     <div class="solution-group">
         <div class="solution-header">Marking Scheme &mdash; {{ question.exam_paper }} Q{{ question.question_number }}</div>
-        {% for part in scheme_parts %}
+        {% for part in parts %}
         <div class="solution-part">
             <div class="part-label">Part {{ part.label }}{% if part.max_marks %} ({{ part.max_marks }} marks){% endif %}</div>
             {% for image in part.solution_images %}
-            <img src="{{ image.url }}" alt="Solution {{ part.label }}">
+            <img src="{{ image.url }}" alt="Marking scheme for {{ part.label }}">
+            {% empty %}
+            <p style="font-size:12px; color:#999;">No marking scheme image for this part.</p>
             {% endfor %}
         </div>
         {% endfor %}
     </div>
-    {% endif %}
-    {% endwith %}
-    {% endif %}
     {% endfor %}
 </body>
 </html>

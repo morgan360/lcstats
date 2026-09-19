@@ -1,0 +1,31 @@
+{% comment %}
+  The sticky select/print bar. Needs: total, pdf_url, and optionally
+  show_solutions_toggle and print_label.
+{% endcomment %}
+<div class="sticky top-0 z-30 mt-6 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-mist/10 bg-twilight/95 px-5 py-3 shadow-lg backdrop-blur-sm">
+    <div class="flex items-center gap-3">
+        <button type="button" onclick="selectAll()"
+            class="rounded-lg border border-mist/20 bg-mist/10 px-3 py-1.5 text-xs font-semibold text-mist transition hover:bg-mist/20">Select All</button>
+        <button type="button" onclick="deselectAll()"
+            class="rounded-lg border border-mist/20 bg-mist/10 px-3 py-1.5 text-xs font-semibold text-mist transition hover:bg-mist/20">Deselect All</button>
+        <span class="text-xs text-mist/60"><span id="count">0</span> of {{ total }} selected</span>
+    </div>
+    <div class="flex items-center gap-4">
+        {% if show_solutions_toggle %}
+        <label class="flex cursor-pointer items-center gap-2 text-sm font-semibold text-mist">
+            <input type="checkbox" name="include_solutions" value="1" id="include-solutions"
+                class="h-4 w-4 rounded accent-violet-royal">
+            Include marking schemes
+        </label>
+        {% endif %}
+        <button type="submit" id="pdf-btn" disabled
+            formaction="{{ pdf_url }}" formtarget="_self"
+            class="rounded-lg border border-mist/25 bg-mist/10 px-5 py-2 text-sm font-semibold text-mist transition hover:bg-mist/20 disabled:opacity-40 disabled:cursor-not-allowed">
+            Download PDF
+        </button>
+        <button type="submit" id="print-btn" disabled
+            class="rounded-lg bg-gradient-to-b from-violet-royal to-indigo-deep px-5 py-2 text-sm font-semibold text-mist shadow-[0_6px_20px_rgba(0,0,0,0.15)] transition hover:-translate-y-0.5 hover:shadow-[0_10px_26px_rgba(0,0,0,0.2)] disabled:opacity-40 disabled:hover:translate-y-0 disabled:cursor-not-allowed">
+            {{ print_label|default:"Generate Printable Worksheet" }}
+        </button>
+    </div>
+</div>

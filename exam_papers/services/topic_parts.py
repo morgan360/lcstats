@@ -1,8 +1,8 @@
 """Finding exam questions, and the parts within them, that bear on a topic.
 
-A question files under one dominant topic but its parts each carry their own
-topics, so a question belongs on a topic's page if either says so. The parts
-are what a student is actually sent to practise.
+A question files under one dominant topic but each of its parts carries its
+own, so a question belongs on a topic's page if either says so. The parts are
+what a student is actually sent to practise.
 """
 from django.db.models import Prefetch, Q
 
@@ -13,7 +13,7 @@ def topic_filter(topic, prefix=''):
     """Q matching a question - or, with prefix='question__', a part's question -
     that touches topic through its own topic or any of its parts'."""
     return (Q(**{f'{prefix}topic': topic})
-            | Q(**{f'{prefix}parts__topics': topic}))
+            | Q(**{f'{prefix}parts__topic': topic}))
 
 
 def questions_for_topic(topic, published_only=True):
@@ -25,8 +25,8 @@ def questions_for_topic(topic, published_only=True):
             .select_related('exam_paper', 'topic')
             .prefetch_related(Prefetch(
                 'parts',
-                queryset=ExamQuestionPart.objects.order_by('order')
-                                                 .prefetch_related('topics'),
+                queryset=ExamQuestionPart.objects.order_by('order', 'id')
+                                                 .select_related('topic'),
             )))
 
 

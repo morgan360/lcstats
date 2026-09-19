@@ -181,10 +181,24 @@ class ExamQuestion(models.Model):
             return None
         return f"{seconds // 60}:{seconds % 60:02d}"
 
+    def get_retag_url(self):
+        """Where the print page posts a new topic for this question."""
+        from django.urls import reverse
+        return reverse('exam_papers:set_question_topic', args=[self.pk])
+
     def parts_on_topic(self, topic):
         """Parts tagged with topic, in display order."""
-        return [part for part in self.parts.all()
-                if any(t.pk == topic.pk for t in part.topics.all())]
+        return [part for part in self.parts.all() if part.topic_id == topic.pk]
+
+    @property
+    def parts_with_schemes(self):
+        """Parts that have at least one marking-scheme crop, in display order.
+
+        Lets a template open a wrapper once, outside the loop. The old markup
+        opened it on forloop.first, which stopped working the moment a part
+        could carry more than one crop.
+        """
+        return [part for part in self.parts.all() if part.solution_images]
 
     def solution_images_status(self):
         """Returns a tuple of (parts_with_images, total_parts)"""
@@ -232,15 +246,17 @@ class ExamQuestionPart(models.Model):
         help_text="Marking scheme image - used by GPT-4 Vision for grading and extracting max marks"
     )
 
-    # Topics this part draws on. A question files under one dominant topic, but
-    # its parts often span several - (a) Functions, (b) Differential Calculus -
-    # and a part is listed under every topic here. Main topic first is only a
-    # convention of the classifier; the relation itself is unordered.
-    topics = models.ManyToManyField(
+    # The one topic this part is filed under. Parts carried a set of topics for
+    # a while, on the theory that (b) might draw on two; in practice not one
+    # part in the database ever held two, and the tagging surface was too fine
+    # to keep correct by hand. One majority topic is what a person can maintain.
+    topic = models.ForeignKey(
         Topic,
+        on_delete=models.SET_NULL,
+        null=True,
         blank=True,
         related_name='exam_question_parts',
-        help_text="Every topic this part draws on"
+        help_text="The topic carrying most of this part's marks"
     )
 
     # Marking (optional - auto-extracted from marking scheme if not set)
@@ -269,10 +285,58 @@ class ExamQuestionPart(models.Model):
     def __str__(self):
         return f"{self.question} {self.label}"
 
+    def get_retag_url(self):
+        """Where the parts page posts a new topic for this part."""
+        from django.urls import reverse
+        return reverse('exam_papers:set_part_topic', args=[self.pk])
+
+    @property
+    def solution_images(self):
+        """Every marking-scheme crop for this part, primary first.
+
+        A part that used to be (b)(i) and (b)(ii) covers both sub-parts now, so
+        it needs both of their crops. The first stays on solution_image, where
+        a dozen call sites already read it; the rest hang off
+        extra_solution_images and are only seen by code that wants them all.
+        """
+        images = [self.solution_image] if self.solution_image else []
+        images.extend(extra.image for extra in self.extra_solution_images.all()
+                      if extra.image)
+        return images
+
     @property
     def has_solution_image(self):
         """Returns True if solution image has been uploaded"""
         return bool(self.solution_image)
+
+
+class ExamPartSolutionImage(models.Model):
+    """A marking-scheme crop beyond the first, for a part that covers several.
+
+    Merging (b)(i) and (b)(ii) into one (b) leaves two crops and one
+    solution_image slot. Rather than throw a crop away -- cropping marking
+    schemes is hours of hand work, and the grader reads them -- the extras
+    live here and ExamQuestionPart.solution_images stitches them back together.
+    """
+    part = models.ForeignKey(
+        ExamQuestionPart,
+        on_delete=models.CASCADE,
+        related_name='extra_solution_images',
+    )
+    image = models.ImageField(
+        upload_to='exam_papers/marking_schemes/',
+        help_text="A further marking-scheme crop for this part",
+    )
+    order = models.PositiveIntegerField(
+        default=0,
+        help_text="Reading order after the part's primary crop",
+    )
+
+    class Meta:
+        ordering = ['part', 'order', 'id']
+
+    def __str__(self):
+        return f"{self.part} - extra scheme {self.order}"
 
 
 

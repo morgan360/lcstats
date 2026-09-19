@@ -1,4 +1,5 @@
 {% extends "_base.html" %}
+{% load static %}
 
 {% block title %}Print Exam Questions - NumScoil{% endblock %}
 
@@ -16,121 +17,72 @@
     <h1 class="text-2xl font-semibold text-mist text-center">Print Exam Questions</h1>
     <p class="mt-4 rounded-xl border border-indigo-deep/20 bg-mist px-5 py-4 text-sm text-indigo-deep shadow-[0_8px_24px_rgba(0,0,0,0.08)]">
         Select a topic to browse exam questions, then pick questions to generate a printable worksheet with optional marking schemes.
+        {% if can_edit_topics %}Change a question's topic with the dropdown on its card — it saves as you pick.{% endif %}
     </p>
 
-    <!-- Filters -->
-    <div class="mt-8 flex flex-col sm:flex-row gap-4 items-end rounded-xl border border-mist/10 bg-twilight p-5">
-        <div class="flex flex-col gap-1 flex-1">
-            <label for="subject-select" class="text-sm font-semibold text-mist">Subject</label>
-            <select id="subject-select" onchange="filterChanged()"
-                class="rounded-lg border border-mist/20 px-3 py-2 text-sm"
-                style="background: rgba(0,28,61,0.5); color: #F0EFEB;">
-                <option value="">All Subjects</option>
-                {% for subject in subjects %}
-                <option value="{{ subject.id }}" {% if selected_subject_id == subject.id %}selected{% endif %}>
-                    {{ subject.name }}
-                </option>
-                {% endfor %}
-            </select>
-        </div>
-        <div class="flex flex-col gap-1 flex-1">
-            <label for="topic-select" class="text-sm font-semibold text-mist">Topic</label>
-            <select id="topic-select" onchange="filterChanged()"
-                class="rounded-lg border border-mist/20 px-3 py-2 text-sm"
-                style="background: rgba(0,28,61,0.5); color: #F0EFEB;">
-                <option value="">-- Select a topic --</option>
-                {% for topic in topics %}
-                <option value="{{ topic.id }}" {% if selected_topic_id == topic.id|stringformat:"d" %}selected{% endif %}>
-                    {{ topic.name }} ({{ topic.subject.name }})
-                </option>
-                {% endfor %}
-                {% if unassigned_count > 0 %}
-                <option value="none" {% if selected_topic_id == "none" %}selected{% endif %}>
-                    No Topic Assigned ({{ unassigned_count }} questions)
-                </option>
-                {% endif %}
-            </select>
-        </div>
-    </div>
+    {% include "exam_papers/_worksheet_filters.html" with untagged_noun="questions" untagged_count=unassigned_count %}
 
     {% if questions %}
-    <form method="post" action="{% url 'exam_papers:worksheet_print' %}" target="_blank">
+    <form method="post" action="{% url 'exam_papers:worksheet_print' %}" target="_blank"
+          data-worksheet-checkbox="question_ids">
         {% csrf_token %}
 
-        <!-- Sticky toolbar -->
-        <div class="sticky top-0 z-30 mt-6 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-mist/10 bg-twilight/95 px-5 py-3 shadow-lg backdrop-blur-sm">
-            <div class="flex items-center gap-3">
-                <button type="button" onclick="selectAll()"
-                    class="rounded-lg border border-mist/20 bg-mist/10 px-3 py-1.5 text-xs font-semibold text-mist transition hover:bg-mist/20">Select All</button>
-                <button type="button" onclick="deselectAll()"
-                    class="rounded-lg border border-mist/20 bg-mist/10 px-3 py-1.5 text-xs font-semibold text-mist transition hover:bg-mist/20">Deselect All</button>
-                <span class="text-xs text-mist/60"><span id="count">0</span> of {{ questions|length }} selected</span>
-            </div>
-            <div class="flex items-center gap-4">
-                <label class="flex cursor-pointer items-center gap-2 text-sm font-semibold text-mist">
-                    <input type="checkbox" name="include_solutions" value="1" id="include-solutions"
-                        class="h-4 w-4 rounded accent-violet-royal">
-                    Include marking schemes
-                </label>
-                <button type="submit" id="pdf-btn" disabled
-                    formaction="{% url 'exam_papers:worksheet_pdf' %}" formtarget="_self"
-                    class="rounded-lg border border-mist/25 bg-mist/10 px-5 py-2 text-sm font-semibold text-mist transition hover:bg-mist/20 disabled:opacity-40 disabled:cursor-not-allowed">
-                    Download PDF
-                </button>
-                <button type="submit" id="print-btn" disabled
-                    class="rounded-lg bg-gradient-to-b from-violet-royal to-indigo-deep px-5 py-2 text-sm font-semibold text-mist shadow-[0_6px_20px_rgba(0,0,0,0.15)] transition hover:-translate-y-0.5 hover:shadow-[0_10px_26px_rgba(0,0,0,0.2)] disabled:opacity-40 disabled:hover:translate-y-0 disabled:cursor-not-allowed">
-                    Generate Printable Worksheet
-                </button>
-            </div>
-        </div>
+        {% include "exam_papers/_worksheet_toolbar.html" with total=questions|length pdf_url=pdf_url show_solutions_toggle=True %}
 
-        <!-- Question grid -->
         <div class="mt-6 grid grid-cols-1 gap-5 md:grid-cols-2">
             {% for question in questions %}
-            <label class="question-card cursor-pointer rounded-xl border-2 border-mist/15 p-4 transition hover:border-mist/30" for="q-{{ question.id }}">
-                <input type="checkbox" name="question_ids" value="{{ question.id }}" id="q-{{ question.id }}" onchange="updateCount()">
-                <div class="mb-3 flex items-center justify-between text-sm">
-                    <span class="flex items-center gap-2">
-                        <span class="check-indicator relative inline-block h-5 w-5 rounded border-2 border-mist/30"></span>
-                        <span class="font-semibold text-violet-royal">{{ question.exam_paper }} - Q{{ question.question_number }}</span>
-                    </span>
-                    <span class="flex items-center gap-1.5">
-                        {% if question.total_marks %}
-                        <span class="rounded-full bg-indigo-deep/30 px-2.5 py-0.5 text-xs font-semibold text-mist/80">{{ question.total_marks }} marks</span>
-                        {% endif %}
-                        {% with status=question.solution_images_status %}
-                        {% if status.0 == status.1 and status.1 > 0 %}
-                        <span class="rounded-full bg-lime-glow/20 px-2.5 py-0.5 text-xs font-semibold text-lime-glow">Solutions</span>
-                        {% elif status.0 > 0 %}
-                        <span class="rounded-full bg-rose-pop/20 px-2.5 py-0.5 text-xs font-semibold text-rose-pop">{{ status.0 }}/{{ status.1 }} Solutions</span>
-                        {% endif %}
-                        {% endwith %}
-                    </span>
-                </div>
-                {% if question.image %}
-                <img src="{{ question.image.url }}" alt="Question {{ question.question_number }}" loading="lazy"
-                    class="w-full rounded-lg border border-mist/10">
-                {% endif %}
-            </label>
-            {% with parts=question.parts.all %}
-            {% for part in parts %}{% if part.solution_image %}{% if forloop.first %}
-            <div class="ms-preview rounded-b-xl border-2 border-t-0 border-mist/15 overflow-hidden" style="margin-top: -8px;">
-                <button type="button" onclick="this.parentElement.classList.toggle('open')"
-                    style="width:100%; padding:8px 16px; background:rgba(255,255,255,0.05); border:none; color:#F0EFEB; font-size:13px; cursor:pointer; text-align:left; font-weight:600;">
-                    Marking Scheme Preview &#9662;
-                </button>
-                <div class="ms-preview-content" style="display:none; padding:12px 16px;">
-            {% endif %}
-                    <div style="margin-bottom:8px;">
-                        <div style="font-size:11px; font-weight:600; color:#999; margin-bottom:4px;">Part {{ part.label }}{% if part.max_marks %} ({{ part.max_marks }} marks){% endif %}</div>
-                        <img src="{{ part.solution_image.url }}" alt="Solution {{ part.label }}" loading="lazy"
-                            style="max-width:100%; border:1px solid rgba(255,255,255,0.1); border-radius:6px;">
+            <div>
+                <label class="question-card block cursor-pointer rounded-xl border-2 border-mist/15 p-4 transition hover:border-mist/30" for="q-{{ question.id }}">
+                    <input type="checkbox" name="question_ids" value="{{ question.id }}" id="q-{{ question.id }}" onchange="updateCount()">
+                    <div class="mb-3 flex items-center justify-between text-sm">
+                        <span class="flex items-center gap-2">
+                            <span class="check-indicator relative inline-block h-5 w-5 rounded border-2 border-mist/30"></span>
+                            <span class="font-semibold text-violet-royal">{{ question.exam_paper }} - Q{{ question.question_number }}</span>
+                        </span>
+                        <span class="flex items-center gap-1.5">
+                            {% if question.total_marks %}
+                            <span class="rounded-full bg-indigo-deep/30 px-2.5 py-0.5 text-xs font-semibold text-mist/80">{{ question.total_marks }} marks</span>
+                            {% endif %}
+                            {% with status=question.solution_images_status %}
+                            {% if status.0 == status.1 and status.1 > 0 %}
+                            <span class="rounded-full bg-lime-glow/20 px-2.5 py-0.5 text-xs font-semibold text-lime-glow">Solutions</span>
+                            {% elif status.0 > 0 %}
+                            <span class="rounded-full bg-rose-pop/20 px-2.5 py-0.5 text-xs font-semibold text-rose-pop">{{ status.0 }}/{{ status.1 }} Solutions</span>
+                            {% endif %}
+                            {% endwith %}
+                        </span>
                     </div>
-            {% if forloop.last %}
+                    {% if question.image %}
+                    <img src="{{ question.image.url }}" alt="Question {{ question.question_number }}" loading="lazy"
+                        class="w-full rounded-lg border border-mist/10">
+                    {% endif %}
+                </label>
+
+                {# Outside the label above, or picking a topic would tick the card. #}
+                {% include "exam_papers/_topic_select.html" with retag_object=question retag_url=question.get_retag_url %}
+
+                {% with scheme_parts=question.parts_with_schemes %}
+                {% if scheme_parts %}
+                <div class="ms-preview mt-2 rounded-xl border-2 border-mist/15 overflow-hidden">
+                    <button type="button" onclick="this.parentElement.classList.toggle('open')"
+                        style="width:100%; padding:8px 16px; background:rgba(255,255,255,0.05); border:none; color:#F0EFEB; font-size:13px; cursor:pointer; text-align:left; font-weight:600;">
+                        Marking Scheme Preview &#9662;
+                    </button>
+                    <div class="ms-preview-content" style="display:none; padding:12px 16px;">
+                        {% for part in scheme_parts %}
+                        <div style="margin-bottom:8px;">
+                            <div style="font-size:11px; font-weight:600; color:#999; margin-bottom:4px;">Part {{ part.label }}{% if part.max_marks %} ({{ part.max_marks }} marks){% endif %}</div>
+                            {% for image in part.solution_images %}
+                            <img src="{{ image.url }}" alt="Solution {{ part.label }}" loading="lazy"
+                                style="max-width:100%; border:1px solid rgba(255,255,255,0.1); border-radius:6px;">
+                            {% endfor %}
+                        </div>
+                        {% endfor %}
+                    </div>
                 </div>
+                {% endif %}
+                {% endwith %}
             </div>
-            {% endif %}{% endif %}{% endfor %}
-            {% endwith %}
             {% endfor %}
         </div>
     </form>
@@ -147,43 +99,5 @@
     {% endif %}
 </div>
 
-<script>
-function filterChanged() {
-    const subject = document.getElementById('subject-select').value;
-    const topic = document.getElementById('topic-select').value;
-    let url = window.location.pathname + '?';
-    const params = [];
-    if (subject) params.push('subject=' + subject);
-    if (topic) params.push('topic=' + topic);
-    window.location.href = url + params.join('&');
-}
-
-function selectAll() {
-    document.querySelectorAll('.question-card input[type="checkbox"][name="question_ids"]').forEach(cb => {
-        cb.checked = true;
-        cb.closest('.question-card').classList.add('selected');
-    });
-    updateCount();
-}
-
-function deselectAll() {
-    document.querySelectorAll('.question-card input[type="checkbox"][name="question_ids"]').forEach(cb => {
-        cb.checked = false;
-        cb.closest('.question-card').classList.remove('selected');
-    });
-    updateCount();
-}
-
-function updateCount() {
-    const checked = document.querySelectorAll('.question-card input[type="checkbox"][name="question_ids"]:checked').length;
-    document.getElementById('count').textContent = checked;
-    document.getElementById('print-btn').disabled = checked === 0;
-    document.getElementById('pdf-btn').disabled = checked === 0;
-
-    document.querySelectorAll('.question-card').forEach(card => {
-        const cb = card.querySelector('input[type="checkbox"]');
-        card.classList.toggle('selected', cb.checked);
-    });
-}
-</script>
+<script src="{% static 'js/worksheet_select.js' %}"></script>
 {% endblock %}

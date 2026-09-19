@@ -1,5 +1,4 @@
 from django.shortcuts import render, get_object_or_404, redirect
-from django.contrib.admin.views.decorators import staff_member_required
 from django.contrib.auth.decorators import login_required
 from django.http import HttpResponse, JsonResponse
 from django.urls import reverse
@@ -14,6 +13,7 @@ from .models import (
     ExamPaper, ExamQuestion, ExamQuestionPart,
     ExamAttempt, ExamQuestionAttempt
 )
+from .topic_editing import topic_editing_visible
 from interactive_lessons.models import Topic
 from students.work_access import work_capture_visible
 from .services.vision_grading import grade_with_vision_marking_scheme
@@ -175,7 +175,7 @@ def question_interface(request, attempt_id, question_id):
     question = get_object_or_404(ExamQuestion, id=question_id, exam_paper=attempt.exam_paper)
 
     # Get all parts for this question
-    parts = question.parts.order_by('order').prefetch_related('topics')
+    parts = question.parts.order_by('order').select_related('topic')
 
     # ?part=<id> narrows the page to one part, opened from a topic page
     focus_part = None
@@ -302,7 +302,7 @@ def submit_answer(request, attempt_id):
         # Grade the answer using GPT-4 Vision with marking scheme image
         grading_result = grade_with_vision_marking_scheme(
             student_answer=student_answer,
-            marking_scheme_image=part.solution_image,
+            marking_scheme_image=part.solution_images,
             question_part_label=part.label,
             max_marks=part.max_marks,  # Pass existing max_marks (or None)
             question_image=None,  # No part.image anymore
@@ -406,7 +406,7 @@ def get_solution(request, attempt_id, part_id):
 
     return JsonResponse({
         'success': True,
-        'solution_image_url': part.solution_image.url if part.solution_image else None,
+        'solution_image_urls': [image.url for image in part.solution_images],
     })
 
 
@@ -460,30 +460,6 @@ def view_results(request, attempt_id):
         'questions': questions,
     }
     return render(request, 'exam_papers/results.html', context)
-
-
-@login_required
-def topic_practice(request, topic_id):
-    """Display exam questions touching a topic, by question or by part"""
-    topic = get_object_or_404(Topic, id=topic_id)
-
-    questions = list(questions_for_topic(topic).order_by('-exam_paper__year', 'order'))
-    attach_matching_parts(questions, topic)
-
-    user_attempts = {}
-    if request.user.is_authenticated:
-        parts = [part for question in questions for part in question.parts.all()]
-        user_attempts = {
-            part_id: {'count': info['count'], 'best_score': info['best']}
-            for part_id, info in best_part_attempts(request.user, parts).items()
-        }
-
-    context = {
-        'topic': topic,
-        'questions': questions,
-        'user_attempts': user_attempts,
-    }
-    return render(request, 'exam_papers/topic_practice.html', context)
 
 
 @login_required
@@ -682,6 +658,9 @@ def worksheet_generator(request):
         'selected_topic_id': selected_topic_id,
         'selected_subject_id': int(selected_subject_id) if selected_subject_id else None,
         'unassigned_count': unassigned_count,
+        'can_edit_topics': topic_editing_visible(request.user),
+        'all_topics': _topics_for_picker(request, selected_subject_id),
+        'pdf_url': reverse('exam_papers:worksheet_pdf'),
     }
     return render(request, 'exam_papers/worksheet_generator.html', context)
 
@@ -719,88 +698,6 @@ def worksheet_print(request):
     }
     return render(request, 'exam_papers/worksheet_print.html', context)
 
-@staff_member_required
-def topic_cross_reference(request):
-    """Grid of where each topic has been examined, part by part.
-
-    One table per paper: its topics down the side, that paper's sittings across
-    the top, and in each cell the parts filed under the topic - Q6(b), Q8(c) -
-    with their marks. Parts with no topic get a row of their own, so the gaps
-    in the tagging are as visible as the tagging.
-    """
-    subject = getattr(request, 'current_subject', None)
-    include_unpublished = request.GET.get('all') == '1'
-
-    papers = ExamPaper.objects.all()
-    if subject:
-        papers = papers.filter(subject=subject)
-    if not include_unpublished:
-        papers = papers.filter(is_published=True)
-    papers = list(papers.order_by('-year', 'is_deferred'))
-
-    parts = (ExamQuestionPart.objects
-             .filter(question__exam_paper__in=papers)
-             .select_related('question')
-             .prefetch_related('topics')
-             .order_by('question__question_number', 'order'))
-
-    # cells[(topic_id or None, paper_id)] -> [part, ...]
-    cells = {}
-    for part in parts:
-        paper_id = part.question.exam_paper_id
-        for topic_id in [t.id for t in part.topics.all()] or [None]:
-            cells.setdefault((topic_id, paper_id), []).append(part)
-
-    topics = Topic.objects.all()
-    if subject:
-        topics = topics.filter(subject=subject)
-    topics = list(topics.order_by('order', 'name'))
-
-    def build_rows(row_topics, row_papers):
-        rows = []
-        for topic in row_topics + [None]:
-            topic_id = topic.id if topic else None
-            row_cells = []
-            for paper in row_papers:
-                cell_parts = cells.get((topic_id, paper.id), [])
-                row_cells.append({
-                    'parts': cell_parts,
-                    'marks': sum(p.max_marks or 0 for p in cell_parts),
-                })
-            total_parts = sum(len(c['parts']) for c in row_cells)
-            if topic is None and not total_parts:
-                continue
-            rows.append({
-                'topic': topic,
-                'cells': row_cells,
-                'total_parts': total_parts,
-                'total_marks': sum(c['marks'] for c in row_cells),
-            })
-        return rows
-
-    tables = []
-    for code, label in ExamPaper.PAPER_TYPE_CHOICES:
-        table_papers = [p for p in papers if p.paper_type == code]
-        if not table_papers:
-            continue
-        # A topic belongs to one paper, but one filed on the other paper - or
-        # left unassigned - still shows wherever it has actually been used.
-        used = {tid for (tid, pid) in cells if tid and pid in {p.id for p in table_papers}}
-        table_topics = [t for t in topics if t.paper == code or t.id in used]
-        tables.append({
-            'label': label,
-            'papers': table_papers,
-            'rows': build_rows(table_topics, table_papers),
-        })
-
-    context = {
-        'tables': tables,
-        'include_unpublished': include_unpublished,
-        'subject': subject,
-    }
-    return render(request, 'exam_papers/topic_cross_reference.html', context)
-
-
 @login_required
 @require_POST
 def worksheet_pdf(request):
@@ -824,3 +721,189 @@ def worksheet_pdf(request):
     response = HttpResponse(pdf, content_type='application/pdf')
     response['Content-Disposition'] = f'attachment; filename="{filename}.pdf"'
     return response
+
+
+def _topics_for_picker(request, subject_id=None):
+    """Every topic the retagging dropdown may offer.
+
+    Not the same list as the filter above it: that one only holds topics that
+    already have questions, and the whole point of retagging is to move a
+    question to a topic where it has none yet.
+
+    Scoped to the subject being browsed, falling back to the one the session
+    is in, so a Maths page does not offer Physics topics. The save endpoint
+    refuses a mismatch regardless.
+    """
+    topics = Topic.objects.select_related('subject').order_by('subject__name',
+                                                              'order', 'name')
+    subject = subject_id or getattr(
+        getattr(request, 'current_subject', None), 'id', None)
+    if subject:
+        topics = topics.filter(subject_id=subject)
+    return topics
+
+
+@login_required
+def parts_generator(request):
+    """The worksheet page, one card per question part.
+
+    A part has no image of its own -- the question image covers all of them --
+    so a card shows its parent question and its own marking-scheme crops. This
+    is where part topics get reviewed and corrected after the classifier run.
+    """
+    from core.models import Subject
+
+    subjects = Subject.objects.filter(is_active=True)
+    selected_topic_id = request.GET.get('topic')
+    selected_subject_id = request.GET.get('subject')
+
+    topics = (Topic.objects.filter(exam_question_parts__isnull=False)
+              .distinct().select_related('subject')
+              .order_by('subject__name', 'name'))
+    if selected_subject_id:
+        topics = topics.filter(subject_id=selected_subject_id)
+
+    parts = ExamQuestionPart.objects.none()
+    if selected_topic_id:
+        parts = ExamQuestionPart.objects.all()
+        if selected_topic_id == 'none':
+            parts = parts.filter(topic__isnull=True)
+        else:
+            parts = parts.filter(topic_id=selected_topic_id)
+        if selected_subject_id:
+            parts = parts.filter(
+                question__exam_paper__subject_id=selected_subject_id)
+        parts = (parts.select_related('question__exam_paper', 'topic')
+                 .prefetch_related('extra_solution_images')
+                 .order_by('-question__exam_paper__year',
+                           'question__question_number', 'order', 'id'))
+
+    untagged_count = ExamQuestionPart.objects.filter(topic__isnull=True).count()
+
+    context = {
+        'subjects': subjects,
+        'topics': topics,
+        'parts': parts,
+        'selected_topic_id': selected_topic_id,
+        'selected_subject_id': int(selected_subject_id) if selected_subject_id else None,
+        'untagged_count': untagged_count,
+        'can_edit_topics': topic_editing_visible(request.user),
+        'all_topics': _topics_for_picker(request, selected_subject_id),
+        'pdf_url': reverse('exam_papers:parts_pdf'),
+    }
+    return render(request, 'exam_papers/parts_generator.html', context)
+
+
+def selected_worksheet_parts(request):
+    """The parts ticked on the parts form, grouped under their question.
+
+    Returns [(question, [part, ...]), ...] in print order, so the question
+    image is emitted once however many of its parts were ticked.
+    """
+    part_ids = request.POST.getlist('part_ids')
+    if not part_ids:
+        return None
+    parts = (ExamQuestionPart.objects.filter(id__in=part_ids)
+             .select_related('question__exam_paper', 'topic')
+             .prefetch_related('extra_solution_images')
+             .order_by('question__exam_paper__year',
+                       'question__question_number', 'order', 'id'))
+
+    groups = []
+    for part in parts:
+        if groups and groups[-1][0].pk == part.question_id:
+            groups[-1][1].append(part)
+        else:
+            groups.append((part.question, [part]))
+    return groups
+
+
+@login_required
+@require_POST
+def parts_print(request):
+    """A printable page of the ticked parts, under their question images."""
+    from django.contrib import messages
+
+    groups = selected_worksheet_parts(request)
+    if groups is None:
+        messages.error(request, 'No parts selected.')
+        return redirect('exam_papers:parts_generator')
+
+    return render(request, 'exam_papers/parts_print.html', {
+        'groups': groups,
+        'title': 'Question parts',
+    })
+
+
+@login_required
+@require_POST
+def parts_pdf(request):
+    """The same selection as a PDF file to keep or send."""
+    from django.contrib import messages
+
+    from .services.worksheet_pdf import build_parts_worksheet_pdf
+
+    groups = selected_worksheet_parts(request)
+    if groups is None:
+        messages.error(request, 'No parts selected.')
+        return redirect('exam_papers:parts_generator')
+
+    topic = next((part.topic for _, parts in groups for part in parts
+                  if part.topic), None)
+    title = f'{topic.name} - question parts' if topic else 'Question parts'
+    filename = slugify(title) or 'question-parts'
+
+    pdf = build_parts_worksheet_pdf(groups, title=title)
+    response = HttpResponse(pdf, content_type='application/pdf')
+    response['Content-Disposition'] = f'attachment; filename="{filename}.pdf"'
+    return response
+
+
+def _retag(request, instance, paper):
+    """Set instance.topic from the posted id, or clear it. Shared by both."""
+    if not topic_editing_visible(request.user):
+        # Deliberately not staff_member_required: that redirects to the admin
+        # login, and a fetch() would read the 200 that comes back as success.
+        return JsonResponse({'error': 'Not permitted'}, status=403)
+
+    raw = (request.POST.get('topic') or '').strip()
+    if not raw:
+        instance.topic = None
+    else:
+        if not raw.isdigit():
+            return JsonResponse({'error': 'Unknown topic'}, status=400)
+        topic = Topic.objects.filter(pk=int(raw)).first()
+        if topic is None:
+            return JsonResponse({'error': 'Unknown topic'}, status=400)
+        # A Maths question has no business under a Physics topic, and the
+        # dropdown lists every subject when the page is not filtered to one.
+        if paper.subject_id and topic.subject_id != paper.subject_id:
+            return JsonResponse(
+                {'error': f'{topic.name} is not a {paper.subject} topic'},
+                status=400)
+        instance.topic = topic
+
+    instance.save(update_fields=['topic'])
+    return JsonResponse({
+        'ok': True,
+        'topic': instance.topic.name if instance.topic else None,
+    })
+
+
+@login_required
+@require_POST
+def set_question_topic(request, pk):
+    """Refile a whole exam question under a different topic."""
+    question = get_object_or_404(
+        ExamQuestion.objects.select_related('exam_paper__subject'), pk=pk)
+    return _retag(request, question, question.exam_paper)
+
+
+@login_required
+@require_POST
+def set_part_topic(request, pk):
+    """Refile one question part under a different topic."""
+    part = get_object_or_404(
+        ExamQuestionPart.objects.select_related('question__exam_paper__subject'),
+        pk=pk)
+    return _retag(request, part, part.question.exam_paper)

@@ -36,6 +36,12 @@ class Command(BaseCommand):
             help='Also replace marks that are already set (default: fill blanks only)'
         )
         parser.add_argument(
+            '--include-merged',
+            action='store_true',
+            help="Also read parts whose marking scheme spans several crops. "
+                 "The scale is only on the first, so the marks come out low"
+        )
+        parser.add_argument(
             '--verify-total',
             action='store_true',
             help="Check each question's parts against its total before saving, "
@@ -51,8 +57,19 @@ class Command(BaseCommand):
         under a student's grade.
         """
         parts = list(question.parts.all().order_by('order'))
+        # A merged part covers several rows of the scheme, but the scale is
+        # read off its first crop alone -- which would write, say, 10 onto a
+        # part actually worth 25 and quietly halve every future score on it.
+        # merge_question_parts leaves those blank on purpose; leave them blank.
+        merged = [p for p in parts
+                  if not include_merged and p.extra_solution_images.exists()]
         wanted = [p for p in parts
-                  if p.solution_image and (overwrite or not p.max_marks)]
+                  if p.solution_image and (overwrite or not p.max_marks)
+                  and p not in merged]
+        if merged:
+            self.stdout.write(self.style.WARNING(
+                f'  skipping {len(merged)} merged part(s); their marks span '
+                f'several crops (--include-merged to read anyway)'))
         if not wanted:
             skipped += len(parts)
             self.stdout.write('  nothing to read')
@@ -103,6 +120,7 @@ class Command(BaseCommand):
         dry_run = options['dry_run']
         overwrite = options['overwrite']
         verify_total = options['verify_total']
+        include_merged = options['include_merged']
 
         try:
             paper = ExamPaper.objects.get(id=options['paper_id'])
@@ -124,7 +142,8 @@ class Command(BaseCommand):
 
             if verify_total:
                 read, skipped, saved = self._read_question(
-                    question, dry_run, overwrite, read, skipped, saved
+                    question, dry_run, overwrite, read, skipped, saved,
+                    include_merged=include_merged
                 )
                 continue
 
@@ -135,6 +154,17 @@ class Command(BaseCommand):
                     self.stdout.write(
                         self.style.WARNING(f'  {part.label}: no marking scheme image, skipping')
                     )
+                    skipped += 1
+                    continue
+
+                # The scale is printed on the first crop only, so a merged part
+                # would come back worth a fraction of what it is -- and a low
+                # maximum quietly inflates every score against it.
+                if not include_merged and part.extra_solution_images.exists():
+                    self.stdout.write(self.style.WARNING(
+                        f'  {part.label}: marking scheme spans several crops, '
+                        f'skipping (--include-merged to read anyway)'
+                    ))
                     skipped += 1
                     continue
 

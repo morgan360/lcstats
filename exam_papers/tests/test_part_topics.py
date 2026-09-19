@@ -1,17 +1,15 @@
-"""Part-level topics: a question shows on every topic one of its parts is filed
-under, a single part can be opened on its own, and a reviewed proposal file
-never quietly overwrites tags set by hand."""
-import importlib
+"""Part-level topics: a question shows on the topic any of its parts is filed
+under, a single part can be opened on its own, and the classifier writes one
+topic per part.
+"""
 import json
-import tempfile
 from io import StringIO
-from pathlib import Path
+from unittest.mock import patch
 
-from django.apps import apps
 from django.contrib.auth.models import User
 from django.core.management import call_command
 from django.test import TestCase
-from django.urls import reverse
+from django.urls import NoReverseMatch, reverse
 
 from core.models import Subject
 from exam_papers.models import ExamAttempt, ExamPaper, ExamQuestion, ExamQuestionPart
@@ -37,8 +35,10 @@ class PartTopicsTestBase(TestCase):
             question=cls.question, label='(a)', max_marks=10, order=1)
         cls.part_b = ExamQuestionPart.objects.create(
             question=cls.question, label='(b)', max_marks=20, order=2)
-        cls.part_a.topics.set([cls.functions])
-        cls.part_b.topics.set([cls.calculus, cls.functions])
+        cls.part_a.topic = cls.functions
+        cls.part_a.save(update_fields=['topic'])
+        cls.part_b.topic = cls.calculus
+        cls.part_b.save(update_fields=['topic'])
 
         cls.other_question = ExamQuestion.objects.create(
             exam_paper=cls.paper, question_number=7, topic=cls.finance, total_marks=30,
@@ -48,19 +48,7 @@ class PartTopicsTestBase(TestCase):
 
         cls.student = User.objects.create_user('student', password='pw')
         cls.staff = User.objects.create_user('teacher', password='pw', is_staff=True)
-
-
-class SeedMigrationTests(PartTopicsTestBase):
-    def test_copies_question_topic_to_untagged_parts_only(self):
-        migration = importlib.import_module(
-            'exam_papers.migrations.0021_examquestionpart_topics')
-        self.other_part.topics.clear()
-
-        migration.copy_question_topic_to_parts(apps, None)
-        migration.copy_question_topic_to_parts(apps, None)  # safe to re-run
-
-        self.assertEqual(list(self.other_part.topics.all()), [self.finance])
-        self.assertEqual(set(self.part_b.topics.all()), {self.calculus, self.functions})
+        cls.admin = User.objects.create_superuser('admin', password='pw')
 
 
 class TopicPageTests(PartTopicsTestBase):
@@ -79,10 +67,27 @@ class TopicPageTests(PartTopicsTestBase):
         self.assertContains(response, 'name="part_id" value="%d"' % self.part_b.id)
         self.assertNotContains(response, 'name="part_id" value="%d"' % self.part_a.id)
 
-    def test_question_is_listed_once_despite_several_matching_parts(self):
+    def test_question_is_listed_once_when_two_parts_share_a_topic(self):
+        self.part_b.topic = self.functions
+        self.part_b.save(update_fields=['topic'])
+
         response = self.page(self.functions)
         self.assertEqual(response.context['total_questions'], 1)
         self.assertEqual(response.context['total_parts'], 2)
+        questions = [q for group in response.context['questions_by_paper'].values()
+                     for q in group['questions']]
+        self.assertEqual(questions[0].matching_parts, [self.part_a, self.part_b])
+
+    def test_question_still_lists_on_its_own_topic_with_parts_filed_elsewhere(self):
+        """A question's own topic is enough, even if no part agrees."""
+        self.part_a.topic = self.calculus
+        self.part_a.save(update_fields=['topic'])
+
+        response = self.page(self.functions)
+        questions = [q for group in response.context['questions_by_paper'].values()
+                     for q in group['questions']]
+        self.assertEqual(questions, [self.question])
+        self.assertEqual(questions[0].matching_parts, [])
 
 
 class FocusedPartTests(PartTopicsTestBase):
@@ -119,69 +124,146 @@ class FocusedPartTests(PartTopicsTestBase):
         self.assertIsNone(page.context['focus_part'])
 
 
-class ApplyProposalTests(PartTopicsTestBase):
-    def apply(self, rows, *extra):
-        with tempfile.TemporaryDirectory() as tmp:
-            path = Path(tmp) / 'proposal.json'
-            path.write_text(json.dumps({'paper_id': self.paper.id, 'parts': rows}))
-            out = StringIO()
-            call_command('suggest_part_topics', '--apply', str(path), *extra, stdout=out)
-            return out.getvalue()
+class TagPartTopicsTests(PartTopicsTestBase):
+    """The classifier writes one topic per part, straight to the database."""
 
-    def row(self, part, topics, confidence='high'):
-        return {'part_id': part.id, 'question': part.question.question_number,
-                'label': part.label, 'topics': topics, 'confidence': confidence}
+    def run_command(self, reply, *extra):
+        """Drive the command with a canned reply and a canned scheme.
 
-    def test_replaces_seeded_topic(self):
-        # part_a holds only its question's topic, as the migration left it
-        self.apply([self.row(self.part_a, ['Differential Calculus', 'functions'])])
-        self.assertEqual(set(self.part_a.topics.all()), {self.calculus, self.functions})
+        The test paper has no PDFs, so without a stubbed scheme every question
+        is skipped as "too little text to classify" before the model is asked.
+        """
+        out = StringIO()
+        module = 'exam_papers.management.commands.tag_part_topics'
+        with patch(f'{module}.ask_openai',
+                   return_value=(json.dumps(reply), None)), \
+             patch(f'{module}.part_scheme_text',
+                   return_value='Differentiate and set equal to zero. 10 marks.'):
+            call_command('tag_part_topics', self.paper.id, *extra, stdout=out)
+        return out.getvalue()
 
-    def test_keeps_hand_tagged_part_unless_overwrite(self):
-        self.apply([self.row(self.part_b, ['Finance'])])
-        self.assertEqual(set(self.part_b.topics.all()), {self.calculus, self.functions})
+    def reply_for(self, part, topic_name, confidence='high'):
+        return {'parts': [{'id': part.id, 'topic': topic_name,
+                           'confidence': confidence, 'reason': 'because'}]}
 
-        self.apply([self.row(self.part_b, ['Finance'])], '--overwrite')
-        self.assertEqual(list(self.part_b.topics.all()), [self.finance])
+    def test_writes_one_topic_per_part(self):
+        self.run_command(self.reply_for(self.part_a, 'Differential Calculus'))
+        self.part_a.refresh_from_db()
+        self.assertEqual(self.part_a.topic, self.calculus)
 
-    def test_unknown_topic_saves_nothing_for_that_part(self):
-        output = self.apply([self.row(self.part_a, ['Differential Calculus', 'Calculus-ish'])])
-        self.assertIn('Calculus-ish', output)
-        self.assertEqual(list(self.part_a.topics.all()), [self.functions])
+    def test_overwrites_a_topic_already_set(self):
+        """Every part is retagged; corrections are made on the parts page."""
+        self.run_command(self.reply_for(self.part_b, 'Finance'))
+        self.part_b.refresh_from_db()
+        self.assertEqual(self.part_b.topic, self.finance)
 
-    def test_below_confidence_floor_is_left_alone(self):
-        self.apply([self.row(self.part_a, ['Finance'], confidence='low')])
-        self.assertEqual(list(self.part_a.topics.all()), [self.functions])
+    def test_a_topic_that_does_not_exist_leaves_the_part_alone(self):
+        output = self.run_command(self.reply_for(self.part_a, 'Vectors In Space'))
+        self.part_a.refresh_from_db()
+        self.assertEqual(self.part_a.topic, self.functions)
+        self.assertIn('not a topic', output)
+        self.assertIn('Vectors In Space', output)
 
-    def test_part_from_another_paper_is_rejected(self):
-        other = ExamPaper.objects.create(subject=self.maths, year=2020, paper_type='p1', total_marks=300)
-        q = ExamQuestion.objects.create(exam_paper=other, question_number=1, total_marks=30)
-        stray = ExamQuestionPart.objects.create(question=q, label='(a)', max_marks=30)
-        output = self.apply([self.row(stray, ['Finance'])])
-        self.assertIn('not a part of', output)
-        self.assertFalse(stray.topics.exists())
+    def test_dry_run_writes_nothing(self):
+        output = self.run_command(
+            self.reply_for(self.part_a, 'Differential Calculus'), '--dry-run')
+        self.part_a.refresh_from_db()
+        self.assertEqual(self.part_a.topic, self.functions)
+        self.assertIn('Differential Calculus', output)
+        self.assertIn('Nothing was written', output)
+
+    def test_a_part_missing_from_the_reply_is_left_alone(self):
+        output = self.run_command({'parts': []})
+        self.part_a.refresh_from_db()
+        self.assertEqual(self.part_a.topic, self.functions)
+        self.assertIn('no reply for this part', output)
+
+    def test_a_list_of_topics_is_reduced_to_its_first(self):
+        reply = {'parts': [{'id': self.part_a.id,
+                            'topic': ['Finance', 'Functions'],
+                            'confidence': 'medium', 'reason': 'mortgage'}]}
+        self.run_command(reply)
+        self.part_a.refresh_from_db()
+        self.assertEqual(self.part_a.topic, self.finance)
 
 
-class CrossReferenceTests(PartTopicsTestBase):
-    url = reverse('exam_papers:topic_cross_reference')
+class RetagTests(PartTopicsTestBase):
+    """Only a superuser may move a question or a part to another topic."""
 
-    def test_staff_only(self):
-        self.client.force_login(self.student)
-        self.assertEqual(self.client.get(self.url).status_code, 302)
+    def part_url(self):
+        return reverse('exam_papers:set_part_topic', args=[self.part_a.id])
 
-    def test_part_lands_in_each_of_its_topic_rows(self):
-        self.other_part.topics.clear()
+    def test_a_superuser_can_retag_a_part(self):
+        self.client.force_login(self.admin)
+        response = self.client.post(self.part_url(), {'topic': self.finance.id})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()['topic'], 'Finance')
+        self.part_a.refresh_from_db()
+        self.assertEqual(self.part_a.topic, self.finance)
+
+    def test_a_staff_teacher_cannot(self):
+        """is_staff is every teacher; a topic is shared across all of them."""
         self.client.force_login(self.staff)
-        response = self.client.get(self.url)
+        response = self.client.post(self.part_url(), {'topic': self.finance.id})
 
-        table = response.context['tables'][0]
-        column = table['papers'].index(self.paper)
-        cells = {(row['topic'].name if row['topic'] else None): row['cells'][column]['parts']
-                 for row in table['rows']}
-        self.assertEqual(cells['Differential Calculus'], [self.part_b])
-        self.assertEqual(cells['Functions'], [self.part_a, self.part_b])
-        self.assertEqual(cells[None], [self.other_part])
-        self.assertContains(response, 'Q6(b)')
+        self.assertEqual(response.status_code, 403)
+        self.part_a.refresh_from_db()
+        self.assertEqual(self.part_a.topic, self.functions)
+
+    def test_a_student_cannot(self):
+        self.client.force_login(self.student)
+        self.assertEqual(
+            self.client.post(self.part_url(), {'topic': self.finance.id}).status_code,
+            403)
+
+    def test_a_blank_topic_clears_it(self):
+        self.client.force_login(self.admin)
+        self.client.post(self.part_url(), {'topic': ''})
+        self.part_a.refresh_from_db()
+        self.assertIsNone(self.part_a.topic)
+
+    def test_a_topic_from_another_subject_is_refused(self):
+        """A Maths part has no business under a Physics topic."""
+        physics = Subject.objects.get(slug='physics')
+        elsewhere = Topic.objects.create(name='Waves', subject=physics, paper='p1')
+
+        self.client.force_login(self.admin)
+        response = self.client.post(self.part_url(), {'topic': elsewhere.id})
+
+        self.assertEqual(response.status_code, 400)
+        self.part_a.refresh_from_db()
+        self.assertEqual(self.part_a.topic, self.functions)
+
+    def test_a_question_can_be_retagged_too(self):
+        self.client.force_login(self.admin)
+        self.client.post(
+            reverse('exam_papers:set_question_topic', args=[self.question.id]),
+            {'topic': self.finance.id})
+        self.question.refresh_from_db()
+        self.assertEqual(self.question.topic, self.finance)
+
+
+class PartsPageTests(PartTopicsTestBase):
+    url = reverse('exam_papers:parts_generator')
+
+    def test_lists_only_parts_on_the_chosen_topic(self):
+        self.client.force_login(self.admin)
+        response = self.client.get(self.url, {'topic': self.calculus.id})
+        self.assertEqual(list(response.context['parts']), [self.part_b])
+
+    def test_the_dropdown_is_for_superusers_only(self):
+        self.client.force_login(self.admin)
+        self.assertContains(self.client.get(self.url, {'topic': self.calculus.id}),
+                            'topic-retag')
+
+        self.client.force_login(self.staff)
+        self.assertNotContains(self.client.get(self.url, {'topic': self.calculus.id}),
+                               'topic-retag')
+
+    def test_the_topic_map_is_gone(self):
+        with self.assertRaises(NoReverseMatch):
+            reverse('exam_papers:topic_cross_reference')
 
 
 class AlgebraRuleTests(PartTopicsTestBase):

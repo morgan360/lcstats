@@ -103,9 +103,9 @@
                                 class="block rounded-lg px-3 py-2 text-sm font-semibold text-mist hover:bg-rose-pop/20">Print
                                 Exam Questions</a>
                             {% if user.is_staff %}
-                            <a href="{% url 'exam_papers:topic_cross_reference' %}"
-                                class="block rounded-lg px-3 py-2 text-sm font-semibold text-mist hover:bg-rose-pop/20">Topic
-                                Map</a>
+                            <a href="{% url 'exam_papers:parts_generator' %}"
+                                class="block rounded-lg px-3 py-2 text-sm font-semibold text-mist hover:bg-rose-pop/20">Print
+                                Question Parts</a>
                             {% endif %}
                             <a href="{% url 'hw_solutions:hw_solutions_index' %}"
                                 class="block rounded-lg px-3 py-2 text-sm font-semibold text-mist hover:bg-rose-pop/20">HW-Solutions</a>
@@ -282,8 +282,8 @@
                     <a href="{% url 'exam_papers:worksheet_generator' %}"
                         class="block rounded-lg px-3 py-2 text-sm font-semibold hover:bg-mist/10">Print Exam Questions</a>
                     {% if user.is_staff %}
-                    <a href="{% url 'exam_papers:topic_cross_reference' %}"
-                        class="block rounded-lg px-3 py-2 text-sm font-semibold hover:bg-mist/10">Topic Map</a>
+                    <a href="{% url 'exam_papers:parts_generator' %}"
+                        class="block rounded-lg px-3 py-2 text-sm font-semibold hover:bg-mist/10">Print Question Parts</a>
                     {% endif %}
                     <a href="{% url 'hw_solutions:hw_solutions_index' %}"
                         class="block rounded-lg px-3 py-2 text-sm font-semibold hover:bg-mist/10">HW-Solutions</a>
