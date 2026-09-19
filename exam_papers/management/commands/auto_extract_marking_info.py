@@ -48,7 +48,8 @@ class Command(BaseCommand):
                  "retrying once and skipping the question if they still disagree"
         )
 
-    def _read_question(self, question, dry_run, overwrite, read, skipped, saved):
+    def _read_question(self, question, dry_run, overwrite, read, skipped, saved,
+                       include_merged=False):
         """Read a whole question's marks, keeping them only if they add up.
 
         A question's total is known independently, from the paper itself, so it
