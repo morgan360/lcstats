@@ -237,6 +237,19 @@ def gpt_grade(question_text, student_answer, correct_answer):
       placeholders such as \\frac{{\\placeholder{{}}}}{{\\placeholder{{}}}}): score 0
     - Numerically equivalent to the correct answer, including rounding or
       decimal-versus-surd form (e.g. 2.8 for $2\\sqrt{{2}}$): score 90-100
+    - BUT where the question asks for a particular FORM, that form is the
+      answer and a number is not it. "Express $\\log_9 40$ in terms of
+      logarithms base 3", "give your answer in the form $an^2 + bn + c$",
+      "leave your answer in surd form": an answer that is numerically right
+      but in the wrong form shows the work was done, not the thing asked, so
+      score 20-40 and name the form that was wanted in the feedback.
+    - The answer editor writes $\\pm$ and $\\mp$ as stacked fractions, so
+      \\frac{{+}}{{-}} and \\frac{{-}}{{+}} are those symbols and not division:
+      read \\frac{{-}}{{+}}8i as $\\pm 8i$. Either stacking gives the same pair
+      of roots, so accept both against a $\\pm$ answer. This applies ONLY when
+      the numerator and denominator are the signs themselves. Anything else --
+      \\frac{{2}}{{6}}, \\frac26 -- is an ordinary fraction and is read as
+      division, exactly as written.
     - Correct final answer expressed differently (equivalent algebraic form,
       solutions in another order): score 90-100
 
@@ -256,8 +269,9 @@ def gpt_grade(question_text, student_answer, correct_answer):
     - Write plain prose sentences. Do NOT use Markdown: no **bold**, no
       headings, no bullet points, no numbered step lists.
 
-    Output strict JSON with these fields:
-    - "score": integer 0–100 (award partial credit generously for correct approach)
+    Output strict JSON with these fields, IN THIS ORDER. The feedback
+    comes before the score so the score follows the reasoning rather than
+    being committed to ahead of it:
     - "feedback": 2-3 sentences explaining what's wrong and why
     - "hint": ONE or TWO sentences nudging them toward the next step. It is a
       hint, not a worked solution: name the idea or rule to apply, never lay out
@@ -265,6 +279,7 @@ def gpt_grade(question_text, student_answer, correct_answer):
       expanding the brackets" or "Remember to convert to radians before using
       the formula")
     - "common_mistake": (optional) If this is a common error, name it (e.g., "Sign error", "Wrong formula", "Calculation mistake")
+    - "score": integer 0–100 (award partial credit generously for correct approach)
 
     EXAMPLES OF GOOD FEEDBACK:
     - "Your approach is correct, but there's a calculation error. You correctly identified the quadratic formula, but when calculating the discriminant, you used b=3 instead of b=-3. This changes the sign. Try recalculating with the correct sign."
