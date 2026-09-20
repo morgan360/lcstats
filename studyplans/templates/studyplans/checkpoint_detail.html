@@ -1,0 +1,88 @@
+{% extends "_base.html" %}
+{% block title %}{{ goal.topic.name }} checkpoint{% endblock %}
+
+{% block content %}
+<div class="mx-auto max-w-3xl px-4 py-8 sm:px-6 lg:px-8">
+  {% include "studyplans/_messages.html" %}
+
+  <h2 class="mb-1 text-2xl font-semibold text-mist">
+    {{ goal.topic.name }} &mdash; checkpoint {{ checkpoint.round }}
+  </h2>
+  <p class="mb-6 text-sm text-mist/70">{{ plan.title }}</p>
+  <div class="mb-8 h-1 w-full rounded-full bg-gradient-to-r from-violet-royal to-lime-glow"></div>
+
+  <div class="mb-6 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-twilight/10">
+    {% if sat %}
+      <div class="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <p class="text-2xl font-bold text-midnight">
+            {{ checkpoint.score|floatformat:0 }}%
+            <span class="text-base font-semibold
+              {% if checkpoint.status == 'passed' %}text-lime-glow{% else %}text-rose-pop{% endif %}">
+              {% if checkpoint.status == 'passed' %}passed{% elif checkpoint.status == 'voided' %}voided{% else %}not passed{% endif %}
+            </span>
+          </p>
+          <p class="mt-1 text-sm text-twilight/70">
+            {{ checkpoint.marks_awarded|floatformat:"-1" }} of
+            {{ checkpoint.marks_possible|floatformat:"-1" }} marks &middot;
+            needed {{ checkpoint.pass_mark }}%
+          </p>
+        </div>
+        {% if not checkpoint.is_clean %}
+        <p class="rounded-lg bg-rose-pop/10 px-3 py-2 text-xs font-semibold text-rose-pop">
+          A marking scheme was opened, so marks were reduced.
+        </p>
+        {% endif %}
+      </div>
+      {% if checkpoint.status == 'failed' %}
+      <p class="mt-4 rounded-xl bg-twilight/5 px-4 py-3 text-sm text-twilight/80">
+        Not this time. More practice on this topic has been added to your plan,
+        and a fresh checkpoint on different questions is waiting after it.
+      </p>
+      {% endif %}
+    {% else %}
+      <p class="text-lg font-semibold text-midnight">
+        {{ parts|length }} question part{{ parts|length|pluralize }} to sit
+      </p>
+      <p class="mt-1 text-sm text-twilight/70">
+        Worth {{ checkpoint.total_marks }} marks altogether. You need
+        {{ checkpoint.pass_mark }}% to master this topic. Do them without the
+        marking scheme &mdash; opening it costs half the marks.
+      </p>
+    {% endif %}
+  </div>
+
+  <ul class="space-y-2">
+    {% for part in parts %}
+    <li class="flex flex-wrap items-center gap-3 rounded-xl bg-white px-4 py-3 shadow-sm ring-1 ring-twilight/10">
+      <span class="min-w-0 flex-1">
+        <span class="block text-sm font-semibold text-midnight">
+          {{ part.exam_question_part.question.exam_paper.year }}
+          {{ part.exam_question_part.question.exam_paper.get_paper_type_display }}
+          Q{{ part.exam_question_part.question.question_number }}{{ part.exam_question_part.label }}
+        </span>
+        <span class="block text-xs text-twilight/60">
+          {{ part.marks_possible }} marks
+          {% if part.score is not None %}
+            &middot; scored {{ part.score|floatformat:0 }}%
+            {% if part.solution_viewed %}&middot; <span class="text-rose-pop">scheme opened</span>
+            {% elif part.hint_used %}&middot; hint used{% endif %}
+          {% endif %}
+        </span>
+      </span>
+      {% if not sat %}
+      <a href="{% url 'exam_papers:practise_part' part.exam_question_part.id %}"
+         class="rounded-lg bg-violet-royal px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-indigo-deep">
+        {% if part.is_attempted %}Again{% else %}Sit it{% endif %}
+      </a>
+      {% endif %}
+    </li>
+    {% endfor %}
+  </ul>
+
+  <div class="mt-6">
+    <a href="{% url 'studyplans:my_plan' %}"
+       class="text-sm font-semibold text-mist hover:text-lime-glow">&larr; Back to my plan</a>
+  </div>
+</div>
+{% endblock %}

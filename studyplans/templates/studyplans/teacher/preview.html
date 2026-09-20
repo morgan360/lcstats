@@ -1,0 +1,115 @@
+{% extends "_base.html" %}
+{% block title %}Preview Plan{% endblock %}
+
+{% block content %}
+<div class="mx-auto max-w-4xl px-4 py-8 sm:px-6 lg:px-8">
+  {% include "studyplans/_messages.html" %}
+
+  <h2 class="mb-1 text-2xl font-semibold text-mist">Preview</h2>
+  <p class="mb-6 text-sm text-mist/70">
+    {% if is_class %}
+      Built for {{ student.username }} as an example. Each student in the class
+      gets their own plan, made from what <em>they</em> have already done.
+    {% else %}
+      For {{ student.username }}. Nothing has been saved yet.
+    {% endif %}
+  </p>
+  <div class="mb-8 h-1 w-full rounded-full bg-gradient-to-r from-violet-royal to-lime-glow"></div>
+
+  {% if proposal.warnings %}
+  <div class="mb-6 rounded-2xl bg-white p-5 shadow-sm ring-2 ring-rose-pop/40">
+    <h3 class="mb-2 text-base font-semibold text-rose-pop">Worth knowing first</h3>
+    <ul class="list-disc space-y-1 pl-5 text-sm text-twilight/80">
+      {% for warning in proposal.warnings %}<li>{{ warning }}</li>{% endfor %}
+    </ul>
+  </div>
+  {% endif %}
+
+  <div class="mb-6 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-twilight/10">
+    <h3 class="mb-3 text-base font-semibold text-midnight">Checkpoints</h3>
+    <div class="space-y-3">
+      {% for goal in proposal.goals %}
+      <div class="rounded-xl bg-twilight/5 px-4 py-3">
+        <p class="text-sm font-semibold text-midnight">
+          {{ goal.topic.name }}
+          <span class="ml-2 text-xs font-normal text-twilight/60">
+            pass at {{ goal.target_mastery }}%
+          </span>
+        </p>
+        {% if goal.checkpoint_parts %}
+        <ul class="mt-2 space-y-1">
+          {% for part in goal.checkpoint_parts %}
+          <li class="text-xs text-twilight/70">
+            {{ part.question.exam_paper.year }}
+            {{ part.question.exam_paper.get_paper_type_display }}
+            Q{{ part.question.question_number }}{{ part.label }}
+            &middot; {{ part.max_marks|default:"?" }} marks
+          </li>
+          {% endfor %}
+        </ul>
+        <p class="mt-2 text-xs text-twilight/50">
+          {{ goal.reserve_rounds|length }} retry checkpoint(s) held back
+          &middot; {{ goal.pool_available }} unseen part(s) on this topic
+        </p>
+        {% else %}
+        <p class="mt-1 text-xs font-semibold text-rose-pop">
+          No exam parts available &mdash; this topic cannot be checked.
+        </p>
+        {% endif %}
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  {% for week in proposal.weeks %}
+  <section class="mb-4 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-twilight/10">
+    <div class="mb-3 flex flex-wrap items-baseline justify-between gap-2">
+      <h3 class="text-base font-semibold text-midnight">Week {{ week.index }}</h3>
+      <p class="text-xs text-twilight/60">
+        {{ week.start_date|date:"j M" }} &ndash; {{ week.end_date|date:"j M" }}
+        &middot; {{ week.minutes_used }}/{{ week.minutes_budget }} min
+      </p>
+    </div>
+    <ul class="space-y-1">
+      {% for item in week.items %}
+      <li class="flex items-center justify-between gap-3 rounded-lg bg-twilight/5 px-3 py-2">
+        <span class="min-w-0 truncate text-sm text-midnight">
+          {{ item.obj|default:item.instructions }}
+        </span>
+        <span class="shrink-0 text-xs text-twilight/60">{{ item.estimated_minutes }} min</span>
+      </li>
+      {% empty %}
+      <li class="px-3 py-2 text-sm text-twilight/50">Nothing to schedule.</li>
+      {% endfor %}
+    </ul>
+  </section>
+  {% endfor %}
+
+  <form method="post" action="{% url 'studyplans:plan_create' %}" class="mt-6">
+    {% csrf_token %}
+    <input type="hidden" name="title" value="{{ form.title }}">
+    <input type="hidden" name="description" value="{{ form.description }}">
+    <input type="hidden" name="start_date" value="{{ form.start_date|date:'Y-m-d' }}">
+    <input type="hidden" name="deadline" value="{{ form.deadline|date:'Y-m-d' }}">
+    <input type="hidden" name="weekly_minutes" value="{{ form.weekly_minutes }}">
+    <input type="hidden" name="student" value="{{ form.student_id|default_if_none:'' }}">
+    <input type="hidden" name="teacher_class" value="{{ form.class_id|default_if_none:'' }}">
+    {% for spec in form.specs %}
+      <input type="hidden" name="topics" value="{{ spec.topic.id }}">
+      <input type="hidden" name="target_{{ spec.topic.id }}" value="{{ spec.target_mastery }}">
+      <input type="hidden" name="priority_{{ spec.topic.id }}" value="{{ spec.priority }}">
+      <input type="hidden" name="size_{{ spec.topic.id }}" value="{{ spec.checkpoint_size }}">
+    {% endfor %}
+    <div class="flex flex-wrap gap-3">
+      <button type="submit"
+              class="rounded-lg bg-violet-royal px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-deep">
+        {% if is_class %}Set this for the whole class{% else %}Set this plan{% endif %}
+      </button>
+      <a href="{% url 'studyplans:plan_builder' %}"
+         class="rounded-lg bg-white/10 px-5 py-3 text-sm font-semibold text-mist transition hover:bg-white/20">
+        Start again
+      </a>
+    </div>
+  </form>
+</div>
+{% endblock %}

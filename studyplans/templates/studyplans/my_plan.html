@@ -1,0 +1,107 @@
+{% extends "_base.html" %}
+{% block title %}My Plan{% endblock %}
+
+{% block content %}
+<div class="mx-auto max-w-4xl px-4 py-8 sm:px-6 lg:px-8">
+  {% include "studyplans/_messages.html" %}
+
+  <div class="mb-6 flex flex-wrap items-center justify-between gap-3">
+    <h2 class="text-2xl font-semibold text-mist">My Plan</h2>
+    <a href="{% url 'studyplans:achievements' %}"
+       class="rounded-lg bg-white/10 px-3 py-2 text-sm font-semibold text-mist transition hover:bg-white/20">
+      🏅 My achievements
+    </a>
+  </div>
+  <div class="mb-8 h-1 w-full rounded-full bg-gradient-to-r from-violet-royal to-lime-glow"></div>
+
+  {% if plan %}
+    <div class="mb-8">{% include "studyplans/_progress_card.html" %}</div>
+
+    {% if card.ready_count %}
+    <div class="mb-8 rounded-2xl bg-white p-5 shadow-sm ring-2 ring-violet-royal">
+      <h3 class="text-lg font-semibold text-midnight">
+        {{ card.ready_count }} checkpoint{{ card.ready_count|pluralize }} ready to sit
+      </h3>
+      <p class="mt-1 text-sm text-twilight/80">
+        You have done the work. Sit the checkpoint to prove the topic and have it
+        counted.
+      </p>
+      <div class="mt-3 flex flex-wrap gap-2">
+        {% for goal in card.goals %}{% if goal.state == 'ready' %}
+        <a href="{% url 'studyplans:checkpoint_detail' goal.checkpoint.id %}"
+           class="rounded-lg bg-violet-royal px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-deep">
+          {{ goal.topic.name }} &rarr;
+        </a>
+        {% endif %}{% endfor %}
+      </div>
+    </div>
+    {% endif %}
+
+    <div class="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-twilight/10">
+      <div class="mb-4 flex flex-wrap items-baseline justify-between gap-2">
+        <h3 class="text-lg font-semibold text-midnight">
+          {% if week.week %}This week{% else %}Your work{% endif %}
+        </h3>
+        {% if week.week %}
+        <p class="text-sm text-twilight/70">
+          {{ week.week.start_date|date:"j M" }} &ndash; {{ week.week.end_date|date:"j M" }}
+          &middot; {{ week.minutes_done }}/{{ week.minutes_total }} min
+        </p>
+        {% endif %}
+      </div>
+
+      <ul class="space-y-2">
+        {% for item in week.items %}
+          {% include "studyplans/_item_card.html" with item=item owner=True %}
+        {% empty %}
+          <li class="rounded-xl bg-twilight/5 px-3 py-6 text-center text-sm text-twilight/70">
+            Nothing scheduled this week.
+          </li>
+        {% endfor %}
+      </ul>
+
+      <div class="mt-5 flex flex-wrap items-center gap-3">
+        <a href="{% url 'studyplans:plan_detail' plan.id %}"
+           class="rounded-lg bg-gradient-03 px-4 py-2 text-sm font-semibold text-mist shadow-[0_12px_24px_rgba(148,72,176,0.28)] transition hover:-translate-y-0.5">
+          See the whole plan &rarr;
+        </a>
+        <form method="post" action="{% url 'studyplans:refresh_progress' plan.id %}">
+          {% csrf_token %}
+          <button type="submit"
+                  class="rounded-lg bg-twilight/10 px-4 py-2 text-sm font-semibold text-twilight transition hover:bg-twilight/20">
+            Check my progress
+          </button>
+        </form>
+        {% if plan.last_checked_at %}
+        <span class="text-xs text-twilight/50">
+          last checked {{ plan.last_checked_at|timesince }} ago
+        </span>
+        {% endif %}
+      </div>
+    </div>
+
+  {% else %}
+    <div class="rounded-2xl bg-white p-8 text-center shadow-sm ring-1 ring-twilight/10">
+      <p class="text-lg font-semibold text-midnight">No study plan yet.</p>
+      <p class="mt-2 text-sm text-twilight/70">
+        Your teacher sets these. When one arrives it will show up here.
+      </p>
+      {% if other_plans %}
+      <div class="mt-6 text-left">
+        <p class="mb-2 text-sm font-semibold text-midnight">Earlier plans</p>
+        <ul class="space-y-1">
+          {% for old in other_plans %}
+          <li>
+            <a href="{% url 'studyplans:plan_detail' old.id %}"
+               class="text-sm font-semibold text-violet-royal hover:text-indigo-deep">
+              {{ old.title }}</a>
+            <span class="text-xs text-twilight/60">({{ old.get_status_display }})</span>
+          </li>
+          {% endfor %}
+        </ul>
+      </div>
+      {% endif %}
+    </div>
+  {% endif %}
+</div>
+{% endblock %}

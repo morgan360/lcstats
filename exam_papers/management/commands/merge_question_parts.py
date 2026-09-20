@@ -184,6 +184,7 @@ class Command(BaseCommand):
                 question_part__in=losers).update(question_part=survivor)
             self._repoint_work_submissions(losers, survivor)
             self._repoint_homework_tasks(losers, survivor)
+            self._repoint_study_plans(losers, survivor)
 
             self._stack_crops(survivor, crops)
 
@@ -267,6 +268,34 @@ class Command(BaseCommand):
         from students.models import WorkSubmission
         WorkSubmission.objects.filter(
             exam_question_part__in=losers).update(exam_question_part=survivor)
+
+    def _repoint_study_plans(self, losers, survivor):
+        """Move study plan work and checkpoints onto the surviving part.
+
+        Both FKs cascade, so without this a merge would delete a student's
+        planned work and -- worse -- the frozen record of a checkpoint they had
+        already sat, which the achievements page presents as permanent.
+
+        A checkpoint that ends up holding the survivor twice would break its
+        unique_together, so the duplicate row is dropped rather than repointed;
+        its marks are already counted in the row that remains.
+        """
+        from studyplans.models import StudyPlanCheckpointPart, StudyPlanItem
+
+        StudyPlanItem.objects.filter(
+            exam_question_part__in=losers).update(exam_question_part=survivor)
+
+        seen = set()
+        for part in StudyPlanCheckpointPart.objects.filter(
+                exam_question_part__in=losers).order_by('checkpoint_id', 'pk'):
+            if part.checkpoint_id in seen or StudyPlanCheckpointPart.objects.filter(
+                    checkpoint_id=part.checkpoint_id,
+                    exam_question_part=survivor).exists():
+                part.delete()
+                continue
+            seen.add(part.checkpoint_id)
+            part.exam_question_part = survivor
+            part.save(update_fields=['exam_question_part'])
 
     def _repoint_homework_tasks(self, losers, survivor):
         """Move tasks to the survivor, and mind the duplicates that makes.

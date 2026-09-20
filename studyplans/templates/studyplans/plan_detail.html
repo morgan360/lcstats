@@ -1,0 +1,50 @@
+{% extends "_base.html" %}
+{% block title %}{{ plan.title }}{% endblock %}
+
+{% block content %}
+<div class="mx-auto max-w-4xl px-4 py-8 sm:px-6 lg:px-8">
+  {% include "studyplans/_messages.html" %}
+
+  <h2 class="mb-1 text-2xl font-semibold text-mist">{{ plan.title }}</h2>
+  <p class="mb-6 text-sm text-mist/70">
+    {{ plan.student.username }} &middot; {{ plan.start_date|date:"j M" }} &ndash;
+    {{ plan.deadline|date:"j M Y" }}
+  </p>
+  <div class="mb-8 h-1 w-full rounded-full bg-gradient-to-r from-violet-royal to-lime-glow"></div>
+
+  <div class="mb-8">{% include "studyplans/_progress_card.html" %}</div>
+
+  {% for week in weeks %}
+  <section class="mb-5 rounded-2xl bg-white p-5 shadow-sm
+      {% if week.week.id == current_week_id %}ring-2 ring-violet-royal{% else %}ring-1 ring-twilight/10{% endif %}">
+    <div class="mb-3 flex flex-wrap items-baseline justify-between gap-2">
+      <h3 class="text-base font-semibold text-midnight">
+        Week {{ week.week.index }}
+        {% if week.week.id == current_week_id %}
+          <span class="ml-2 rounded-full bg-violet-royal px-2 py-0.5 text-[0.65rem] font-bold uppercase tracking-wide text-white">now</span>
+        {% endif %}
+      </h3>
+      <p class="text-xs text-twilight/60">
+        {{ week.week.start_date|date:"j M" }} &ndash; {{ week.week.end_date|date:"j M" }}
+        &middot; {{ week.minutes_done }}/{{ week.minutes_total }} min
+      </p>
+    </div>
+    {% if week.week.focus_note %}
+    <p class="mb-3 text-sm italic text-twilight/70">{{ week.week.focus_note }}</p>
+    {% endif %}
+    <ul class="space-y-2">
+      {% for item in week.items %}
+        {% include "studyplans/_item_card.html" with item=item owner=is_owner %}
+      {% empty %}
+        <li class="rounded-xl bg-twilight/5 px-3 py-4 text-center text-sm text-twilight/60">
+          Nothing scheduled.
+        </li>
+      {% endfor %}
+    </ul>
+  </section>
+  {% endfor %}
+
+  <a href="{% url 'studyplans:my_plan' %}"
+     class="text-sm font-semibold text-mist hover:text-lime-glow">&larr; Back</a>
+</div>
+{% endblock %}

@@ -41,6 +41,34 @@
     </div>
     {% endif %}
 
+    <!-- Study plan: what they have proved, not just what they have done -->
+    {% if study_plan_card %}
+    <div class="mb-8 rounded-2xl border border-indigo-deep/10 bg-white/90 p-5 shadow-[0_12px_28px_rgba(0,0,0,0.08)]">
+        <div class="mb-3 flex flex-wrap items-baseline justify-between gap-2">
+            <h3 class="text-xl font-semibold text-midnight">🎯 {{ study_plan_card.plan.title }}</h3>
+            <span class="text-sm font-semibold text-indigo-deep/70">
+                {{ study_plan_card.mastered }} of {{ study_plan_card.total }} topic{{ study_plan_card.total|pluralize }} mastered
+            </span>
+        </div>
+
+        <div class="mb-3 h-4 w-full overflow-hidden rounded-full bg-indigo-deep/10">
+            <div class="h-full rounded-full bg-gradient-to-r from-violet-royal to-lime-glow transition-all"
+                style="width: {{ study_plan_card.percent }}%;"></div>
+        </div>
+
+        {% if study_plan_card.ready_count %}
+        <p class="mb-2 text-sm font-semibold text-violet-royal">
+            ◉ {{ study_plan_card.ready_count }} checkpoint{{ study_plan_card.ready_count|pluralize }} ready to sit
+        </p>
+        {% endif %}
+
+        <a href="{% url 'studyplans:my_plan' %}"
+           class="mt-2 inline-flex items-center gap-2 rounded-lg bg-gradient-03 px-4 py-2 text-sm font-semibold text-mist shadow-[0_12px_24px_rgba(148,72,176,0.28)] transition hover:-translate-y-0.5">
+            View My Plan →
+        </a>
+    </div>
+    {% endif %}
+
     <!-- Stats Grid -->
     <div class="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <div class="rounded-2xl border border-indigo-deep/10 bg-white/90 p-5 text-center shadow-[0_12px_28px_rgba(0,0,0,0.08)]">

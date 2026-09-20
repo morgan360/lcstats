@@ -1,3 +1,5 @@
+import logging
+
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.views import LogoutView
@@ -8,6 +10,8 @@ from django.http import JsonResponse
 from django.views.decorators.http import require_POST
 from .models import StudentProfile, RegistrationCode
 from .forms import SignupFormWithCode
+
+logger = logging.getLogger(__name__)
 
 # Signup view — handles registration with code validation
 def signup_view(request):
@@ -88,7 +92,21 @@ def dashboard_view(request):
         homework_summary = {}
         show_notification_modal = False
 
+    # Study plan card -- guarded like the homework block above it, because a
+    # broken plan must not take the whole dashboard down.
+    study_plan_card = None
+    try:
+        from studyplans.services import progress as studyplan_progress
+        active_plan = studyplan_progress.active_plan_for(
+            request.user, getattr(request, 'current_subject', None))
+        if active_plan:
+            study_plan_card = studyplan_progress.plan_card(active_plan)
+    except Exception as exc:
+        logger.error("Study plan card failed on the dashboard: %s", exc,
+                     exc_info=True)
+
     context = {
+        'study_plan_card': study_plan_card,
         "profile": profile,
         "accuracy": accuracy,
         "recent_attempts": attempts[:10],

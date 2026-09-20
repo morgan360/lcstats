@@ -1,0 +1,20 @@
+{% comment %}
+  Django messages, rendered for this app's pages only.
+
+  `_base.html` has no messages block, and the allauth templates render their own
+  inside their content block, so a block in the base would double up on every
+  login page. Until that is sorted site-wide, each app renders its own -- without
+  this, every "Plan set for aoife" and every permission error is posted and shown
+  to nobody.
+{% endcomment %}
+{% if messages %}
+  <div class="mb-5 space-y-2">
+    {% for message in messages %}
+      <div class="rounded-xl bg-white px-4 py-3 text-sm font-semibold
+        {% if message.tags == 'error' %}text-rose-pop ring-1 ring-rose-pop/25
+        {% else %}text-twilight ring-2 ring-lime-glow{% endif %}">
+        {{ message }}
+      </div>
+    {% endfor %}
+  </div>
+{% endif %}

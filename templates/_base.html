@@ -124,6 +124,18 @@
                     </a>
                     {% endif %}
 
+                    {% if user.is_authenticated %}
+                    <a href="{% url 'studyplans:my_plan' %}"
+                        class="relative rounded-lg px-2 py-2 text-mist transition hover:bg-mist/15">
+                        <span>My Plan</span>
+                        {% if study_plan_badge_count > 0 %}
+                        <span
+                            class="ml-1 inline-flex min-w-[1.3rem] items-center justify-center rounded-full bg-lime-glow px-1.5 py-0.5 text-[0.7rem] font-bold text-midnight">
+                            {{ study_plan_badge_count }}</span>
+                        {% endif %}
+                    </a>
+                    {% endif %}
+
                     {% if request.user.is_staff %}
                     <div class="relative group">
                         <button type="button" class="desktop-dropdown-toggle flex items-center gap-1 rounded-lg px-2 py-2 text-rose-pop transition hover:bg-mist/15 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-mist">
@@ -140,6 +152,9 @@
                                 class="block rounded-lg px-3 py-2 text-sm font-semibold text-rose-pop hover:bg-rose-pop/20">Teacher</a>
                             <a href="{% url 'reports:dashboard' %}"
                                 class="block rounded-lg px-3 py-2 text-sm font-semibold text-rose-pop hover:bg-rose-pop/20">Reports</a>
+                            <a href="{% url 'studyplans:teacher_dashboard' %}"
+                                class="block rounded-lg px-3 py-2 text-sm font-semibold text-rose-pop hover:bg-rose-pop/20">Study
+                                Plans</a>
                             <a href="{% url 'homework_check:index' %}"
                                 class="block rounded-lg px-3 py-2 text-sm font-semibold text-rose-pop hover:bg-rose-pop/20">Homework
                                 Check</a>
@@ -303,6 +318,18 @@
             {% endif %}
 
             {% if user.is_authenticated %}
+            <a href="{% url 'studyplans:my_plan' %}"
+                class="relative block rounded-lg px-3 py-2 transition hover:bg-mist/10">
+                <span>My Plan</span>
+                {% if study_plan_badge_count > 0 %}
+                <span
+                    class="ml-1 inline-flex min-w-[1.3rem] items-center justify-center rounded-full bg-lime-glow px-1.5 py-0.5 text-[0.7rem] font-bold text-midnight">{{
+                    study_plan_badge_count }}</span>
+                {% endif %}
+            </a>
+            {% endif %}
+
+            {% if user.is_authenticated %}
             <div>
                 <button type="button"
                     class="mobile-dropdown-toggle flex w-full items-center justify-between rounded-lg px-3 py-2 transition hover:bg-mist/10">
@@ -333,6 +360,8 @@
                 class="block rounded-lg px-3 py-2 text-rose-pop transition hover:bg-mist/10">Teacher</a>
             <a href="{% url 'reports:dashboard' %}"
                 class="block rounded-lg px-3 py-2 text-rose-pop transition hover:bg-mist/10">Reports</a>
+            <a href="{% url 'studyplans:teacher_dashboard' %}"
+                class="block rounded-lg px-3 py-2 text-rose-pop transition hover:bg-mist/10">Study Plans</a>
             <a href="{% url 'homework_check:index' %}"
                 class="block rounded-lg px-3 py-2 text-rose-pop transition hover:bg-mist/10">Homework Check</a>
             <a href="{% url 'flashcards:import_flashcards' %}"

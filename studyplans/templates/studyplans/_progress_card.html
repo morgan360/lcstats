@@ -1,0 +1,76 @@
+{% comment %}
+  The progress card. It leads with topics mastered, not tasks ticked: ticking a
+  task says work happened, passing a checkpoint says it worked.
+
+  Expects `card` from studyplans.services.progress.plan_card.
+{% endcomment %}
+<div class="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-twilight/10">
+  <div class="mb-4 flex flex-wrap items-baseline justify-between gap-2">
+    <div>
+      <h3 class="text-lg font-semibold text-midnight">{{ card.plan.title }}</h3>
+      <p class="text-sm text-twilight/70">{{ card.plan.subject.name }}</p>
+    </div>
+    <p class="text-sm font-semibold {% if card.days_remaining < 7 %}text-rose-pop{% else %}text-twilight/70{% endif %}">
+      {% if card.days_remaining > 0 %}{{ card.days_remaining }} day{{ card.days_remaining|pluralize }} left
+      {% elif card.days_remaining == 0 %}Due today
+      {% else %}Deadline passed{% endif %}
+    </p>
+  </div>
+
+  <div class="mb-5 text-center">
+    <p class="text-3xl font-bold text-midnight">
+      {{ card.mastered }} of {{ card.total }} topic{{ card.total|pluralize }} mastered
+    </p>
+    <div class="mt-3 flex justify-center gap-1.5" aria-hidden="true">
+      {% for goal in card.goals %}
+        <span class="h-3 w-3 rounded-full {% if goal.state == 'mastered' %}bg-lime-glow{% elif goal.state == 'ready' %}bg-violet-royal{% else %}bg-twilight/15{% endif %}"></span>
+      {% endfor %}
+    </div>
+    <div class="mx-auto mt-4 h-2 w-full max-w-md overflow-hidden rounded-full bg-indigo-deep/10">
+      <div class="h-full rounded-full bg-gradient-to-r from-violet-royal to-lime-glow transition-all"
+           style="width: {{ card.percent }}%;"></div>
+    </div>
+  </div>
+
+  <ul class="space-y-2">
+    {% for goal in card.goals %}
+    <li class="flex flex-wrap items-center justify-between gap-2 rounded-xl px-3 py-2
+               {% if goal.state == 'ready' %}bg-violet-royal/10 ring-1 ring-violet-royal/30
+               {% elif goal.state == 'mastered' %}bg-lime-glow/10
+               {% else %}bg-twilight/5{% endif %}">
+      <span class="flex min-w-0 items-center gap-2">
+        <span class="w-5 shrink-0 text-center font-bold
+              {% if goal.state == 'mastered' %}text-lime-glow
+              {% elif goal.state == 'ready' %}text-violet-royal
+              {% elif goal.state == 'retry' %}text-rose-pop
+              {% else %}text-twilight/40{% endif %}">
+          {% if goal.state == 'mastered' %}&check;{% elif goal.state == 'ready' %}&#9673;{% elif goal.state == 'retry' %}&#10007;{% else %}&#9675;{% endif %}
+        </span>
+        <span class="truncate font-semibold text-midnight">{{ goal.topic.name }}</span>
+      </span>
+
+      <span class="text-sm text-twilight/80">
+        {% if goal.state == 'mastered' %}
+          <span class="font-semibold text-midnight">passed {{ goal.score|floatformat:0 }}%</span>
+          <span class="text-twilight/60">{{ goal.mastered_at|date:"j M" }}</span>
+        {% elif goal.state == 'ready' %}
+          <a href="{% url 'studyplans:checkpoint_detail' goal.checkpoint.id %}"
+             class="font-semibold text-violet-royal hover:text-indigo-deep">checkpoint ready &rarr;</a>
+        {% elif goal.state == 'retry' %}
+          scored {{ goal.checkpoint.score|floatformat:0 }}%, more work added
+        {% elif goal.state == 'blocked' %}
+          <span class="text-rose-pop">needs your teacher</span>
+        {% elif goal.items_total %}
+          {{ goal.items_done }} of {{ goal.items_total }} tasks done
+        {% else %}
+          not started
+        {% endif %}
+      </span>
+    </li>
+    {% empty %}
+    <li class="rounded-xl bg-twilight/5 px-3 py-4 text-center text-sm text-twilight/70">
+      No topics on this plan yet.
+    </li>
+    {% endfor %}
+  </ul>
+</div>

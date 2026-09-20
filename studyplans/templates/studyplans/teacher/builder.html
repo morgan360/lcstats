@@ -1,0 +1,138 @@
+{% extends "_base.html" %}
+{% block title %}Build a Study Plan{% endblock %}
+
+{% block content %}
+<div class="mx-auto max-w-4xl px-4 py-8 sm:px-6 lg:px-8">
+  {% include "studyplans/_messages.html" %}
+
+  <h2 class="mb-1 text-2xl font-semibold text-mist">Build a Study Plan</h2>
+  <p class="mb-6 text-sm text-mist/70">
+    Pick the topics and the deadline. Each topic ends in a checkpoint of real
+    exam parts &mdash; passing it is what counts as mastered.
+  </p>
+  <div class="mb-8 h-1 w-full rounded-full bg-gradient-to-r from-violet-royal to-lime-glow"></div>
+
+  <form method="post" action="{% url 'studyplans:plan_preview' %}"
+        class="space-y-6">
+    {% csrf_token %}
+
+    <div class="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-twilight/10">
+      <h3 class="mb-4 text-base font-semibold text-midnight">Who and when</h3>
+      <div class="grid gap-4 sm:grid-cols-2">
+        <label class="block">
+          <span class="text-sm font-semibold text-twilight">One student</span>
+          <select name="student" class="mt-1 w-full rounded-lg border-twilight/20 text-sm">
+            <option value="">&mdash;</option>
+            {% for s in students %}<option value="{{ s.id }}">{{ s.username }}</option>{% endfor %}
+          </select>
+        </label>
+        <label class="block">
+          <span class="text-sm font-semibold text-twilight">&hellip;or a whole class</span>
+          <select name="teacher_class" class="mt-1 w-full rounded-lg border-twilight/20 text-sm">
+            <option value="">&mdash;</option>
+            {% for c in classes %}<option value="{{ c.id }}">{{ c.name }}</option>{% endfor %}
+          </select>
+        </label>
+        <label class="block sm:col-span-2">
+          <span class="text-sm font-semibold text-twilight">Title</span>
+          <input type="text" name="title" value="Study plan"
+                 class="mt-1 w-full rounded-lg border-twilight/20 text-sm">
+        </label>
+        <label class="block">
+          <span class="text-sm font-semibold text-twilight">Starts</span>
+          <input type="date" name="start_date" value="{{ default_start|date:'Y-m-d' }}"
+                 class="mt-1 w-full rounded-lg border-twilight/20 text-sm">
+        </label>
+        <label class="block">
+          <span class="text-sm font-semibold text-twilight">Deadline</span>
+          <input type="date" name="deadline" value="{{ default_deadline|date:'Y-m-d' }}"
+                 class="mt-1 w-full rounded-lg border-twilight/20 text-sm">
+        </label>
+        <label class="block">
+          <span class="text-sm font-semibold text-twilight">Minutes a week</span>
+          <input type="number" name="weekly_minutes" value="{{ default_minutes }}"
+                 min="30" max="1200" step="15"
+                 class="mt-1 w-full rounded-lg border-twilight/20 text-sm">
+        </label>
+      </div>
+    </div>
+
+    <div class="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-twilight/10">
+      <h3 class="mb-1 text-base font-semibold text-midnight">Topics</h3>
+      <p class="mb-4 text-sm text-twilight/70">
+        Tick a topic to add it. The number beside it is how many unseen exam
+        parts are available &mdash; a topic needs enough for a checkpoint and its
+        retries.
+      </p>
+      <div class="space-y-2">
+        {% for topic in topics %}
+        <div class="flex flex-wrap items-center gap-3 rounded-xl bg-twilight/5 px-3 py-2">
+          <label class="flex min-w-0 flex-1 items-center gap-2">
+            <input type="checkbox" name="topics" value="{{ topic.id }}"
+                   data-topic-check="{{ topic.id }}"
+                   class="rounded border-twilight/30 text-violet-royal">
+            <span class="truncate text-sm font-semibold text-midnight">{{ topic.name }}</span>
+            <span data-pool="{{ topic.id }}" class="text-xs text-twilight/50"></span>
+          </label>
+          <label class="text-xs text-twilight/70">target
+            <input type="number" name="target_{{ topic.id }}" value="{{ default_target }}"
+                   min="1" max="100" class="ml-1 w-16 rounded border-twilight/20 text-xs">%
+          </label>
+          <label class="text-xs text-twilight/70">parts
+            <input type="number" name="size_{{ topic.id }}" value="{{ default_checkpoint_size }}"
+                   min="1" max="10" class="ml-1 w-14 rounded border-twilight/20 text-xs">
+          </label>
+          <label class="text-xs text-twilight/70">priority
+            <select name="priority_{{ topic.id }}" class="ml-1 rounded border-twilight/20 text-xs">
+              <option value="1">normal</option>
+              <option value="2">high</option>
+              <option value="3">critical</option>
+            </select>
+          </label>
+        </div>
+        {% empty %}
+        <p class="text-sm text-twilight/60">No topics for this subject yet.</p>
+        {% endfor %}
+      </div>
+    </div>
+
+    <button type="submit"
+            class="rounded-lg bg-violet-royal px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-deep">
+      Preview the plan &rarr;
+    </button>
+  </form>
+</div>
+
+<script>
+// Show how much unseen material a topic has before the teacher commits to it.
+// A thin topic makes a thin plan, and the retry pool runs out silently.
+document.addEventListener('DOMContentLoaded', function () {
+  document.querySelectorAll('[data-topic-check]').forEach(function (box) {
+    box.addEventListener('change', function () {
+      var id = box.dataset.topicCheck;
+      var label = document.querySelector('[data-pool="' + id + '"]');
+      if (!box.checked || !label || label.dataset.loaded) { return; }
+      var student = document.querySelector('[name="student"]').value;
+      var url = '/study-plans/api/topic-candidates/' + id + '/'
+              + (student ? '?student=' + student : '');
+      fetch(url)
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+          label.dataset.loaded = '1';
+          label.textContent = data.unseen_exam_parts + ' exam parts';
+          if (!data.can_start) {
+            label.textContent += ' — too few for a checkpoint';
+            label.className = 'text-xs font-semibold text-rose-pop';
+          } else if (!data.sufficient) {
+            label.textContent += ' — retries may run out';
+            label.className = 'text-xs font-semibold text-rose-pop';
+          } else {
+            label.className = 'text-xs text-twilight/50';
+          }
+        })
+        .catch(function () { /* the preview warns anyway */ });
+    });
+  });
+});
+</script>
+{% endblock %}

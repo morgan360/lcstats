@@ -1,0 +1,85 @@
+{% extends "_base.html" %}
+{% block title %}Study Plans{% endblock %}
+
+{% block content %}
+<div class="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
+  {% include "studyplans/_messages.html" %}
+
+  <div class="mb-6 flex flex-wrap items-center justify-between gap-3">
+    <h2 class="text-2xl font-semibold text-mist">Study Plans</h2>
+    <a href="{% url 'studyplans:plan_builder' %}"
+       class="rounded-lg bg-violet-royal px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-deep">
+      + New plan
+    </a>
+  </div>
+  <div class="mb-8 h-1 w-full rounded-full bg-gradient-to-r from-violet-royal to-lime-glow"></div>
+
+  {% if classes %}
+  <div class="mb-8 flex flex-wrap gap-2">
+    {% for c in classes %}
+    <a href="{% url 'studyplans:class_oversight' c.id %}"
+       class="rounded-lg bg-white/10 px-3 py-2 text-sm font-semibold text-mist transition hover:bg-white/20">
+      {{ c.name }} &rarr;
+    </a>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  <div class="grid gap-4 md:grid-cols-2">
+    {% for row in rows %}
+    <div class="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-twilight/10">
+      <div class="mb-3 flex flex-wrap items-start justify-between gap-2">
+        <div class="min-w-0">
+          <p class="truncate text-base font-semibold text-midnight">{{ row.plan.title }}</p>
+          <p class="text-sm text-twilight/70">{{ row.plan.student.username }}</p>
+        </div>
+        <div class="shrink-0 text-right">
+          <p class="text-lg font-bold text-midnight">
+            {{ row.card.mastered }}/{{ row.card.total }}
+          </p>
+          <p class="text-[0.65rem] uppercase tracking-wide text-twilight/60">mastered</p>
+        </div>
+      </div>
+
+      <div class="mb-3 h-2 w-full overflow-hidden rounded-full bg-indigo-deep/10">
+        <div class="h-full rounded-full bg-gradient-to-r from-violet-royal to-lime-glow"
+             style="width: {{ row.card.percent }}%;"></div>
+      </div>
+
+      <div class="flex flex-wrap gap-2 text-xs">
+        {% if row.attention %}
+        <span class="rounded-full bg-rose-pop/15 px-2 py-1 font-semibold text-rose-pop">
+          {{ row.attention }} needs you
+        </span>
+        {% endif %}
+        {% if row.card.ready_count %}
+        <span class="rounded-full bg-violet-royal/15 px-2 py-1 font-semibold text-violet-royal">
+          {{ row.card.ready_count }} checkpoint ready
+        </span>
+        {% endif %}
+        <span class="rounded-full bg-twilight/10 px-2 py-1 font-semibold text-twilight">
+          due {{ row.plan.deadline|date:"j M" }}
+        </span>
+      </div>
+
+      <a href="{% url 'studyplans:plan_manage' row.plan.id %}"
+         class="mt-4 inline-block rounded-lg bg-twilight/10 px-3 py-2 text-sm font-semibold text-twilight transition hover:bg-twilight/20">
+        Manage &rarr;
+      </a>
+    </div>
+    {% empty %}
+    <div class="md:col-span-2 rounded-2xl bg-white p-8 text-center shadow-sm ring-1 ring-twilight/10">
+      <p class="text-lg font-semibold text-midnight">No study plans yet.</p>
+      <p class="mt-2 text-sm text-twilight/70">
+        Set one for a student or a whole class. Each student gets their own plan,
+        built from what they have already done.
+      </p>
+      <a href="{% url 'studyplans:plan_builder' %}"
+         class="mt-5 inline-block rounded-lg bg-violet-royal px-4 py-2 text-sm font-semibold text-white transition hover:bg-indigo-deep">
+        Build a plan
+      </a>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,77 @@
+{% extends "_base.html" %}
+{% block title %}My Achievements{% endblock %}
+
+{% block content %}
+<div class="mx-auto max-w-4xl px-4 py-8 sm:px-6 lg:px-8">
+  {% include "studyplans/_messages.html" %}
+
+  <h2 class="mb-1 text-2xl font-semibold text-mist">My Achievements</h2>
+  <p class="mb-6 text-sm text-mist/70">
+    Every topic you have proved on a checkpoint, across every plan you have had.
+  </p>
+  <div class="mb-8 h-1 w-full rounded-full bg-gradient-to-r from-violet-royal to-lime-glow"></div>
+
+  {% if achievements.total %}
+    <div class="mb-8 grid gap-4 sm:grid-cols-3">
+      <div class="rounded-2xl bg-white p-5 text-center shadow-sm ring-1 ring-twilight/10">
+        <p class="text-sm font-semibold text-twilight/70">Topics mastered</p>
+        <p class="mt-2 text-4xl font-bold text-midnight">{{ achievements.total }}</p>
+      </div>
+      <div class="rounded-2xl bg-white p-5 text-center shadow-sm ring-1 ring-twilight/10">
+        <p class="text-sm font-semibold text-twilight/70">Best checkpoint</p>
+        <p class="mt-2 text-4xl font-bold text-midnight">{{ achievements.best|floatformat:0 }}%</p>
+      </div>
+      <div class="rounded-2xl bg-white p-5 text-center shadow-sm ring-1 ring-twilight/10">
+        <p class="text-sm font-semibold text-twilight/70">Most recent</p>
+        <p class="mt-2 text-lg font-bold text-midnight">{{ achievements.latest.goal.topic.name }}</p>
+        <p class="text-xs text-twilight/60">{{ achievements.latest.sat_at|date:"j M Y" }}</p>
+      </div>
+    </div>
+
+    {% for subject_name, items in achievements.by_subject %}
+    <section class="mb-8">
+      <h3 class="mb-3 text-lg font-semibold text-mist">{{ subject_name }}</h3>
+      <div class="grid gap-3 sm:grid-cols-2">
+        {% for checkpoint in items %}
+        <div class="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-twilight/10">
+          <div class="flex items-start justify-between gap-3">
+            <div class="min-w-0">
+              <p class="truncate text-base font-semibold text-midnight">
+                {{ checkpoint.goal.topic.name }}
+              </p>
+              <p class="mt-1 text-xs text-twilight/60">
+                {{ checkpoint.sat_at|date:"j M Y" }} &middot; {{ checkpoint.goal.plan.title }}
+              </p>
+              <p class="mt-1 text-xs text-twilight/60">
+                {{ checkpoint.marks_awarded|floatformat:"-1" }}/{{ checkpoint.marks_possible|floatformat:"-1" }} marks
+                {% if not checkpoint.is_clean %}
+                  &middot; <span class="text-rose-pop">marking scheme opened</span>
+                {% endif %}
+              </p>
+            </div>
+            <div class="shrink-0 rounded-xl bg-lime-glow/20 px-3 py-2 text-center">
+              <p class="text-xl font-bold text-midnight">{{ checkpoint.score|floatformat:0 }}%</p>
+              <p class="text-[0.65rem] font-semibold uppercase tracking-wide text-twilight/60">passed</p>
+            </div>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    </section>
+    {% endfor %}
+
+  {% else %}
+    <div class="rounded-2xl bg-white p-8 text-center shadow-sm ring-1 ring-twilight/10">
+      <p class="text-lg font-semibold text-midnight">Nothing here yet.</p>
+      <p class="mt-2 text-sm text-twilight/70">
+        Work through a topic on your plan and sit its checkpoint. Pass it and the
+        topic lands here for good.
+      </p>
+      <a href="{% url 'studyplans:my_plan' %}"
+         class="mt-5 inline-block rounded-lg bg-violet-royal px-4 py-2 text-sm font-semibold text-white transition hover:bg-indigo-deep">
+        Go to my plan
+      </a>
+    </div>
+  {% endif %}
+</div>
+{% endblock %}

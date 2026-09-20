@@ -8,6 +8,7 @@ from exam_papers.models import ExamQuestion, ExamQuestionPart
 from quickkicks.models import QuickKick
 from flashcards.models import FlashcardSet
 from schools.models import School
+from core import content_links
 
 
 class TeacherProfile(models.Model):
@@ -254,14 +255,8 @@ class HomeworkTask(models.Model):
     Individual task within a homework assignment.
     Can reference a Section, ExamQuestion, QuickKick, or FlashcardSet.
     """
-    TASK_TYPE_CHOICES = [
-        ('section', 'Topic Section'),
-        ('exam_question', 'Exam Question'),
-        ('exam_part', 'Exam Question Part'),
-        ('quickkick', 'QuickFlicks Video/Applet'),
-        ('flashcard', 'Flashcard Set'),
-        ('custom', 'Written Exercise'),
-    ]
+    #: Shared with study plans so the two cannot drift apart.
+    TASK_TYPE_CHOICES = content_links.CONTENT_KIND_CHOICES
 
     assignment = models.ForeignKey(
         HomeworkAssignment,
@@ -341,85 +336,22 @@ class HomeworkTask(models.Model):
 
     def get_content_display(self):
         """Return the display name of the linked content"""
-        if self.task_type == 'section' and self.section:
-            subject = self.section.topic.subject.name if self.section.topic and self.section.topic.subject else "No Subject"
-            return f"Practice Questions: {self.section.topic.name} > {self.section.name} ({subject})"
-        elif self.task_type == 'exam_question' and self.exam_question:
-            subject = self.exam_question.exam_paper.subject.name if self.exam_question.exam_paper and self.exam_question.exam_paper.subject else "No Subject"
-            year = self.exam_question.exam_paper.year if self.exam_question.exam_paper else "Unknown"
-            topic = self.exam_question.topic.name if self.exam_question.topic else "No Topic"
-            return f"[{subject}] {year} - Q{self.exam_question.question_number} - {topic}"
-        elif self.task_type == 'exam_part' and self.exam_question_part:
-            part = self.exam_question_part
-            paper = part.question.exam_paper
-            subject = paper.subject.name if paper and paper.subject else "No Subject"
-            topic = part.topic.name if part.topic else "No Topic"
-            return (f"[{subject}] {paper.year} {paper.get_paper_type_display()} - "
-                    f"Q{part.question.question_number}{part.label} - {topic}")
-        elif self.task_type == 'quickkick' and self.quickkick:
-            subject = self.quickkick.topic.subject.name if self.quickkick.topic and self.quickkick.topic.subject else "No Subject"
-            return f"QuickFlicks: {self.quickkick.topic.name} > {self.quickkick.title} ({subject})"
-        elif self.task_type == 'flashcard' and self.flashcard_set:
-            subject = self.flashcard_set.topic.subject.name if self.flashcard_set.topic and self.flashcard_set.topic.subject else "No Subject"
-            card_count = self.flashcard_set.cards.count()
-            return f"Flashcards: {self.flashcard_set.topic.name} > {self.flashcard_set.title} ({card_count} cards, {subject})"
-        elif self.task_type == 'custom' and self.instructions:
-            return self.instructions
-        return "Unknown task"
+        return content_links.content_display(
+            self.task_type, content_links.refs_from(self), self.instructions)
 
     def get_content_url(self):
         """Return URL to access this content with proper subject and item navigation"""
-        if self.task_type == 'section' and self.section:
-            # Link directly to the section quiz with subject parameter
-            subject_slug = self.section.topic.subject.slug if self.section.topic.subject else 'maths'
-            return f"/interactive/{self.section.topic.slug}/sections/{self.section.slug}/?subject={subject_slug}"
-        elif self.task_type == 'exam_question' and self.exam_question:
-            # Link to the topic's exam questions page with subject and anchor to specific question
-            if self.exam_question.topic:
-                subject_slug = self.exam_question.topic.subject.slug if self.exam_question.topic.subject else 'maths'
-                # Add anchor to scroll to the specific question
-                return f"/interactive/{self.exam_question.topic.slug}/exam-questions/?subject={subject_slug}#question-{self.exam_question.id}"
-            return f"/exam-papers/"
-        elif self.task_type == 'exam_part' and self.exam_question_part:
-            # Straight into the question interface, opened on this part
-            return reverse('exam_papers:practise_part',
-                           args=[self.exam_question_part_id])
-        elif self.task_type == 'quickkick' and self.quickkick:
-            # QuickKicks are accessed via topic slug with subject parameter
-            subject_slug = self.quickkick.topic.subject.slug if self.quickkick.topic.subject else 'maths'
-            return f"/quickkicks/{self.quickkick.topic.slug}/{self.quickkick.id}/?subject={subject_slug}"
-        elif self.task_type == 'flashcard' and self.flashcard_set:
-            # Flashcards are accessed via topic slug with subject parameter
-            subject_slug = self.flashcard_set.topic.subject.slug if self.flashcard_set.topic.subject else 'maths'
-            return f"/flashcards/{self.flashcard_set.topic.slug}/?subject={subject_slug}"
-        return "#"
+        return content_links.content_url(self.task_type, content_links.refs_from(self))
 
     def clean(self):
         """Validate that exactly one content FK is set based on task_type"""
-        if self.task_type == 'section' and not self.section:
-            raise ValidationError({'section': 'Section is required when task type is "section"'})
-        elif self.task_type == 'exam_question' and not self.exam_question:
-            raise ValidationError({'exam_question': 'Exam question is required when task type is "exam_question"'})
-        elif self.task_type == 'exam_part' and not self.exam_question_part:
-            raise ValidationError({'exam_question_part': 'Exam question part is required when task type is "exam_part"'})
-        elif self.task_type == 'quickkick' and not self.quickkick:
-            raise ValidationError({'quickkick': 'QuickFlicks is required when task type is "quickkick"'})
-        elif self.task_type == 'flashcard' and not self.flashcard_set:
-            raise ValidationError({'flashcard_set': 'Flashcard set is required when task type is "flashcard"'})
-        elif self.task_type == 'custom' and not self.instructions.strip():
-            raise ValidationError({'instructions': 'Exercise text is required for a written exercise'})
+        errors = content_links.validate_refs(
+            self.task_type, content_links.refs_from(self), self.instructions)
+        if errors:
+            raise ValidationError(errors)
 
         # Ensure only the correct FK is set
-        if self.task_type != 'section':
-            self.section = None
-        if self.task_type != 'exam_question':
-            self.exam_question = None
-        if self.task_type != 'exam_part':
-            self.exam_question_part = None
-        if self.task_type != 'quickkick':
-            self.quickkick = None
-        if self.task_type != 'flashcard':
-            self.flashcard_set = None
+        content_links.null_unmatched(self.task_type, self)
 
     def save(self, *args, **kwargs):
         self.full_clean()

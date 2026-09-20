@@ -23,6 +23,7 @@ urlpatterns = [
     path('homework-check/', include('homework_check.urls')),
     path('stats-simulator/', include('stats_simulator.urls')),
     path('reports/', include('reports.urls')),
+    path('study-plans/', include('studyplans.urls')),
 
 ]
 if settings.DEBUG:

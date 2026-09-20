@@ -1,0 +1,60 @@
+{% extends "_base.html" %}
+{% block title %}{{ teacher_class.name }} &mdash; Study Plans{% endblock %}
+
+{% block content %}
+<div class="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
+  {% include "studyplans/_messages.html" %}
+
+  <h2 class="mb-1 text-2xl font-semibold text-mist">{{ teacher_class.name }}</h2>
+  <p class="mb-6 text-sm text-mist/70">Where everyone stands, topic by topic.</p>
+  <div class="mb-8 h-1 w-full rounded-full bg-gradient-to-r from-violet-royal to-lime-glow"></div>
+
+  <div class="overflow-x-auto rounded-2xl bg-white p-5 shadow-sm ring-1 ring-twilight/10">
+    <table class="w-full text-sm">
+      <thead>
+        <tr class="border-b border-twilight/10 text-left">
+          <th class="px-2 py-2 font-semibold text-midnight">Student</th>
+          {% for topic in topics %}
+          <th class="px-2 py-2 text-center font-semibold text-midnight">{{ topic.name }}</th>
+          {% endfor %}
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in rows %}
+        <tr class="border-b border-twilight/5">
+          <td class="px-2 py-2">
+            <a href="{% url 'studyplans:student_oversight' row.student.id %}"
+               class="font-semibold text-violet-royal hover:text-indigo-deep">
+              {{ row.student.username }}</a>
+          </td>
+          {% for cell in row.cells %}
+          <td class="px-2 py-2 text-center">
+            {% if cell %}
+              {% if cell.state == 'mastered' %}
+                <span class="rounded-full bg-lime-glow/25 px-2 py-1 text-xs font-bold text-midnight">
+                  {{ cell.score|floatformat:0 }}%</span>
+              {% elif cell.state == 'ready' %}
+                <span class="rounded-full bg-violet-royal/20 px-2 py-1 text-xs font-semibold text-violet-royal">ready</span>
+              {% elif cell.state == 'retry' %}
+                <span class="rounded-full bg-rose-pop/15 px-2 py-1 text-xs font-semibold text-rose-pop">retry</span>
+              {% elif cell.state == 'blocked' %}
+                <span class="rounded-full bg-rose-pop/25 px-2 py-1 text-xs font-bold text-rose-pop">!</span>
+              {% else %}
+                <span class="text-xs text-twilight/60">{{ cell.percent }}%</span>
+              {% endif %}
+            {% else %}
+              <span class="text-xs text-twilight/30">&mdash;</span>
+            {% endif %}
+          </td>
+          {% endfor %}
+        </tr>
+        {% empty %}
+        <tr><td colspan="99" class="px-2 py-6 text-center text-twilight/60">
+          No students with plans in this class yet.
+        </td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
