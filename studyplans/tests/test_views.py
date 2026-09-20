@@ -267,6 +267,7 @@ class BuilderTests(ViewTestBase):
             (StudyPlan.objects.count(), StudyPlanItem.objects.count()), before)
 
     def test_creating_a_plan_for_one_student(self):
+        # brian holds no plan; aoife's fixture plan is irrelevant here.
         self.client.force_login(self.teacher_user)
         response = self.client.post(
             reverse('studyplans:plan_create'),
@@ -277,6 +278,9 @@ class BuilderTests(ViewTestBase):
         self.assertTrue(plan.weeks.exists())
 
     def test_rolling_out_to_a_class_gives_every_student_their_own_plan(self):
+        # aoife already holds the fixture plan, and a student may have only one
+        # active at a time, so free her slot before rolling out to the class.
+        self.plan.archive()
         self.client.force_login(self.teacher_user)
         self.client.post(reverse('studyplans:plan_create'),
                          self.builder_post(teacher_class=str(self.klass.id)))
@@ -288,6 +292,7 @@ class BuilderTests(ViewTestBase):
 
     def test_rolling_out_twice_does_not_double_up(self):
         """A double-clicked rollout must not give everyone two plans."""
+        self.plan.archive()
         self.client.force_login(self.teacher_user)
         payload = self.builder_post(teacher_class=str(self.klass.id))
         self.client.post(reverse('studyplans:plan_create'), payload)

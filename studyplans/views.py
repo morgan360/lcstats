@@ -426,6 +426,15 @@ def plan_create(request):
 
     if student_id:
         student = _owned_student(request, int(student_id))
+        existing = StudyPlan.objects.filter(
+            student=student, status='active').first()
+        if existing:
+            messages.error(
+                request,
+                f"{student.username} is already working on "
+                f"“{existing.title}”. Archive that plan first, or edit "
+                f"it instead of starting another.")
+            return redirect('studyplans:plan_manage', plan_id=existing.id)
         plan = _create_one_plan(request, student, form)
         messages.success(request, f"Plan set for {student.username}.")
         return redirect('studyplans:plan_manage', plan_id=plan.id)
@@ -444,7 +453,7 @@ def _rollout(request, teacher_class, form, source_template=None):
     Not a copy: the point of the feature is that two students on the same class
     plan get different work, because they arrive at it from different places.
     """
-    made, skipped = 0, 0
+    made, skipped, busy = 0, 0, []
     with transaction.atomic():
         template = source_template
         for student in teacher_class.students.order_by('username'):
@@ -461,6 +470,11 @@ def _rollout(request, teacher_class, form, source_template=None):
                     title=form['title'], status='active').exists():
                 skipped += 1
                 continue
+            # One active plan per student: someone mid-way through another
+            # plan is left alone rather than having it swapped underneath them.
+            if StudyPlan.objects.filter(student=student, status='active').exists():
+                busy.append(student.username)
+                continue
             plan = _create_one_plan(request, student, form,
                                     source_template=template,
                                     teacher_class=teacher_class)
@@ -475,7 +489,12 @@ def _rollout(request, teacher_class, form, source_template=None):
     messages.success(
         request,
         f"Set {made} plan(s) for {teacher_class.name}."
-        + (f" {skipped} student(s) already had one." if skipped else ""))
+        + (f" {skipped} student(s) already had this one." if skipped else ""))
+    if busy:
+        messages.error(
+            request,
+            "Left alone, already on another plan: " + ", ".join(busy)
+            + ". Archive those plans if you want these students moved over.")
     return redirect('studyplans:teacher_dashboard')
 
 
@@ -538,6 +557,44 @@ def remove_item(request, plan_id, item_id):
     StudyPlanEvent.log(plan, 'teacher_edit',
                        f"Removed: {item.get_content_display()}", item=item)
     messages.success(request, "Item removed from the plan.")
+    return redirect('studyplans:plan_manage', plan_id=plan.id)
+
+
+@require_POST
+@teacher_required
+def set_plan_status(request, plan_id):
+    """Archive a plan, or make a draft the student's active one.
+
+    Archiving is how a teacher frees the one active slot; nothing is deleted,
+    and the plan's checkpoints stay on the student's achievements page.
+    """
+    plan = _owned_plan(request, plan_id)
+    action = request.POST.get('action')
+
+    if action == 'archive':
+        plan.archive()
+        StudyPlanEvent.log(plan, 'teacher_edit', "Plan archived")
+        messages.success(request, f"“{plan.title}” archived.")
+        return redirect('studyplans:teacher_dashboard')
+
+    if action == 'activate':
+        clash = (StudyPlan.objects
+                 .filter(student=plan.student, status='active')
+                 .exclude(pk=plan.pk).first())
+        if clash:
+            messages.error(
+                request,
+                f"{plan.student.username} is already working on "
+                f"“{clash.title}”. Archive that one first.")
+            return redirect('studyplans:plan_manage', plan_id=clash.id)
+        plan.status = 'active'
+        plan.save(update_fields=['status'])
+        StudyPlanEvent.log(plan, 'teacher_edit', "Plan made active")
+        messages.success(request, f"“{plan.title}” is now live for "
+                                  f"{plan.student.username}.")
+        return redirect('studyplans:plan_manage', plan_id=plan.id)
+
+    messages.error(request, "Unknown action.")
     return redirect('studyplans:plan_manage', plan_id=plan.id)
 
 

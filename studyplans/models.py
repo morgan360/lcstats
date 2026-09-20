@@ -82,6 +82,19 @@ class StudyPlan(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
+    #: The student's id while this plan is active, NULL otherwise.
+    #:
+    #: This exists only to carry a unique constraint. "One active plan per
+    #: student" is naturally a conditional constraint, and MySQL silently
+    #: refuses to build those (models.W036) -- it accepts the migration and
+    #: creates nothing, so the rule would look enforced and not be. Both MySQL
+    #: and PostgreSQL treat NULLs as distinct, so a plain unique index on a
+    #: column that is only filled in while active says exactly the same thing
+    #: and is actually built. Maintained by save(); never set it by hand.
+    active_slot = models.PositiveIntegerField(
+        null=True, blank=True, editable=False,
+        help_text="Internal: enforces one active plan per student")
+
     class Meta:
         verbose_name = "Study Plan"
         ordering = ['-start_date', '-id']
@@ -93,6 +106,12 @@ class StudyPlan(models.Model):
             models.CheckConstraint(
                 condition=models.Q(deadline__gte=models.F('start_date')),
                 name='studyplan_deadline_after_start',
+            ),
+            # One active plan per student -- see active_slot for why it is
+            # phrased this way rather than as a condition on status.
+            models.UniqueConstraint(
+                fields=['active_slot'],
+                name='studyplan_one_active_per_student',
             ),
             # Idempotency for class rollout at the database level: posting the
             # rollout form twice cannot produce two plans for one student.
@@ -109,6 +128,38 @@ class StudyPlan(models.Model):
 
     def __str__(self):
         return f"{self.title} - {self.student.username}"
+
+    def clean(self):
+        """Refuse a second active plan, with a message a teacher can act on.
+
+        The database enforces this too, but an IntegrityError is not something
+        to show a teacher who has just filled in a form.
+        """
+        super().clean()
+        if self.status != 'active' or not self.student_id:
+            return
+        clash = (StudyPlan.objects
+                 .filter(student_id=self.student_id, status='active')
+                 .exclude(pk=self.pk)
+                 .first())
+        if clash:
+            raise ValidationError({
+                'status': (f"{self.student.username} is already working on "
+                           f"\u201c{clash.title}\u201d. Archive that plan first, "
+                           f"or edit it instead of starting another."),
+            })
+
+    def save(self, *args, **kwargs):
+        # Kept in step with status on every save; see the field's own note.
+        self.active_slot = self.student_id if self.status == 'active' else None
+        if 'update_fields' in kwargs and kwargs['update_fields'] is not None:
+            kwargs['update_fields'] = set(kwargs['update_fields']) | {'active_slot'}
+        super().save(*args, **kwargs)
+
+    def archive(self):
+        """Put a plan away so the student can be given a new one."""
+        self.status = 'archived'
+        self.save(update_fields=['status'])
 
     @property
     def is_running(self):

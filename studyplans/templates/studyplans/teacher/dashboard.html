@@ -60,6 +60,13 @@
         <span class="rounded-full bg-twilight/10 px-2 py-1 font-semibold text-twilight">
           due {{ row.plan.deadline|date:"j M" }}
         </span>
+        {% if row.plan.status != 'active' %}
+        {# A draft or finished plan is invisible to the student and skipped by
+           the nightly run, so it must not look the same as a live one. #}
+        <span class="rounded-full bg-midnight/10 px-2 py-1 font-semibold text-midnight">
+          {{ row.plan.get_status_display|lower }}
+        </span>
+        {% endif %}
       </div>
 
       <a href="{% url 'studyplans:plan_manage' row.plan.id %}"

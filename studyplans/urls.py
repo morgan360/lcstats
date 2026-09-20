@@ -26,6 +26,8 @@ urlpatterns = [
          views.manage_checkpoint, name='manage_checkpoint'),
     path('teacher/plan/<int:plan_id>/item/<int:item_id>/remove/',
          views.remove_item, name='remove_item'),
+    path('teacher/plan/<int:plan_id>/status/', views.set_plan_status,
+         name='set_plan_status'),
     path('teacher/plan/<int:plan_id>/run/', views.run_now, name='run_now'),
     path('teacher/class/<int:class_id>/oversight/', views.class_oversight,
          name='class_oversight'),

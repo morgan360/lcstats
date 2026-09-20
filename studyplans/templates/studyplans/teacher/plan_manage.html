@@ -59,13 +59,33 @@
         {% endfor %}
       </div>
 
-      <form method="post" action="{% url 'studyplans:run_now' plan.id %}" class="mt-4">
-        {% csrf_token %}
-        <button type="submit"
-                class="rounded-lg bg-twilight/10 px-3 py-2 text-sm font-semibold text-twilight transition hover:bg-twilight/20">
-          Check progress now
-        </button>
-      </form>
+      <div class="mt-4 flex flex-wrap gap-2">
+        <form method="post" action="{% url 'studyplans:run_now' plan.id %}">
+          {% csrf_token %}
+          <button type="submit"
+                  class="rounded-lg bg-twilight/10 px-3 py-2 text-sm font-semibold text-twilight transition hover:bg-twilight/20">
+            Check progress now
+          </button>
+        </form>
+        <form method="post" action="{% url 'studyplans:set_plan_status' plan.id %}">
+          {% csrf_token %}
+          {% if plan.status == 'active' %}
+          <button name="action" value="archive"
+                  class="rounded-lg bg-twilight/10 px-3 py-2 text-sm font-semibold text-twilight transition hover:bg-twilight/20">
+            Archive this plan
+          </button>
+          {% else %}
+          <button name="action" value="activate"
+                  class="rounded-lg bg-violet-royal px-3 py-2 text-sm font-semibold text-white transition hover:bg-indigo-deep">
+            Make this the active plan
+          </button>
+          {% endif %}
+        </form>
+      </div>
+      <p class="mt-2 text-xs text-twilight/60">
+        A student has one active plan at a time. Archiving keeps everything --
+        passed checkpoints stay on their achievements.
+      </p>
       {% if plan.last_checked_at %}
       <p class="mt-2 text-xs text-twilight/50">
         Last checked {{ plan.last_checked_at|timesince }} ago.

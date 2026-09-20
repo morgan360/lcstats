@@ -155,10 +155,12 @@ class ValidationTests(ContentLinkTestBase):
         self.assertEqual(item.exam_question_part_id, self.part.id)
 
     def test_a_week_from_another_plan_is_refused(self):
+        # A draft, because a student may hold only one active plan; what is
+        # under test here is the week/plan mismatch, not the status rule.
         other = StudyPlan.objects.create(
             student=self.student, teacher=self.teacher, subject=self.maths,
             title='Other', start_date=self.today,
-            deadline=self.today + timedelta(days=7), status='active')
+            deadline=self.today + timedelta(days=7), status='draft')
         other_week = StudyPlanWeek.objects.create(
             plan=other, index=1, start_date=self.today,
             end_date=self.today + timedelta(days=6), minutes_budget=60)
