@@ -23,7 +23,7 @@ def goal_state(goal):
     """One goal as the card sees it."""
     items = [i for i in goal.items.all() if i.status != 'skipped']
     done = sum(1 for i in items if i.status == 'done')
-    latest = goal.checkpoints.order_by('-round').first()
+    latest = goal.current_checkpoint()
 
     if goal.mastered_at:
         state = 'mastered'

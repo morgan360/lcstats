@@ -271,3 +271,39 @@ class UncompletableWorkTests(PlannerTestBase):
         scheduled = [c for c in candidates
                      if c.kind == 'section' and c.obj.id == section.id]
         self.assertEqual(scheduled, [])
+
+
+class WindowStartTests(PlannerTestBase):
+    """Week one begins on a Monday that can predate the plan. The completion
+    window must not."""
+
+    def test_first_week_items_are_not_available_before_the_plan_starts(self):
+        # A Thursday start: week one's Monday is three days earlier.
+        start = date(2026, 9, 24)
+        proposal = planner.build_plan(
+            self.student, [self.spec()], start, date(2026, 10, 18), 120)
+        plan = StudyPlan.objects.create(
+            student=self.student, teacher=self.teacher, subject=self.maths,
+            title='Thursday start', start_date=start,
+            deadline=date(2026, 10, 18), status='active')
+        planner.persist_plan(plan, proposal)
+
+        first_week = plan.weeks.get(index=1)
+        self.assertLess(first_week.start_date, start,
+                        "this test is pointless unless week one predates the plan")
+        for item in plan.items.filter(week=first_week):
+            self.assertGreaterEqual(
+                item.available_from, start,
+                "an item was available before the plan began")
+
+    def test_later_weeks_still_open_on_their_own_monday(self):
+        start = date(2026, 9, 24)
+        proposal = planner.build_plan(
+            self.student, [self.spec()], start, date(2026, 10, 18), 120)
+        plan = StudyPlan.objects.create(
+            student=self.student, teacher=self.teacher, subject=self.maths,
+            title='Thursday start 2', start_date=start,
+            deadline=date(2026, 10, 18), status='active')
+        planner.persist_plan(plan, proposal)
+        for item in plan.items.exclude(week__index=1).select_related('week'):
+            self.assertEqual(item.available_from, item.week.start_date)

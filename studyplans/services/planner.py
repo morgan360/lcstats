@@ -446,7 +446,11 @@ def persist_plan(plan, proposal):
                     instructions=proposed_item.instructions,
                     estimated_minutes=proposed_item.estimated_minutes,
                     order=order, origin='generated',
-                    available_from=week_model.start_date,
+                    # Never before the plan itself began: week one starts on a
+                    # Monday that can predate the start date, and taking it
+                    # would let work done before the plan existed count towards
+                    # it -- the very thing the window exists to prevent.
+                    available_from=max(week_model.start_date, plan.start_date),
                     due_date=week_model.end_date)
                 field = content_links.CONTENT_FK_FIELDS.get(proposed_item.kind)
                 if field:

@@ -246,3 +246,43 @@ class CheckpointRecordTests(CheckpointTestBase):
         self.goal.refresh_from_db()
         self.assertIsNone(self.goal.mastered_at)
         self.assertFalse(self.goal.is_mastered)
+
+
+class WhichCheckpointCountsTests(CheckpointTestBase):
+    """Retries are reserved in advance, so the highest round number is normally
+    a locked future one. Picking that would hide a checkpoint waiting to be sat."""
+
+    def setUp(self):
+        # Round 1 open, rounds 2 and 3 held back -- what the planner produces.
+        self.round1 = checkpoints.create_checkpoint(
+            self.goal, parts=[self.part_a], round_number=1, status='ready')
+        self.round2 = checkpoints.create_checkpoint(
+            self.goal, parts=[self.part_b], round_number=2, status='locked')
+
+    def test_a_checkpoint_waiting_to_be_sat_is_the_one_that_counts(self):
+        self.assertEqual(self.goal.current_checkpoint(), self.round1)
+
+    def test_the_progress_card_says_ready_not_working(self):
+        from studyplans.services import progress
+        state = progress.goal_state(self.goal)
+        self.assertEqual(state['state'], 'ready')
+        self.assertEqual(state['checkpoint'], self.round1)
+
+    def test_once_decided_the_result_is_what_counts(self):
+        self.attempt(self.part_a, 1)
+        checkpoints.grade(self.round1)
+        self.round1.refresh_from_db()
+        self.assertEqual(self.round1.status, 'failed')
+        self.assertEqual(self.goal.current_checkpoint(), self.round1)
+
+    def test_a_reopened_retry_takes_over(self):
+        self.attempt(self.part_a, 1)
+        checkpoints.grade(self.round1)
+        checkpoints.unlock(self.round2)
+        self.assertEqual(self.goal.current_checkpoint(), self.round2)
+
+    def test_with_nothing_open_the_next_locked_round_is_shown(self):
+        self.round1.status = 'locked'
+        self.round1.unlocked_at = None
+        self.round1.save(update_fields=['status', 'unlocked_at'])
+        self.assertEqual(self.goal.current_checkpoint(), self.round1)

@@ -180,8 +180,27 @@ class StudyPlanGoal(models.Model):
     def is_mastered(self):
         return self.mastered_at is not None
 
-    def latest_checkpoint(self):
-        return self.checkpoints.order_by('-round').first()
+    def current_checkpoint(self):
+        """The checkpoint that matters now.
+
+        Not simply the highest round: retries are created in advance so they
+        always have unseen parts, so the last round is normally a locked future
+        one. What matters is the one waiting to be sat, or failing that the most
+        recent result, and only then the next one still to come.
+
+        Iterates in Python rather than filtering, so a prefetch of `checkpoints`
+        is actually used -- this runs once per goal on the progress card.
+        """
+        checkpoints = sorted(self.checkpoints.all(), key=lambda c: c.round)
+        ready = [c for c in checkpoints if c.status == 'ready']
+        if ready:
+            return ready[0]
+        decided = [c for c in checkpoints
+                   if c.status in ('passed', 'failed', 'voided')]
+        if decided:
+            return decided[-1]
+        locked = [c for c in checkpoints if c.status == 'locked']
+        return locked[0] if locked else None
 
     def flag(self, reason):
         """Hand this goal to the teacher rather than guessing."""
