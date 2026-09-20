@@ -226,6 +226,13 @@ Tailwind input lives at `static/src/input.css`; run `watch:css` alongside `runse
 # Download LC exam papers
 python manage.py download_lc_papers
 
+# Download the deferred sitting instead (2022 onwards, Higher Level, English
+# version). These have no predictable URL: the paths come from walking the
+# archive's search form, so the years on offer are read from the site and
+# --start-year/--end-year only narrow that list.
+python manage.py download_lc_papers --deferred --dry-run
+python manage.py download_lc_papers --deferred
+
 # Extract questions from exam PDFs (--auto reads structure from the text layer,
 # --dry-run shows what was detected without writing). Both paths fill only
 # blanks, so re-running never disturbs work done by hand.
