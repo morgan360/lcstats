@@ -367,6 +367,15 @@ _MS_PAPER_BREAK = re.compile(r"Marking Scheme\s*[-–]\s*Paper\s*(\d)", re.I)
 _MS_QUESTION = re.compile(
     r"^(?:P\s*\d\s+)?Q\s*(\d{1,2})(?:\s+Model\s+Solution\b.*)?$", re.I
 )
+# ...and the 2025 deferred scheme drops the Q altogether, heading Q10 with a
+# bare "10" on both papers. Accepting any bare number in the label column would
+# be worse than the bug: that column also carries table values -- Q10's own
+# page lists 0, 4, 8, 12, 16 down it -- and each would start a spurious
+# question. What marks a real heading is the row it sits in: the label shares
+# its y with the "Model Solution" cell, exactly as "Q9" does on the page
+# before. A stray table value has no such neighbour.
+_MS_QUESTION_BARE = re.compile(r"^(\d{1,2})$")
+_MS_SOLUTION_CELL = re.compile(r"^Model\s+Solution\b", re.I)
 # A part label is usually a span of its own, but some schemes run it into the
 # first line of its own solution -- "(b)  From y-intercept to (q, r):" in 2022
 # Paper 2, "(a)  Tangent correctly drawn," in the 2024 deferred paper. Anchored
@@ -398,11 +407,21 @@ def _marking_scheme_markers(doc, first_page, last_page):
     markers = []
     for page_index in range(first_page, last_page + 1):
         page = doc[page_index]
+        lines = list(_text_lines(page))
+        # The y of every "Model Solution" cell, which is what lets a bare
+        # number be told from a table value in the same column.
+        solution_rows = [bbox[1] for text, bbox in lines
+                         if _MS_SOLUTION_CELL.match(text)]
         found = []
-        for text, bbox in _text_lines(page):
+        for text, bbox in lines:
             if bbox[0] > _LABEL_COLUMN_X:
                 continue
             question = _MS_QUESTION.match(text)
+            if not question:
+                bare = _MS_QUESTION_BARE.match(text)
+                if bare and any(abs(bbox[1] - y) <= _SAME_LINE
+                                for y in solution_rows):
+                    question = bare
             combined = _MS_PART_SUB.match(text)
             part = _MS_PART.match(text)
             if part and part.group(2) and _MS_LABEL_RUN.match(part.group(2)):
@@ -571,6 +590,39 @@ def detect_marking_scheme_layout(pdf_path, paper_number, top_padding=12,
         doc.close()
 
     return regions
+
+
+# A scheme states a part's maximum as "Scale 10C (0, 3, 7, 10)" -- the number
+# after "Scale" is the mark, the letter only says how many partial-credit steps
+# there are.
+_MS_SCALE = re.compile(r"Scale\s+(\d+)\s*[A-Z]\s*\(", re.I)
+
+
+def scale_marks_for_region(pdf_path, region):
+    """Read a part's maximum out of the scheme's text layer, or None.
+
+    Preferred over reading the rendered crop with a vision model, which sees
+    only the first scale on it: where a part covers sub-parts its region holds
+    one scale per sub-part -- 2022 Paper 1 Q6(b) is "Scale 5B" twice, and is
+    worth 10, not 5. Under-reading a maximum quietly inflates every score
+    against that part, so the whole region is summed.
+
+    Returns None when the region carries no scale at all, which is a real case:
+    where a scheme marks two letters together there is only one scale for the
+    pair and the second part has none of its own.
+    """
+    doc = fitz.open(pdf_path)
+    try:
+        text = ''
+        for page_index, y0, y1 in region['slices']:
+            page = doc[page_index]
+            clip = fitz.Rect(0, y0, region.get('width') or page.rect.width, y1)
+            text += page.get_text('text', clip=clip)
+    finally:
+        doc.close()
+
+    found = [int(value) for value in _MS_SCALE.findall(text)]
+    return sum(found) if found else None
 
 
 def render_marking_scheme_region(pdf_path, region, dpi=200):

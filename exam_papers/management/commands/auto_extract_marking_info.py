@@ -1,18 +1,36 @@
 """
-Management command to read per-part mark allocations off the marking scheme
-crops attached to question parts, using the vision model.
+Management command to read per-part mark allocations off the marking scheme,
+preferring its text layer and falling back to the vision model.
 
 Marks are the one piece of the marking scheme the database actually stores, so
 that is all this extracts. Worked solutions stay as the scheme image itself -
 see the note in exam_papers/models.py on why exam content is not held as text.
+
+Two things learned the hard way, both now the default:
+
+* The scheme prints a part's maximum as "Scale 10C (0, 3, 7, 10)", and where a
+  part covers sub-parts its region holds one scale per sub-part. A vision read
+  of the crop sees only the first, so a part worth 10 comes back worth 5 - and
+  a low maximum quietly inflates every score against it. Reading the scales out
+  of the text layer and summing them is exact, free and instant, so it is tried
+  first; vision is the fallback for a scheme with no usable text.
+* A question's total is known independently, from the paper itself, so parts
+  that do not sum to it contain a misread. That check used to be opt-in and
+  running without it put wrong marks on 27 of 70 questions in one sitting, so
+  it is now on unless --no-verify-total says otherwise.
 """
 from django.core.management.base import BaseCommand, CommandError
+
 from exam_papers.models import ExamPaper
 from exam_papers.services.vision_grading import extract_max_marks_from_scheme
+from exam_papers.utils import (
+    detect_marking_scheme_layout, parse_part_label, regions_for_letter,
+    scale_marks_for_region,
+)
 
 
 class Command(BaseCommand):
-    help = "Fill in question part max_marks from their marking scheme images"
+    help = "Fill in question part max_marks from their marking scheme"
 
     def add_arguments(self, parser):
         parser.add_argument(
@@ -39,90 +57,155 @@ class Command(BaseCommand):
             '--include-merged',
             action='store_true',
             help="Also read parts whose marking scheme spans several crops. "
-                 "The scale is only on the first, so the marks come out low"
+                 "Only matters for the vision fallback, which reads the first "
+                 "crop alone; the scheme text covers the whole region anyway"
         )
         parser.add_argument(
             '--verify-total',
             action='store_true',
-            help="Check each question's parts against its total before saving, "
-                 "retrying once and skipping the question if they still disagree"
+            help='Deprecated: checking the total is now the default'
+        )
+        parser.add_argument(
+            '--no-verify-total',
+            action='store_false',
+            dest='verify_total_enabled',
+            help="Save what was read even when a question's parts do not sum "
+                 "to its total. Only for a paper whose question totals are "
+                 "themselves wrong - the marks will not be trustworthy"
+        )
+        parser.add_argument(
+            '--no-vision',
+            action='store_true',
+            help='Read only the scheme text; never fall back to the vision model'
         )
 
-    def _read_question(self, question, dry_run, overwrite, read, skipped, saved,
-                       include_merged=False):
+    # ---- reading one question -------------------------------------------
+
+    def _from_scheme_text(self, wanted, question, regions, scheme_path):
+        """{part pk: marks} for every part whose scheme region states a scale."""
+        proposal = {}
+        for part in wanted:
+            parsed = parse_part_label(part.label)
+            if not parsed:
+                continue
+            # regions_for_letter gives the whole-letter region if the scheme
+            # has one, and otherwise each of its sub-parts - never both, so
+            # summing across what it returns cannot double-count.
+            total, seen = 0, False
+            for region in regions_for_letter(regions, question.question_number,
+                                             parsed[0]):
+                marks = scale_marks_for_region(scheme_path, region)
+                if marks is not None:
+                    total += marks
+                    seen = True
+            if seen:
+                proposal[part.pk] = total
+        return proposal
+
+    def _from_vision(self, wanted):
+        proposal = {}
+        for part in wanted:
+            if not part.solution_image:
+                continue
+            marks = extract_max_marks_from_scheme(part.solution_image, part.label)
+            if marks is not None:
+                proposal[part.pk] = marks
+        return proposal
+
+    def _adds_up(self, fixed, proposal, question, wanted):
+        """True when every wanted part was read and they reach the total."""
+        if len(proposal) != len(wanted):
+            return False
+        if not question.total_marks:
+            return True
+        return fixed + sum(proposal.values()) == question.total_marks
+
+    def _read_question(self, question, options, counts, regions, scheme_path):
         """Read a whole question's marks, keeping them only if they add up.
 
         A question's total is known independently, from the paper itself, so it
-        is a free check on the vision model: parts that do not sum to it contain
-        at least one misread, and writing them would put a wrong denominator
-        under a student's grade.
+        is a free check on whatever read the marks: parts that do not sum to it
+        contain at least one misread, and writing them would put a wrong
+        denominator under a student's grade.
         """
+        overwrite = options['overwrite']
+        include_merged = options['include_merged']
+        verify = options['verify_total_enabled']
+
         parts = list(question.parts.all().order_by('order'))
-        # A merged part covers several rows of the scheme, but the scale is
-        # read off its first crop alone -- which would write, say, 10 onto a
-        # part actually worth 25 and quietly halve every future score on it.
-        # merge_question_parts leaves those blank on purpose; leave them blank.
+        # A merged part covers several rows of the scheme. The scheme text
+        # reads the whole region so it handles them, but the vision fallback
+        # sees the first crop alone -- which would write, say, 10 onto a part
+        # actually worth 25 and quietly halve every future score on it.
         merged = [p for p in parts
                   if not include_merged and p.extra_solution_images.exists()]
         wanted = [p for p in parts
-                  if p.solution_image and (overwrite or not p.max_marks)
-                  and p not in merged]
+                  if (overwrite or not p.max_marks) and p not in merged]
         if merged:
             self.stdout.write(self.style.WARNING(
-                f'  skipping {len(merged)} merged part(s); their marks span '
-                f'several crops (--include-merged to read anyway)'))
+                f'  {len(merged)} merged part(s) left to the scheme text only'))
         if not wanted:
-            skipped += len(parts)
+            counts['skipped'] += len(parts)
             self.stdout.write('  nothing to read')
-            return read, skipped, saved
+            return
 
         fixed = sum(p.max_marks or 0 for p in parts if p not in wanted)
-        proposal = {}
 
-        for attempt in (1, 2):
-            proposal = {}
-            for part in wanted:
-                marks = extract_max_marks_from_scheme(part.solution_image, part.label)
-                if marks is not None:
-                    proposal[part.pk] = marks
-            total = fixed + sum(proposal.values())
+        # The scheme's own text is exact wherever it is present, so it is worth
+        # trying before paying for a vision read that sees less. A reading that
+        # does not add up is kept aside rather than dropped: "read 45 against
+        # 50" sends someone to the right page, where "nothing could be read"
+        # sends them looking for a missing crop that is not the problem.
+        proposal, source, rejected = {}, None, None
+        if regions is not None:
+            candidate = self._from_scheme_text(wanted, question, regions, scheme_path)
+            if candidate and (not verify
+                              or self._adds_up(fixed, candidate, question, wanted)):
+                proposal, source = candidate, 'scheme text'
+            elif candidate:
+                rejected = candidate
 
-            if not question.total_marks or total == question.total_marks:
-                break
-            self.stdout.write(self.style.WARNING(
-                f'  parts sum to {total}, question is {question.total_marks}'
-                + ('  - re-reading' if attempt == 1 else '')
-            ))
+        if not proposal and not options['no_vision']:
+            for attempt in (1, 2):
+                candidate = self._from_vision(wanted)
+                if not verify or self._adds_up(fixed, candidate, question, wanted):
+                    proposal, source = candidate, 'vision'
+                    break
+                rejected = candidate or rejected
+                self.stdout.write(self.style.WARNING(
+                    f'  parts sum to {fixed + sum(candidate.values())}, '
+                    f'question is {question.total_marks}'
+                    + ('  - re-reading' if attempt == 1 else '')
+                ))
 
-        total = fixed + sum(proposal.values())
-        if question.total_marks and total != question.total_marks:
-            self.stdout.write(self.style.ERROR(
-                f'  still {total} against {question.total_marks} - '
-                f'left alone, needs entering by hand'
-            ))
-            skipped += len(parts)
-            return read, skipped, saved
+        if not proposal:
+            if rejected:
+                self.stdout.write(self.style.ERROR(
+                    f'  still {fixed + sum(rejected.values())} against '
+                    f'{question.total_marks} - left alone, needs entering by hand'
+                ))
+            else:
+                self.stdout.write(self.style.ERROR('  nothing could be read'))
+            counts['skipped'] += len(parts)
+            return
 
+        self.stdout.write(f'  read from the {source}')
         for part in wanted:
             if part.pk not in proposal:
                 continue
-            read += 1
+            counts['read'] += 1
             self.stdout.write(self.style.SUCCESS(
                 f'  {part.label}: {proposal[part.pk]} marks'
             ))
-            if not dry_run:
+            if not options['dry_run']:
                 part.max_marks = proposal[part.pk]
                 part.save(update_fields=['max_marks'])
-                saved += 1
+                counts['saved'] += 1
+                counts['by_source'][source] = counts['by_source'].get(source, 0) + 1
 
-        return read, skipped, saved
+    # ---- driving ---------------------------------------------------------
 
     def handle(self, *args, **options):
-        dry_run = options['dry_run']
-        overwrite = options['overwrite']
-        verify_total = options['verify_total']
-        include_merged = options['include_merged']
-
         try:
             paper = ExamPaper.objects.get(id=options['paper_id'])
         except ExamPaper.DoesNotExist:
@@ -133,71 +216,43 @@ class Command(BaseCommand):
             questions = questions.filter(question_number=options['question'])
 
         self.stdout.write(self.style.SUCCESS(f'\n=== Reading marks for {paper} ==='))
-        if dry_run:
+        if options['dry_run']:
             self.stdout.write(self.style.WARNING('Dry run - nothing will be saved'))
+        if not options['verify_total_enabled']:
+            self.stdout.write(self.style.WARNING(
+                'Total check disabled - the marks read will not be trustworthy'))
 
-        read = skipped = saved = 0
+        # The scheme's text layer, read once for the whole paper.
+        regions, scheme_path = None, None
+        if paper.marking_scheme_pdf:
+            scheme_path = paper.marking_scheme_pdf.path
+            try:
+                regions = detect_marking_scheme_layout(
+                    scheme_path, 2 if paper.paper_type == 'p2' else 1)
+            except Exception as error:          # a scheme that will not parse
+                self.stdout.write(self.style.WARNING(
+                    f'Could not read the scheme layout ({error}); '
+                    f'falling back to the crops'))
+        if not regions:
+            self.stdout.write(self.style.WARNING(
+                'No usable scheme text - reading the crops with vision'))
 
+        counts = {'read': 0, 'saved': 0, 'skipped': 0, 'by_source': {}}
         for question in questions.order_by('order'):
             self.stdout.write(f'\n--- Question {question.question_number} ---')
-
-            if verify_total:
-                read, skipped, saved = self._read_question(
-                    question, dry_run, overwrite, read, skipped, saved,
-                    include_merged=include_merged
-                )
-                continue
-
-            for part in question.parts.all().order_by('order'):
-                # The marking scheme crop lives on the part; without one there
-                # is nothing to read.
-                if not part.solution_image:
-                    self.stdout.write(
-                        self.style.WARNING(f'  {part.label}: no marking scheme image, skipping')
-                    )
-                    skipped += 1
-                    continue
-
-                # The scale is printed on the first crop only, so a merged part
-                # would come back worth a fraction of what it is -- and a low
-                # maximum quietly inflates every score against it.
-                if not include_merged and part.extra_solution_images.exists():
-                    self.stdout.write(self.style.WARNING(
-                        f'  {part.label}: marking scheme spans several crops, '
-                        f'skipping (--include-merged to read anyway)'
-                    ))
-                    skipped += 1
-                    continue
-
-                if part.max_marks and not overwrite:
-                    self.stdout.write(
-                        f'  {part.label}: already {part.max_marks} marks, leaving alone'
-                    )
-                    skipped += 1
-                    continue
-
-                marks = extract_max_marks_from_scheme(part.solution_image, part.label)
-                if marks is None:
-                    self.stdout.write(
-                        self.style.ERROR(f'  {part.label}: could not read marks')
-                    )
-                    continue
-
-                read += 1
-                self.stdout.write(self.style.SUCCESS(f'  {part.label}: {marks} marks'))
-
-                if not dry_run:
-                    part.max_marks = marks
-                    part.save(update_fields=['max_marks'])
-                    saved += 1
+            self._read_question(question, options, counts, regions, scheme_path)
 
         self.stdout.write(self.style.SUCCESS('\n=== Done ==='))
-        self.stdout.write(f'Read: {read}   Saved: {saved}   Skipped: {skipped}')
-        if dry_run and read:
+        self.stdout.write(
+            f'Read: {counts["read"]}   Saved: {counts["saved"]}   '
+            f'Skipped: {counts["skipped"]}'
+        )
+        if options['dry_run'] and counts['read']:
             self.stdout.write(
                 self.style.WARNING('Re-run without --dry-run to save these marks.')
             )
-        if saved:
+        if counts['by_source'].get('vision'):
             self.stdout.write(
-                'Vision misreads marks sometimes - check them in admin before publishing.'
+                'Vision misreads marks sometimes - check the parts read that '
+                'way in admin before publishing.'
             )

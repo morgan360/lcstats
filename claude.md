@@ -242,9 +242,17 @@ python manage.py extract_exam_questions <paper_id> --auto
 # they need --legacy, which crops each question out of the page by position.
 python manage.py extract_exam_questions <paper_id> --legacy --dry-run
 
-# Fill in question part max_marks from their marking scheme images.
-# Reads the "Scale 10C (0, 3, 7, 10)" notation; fills blanks only unless
-# --overwrite. Needs solution_image set on the parts.
+# Fill in question part max_marks from the marking scheme. Reads the
+# "Scale 10C (0, 3, 7, 10)" notation out of the scheme's text layer, summing
+# every scale in a part's region -- a part covering (i) and (ii) carries one
+# scale each and is worth both. Falls back to reading the crop with vision
+# (needs solution_image) only where there is no usable text; --no-vision
+# forbids even that. Fills blanks only unless --overwrite.
+#
+# Each question's parts are checked against its total, which is known
+# independently from the paper, and a question that does not add up is left
+# alone rather than written wrong. That check is ON by default; turn it off
+# with --no-verify-total only when the question totals are themselves wrong.
 python manage.py auto_extract_marking_info <paper_id> --dry-run
 
 # Give every question part its one topic. Writes straight to the database,
