@@ -45,13 +45,14 @@
     }
 
     // Exam parts with a marking scheme only, and null whenever the page could
-    // not be marked fairly. Labelled hard as an estimate: it is not recorded
-    // anywhere and it is not what the examiner will give them.
+    // not be marked fairly. The server words the label: an estimate recorded
+    // nowhere, except on an open Badge Test part, where it counts.
     if (data.estimated_mark !== null && data.estimated_mark !== undefined) {
       html +=
         '<div class="work-mark"><span class="work-mark-value">' +
         esc(String(data.estimated_mark)) + " / " + esc(String(data.estimated_max_marks)) +
-        '</span><span class="work-mark-label">estimated &mdash; a guide, not an official mark</span>' +
+        '</span><span class="work-mark-label">' +
+        esc(data.mark_label || "estimated \u2014 a guide, not an official mark") + "</span>" +
         (data.mark_reasoning
           ? '<p class="work-mark-why">' + esc(data.mark_reasoning) + "</p>"
           : "") +

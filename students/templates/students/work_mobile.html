@@ -257,7 +257,8 @@ to the stylesheet.
     if (data.estimated_mark !== null && data.estimated_mark !== undefined) {
       html += '<div class="mark"><span class="mark-v">' +
               esc(String(data.estimated_mark)) + ' / ' + esc(String(data.estimated_max_marks)) +
-              '</span><span class="mark-l">estimated — a guide, not an official mark</span>' +
+              '</span><span class="mark-l">' +
+              esc(data.mark_label || 'estimated — a guide, not an official mark') + '</span>' +
               (data.mark_reasoning ? '<p class="mark-w">' + esc(data.mark_reasoning) + '</p>' : '') +
               '</div>';
     }

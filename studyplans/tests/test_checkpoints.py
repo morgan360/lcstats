@@ -289,10 +289,7 @@ class WhichCheckpointCountsTests(CheckpointTestBase):
         self.assertEqual(self.goal.current_checkpoint(), self.round1)
 
 
-class PhotoMarkTests(CheckpointTestBase):
-    """A "show that" cannot be typed, so with the setting on a photo of the
-    working can carry a part -- only ever for the better, and only where the
-    analysis was willing to give a mark at all."""
+class PhotoTestBase(CheckpointTestBase):
 
     def photo(self, part, mark, *, out_of=None, when=None,
               status=WorkSubmission.Status.COMPLETE):
@@ -303,6 +300,12 @@ class PhotoMarkTests(CheckpointTestBase):
         if when is not None:
             WorkSubmission.objects.filter(pk=row.pk).update(created_at=when)
         return row
+
+
+class PhotoMarkTests(PhotoTestBase):
+    """A "show that" cannot be typed, so with the setting on a photo of the
+    working can carry a part -- only ever for the better, and only where the
+    analysis was willing to give a mark at all."""
 
     @override_settings(WORK_PHOTO_COUNTS_ON_CHECKPOINTS=False)
     def test_off_by_default_a_photo_counts_for_nothing(self):
@@ -378,3 +381,43 @@ class PhotoMarkTests(CheckpointTestBase):
         self.assertEqual(part.marks_awarded, 10.0)
         cp.refresh_from_db()
         self.assertFalse(cp.is_clean)
+
+
+class PhotoMarkLabelTests(PhotoTestBase):
+    """The words beside a photo's mark must never promise more than grading does."""
+
+    def label(self, photo):
+        from students.views_work import _mark_label
+        return _mark_label(photo)
+
+    @override_settings(WORK_PHOTO_COUNTS_ON_CHECKPOINTS=True)
+    def test_on_an_open_badge_test_part_it_says_it_counts(self):
+        cp = self.ready_checkpoint()
+        photo = self.photo(self.part_b, 12)
+        self.assertEqual(checkpoints.badge_test_counting_photo(photo), cp)
+        self.assertIn('counts on your Integration Badge Test', self.label(photo))
+
+    @override_settings(WORK_PHOTO_COUNTS_ON_CHECKPOINTS=False)
+    def test_with_the_setting_off_it_is_only_a_guide(self):
+        self.ready_checkpoint()
+        photo = self.photo(self.part_b, 12)
+        self.assertIn('a guide, not an official mark', self.label(photo))
+
+    @override_settings(WORK_PHOTO_COUNTS_ON_CHECKPOINTS=True)
+    def test_a_part_on_no_open_badge_test_is_only_a_guide(self):
+        checkpoints.create_checkpoint(
+            self.goal, parts=[self.part_a, self.part_b], status='locked')
+        photo = self.photo(self.part_b, 12)
+        self.assertIn('a guide', self.label(photo))
+
+    @override_settings(WORK_PHOTO_COUNTS_ON_CHECKPOINTS=True)
+    def test_a_photo_from_before_it_opened_is_only_a_guide(self):
+        cp = self.ready_checkpoint()
+        photo = self.photo(self.part_b, 12, when=cp.unlocked_at - timedelta(days=1))
+        photo.refresh_from_db()
+        self.assertIn('a guide', self.label(photo))
+
+    @override_settings(WORK_PHOTO_COUNTS_ON_CHECKPOINTS=True)
+    def test_no_mark_means_no_label(self):
+        self.ready_checkpoint()
+        self.assertEqual(self.label(self.photo(self.part_b, None)), '')

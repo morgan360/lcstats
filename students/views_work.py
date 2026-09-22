@@ -72,6 +72,24 @@ def _qr_data_uri(url):
     return "data:image/png;base64," + base64.b64encode(buffer.getvalue()).decode()
 
 
+def _mark_label(submission):
+    """The words beside an estimated mark, decided here so both pages agree.
+
+    On a part of an open Badge Test the mark counts (studyplans'
+    WORK_PHOTO_COUNTS_ON_CHECKPOINTS), so calling it only a guide would be
+    untrue; everywhere else it is exactly that.
+    """
+    if submission.estimated_mark is None:
+        return ""
+    from studyplans.services.checkpoints import badge_test_counting_photo
+
+    badge_test = badge_test_counting_photo(submission)
+    if badge_test is not None:
+        return (f"counts on your {badge_test.goal.topic.name} Badge Test "
+                f"if it beats your typed answer")
+    return "estimated \u2014 a guide, not an official mark"
+
+
 def _analysis_payload(submission):
     """What both the phone and the laptop render."""
     return {
@@ -87,6 +105,7 @@ def _analysis_payload(submission):
         "estimated_mark": submission.estimated_mark,
         "estimated_max_marks": submission.estimated_max_marks,
         "mark_reasoning": submission.mark_reasoning,
+        "mark_label": _mark_label(submission),
         "steps": (submission.analysis or {}).get("steps", []),
         "strengths": (submission.analysis or {}).get("strengths", []),
         "photo_url": reverse("work_photo", args=[submission.pk]),

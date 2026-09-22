@@ -284,6 +284,27 @@ def photos_in_window(checkpoint):
     return by_part
 
 
+def badge_test_counting_photo(submission):
+    """The open Badge Test this photo's mark will count towards, if any.
+
+    Mirrors photos_in_window from the photo's side: the setting is on, the
+    part sits in one of this student's Badge Tests that is open to sit, and the
+    photo was taken after it opened. Used to tell the student, beside the mark,
+    that it counts -- so the wording can never promise more than grading does.
+    """
+    if not getattr(settings, 'WORK_PHOTO_COUNTS_ON_CHECKPOINTS', False):
+        return None
+    if not submission.exam_question_part_id:
+        return None
+    return (StudyPlanCheckpoint.objects
+            .filter(status='ready',
+                    goal__plan__student=submission.student.user,
+                    parts__exam_question_part_id=submission.exam_question_part_id,
+                    unlocked_at__lte=submission.created_at)
+            .select_related('goal__topic')
+            .first())
+
+
 def answered_part_ids(checkpoint):
     """Parts with a typed answer, or a marked photo, since it opened."""
     return set(attempts_in_window(checkpoint)) | set(photos_in_window(checkpoint))
