@@ -333,6 +333,9 @@ def grade_with_vision_marking_scheme(
 4. Be lenient with minor notation differences or equivalent forms
 5. Accept algebraically equivalent expressions
 6. For numerical answers, accept answers within ±0.02 tolerance
+7. This part may cover several sub-parts, e.g. (i) and (ii). The student may
+   label their answers (i), (ii) and so on: mark each against the matching
+   sub-part of the scheme and total them. Unlabelled, find what each piece answers.
 
 **Formatting** (the student sees this rendered in a web page - follow exactly):
 - Wrap EVERY mathematical expression in single dollar delimiters, e.g. $\\frac{{3}}{{5}}$, $m = \\pm 6$

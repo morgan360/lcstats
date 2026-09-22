@@ -173,11 +173,21 @@
             <!-- Answer Input -->
             <div class="answer-section">
                 <label for="answer-{{ part_data.part.id }}">Your Answer:</label>
-                <math-field
-                    id="answer-{{ part_data.part.id }}"
-                    class="answer-input"
-                    {% if part_data.latest_attempt %}value="{{ part_data.latest_attempt.student_answer }}"{% endif %}
-                ></math-field>
+                <!-- A part such as (b) may cover (b)(i) and (b)(ii). Extra boxes
+                     are sent as one labelled answer, "(i) ... (ii) ...", which
+                     is how the grader marks a merged part against its scheme. -->
+                <div class="answer-boxes" id="answer-boxes-{{ part_data.part.id }}">
+                    <div class="answer-row">
+                        <span class="answer-roman" hidden>(i)</span>
+                        <math-field
+                            id="answer-{{ part_data.part.id }}"
+                            class="answer-input"
+                            {% if part_data.latest_attempt %}value="{{ part_data.latest_attempt.student_answer }}"{% endif %}
+                        ></math-field>
+                    </div>
+                </div>
+                <button type="button" class="add-subpart" id="add-subpart-{{ part_data.part.id }}"
+                        onclick="addSubpartBox({{ part_data.part.id }})">+ Answer (ii) separately</button>
 
                 <div class="answer-actions">
                     <button class="btn btn-primary" onclick="submitAnswer({{ part_data.part.id }}, {{ attempt.id }})">
@@ -505,6 +515,40 @@
     border: 2px solid #ced4da;
     border-radius: 6px;
     margin-bottom: 15px;
+}
+
+.answer-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.answer-row .answer-input {
+    flex: 1;
+    min-width: 0;
+}
+
+.answer-roman {
+    flex-shrink: 0;
+    width: 2.2em;
+    margin-bottom: 15px;
+    font-weight: 600;
+    color: #495057;
+}
+
+.add-subpart {
+    margin: -5px 0 15px;
+    padding: 0;
+    border: none;
+    background: none;
+    color: #2563eb;
+    font-size: 0.9em;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.add-subpart:hover {
+    text-decoration: underline;
 }
 
 .answer-actions {
@@ -902,10 +946,47 @@ function exitPractice() {
     window.location.href = '/exam-papers/';
 }
 
+const ROMAN = ['i', 'ii', 'iii', 'iv', 'v', 'vi'];
+
+// Another box for the next sub-part, e.g. (b)(ii) of a part covering both.
+function addSubpartBox(partId) {
+    const boxes = document.getElementById('answer-boxes-' + partId);
+    const rows = boxes.querySelectorAll('.answer-row');
+    if (rows.length >= ROMAN.length) return;
+
+    rows[0].querySelector('.answer-roman').hidden = false;
+    const row = document.createElement('div');
+    row.className = 'answer-row';
+    row.innerHTML = '<span class="answer-roman">(' + ROMAN[rows.length] + ')</span>'
+        + '<math-field class="answer-input"></math-field>';
+    boxes.appendChild(row);
+    row.querySelector('math-field').focus();
+
+    const button = document.getElementById('add-subpart-' + partId);
+    if (rows.length + 1 >= ROMAN.length) {
+        button.hidden = true;
+    } else {
+        button.textContent = '+ Answer (' + ROMAN[rows.length + 1] + ') separately';
+    }
+}
+
+// One answer from every box: the plain value for a single box, otherwise each
+// box labelled so the grader can match it to its sub-part of the scheme.
+function collectAnswer(partId) {
+    const fields = document.querySelectorAll('#answer-boxes-' + partId + ' math-field');
+    if (fields.length === 1) return fields[0].value;
+    const labelled = [];
+    fields.forEach(function (field, index) {
+        if (field.value.trim()) {
+            labelled.push('\\text{(' + ROMAN[index] + ') }' + field.value);
+        }
+    });
+    return labelled.join('\\quad ');
+}
+
 // Submit answer function
 function submitAnswer(partId, attemptId) {
-    const answerField = document.getElementById('answer-' + partId);
-    const answer = answerField.value;
+    const answer = collectAnswer(partId);
 
     if (!answer.trim()) {
         alert('Please enter an answer before submitting.');
@@ -957,8 +1038,9 @@ function submitAnswer(partId, attemptId) {
             // KaTeX pass has already run - render maths in it explicitly.
             Feedback.renderMaths(feedbackArea);
 
-            // Clear the answer field for next attempt
-            answerField.value = '';
+            // Clear the answer boxes for next attempt
+            document.querySelectorAll('#answer-boxes-' + partId + ' math-field')
+                .forEach(function (field) { field.value = ''; });
         } else {
             feedbackArea.className = 'feedback-area incorrect';
             feedbackArea.innerHTML = '<strong>Error:</strong> ' + data.error;
