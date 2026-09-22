@@ -105,8 +105,19 @@ def dashboard_view(request):
         logger.error("Study plan card failed on the dashboard: %s", exc,
                      exc_info=True)
 
+    # Stamp cards stand apart from plans, so they show with or without one.
+    stamp_cards = []
+    try:
+        from studyplans.services import stamps
+        stamp_cards = stamps.recent_cards(
+            request.user, getattr(request, 'current_subject', None))
+    except Exception as exc:
+        logger.error("Stamp cards failed on the dashboard: %s", exc,
+                     exc_info=True)
+
     context = {
         'study_plan_card': study_plan_card,
+        'stamp_cards': stamp_cards,
         "profile": profile,
         "accuracy": accuracy,
         "recent_attempts": attempts[:10],

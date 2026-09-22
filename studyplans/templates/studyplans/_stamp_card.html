@@ -1,0 +1,29 @@
+{% comment %}
+  One topic's stamp card: ten MicroBadges for its plan work, one full badge for
+  passing its Badge Test. Expects `card` from studyplans.services.stamps.cards_for.
+{% endcomment %}
+<div class="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-twilight/10">
+  <p class="mb-3 truncate text-base font-semibold text-midnight">{{ card.topic.name }}</p>
+  <div class="flex items-center justify-between gap-3">
+    <div class="grid grid-cols-5 gap-1.5"
+         role="img" aria-label="{{ card.microstamps }} of {{ card.slots }} MicroBadges">
+      {% for inked in card.micro %}
+        {% include "studyplans/_stamp.html" with kind="micro" filled=inked %}
+      {% endfor %}
+    </div>
+    {% include "studyplans/_stamp.html" with kind="stamp" filled=card.stamped label=card.topic.name|first|upper uid=card.topic.id %}
+  </div>
+  <p class="mt-3 text-xs text-twilight/70">
+    {% if card.stamped %}
+      <span class="font-semibold text-midnight">Full badge</span>
+      &middot; {{ card.stamped_at|date:"j M Y" }}{% if card.score is not None %} &middot; {{ card.score|floatformat:0 }}%{% endif %}
+    {% else %}
+      {% if card.on_plan %}
+        {{ card.microstamps }} of {{ card.slots }} MicroBadges
+        &middot; {% if card.microstamps == card.slots %}Badge Test open{% else %}Badge Test at {{ card.slots }}{% endif %}
+      {% else %}
+        Not on a plan yet
+      {% endif %}
+    {% endif %}
+  </p>
+</div>

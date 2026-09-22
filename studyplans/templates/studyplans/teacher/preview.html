@@ -26,7 +26,7 @@
   {% endif %}
 
   <div class="mb-6 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-twilight/10">
-    <h3 class="mb-3 text-base font-semibold text-midnight">Checkpoints</h3>
+    <h3 class="mb-3 text-base font-semibold text-midnight">Badge Tests</h3>
     <div class="space-y-3">
       {% for goal in proposal.goals %}
       <div class="rounded-xl bg-twilight/5 px-4 py-3">
@@ -48,7 +48,7 @@
           {% endfor %}
         </ul>
         <p class="mt-2 text-xs text-twilight/50">
-          {{ goal.reserve_rounds|length }} retry checkpoint(s) held back
+          {{ goal.reserve_rounds|length }} retry Badge Test(s) held back
           &middot; {{ goal.pool_available }} unseen part(s) on this topic
         </p>
         {% else %}
@@ -61,27 +61,29 @@
     </div>
   </div>
 
-  {% for week in proposal.weeks %}
+  {% for goal in proposal.goals %}
   <section class="mb-4 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-twilight/10">
     <div class="mb-3 flex flex-wrap items-baseline justify-between gap-2">
-      <h3 class="text-base font-semibold text-midnight">Week {{ week.index }}</h3>
-      <p class="text-xs text-twilight/60">
-        {{ week.start_date|date:"j M" }} &ndash; {{ week.end_date|date:"j M" }}
-        &middot; {{ week.minutes_used }}/{{ week.minutes_budget }} min
-      </p>
+      <h3 class="text-base font-semibold text-midnight">{{ goal.topic.name }}: ten MicroBadges</h3>
+      <p class="text-xs text-twilight/60">{{ goal.minutes }} min of practice in all</p>
     </div>
-    <ul class="space-y-1">
-      {% for item in week.items %}
-      <li class="flex items-center justify-between gap-3 rounded-lg bg-twilight/5 px-3 py-2">
-        <span class="min-w-0 truncate text-sm text-midnight">
-          {{ item.obj|default:item.instructions }}
-        </span>
-        <span class="shrink-0 text-xs text-twilight/60">{{ item.estimated_minutes }} min</span>
+    <ol class="space-y-2">
+      {% for badge in goal.badges %}
+      <li class="rounded-lg bg-twilight/5 px-3 py-2">
+        <p class="mb-1 text-xs font-semibold uppercase tracking-wide text-twilight/60">MicroBadge {{ forloop.counter }}</p>
+        <ul class="space-y-1">
+          {% for item in badge %}
+          <li class="flex items-center justify-between gap-3">
+            <span class="min-w-0 truncate text-sm text-midnight">{{ item.obj|default:item.instructions }}</span>
+            <span class="shrink-0 text-xs text-twilight/60">{{ item.estimated_minutes }} min</span>
+          </li>
+          {% empty %}
+          <li class="text-sm text-rose-pop">Empty &mdash; add work after creating the plan, or award it.</li>
+          {% endfor %}
+        </ul>
       </li>
-      {% empty %}
-      <li class="px-3 py-2 text-sm text-twilight/50">Nothing to schedule.</li>
       {% endfor %}
-    </ul>
+    </ol>
   </section>
   {% endfor %}
 

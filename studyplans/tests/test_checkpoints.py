@@ -3,7 +3,7 @@ result once earned never changes afterwards."""
 from datetime import timedelta
 
 from django.contrib.auth.models import Group, User
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from django.utils import timezone
 
 from core.models import Subject
@@ -12,6 +12,7 @@ from exam_papers.models import (
 )
 from homework.models import TeacherProfile
 from interactive_lessons.models import Topic
+from students.models import WorkSubmission
 from studyplans.models import StudyPlan, StudyPlanGoal
 from studyplans.services import checkpoints
 
@@ -286,3 +287,94 @@ class WhichCheckpointCountsTests(CheckpointTestBase):
         self.round1.unlocked_at = None
         self.round1.save(update_fields=['status', 'unlocked_at'])
         self.assertEqual(self.goal.current_checkpoint(), self.round1)
+
+
+class PhotoMarkTests(CheckpointTestBase):
+    """A "show that" cannot be typed, so with the setting on a photo of the
+    working can carry a part -- only ever for the better, and only where the
+    analysis was willing to give a mark at all."""
+
+    def photo(self, part, mark, *, out_of=None, when=None,
+              status=WorkSubmission.Status.COMPLETE):
+        row = WorkSubmission.objects.create(
+            student=self.student.studentprofile, exam_question_part=part,
+            status=status, estimated_mark=mark,
+            estimated_max_marks=out_of or part.max_marks)
+        if when is not None:
+            WorkSubmission.objects.filter(pk=row.pk).update(created_at=when)
+        return row
+
+    @override_settings(WORK_PHOTO_COUNTS_ON_CHECKPOINTS=False)
+    def test_off_by_default_a_photo_counts_for_nothing(self):
+        cp = self.ready_checkpoint()
+        self.attempt(self.part_a, 10)
+        self.photo(self.part_b, 20)
+        self.assertFalse(checkpoints.is_sat(cp))
+        checkpoints.grade(cp)
+        cp.refresh_from_db()
+        self.assertEqual(cp.status, 'ready')
+
+    @override_settings(WORK_PHOTO_COUNTS_ON_CHECKPOINTS=True)
+    def test_a_photo_can_answer_a_part_on_its_own(self):
+        cp = self.ready_checkpoint()
+        self.attempt(self.part_a, 10)
+        self.photo(self.part_b, 18)
+        checkpoints.grade(cp)
+        cp.refresh_from_db()
+        self.assertEqual((cp.marks_awarded, cp.status), (28.0, 'passed'))
+        part = cp.parts.get(exam_question_part=self.part_b)
+        self.assertTrue(part.marked_from_photo)
+
+    @override_settings(WORK_PHOTO_COUNTS_ON_CHECKPOINTS=True)
+    def test_the_better_of_typed_and_photo_counts(self):
+        cp = self.ready_checkpoint()
+        self.attempt(self.part_a, 10)
+        self.attempt(self.part_b, 5)      # typed only the final value
+        self.photo(self.part_b, 17)       # the working earns the rest
+        checkpoints.grade(cp)
+        cp.refresh_from_db()
+        self.assertEqual(cp.marks_awarded, 27.0)
+
+    @override_settings(WORK_PHOTO_COUNTS_ON_CHECKPOINTS=True)
+    def test_a_worse_photo_does_not_drag_a_typed_mark_down(self):
+        cp = self.ready_checkpoint()
+        self.attempt(self.part_a, 10)
+        self.attempt(self.part_b, 18)
+        self.photo(self.part_b, 4)
+        checkpoints.grade(cp)
+        part = cp.parts.get(exam_question_part=self.part_b)
+        self.assertEqual(part.marks_awarded, 18.0)
+        self.assertFalse(part.marked_from_photo)
+
+    @override_settings(WORK_PHOTO_COUNTS_ON_CHECKPOINTS=True)
+    def test_a_photo_with_its_mark_withheld_does_not_count(self):
+        cp = self.ready_checkpoint()
+        self.attempt(self.part_a, 10)
+        self.photo(self.part_b, None)
+        self.assertFalse(checkpoints.is_sat(cp))
+
+    @override_settings(WORK_PHOTO_COUNTS_ON_CHECKPOINTS=True)
+    def test_a_photo_still_being_analysed_does_not_count(self):
+        cp = self.ready_checkpoint()
+        self.attempt(self.part_a, 10)
+        self.photo(self.part_b, 20, status=WorkSubmission.Status.ANALYSING)
+        self.assertFalse(checkpoints.is_sat(cp))
+
+    @override_settings(WORK_PHOTO_COUNTS_ON_CHECKPOINTS=True)
+    def test_a_photo_from_before_it_opened_does_not_count(self):
+        cp = self.ready_checkpoint()
+        self.attempt(self.part_a, 10)
+        self.photo(self.part_b, 20, when=cp.unlocked_at - timedelta(days=1))
+        self.assertFalse(checkpoints.is_sat(cp))
+
+    @override_settings(WORK_PHOTO_COUNTS_ON_CHECKPOINTS=True)
+    def test_opening_the_scheme_still_costs_half_on_a_photo(self):
+        cp = self.ready_checkpoint()
+        self.attempt(self.part_a, 10)
+        self.attempt(self.part_b, 0, solution=True)
+        self.photo(self.part_b, 20)
+        checkpoints.grade(cp)
+        part = cp.parts.get(exam_question_part=self.part_b)
+        self.assertEqual(part.marks_awarded, 10.0)
+        cp.refresh_from_db()
+        self.assertFalse(cp.is_clean)

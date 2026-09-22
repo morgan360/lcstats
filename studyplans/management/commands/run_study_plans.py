@@ -8,19 +8,19 @@ from studyplans.services import nightly
 
 
 class Command(BaseCommand):
-    help = """Mark finished work, open and grade checkpoints, and carry forward
-what was missed.
+    help = """Mark finished work, award MicroBadges, open and grade Badge Tests,
+and tell the teacher about topics that have fallen behind.
 
 Run this nightly from cron. There is no background queue in this project, so
 cron is how a plan gets to do anything between page loads -- without it a
-checkpoint never opens on its own and nothing is ever carried forward.
+Badge Test never opens on its own and a stalled topic is never flagged.
 
 Everything it does is safe to repeat: work already counted is not counted again,
-a decided checkpoint is not re-marked, and an item already moved into this week
-is left where it is. Running it twice in one day is a no-op the second time.
+a MicroBadge is earned once, and a decided Badge Test is not re-marked.
+Running it twice in one day is a no-op the second time.
 
-It will never delete an item or move one a teacher chose by hand; work that is
-no longer needed is marked skipped, and anything it cannot decide is flagged for
+It will never delete an item or move one; work that is no longer needed is
+marked skipped, and anything it cannot decide is flagged for
 the teacher instead of guessed at.
 
     python manage.py run_study_plans --dry-run
@@ -65,28 +65,30 @@ the teacher instead of guessed at.
                 "Dry run: nothing will be written."))
         self.stdout.write(f"Checking {plans.count()} active plan(s) as of {today}.")
 
-        totals = {'completed': 0, 'unlocked': 0, 'graded': 0, 'carried': 0,
-                  'closed': 0}
+        totals = {'completed': 0, 'earned': 0, 'unlocked': 0, 'graded': 0,
+                  'behind': 0, 'closed': 0}
 
         for plan in plans:
             summary = nightly.run_for_plan(plan, today=today, dry_run=dry_run)
-            for key in ('completed', 'unlocked', 'graded', 'carried'):
+            for key in ('completed', 'earned', 'unlocked', 'graded', 'behind'):
                 totals[key] += summary[key]
             totals['closed'] += 1 if summary['closed'] else 0
 
-            if any(summary[k] for k in ('completed', 'unlocked', 'graded',
-                                        'carried')) or summary['closed']:
+            if any(summary[k] for k in ('completed', 'earned', 'unlocked',
+                                        'graded', 'behind')) or summary['closed']:
                 self.stdout.write(
                     f"  {plan.student.username} / {plan.title}: "
                     f"{summary['completed']} done, "
+                    f"{summary['earned']} MicroBadge(s), "
                     f"{summary['unlocked']} unlocked, "
                     f"{summary['graded']} marked, "
-                    f"{summary['carried']} carried"
+                    f"{summary['behind']} behind"
                     + (", plan finished" if summary['closed'] else ""))
 
         self.stdout.write(self.style.SUCCESS(
             f"{totals['completed']} item(s) completed, "
-            f"{totals['unlocked']} checkpoint(s) opened, "
+            f"{totals['earned']} MicroBadge(s) earned, "
+            f"{totals['unlocked']} Badge Test(s) opened, "
             f"{totals['graded']} marked, "
-            f"{totals['carried']} carried forward, "
+            f"{totals['behind']} topic(s) flagged as behind, "
             f"{totals['closed']} plan(s) finished."))

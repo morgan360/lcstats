@@ -134,6 +134,8 @@
                             {{ study_plan_badge_count }}</span>
                         {% endif %}
                     </a>
+                    <a href="{% url 'studyplans:stamp_cards' %}"
+                        class="rounded-lg px-2 py-2 text-mist transition hover:bg-mist/15">Stamps</a>
                     {% endif %}
 
                     {% if request.user.is_staff %}
@@ -327,6 +329,8 @@
                     study_plan_badge_count }}</span>
                 {% endif %}
             </a>
+            <a href="{% url 'studyplans:stamp_cards' %}"
+                class="block rounded-lg px-3 py-2 transition hover:bg-mist/10">Stamp Cards</a>
             {% endif %}
 
             {% if user.is_authenticated %}

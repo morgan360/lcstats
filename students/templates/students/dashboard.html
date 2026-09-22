@@ -58,7 +58,7 @@
 
         {% if study_plan_card.ready_count %}
         <p class="mb-2 text-sm font-semibold text-violet-royal">
-            ◉ {{ study_plan_card.ready_count }} checkpoint{{ study_plan_card.ready_count|pluralize }} ready to sit
+            ◉ {{ study_plan_card.ready_count }} Badge Test{{ study_plan_card.ready_count|pluralize }} ready to sit
         </p>
         {% endif %}
 
@@ -68,6 +68,26 @@
         </a>
     </div>
     {% endif %}
+
+    <!-- Stamp cards: MicroBadges and full badges from this student's plans -->
+    <div class="mb-8">
+        <div class="mb-3 flex flex-wrap items-baseline justify-between gap-2">
+            <h3 class="text-xl font-semibold text-mist">Stamp cards</h3>
+            <a href="{% url 'studyplans:stamp_cards' %}"
+               class="text-sm font-semibold text-mist hover:text-lime-glow">See all stamp cards &rarr;</a>
+        </div>
+        {% if stamp_cards %}
+        <div class="grid gap-4 sm:grid-cols-2">
+            {% for card in stamp_cards %}
+                {% include "studyplans/_stamp_card.html" with card=card %}
+            {% endfor %}
+        </div>
+        {% else %}
+        <p class="rounded-2xl bg-white/90 p-4 text-sm text-twilight/70">
+            Your stamp cards fill in as you earn MicroBadges on a study plan.
+        </p>
+        {% endif %}
+    </div>
 
     <!-- Stats Grid -->
     <div class="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">

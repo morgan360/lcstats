@@ -69,6 +69,12 @@ WORK_UPLOAD_TOKEN_MAX_AGE = int(os.getenv("WORK_UPLOAD_TOKEN_MAX_AGE", 900))
 # only staff can open an upload slot. Set WORK_PHOTO_STAFF_ONLY=False in the
 # environment to open it to students -- no code change, no redeploy.
 WORK_PHOTO_STAFF_ONLY = os.getenv("WORK_PHOTO_STAFF_ONLY", "True") == "True"
+# Whether a photographed page's estimated mark can count on a study-plan
+# checkpoint. Off by default, so a checkpoint is marked on typed answers alone;
+# on, each part takes the better of the typed mark and the photo's. It is the
+# only way a "show that" part can be passed. Switched on in production's .env.
+WORK_PHOTO_COUNTS_ON_CHECKPOINTS = os.getenv(
+    "WORK_PHOTO_COUNTS_ON_CHECKPOINTS", "False") == "True"
 
 # --- Homework Check (teacher marks a student's exercise from photos) --------
 # Sixteen photos is one full exercise off an iPhone. They are analysed in

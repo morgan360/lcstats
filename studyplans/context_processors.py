@@ -6,42 +6,37 @@ never worth a 500.
 """
 import logging
 
-from django.utils import timezone
-
 logger = logging.getLogger(__name__)
 
 
 def study_plan_count(request):
-    """Work due this week, plus any checkpoint waiting to be sat.
+    """Work left in each topic's next MicroBadge, plus any Badge Test to sit.
 
-    A ready checkpoint is counted because it is the thing most worth coming back
+    A ready Badge Test is counted because it is the thing most worth coming back
     for -- the student has done the work and the topic is one sitting from done.
     """
     if not request.user.is_authenticated or request.user.is_staff:
         return {'study_plan_badge_count': 0}
 
     try:
-        from .models import StudyPlan, StudyPlanCheckpoint, StudyPlanItem
+        from .models import StudyPlanCheckpoint, StudyPlanGoal
+        from .services import microbadges
 
-        plan_ids = list(
-            StudyPlan.objects
-            .filter(student=request.user, status='active')
-            .values_list('id', flat=True)
-        )
-        if not plan_ids:
+        goals = list(StudyPlanGoal.objects
+                     .filter(plan__student=request.user, plan__status='active',
+                             mastered_at__isnull=True)
+                     .prefetch_related('micro_badges__items'))
+        if not goals:
             return {'study_plan_badge_count': 0}
 
-        today = timezone.localdate()
-        due = StudyPlanItem.objects.filter(
-            plan_id__in=plan_ids,
-            status__in=('pending', 'attempted'),
-            available_from__lte=today,
-            due_date__gte=today,
-        ).count()
+        due = 0
+        for goal in goals:
+            badge = microbadges.next_badge(goal)
+            if badge is not None:
+                due += sum(1 for i in badge.live_items() if i.status != 'done')
 
         ready = StudyPlanCheckpoint.objects.filter(
-            goal__plan_id__in=plan_ids, status='ready',
-        ).count()
+            goal__in=goals, status='ready').count()
 
         return {'study_plan_badge_count': due + ready}
     except Exception as exc:

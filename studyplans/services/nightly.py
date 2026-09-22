@@ -18,7 +18,7 @@ from django.utils import timezone
 from .. import constants
 from ..models import StudyPlanEvent, StudyPlanItem
 from . import checkpoints as checkpoint_service
-from . import completion, estimates, planner
+from . import completion, estimates, microbadges, planner
 
 logger = logging.getLogger(__name__)
 
@@ -27,7 +27,7 @@ def _plan_items(plan):
     return (plan.items
             .exclude(status__in=('done', 'skipped'))
             .select_related('section', 'exam_question', 'exam_question_part',
-                            'quickkick', 'flashcard_set', 'week', 'goal'))
+                            'quickkick', 'flashcard_set', 'micro_badge', 'goal'))
 
 
 # ---------------------------------------------------------------------------
@@ -45,21 +45,39 @@ def detect_completions(plan, today=None, dry_run=False):
     return completion.persist(items, student=plan.student)
 
 
+def award_microbadges(plan, dry_run=False):
+    """Earn every MicroBadge whose work is all done."""
+    goals = list(plan.goals.all())
+    if dry_run:
+        return [b for goal in goals
+                for b in goal.micro_badges.prefetch_related('items')
+                if not b.is_earned and microbadges.is_complete(b)]
+    return microbadges.award(goals)
+
+
 def unlock_due_checkpoints(plan, dry_run=False):
-    """Open the checkpoint of any goal whose practice is mostly finished."""
+    """Open the Badge Test of any goal that has earned its way to it.
+
+    Round one opens when all ten core MicroBadges are earned. A later round,
+    after a fail, opens when the retry MicroBadge the fail added is earned --
+    or at once if there was no fresh practice left to put in one.
+    """
     unlocked = []
-    for goal in plan.goals.prefetch_related('items', 'checkpoints'):
+    for goal in plan.goals.prefetch_related('micro_badges', 'checkpoints'):
         if goal.mastered_at:
             continue
         checkpoint = goal.checkpoints.filter(status='locked').order_by('round').first()
         if checkpoint is None:
             continue
-        # Only round one unlocks on progress; later rounds are opened by a fail.
-        if checkpoint.round > 1 and not goal.checkpoints.filter(
-                status='failed').exists():
-            continue
-        if checkpoint_service.unlock_ratio(goal) < constants.CHECKPOINT_UNLOCK_RATIO:
-            continue
+        if checkpoint.round == 1:
+            if not microbadges.all_core_earned(goal):
+                continue
+        else:
+            if not goal.checkpoints.filter(status='failed').exists():
+                continue
+            retries = microbadges.retry_badges(goal)
+            if retries and not retries[-1].is_earned:
+                continue
         if not dry_run:
             checkpoint_service.unlock(checkpoint)
         unlocked.append(checkpoint)
@@ -101,98 +119,98 @@ def _retire_goal_work(plan, goal):
             f"task(s) no longer needed")
 
 
-def _after_failure(plan, goal):
-    """More work on what went wrong, then a fresh checkpoint."""
-    injected = inject_revisits(plan, goal)
-    checkpoint = checkpoint_service.next_round(goal)
-    if checkpoint and injected:
+def _after_failure(plan, goal, today=None):
+    """A retry MicroBadge of fresh practice, then the next Badge Test.
+
+    The next round waits for the retry MicroBadge, so a student practises what
+    went wrong before trying again. With no fresh practice left to offer, the
+    next round opens at once rather than behind an empty MicroBadge.
+    """
+    candidates = revisit_candidates(plan, goal)[:constants.MAX_REVISITS_PER_RETRY]
+    if not candidates:
+        checkpoint_service.next_round(goal)
+        return
+    badge = microbadges.add_retry_badge(goal, today)
+    injected = inject_revisits(plan, goal, badge, candidates)
+    checkpoint = checkpoint_service.next_round(goal, open_now=False)
+    if checkpoint:
         StudyPlanEvent.log(
             plan, 'injected',
-            f"{goal.topic.name}: added {injected} task(s) and set "
-            f"checkpoint {checkpoint.round}")
+            f"{goal.topic.name}: added a retry MicroBadge of {injected} task(s); "
+            f"Badge Test {checkpoint.round} opens once it is earned")
 
 
-def inject_revisits(plan, goal, today=None):
-    """Add a little more practice on a topic that did not pass.
+def issued(plan):
+    """(kind, id) of every piece of content this plan has handed out, ever."""
+    refs = set()
+    for item in plan.items.all():
+        obj_id = {'section': item.section_id,
+                  'exam_part': item.exam_question_part_id,
+                  'exam_question': item.exam_question_id,
+                  'quickkick': item.quickkick_id,
+                  'flashcard': item.flashcard_set_id}.get(item.content_type)
+        if obj_id:
+            refs.add((item.content_type, obj_id))
+    return refs
 
-    Draws only on material this plan has not already issued, and never more than
-    a couple of items, so a struggling student is not buried.
-    """
-    today = today or timezone.localdate()
-    week = plan.current_week(today)
-    if week is None:
-        return 0
 
+def revisit_candidates(plan, goal):
+    """Practice on this topic the plan has not handed out, best first."""
     excluded = (checkpoint_service.reserved_part_ids(plan)
                 | checkpoint_service.practice_part_ids(plan))
-    issued_sections = set(plan.items.filter(section__isnull=False)
-                          .values_list('section_id', flat=True))
+    already = issued(plan)
+    return [c for c in planner.candidates_for_goal(plan.student, goal.topic, excluded)
+            if (c.kind, c.obj.id) not in already]
 
-    candidates = planner.candidates_for_goal(plan.student, goal.topic, excluded)
-    candidates = [c for c in candidates
-                  if not (c.kind == 'section' and c.obj.id in issued_sections)]
 
+def inject_revisits(plan, goal, badge, candidates, today=None):
+    """Put a little more practice on a topic that did not pass into ``badge``.
+
+    Never more than a couple of items, so a struggling student is not buried.
+    """
+    today = today or timezone.localdate()
     added = 0
-    next_order = (week.items.count() or 0) + 1
-    for candidate in candidates[:constants.MAX_REVISITS_PER_TOPIC_PER_WEEK]:
+    for order, candidate in enumerate(candidates, start=1):
         item = StudyPlanItem(
-            plan=plan, week=week, goal=goal, content_type=candidate.kind,
-            estimated_minutes=candidate.minutes, order=next_order,
-            origin='revisit',
-            available_from=max(today, week.start_date),
-            due_date=week.end_date)
+            plan=plan, goal=goal, micro_badge=badge, content_type=candidate.kind,
+            estimated_minutes=candidate.minutes, order=order, origin='revisit',
+            available_from=today, due_date=max(today, badge.target_date))
         field = {'section': 'section', 'exam_part': 'exam_question_part',
                  'exam_question': 'exam_question', 'quickkick': 'quickkick',
                  'flashcard': 'flashcard_set'}.get(candidate.kind)
         if field:
             setattr(item, field, candidate.obj)
         item.save()
-        next_order += 1
         added += 1
     return added
 
 
-def carry_forward(plan, today=None, dry_run=False):
-    """Move overdue work into the current week, up to a point.
+def flag_if_behind(plan, today=None, dry_run=False):
+    """Tell the teacher about a topic whose MicroBadges have stalled.
 
-    After a few carries the plan stops shuffling it along and tells the teacher
-    instead: work that has been rolled forward three weeks running is not a
-    scheduling problem.
+    Nothing is moved: a MicroBadge's target date is a pace, and a student who
+    is behind needs a conversation, not their work reshuffled. A goal already
+    flagged is not flagged again.
     """
-    today = today or timezone.localdate()
-    week = plan.current_week(today)
-    if week is None:
-        return []
-
-    overdue = [i for i in _plan_items(plan)
-               if i.due_date < today and i.week_id != week.id
-               and not i.is_locked_for_automation]
-
-    carried = []
-    for item in overdue:
-        if item.carried_over_count >= constants.MAX_CARRY_OVERS:
-            if not item.needs_teacher_attention and not dry_run:
-                item.needs_teacher_attention = True
-                item.save(update_fields=['needs_teacher_attention', 'updated_at'])
-                StudyPlanEvent.log(
-                    plan, 'attention',
-                    f"Still not done after {item.carried_over_count} weeks: "
-                    f"{item.get_content_display()}", item=item)
+    flagged = []
+    for goal in plan.goals.prefetch_related('micro_badges'):
+        if goal.mastered_at or goal.needs_teacher_attention:
             continue
+        late = microbadges.overdue(goal, today)
+        if not late:
+            continue
+        first = late[0]
+        label = ("the retry MicroBadge" if first.is_retry
+                 else f"MicroBadge {first.number}")
         if not dry_run:
-            item.week = week
-            item.available_from = max(item.available_from, week.start_date)
-            item.due_date = week.end_date
-            item.carried_over_count += 1
-            item.save(update_fields=['week', 'available_from', 'due_date',
-                                     'carried_over_count', 'updated_at'])
-        carried.append(item)
-
-    if carried and not dry_run:
-        StudyPlanEvent.log(
-            plan, 'carried',
-            f"Moved {len(carried)} unfinished task(s) into week {week.index}")
-    return carried
+            goal.flag(f"{label} is well past its target of "
+                      f"{first.target_date:%-d %b}")
+            StudyPlanEvent.log(
+                plan, 'attention',
+                f"{goal.topic.name}: {label} is more than "
+                f"{constants.BEHIND_FLAG_DAYS} days past its target")
+        flagged.append(goal)
+    return flagged
 
 
 def close_if_finished(plan, today=None, dry_run=False):
@@ -217,17 +235,18 @@ def close_if_finished(plan, today=None, dry_run=False):
 def run_for_plan(plan, today=None, dry_run=False):
     """Everything the plan does for itself, in order. Safe to repeat."""
     today = today or timezone.localdate()
-    summary = {'plan': plan, 'completed': 0, 'unlocked': 0, 'graded': 0,
-               'carried': 0, 'closed': False}
+    summary = {'plan': plan, 'completed': 0, 'earned': 0, 'unlocked': 0,
+               'graded': 0, 'behind': 0, 'closed': False}
 
     if plan.is_locked or plan.status != 'active':
         return summary
 
     with transaction.atomic():
         summary['completed'] = len(detect_completions(plan, today, dry_run))
+        summary['earned'] = len(award_microbadges(plan, dry_run))
         summary['unlocked'] = len(unlock_due_checkpoints(plan, dry_run))
         summary['graded'] = len(grade_sat_checkpoints(plan, dry_run))
-        summary['carried'] = len(carry_forward(plan, today, dry_run))
+        summary['behind'] = len(flag_if_behind(plan, today, dry_run))
         summary['closed'] = close_if_finished(plan, today, dry_run)
 
         if not dry_run:
@@ -245,3 +264,4 @@ def active_plans(student=None, plan_id=None):
     if student:
         plans = plans.filter(student=student)
     return plans.select_related('student', 'subject', 'teacher')
+

@@ -1,15 +1,16 @@
-"""Turning "get solid on these topics by December" into week-by-week work.
+"""Turning "get solid on these topics by December" into ten MicroBadges a topic.
 
 ``build_plan`` is pure: it reads the student's history and returns a proposal,
 and creates nothing. That is what lets the teacher's preview page and the
 persisting step share one code path, and it is what makes the whole thing
 testable without a database full of half-made plans.
 
-The order work is handed out in is a teaching judgement, not an optimisation.
-Recall material comes early, exam parts come late, and anything the student has
-already cracked comes last if at all. Parts held back for a checkpoint never
-appear here: a capstone sat on a question they have already worked through with
-the marking scheme open proves nothing.
+Which work is chosen is ranked on what the student has already done; the order
+it is bundled in is a teaching judgement, not an optimisation. Recall material
+comes early, exam parts come late, and anything the student has already
+cracked comes last if at all. Parts held back for the Badge Test never appear
+here: a test sat on a question they have already worked through with the
+marking scheme open proves nothing.
 """
 import logging
 from dataclasses import dataclass, field
@@ -48,19 +49,6 @@ class ProposedItem:
 
 
 @dataclass
-class ProposedWeek:
-    index: int
-    start_date: date
-    end_date: date
-    minutes_budget: int
-    items: list = field(default_factory=list)
-
-    @property
-    def minutes_used(self):
-        return sum(i.estimated_minutes for i in self.items)
-
-
-@dataclass
 class ProposedGoal:
     topic: object
     target_mastery: int
@@ -69,6 +57,12 @@ class ProposedGoal:
     checkpoint_parts: list = field(default_factory=list)
     reserve_rounds: list = field(default_factory=list)
     pool_available: int = 0
+    #: Ten lists of ProposedItem, one per MicroBadge; a list may be empty.
+    badges: list = field(default_factory=list)
+
+    @property
+    def minutes(self):
+        return sum(i.estimated_minutes for badge in self.badges for i in badge)
 
     @property
     def reserved_part_ids(self):
@@ -81,44 +75,11 @@ class ProposedGoal:
 @dataclass
 class ProposedPlan:
     goals: list = field(default_factory=list)
-    weeks: list = field(default_factory=list)
     warnings: list = field(default_factory=list)
 
     @property
     def total_items(self):
-        return sum(len(w.items) for w in self.weeks)
-
-
-# ---------------------------------------------------------------------------
-# Weeks
-# ---------------------------------------------------------------------------
-
-def build_weeks(start_date, deadline, weekly_minutes):
-    """Monday-to-Sunday weeks covering the run, first one pro rata."""
-    weeks = []
-    monday = start_date - timedelta(days=start_date.weekday())
-    index = 1
-    while monday <= deadline:
-        sunday = monday + timedelta(days=6)
-        if index == 1:
-            # Only the days actually left in this week are available.
-            days = (sunday - start_date).days + 1
-            budget = max(15, round(weekly_minutes * days / 7 / 5) * 5)
-        else:
-            budget = weekly_minutes
-        weeks.append(ProposedWeek(
-            index=index, start_date=monday, end_date=sunday,
-            minutes_budget=budget))
-        monday = sunday + timedelta(days=1)
-        index += 1
-    return weeks
-
-
-def spendable(week):
-    """Minutes a week may spend now, holding some back for the nightly run."""
-    if week.index == 1:
-        return week.minutes_budget
-    return int(week.minutes_budget * (1 - constants.REVISIT_RESERVE_RATIO))
+        return sum(len(badge) for g in self.goals for badge in g.badges)
 
 
 # ---------------------------------------------------------------------------
@@ -210,13 +171,16 @@ class Candidate:
     minutes: int
     flavour: str
 
-    def ramped(self, ramp):
-        """Exam work is worth more late on; recall work more early on."""
-        if self.kind in ('exam_part', 'exam_question'):
-            return self.score + 30 * ramp
-        if self.kind in ('flashcard', 'quickkick'):
-            return self.score - 20 * ramp
-        return self.score
+    @property
+    def stage(self):
+        """Where it sits in teaching order: meet it, recall it, practise it,
+        then prove it on exam questions."""
+        return STAGES.get(self.kind, len(STAGES))
+
+
+#: Teaching order within a topic's ten MicroBadges.
+STAGES = {'quickkick': 0, 'flashcard': 1, 'section': 2,
+          'exam_part': 3, 'exam_question': 3}
 
 
 def candidates_for_goal(student, topic, excluded_part_ids):
@@ -333,10 +297,59 @@ def _reserve_checkpoints(student, spec, warnings):
 
 
 def _allocate(goals, minutes):
-    """Split a week's minutes between goals, by priority."""
+    """Split minutes between goals, by priority."""
     weights = [g.priority for g in goals]
     total = sum(weights) or 1
     return [int(minutes * w / total) for w in weights]
+
+
+def plan_minutes(start_date, deadline, weekly_minutes):
+    """The student's whole commitment over the run, at their weekly rate."""
+    days = (deadline - start_date).days + 1
+    return int(weekly_minutes * days / 7)
+
+
+def choose(pool, budget, at_least=constants.MICROBADGES_PER_TOPIC):
+    """The best of a topic's candidates, up to its share of the time.
+
+    Always at least enough to give each MicroBadge something, where the topic
+    has that much -- a short plan should mean small MicroBadges, not missing
+    ones.
+    """
+    chosen, spent = [], 0
+    for candidate in pool:
+        if len(chosen) >= at_least and spent + candidate.minutes > budget:
+            continue
+        chosen.append(candidate)
+        spent += candidate.minutes
+    return chosen
+
+
+def bundle(items, count=constants.MICROBADGES_PER_TOPIC, minutes=lambda i: i.minutes):
+    """Cut an ordered list into ``count`` runs of roughly equal time.
+
+    Contiguous, so the teaching order survives; none empty while there are
+    items enough; with fewer items than MicroBadges, one each and the rest
+    empty.
+    """
+    groups = [[] for _ in range(count)]
+    remaining = list(items)
+    for index in range(count):
+        groups_left = count - index
+        if not remaining:
+            break
+        if len(remaining) <= groups_left:
+            groups[index].append(remaining.pop(0))
+            continue
+        share = sum(minutes(i) for i in remaining) / groups_left
+        group, spent = groups[index], 0
+        while remaining and len(remaining) > groups_left - 1:
+            nxt = remaining[0]
+            if group and spent + minutes(nxt) / 2 > share:
+                break
+            group.append(remaining.pop(0))
+            spent += minutes(nxt)
+    return groups
 
 
 def build_plan(student, goal_specs, start_date, deadline,
@@ -354,50 +367,28 @@ def build_plan(student, goal_specs, start_date, deadline,
     for spec in goal_specs:
         proposal.goals.append(_reserve_checkpoints(student, spec, proposal.warnings))
 
-    proposal.weeks = build_weeks(start_date, deadline, weekly_minutes)
-    if not proposal.weeks:
-        proposal.warnings.append("That date range does not contain a full week.")
-        return proposal
-
     excluded = set()
     for goal in proposal.goals:
         excluded |= goal.reserved_part_ids
 
-    pools = [candidates_for_goal(student, g.topic, excluded) for g in proposal.goals]
-    total_weeks = len(proposal.weeks)
+    budgets = _allocate(proposal.goals,
+                        plan_minutes(start_date, deadline, weekly_minutes))
+    slots = constants.MICROBADGES_PER_TOPIC
 
-    for week in proposal.weeks:
-        budget = spendable(week)
-        shares = _allocate(proposal.goals, budget)
-        ramp = (week.index - 1) / max(1, total_weeks - 1) if total_weeks > 1 else 1.0
-
-        for goal_index, (goal, pool) in enumerate(zip(proposal.goals, pools)):
-            share = shares[goal_index]
-            spent = 0
-            placed = 0
-            pool.sort(key=lambda c: -c.ramped(ramp))
-
-            while pool and len(week.items) < constants.MAX_ITEMS_PER_WEEK:
-                nxt = pool[0]
-                over = spent + nxt.minutes
-                # Every goal gets at least one item a week while work remains --
-                # without this a small share silently drops a topic altogether.
-                if placed and over > share * constants.FINAL_ITEM_OVERFLOW:
-                    break
-                pool.pop(0)
-                week.items.append(ProposedItem(
-                    kind=nxt.kind, obj=nxt.obj, goal_index=goal_index,
-                    estimated_minutes=nxt.minutes))
-                spent = over
-                placed += 1
-                if spent >= share:
-                    break
-
-    empty = [w.index for w in proposal.weeks if not w.items]
-    if empty:
-        proposal.warnings.append(
-            f"No work left to fill week(s) {', '.join(str(i) for i in empty)} -- "
-            f"the plan may be longer than the material available.")
+    for goal_index, (goal, budget) in enumerate(zip(proposal.goals, budgets)):
+        pool = candidates_for_goal(student, goal.topic, excluded)
+        chosen = choose(pool, budget)
+        chosen.sort(key=lambda c: (c.stage, -c.score, c.minutes))
+        goal.badges = [
+            [ProposedItem(kind=c.kind, obj=c.obj, goal_index=goal_index,
+                          estimated_minutes=c.minutes) for c in group]
+            for group in bundle(chosen, slots)
+        ]
+        if len(chosen) < slots:
+            proposal.warnings.append(
+                f"{goal.topic.name}: only {len(chosen)} piece(s) of practice left "
+                f"for this student, so MicroBadges {len(chosen) + 1}-{slots} are "
+                f"empty. Add work to them from the plan page, or award them.")
 
     return proposal
 
@@ -417,8 +408,9 @@ def persist_plan(plan, proposal):
     from django.db import transaction
 
     from core import content_links
-    from ..models import StudyPlanGoal, StudyPlanItem, StudyPlanWeek
+    from ..models import StudyPlanGoal, StudyPlanItem, StudyPlanMicroBadge
     from . import checkpoints as checkpoint_service
+    from . import microbadges
 
     with transaction.atomic():
         goals = []
@@ -429,34 +421,29 @@ def persist_plan(plan, proposal):
                 checkpoint_size=proposed.checkpoint_size,
                 priority=proposed.priority, order=order))
 
-        weeks = []
-        for proposed in proposal.weeks:
-            weeks.append(StudyPlanWeek.objects.create(
-                plan=plan, index=proposed.index,
-                start_date=proposed.start_date, end_date=proposed.end_date,
-                minutes_budget=proposed.minutes_budget))
-
         items = []
-        for week_model, proposed_week in zip(weeks, proposal.weeks):
-            for order, proposed_item in enumerate(proposed_week.items, start=1):
-                item = StudyPlanItem(
-                    plan=plan, week=week_model,
-                    goal=goals[proposed_item.goal_index] if goals else None,
-                    content_type=proposed_item.kind,
-                    instructions=proposed_item.instructions,
-                    estimated_minutes=proposed_item.estimated_minutes,
-                    order=order, origin='generated',
-                    # Never before the plan itself began: week one starts on a
-                    # Monday that can predate the start date, and taking it
-                    # would let work done before the plan existed count towards
-                    # it -- the very thing the window exists to prevent.
-                    available_from=max(week_model.start_date, plan.start_date),
-                    due_date=week_model.end_date)
-                field = content_links.CONTENT_FK_FIELDS.get(proposed_item.kind)
-                if field:
-                    setattr(item, field, proposed_item.obj)
-                item.full_clean(validate_unique=False)
-                items.append(item)
+        targets = microbadges.target_dates(plan.start_date, plan.deadline)
+        for goal, proposed in zip(goals, proposal.goals):
+            for number, (target, contents) in enumerate(
+                    zip(targets, proposed.badges), start=1):
+                badge = StudyPlanMicroBadge.objects.create(
+                    goal=goal, number=number, kind='core', target_date=target)
+                for order, proposed_item in enumerate(contents, start=1):
+                    item = StudyPlanItem(
+                        plan=plan, goal=goal, micro_badge=badge,
+                        content_type=proposed_item.kind,
+                        instructions=proposed_item.instructions,
+                        estimated_minutes=proposed_item.estimated_minutes,
+                        order=order, origin='generated',
+                        # Only work done once the plan began counts; a
+                        # MicroBadge's target date is a pace, not a window.
+                        available_from=plan.start_date,
+                        due_date=target)
+                    field = content_links.CONTENT_FK_FIELDS.get(proposed_item.kind)
+                    if field:
+                        setattr(item, field, proposed_item.obj)
+                    item.full_clean(validate_unique=False)
+                    items.append(item)
         StudyPlanItem.objects.bulk_create(items)
 
         for goal, proposed in zip(goals, proposal.goals):

@@ -1,6 +1,6 @@
 {% comment %}
-  The progress card. It leads with topics mastered, not tasks ticked: ticking a
-  task says work happened, passing a checkpoint says it worked.
+  The progress card. It leads with topics mastered, not work ticked: ticking an
+  item says work happened, passing a Badge Test says it worked.
 
   Expects `card` from studyplans.services.progress.plan_card.
 {% endcomment %}
@@ -55,13 +55,13 @@
           <span class="text-twilight/60">{{ goal.mastered_at|date:"j M" }}</span>
         {% elif goal.state == 'ready' %}
           <a href="{% url 'studyplans:checkpoint_detail' goal.checkpoint.id %}"
-             class="font-semibold text-violet-royal hover:text-indigo-deep">checkpoint ready &rarr;</a>
+             class="font-semibold text-violet-royal hover:text-indigo-deep">Badge Test ready &rarr;</a>
         {% elif goal.state == 'retry' %}
           scored {{ goal.checkpoint.score|floatformat:0 }}%, more work added
         {% elif goal.state == 'blocked' %}
           <span class="text-rose-pop">needs your teacher</span>
-        {% elif goal.items_total %}
-          {{ goal.items_done }} of {{ goal.items_total }} tasks done
+        {% elif goal.badges_total %}
+          {{ goal.badges_earned }} of {{ goal.badges_total }} MicroBadges
         {% else %}
           not started
         {% endif %}

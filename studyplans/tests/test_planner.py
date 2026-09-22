@@ -1,7 +1,8 @@
-"""Building a plan: how the weeks fall, what gets chosen, and what is held back.
+"""Building a plan: what gets chosen, how it is cut into ten MicroBadges, and
+what is held back.
 
-The rule worth guarding is the reservation: a part kept for a checkpoint must
-never also be handed out as practice, or the capstone tests work the student has
+The rule worth guarding is the reservation: a part kept for a Badge Test must
+never also be handed out as practice, or the test covers work the student has
 already done with the marking scheme available.
 """
 from datetime import date, timedelta
@@ -15,7 +16,7 @@ from homework.models import TeacherProfile
 from interactive_lessons.models import Question, QuestionPart, Section, Topic
 from studyplans import constants
 from studyplans.models import (
-    StudyPlan, StudyPlanCheckpointPart, StudyPlanGoal, StudyPlanItem, StudyPlanWeek,
+    StudyPlan, StudyPlanCheckpointPart, StudyPlanItem, StudyPlanMicroBadge,
 )
 from studyplans.services import planner
 
@@ -52,7 +53,7 @@ class PlannerTestBase(TestCase):
                     order=n, topic=cls.topic))
 
         cls.sections = []
-        for n in range(3):
+        for n in range(6):
             section = Section.objects.create(
                 name=f'Section {n}', topic=cls.topic, order=n)
             for q in range(3):
@@ -70,29 +71,40 @@ class PlannerTestBase(TestCase):
         return spec
 
 
-class WeekShapeTests(PlannerTestBase):
+class BundleTests(PlannerTestBase):
 
-    def test_weeks_run_monday_to_sunday(self):
-        # 2026-09-23 is a Wednesday.
-        weeks = planner.build_weeks(date(2026, 9, 23), date(2026, 10, 11), 120)
-        self.assertEqual(weeks[0].start_date, date(2026, 9, 21))  # Monday
-        self.assertEqual(weeks[0].end_date, date(2026, 9, 27))    # Sunday
-        for week in weeks:
-            self.assertEqual(week.start_date.weekday(), 0)
-            self.assertEqual(week.end_date.weekday(), 6)
+    def test_ten_runs_of_roughly_equal_time_in_the_same_order(self):
+        items = list(range(20))
+        groups = planner.bundle(items, 10, minutes=lambda i: 5)
+        self.assertEqual(len(groups), 10)
+        self.assertEqual([len(g) for g in groups], [2] * 10)
+        self.assertEqual([i for g in groups for i in g], items)
 
-    def test_a_partial_first_week_gets_a_smaller_budget(self):
-        weeks = planner.build_weeks(date(2026, 9, 25), date(2026, 10, 11), 140)
-        self.assertLess(weeks[0].minutes_budget, weeks[1].minutes_budget)
-        self.assertEqual(weeks[1].minutes_budget, 140)
+    def test_none_is_left_empty_while_there_are_items_enough(self):
+        # One long item must not swallow the share of the ones after it.
+        minutes = {0: 200, **{n: 5 for n in range(1, 12)}}
+        groups = planner.bundle(list(range(12)), 10, minutes=minutes.get)
+        self.assertTrue(all(groups))
+        self.assertEqual(sum(len(g) for g in groups), 12)
 
-    def test_a_full_first_week_gets_the_whole_budget(self):
-        weeks = planner.build_weeks(date(2026, 9, 21), date(2026, 10, 4), 140)
-        self.assertEqual(weeks[0].minutes_budget, 140)
+    def test_fewer_items_than_microbadges_means_one_each_then_empty(self):
+        groups = planner.bundle(['a', 'b', 'c'], 10, minutes=lambda i: 5)
+        self.assertEqual(groups[:3], [['a'], ['b'], ['c']])
+        self.assertEqual(groups[3:], [[]] * 7)
 
-    def test_later_weeks_hold_some_time_back_for_the_nightly_run(self):
-        weeks = planner.build_weeks(date(2026, 9, 21), date(2026, 10, 4), 100)
-        self.assertLess(planner.spendable(weeks[1]), weeks[1].minutes_budget)
+    def test_target_dates_end_a_week_before_the_deadline(self):
+        from studyplans.services import microbadges
+        dates = microbadges.target_dates(date(2026, 9, 21), date(2026, 12, 20))
+        self.assertEqual(len(dates), 10)
+        self.assertEqual(dates[-1], date(2026, 12, 13))
+        self.assertEqual(dates, sorted(dates))
+        self.assertGreater(dates[0], date(2026, 9, 21))
+
+    def test_a_run_too_short_for_the_buffer_ends_on_the_deadline(self):
+        from studyplans.services import microbadges
+        dates = microbadges.target_dates(date(2026, 9, 21), date(2026, 9, 25))
+        self.assertEqual(dates[-1], date(2026, 9, 25))
+        self.assertTrue(all(d >= date(2026, 9, 21) for d in dates))
 
 
 class ProposalTests(PlannerTestBase):
@@ -125,8 +137,8 @@ class ProposalTests(PlannerTestBase):
         reserved = proposal.goals[0].reserved_part_ids
         self.assertTrue(reserved)
 
-        issued = {item.obj.id for week in proposal.weeks for item in week.items
-                  if item.kind == 'exam_part'}
+        issued = {item.obj.id for badge in proposal.goals[0].badges
+                  for item in badge if item.kind == 'exam_part'}
         self.assertFalse(reserved & issued,
                          "a reserved checkpoint part was issued as practice")
 
@@ -158,23 +170,48 @@ class ProposalTests(PlannerTestBase):
     def test_a_deadline_before_the_start_is_refused(self):
         proposal = planner.build_plan(
             self.student, [self.spec()], date(2026, 10, 1), date(2026, 9, 1), 120)
-        self.assertEqual(proposal.weeks, [])
+        self.assertEqual(proposal.goals, [])
         self.assertTrue(proposal.warnings)
 
-    def test_no_week_is_given_more_items_than_the_cap(self):
+    def test_every_topic_gets_ten_microbadges_none_empty(self):
         proposal = planner.build_plan(
             self.student, [self.spec()],
-            date(2026, 9, 21), date(2026, 10, 18), 1200)
-        for week in proposal.weeks:
-            self.assertLessEqual(len(week.items), constants.MAX_ITEMS_PER_WEEK)
+            date(2026, 9, 21), date(2026, 12, 20), 120)
+        badges = proposal.goals[0].badges
+        self.assertEqual(len(badges), constants.MICROBADGES_PER_TOPIC)
+        self.assertTrue(all(badges), "a MicroBadge was left empty")
+
+    def test_recall_comes_before_exam_work(self):
+        proposal = planner.build_plan(
+            self.student, [self.spec()],
+            date(2026, 9, 21), date(2026, 12, 20), 120)
+        kinds = [item.kind for badge in proposal.goals[0].badges for item in badge]
+        last_section = max(i for i, k in enumerate(kinds) if k == 'section')
+        first_exam = min(i for i, k in enumerate(kinds) if k == 'exam_part')
+        self.assertLess(last_section, first_exam)
+
+    def test_a_short_budget_still_fills_all_ten(self):
+        proposal = planner.build_plan(
+            self.student, [self.spec()],
+            date(2026, 9, 21), date(2026, 9, 27), 30)
+        self.assertTrue(all(proposal.goals[0].badges))
+
+    def test_a_topic_short_of_ten_pieces_says_which_are_empty(self):
+        thin = Topic.objects.create(name='Thin practice', subject=self.maths, paper='p1')
+        Section.objects.create(name='Only one', topic=thin, order=1)
+        proposal = planner.build_plan(
+            self.student, [self.spec(topic=thin)],
+            date(2026, 9, 21), date(2026, 12, 20), 120)
+        self.assertTrue(any('MicroBadges 2-10 are empty' in w
+                            for w in proposal.warnings), proposal.warnings)
 
     def test_no_unit_is_handed_out_twice_in_one_plan(self):
         proposal = planner.build_plan(
             self.student, [self.spec()],
             date(2026, 9, 21), date(2026, 11, 15), 300)
         seen = set()
-        for week in proposal.weeks:
-            for item in week.items:
+        for badge in proposal.goals[0].badges:
+            for item in badge:
                 key = (item.kind, item.obj.id)
                 self.assertNotIn(key, seen, f"{key} was scheduled twice")
                 seen.add(key)
@@ -188,7 +225,7 @@ class PersistTests(PlannerTestBase):
             title='Autumn', start_date=date(2026, 9, 21),
             deadline=date(2026, 10, 18), status='active')
 
-    def test_it_writes_goals_weeks_items_and_checkpoints(self):
+    def test_it_writes_goals_microbadges_items_and_checkpoints(self):
         proposal = planner.build_plan(
             self.student, [self.spec(checkpoint_size=2)],
             date(2026, 9, 21), date(2026, 10, 18), 120)
@@ -196,23 +233,26 @@ class PersistTests(PlannerTestBase):
         planner.persist_plan(plan, proposal)
 
         self.assertEqual(plan.goals.count(), 1)
-        self.assertEqual(plan.weeks.count(), len(proposal.weeks))
+        self.assertEqual(plan.weeks.count(), 0)
         self.assertEqual(plan.items.count(), proposal.total_items)
+        self.assertEqual(StudyPlanMicroBadge.objects.filter(
+            goal__plan=plan, kind='core').count(), constants.MICROBADGES_PER_TOPIC)
+        self.assertFalse(plan.items.filter(micro_badge=None).exists())
 
         goal = plan.goals.first()
         # Round one plus a locked round for each retry held back.
         self.assertEqual(goal.checkpoints.count(), 1 + constants.RETRY_ROUNDS)
         self.assertEqual(goal.checkpoints.get(round=1).status, 'locked')
 
-    def test_persisted_items_carry_their_week_dates(self):
+    def test_items_open_with_the_plan_and_are_due_by_their_microbadge(self):
         proposal = planner.build_plan(
             self.student, [self.spec()],
-            date(2026, 9, 21), date(2026, 10, 4), 120)
+            date(2026, 9, 21), date(2026, 10, 18), 120)
         plan = self.make_plan()
         planner.persist_plan(plan, proposal)
-        for item in plan.items.select_related('week'):
-            self.assertEqual(item.available_from, item.week.start_date)
-            self.assertEqual(item.due_date, item.week.end_date)
+        for item in plan.items.select_related('micro_badge'):
+            self.assertEqual(item.available_from, plan.start_date)
+            self.assertEqual(item.due_date, item.micro_badge.target_date)
 
     def test_every_persisted_item_has_a_usable_link_and_label(self):
         proposal = planner.build_plan(
@@ -271,39 +311,3 @@ class UncompletableWorkTests(PlannerTestBase):
         scheduled = [c for c in candidates
                      if c.kind == 'section' and c.obj.id == section.id]
         self.assertEqual(scheduled, [])
-
-
-class WindowStartTests(PlannerTestBase):
-    """Week one begins on a Monday that can predate the plan. The completion
-    window must not."""
-
-    def test_first_week_items_are_not_available_before_the_plan_starts(self):
-        # A Thursday start: week one's Monday is three days earlier.
-        start = date(2026, 9, 24)
-        proposal = planner.build_plan(
-            self.student, [self.spec()], start, date(2026, 10, 18), 120)
-        plan = StudyPlan.objects.create(
-            student=self.student, teacher=self.teacher, subject=self.maths,
-            title='Thursday start', start_date=start,
-            deadline=date(2026, 10, 18), status='active')
-        planner.persist_plan(plan, proposal)
-
-        first_week = plan.weeks.get(index=1)
-        self.assertLess(first_week.start_date, start,
-                        "this test is pointless unless week one predates the plan")
-        for item in plan.items.filter(week=first_week):
-            self.assertGreaterEqual(
-                item.available_from, start,
-                "an item was available before the plan began")
-
-    def test_later_weeks_still_open_on_their_own_monday(self):
-        start = date(2026, 9, 24)
-        proposal = planner.build_plan(
-            self.student, [self.spec()], start, date(2026, 10, 18), 120)
-        plan = StudyPlan.objects.create(
-            student=self.student, teacher=self.teacher, subject=self.maths,
-            title='Thursday start 2', start_date=start,
-            deadline=date(2026, 10, 18), status='active')
-        planner.persist_plan(plan, proposal)
-        for item in plan.items.exclude(week__index=1).select_related('week'):
-            self.assertEqual(item.available_from, item.week.start_date)

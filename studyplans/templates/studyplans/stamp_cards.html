@@ -1,0 +1,23 @@
+{% extends "_base.html" %}
+{% block title %}My Stamp Cards{% endblock %}
+
+{% block content %}
+<div class="mx-auto max-w-4xl px-4 py-8 sm:px-6 lg:px-8">
+  <h2 class="mb-1 text-2xl font-semibold text-mist">My Stamp Cards</h2>
+  <p class="mb-6 text-sm text-mist/70">
+    Each topic on your plan has ten MicroBadges. Earn all ten to open its Badge
+    Test, and pass that for the full badge.
+  </p>
+  <div class="mb-8 h-1 w-full rounded-full bg-gradient-to-r from-violet-royal to-lime-glow"></div>
+
+  <div class="grid gap-4 sm:grid-cols-2">
+    {% for card in cards %}
+      {% include "studyplans/_stamp_card.html" with card=card %}
+    {% empty %}
+    <div class="rounded-2xl bg-white p-8 text-center shadow-sm ring-1 ring-twilight/10 sm:col-span-2">
+      <p class="text-sm text-twilight/70">No topics in this subject yet.</p>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}

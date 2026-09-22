@@ -1,0 +1,19 @@
+{% comment %}
+  A topic's MicroBadges in a row: earned ones inked, the next one ringed.
+  Expects `state` from studyplans.services.progress.goal_state.
+{% endcomment %}
+<div class="flex flex-wrap items-center gap-1.5"
+     role="img" aria-label="{{ state.badges_earned }} of {{ state.badges_total }} MicroBadges earned">
+  {% for badge in state.badges %}
+    <span class="rounded-full {% if badge == state.next_badge %}ring-2 ring-violet-royal ring-offset-2{% endif %}"
+          title="MicroBadge {{ badge.number }}{% if badge.is_earned %} &middot; earned{% else %} &middot; target {{ badge.target_date|date:'j M' }}{% endif %}">
+      {% include "studyplans/_stamp.html" with kind="micro" filled=badge.is_earned %}
+    </span>
+  {% endfor %}
+  {% for badge in state.retries %}
+    <span class="ml-2 flex items-center gap-1 rounded-full {% if badge == state.next_badge %}ring-2 ring-rose-pop ring-offset-2{% endif %}"
+          title="Retry MicroBadge{% if badge.is_earned %} &middot; earned{% else %} &middot; target {{ badge.target_date|date:'j M' }}{% endif %}">
+      {% include "studyplans/_stamp.html" with kind="micro" filled=badge.is_earned %}
+    </span>
+  {% endfor %}
+</div>

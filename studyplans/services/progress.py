@@ -1,12 +1,13 @@
 """Shaping a plan into what the student's progress card shows.
 
 The card leads with topics mastered rather than tasks ticked, because ticking a
-task only says work happened. Passing a checkpoint says it worked. Tasks done
-still appear, underneath, as the way in to this week's work.
+task only says work happened. Passing a Badge Test says it worked. MicroBadges
+earned still appear, underneath, as the way in to the work.
 """
 from django.utils import timezone
 
 from ..models import StudyPlan
+from . import microbadges
 
 #: Ordering for the card: what needs doing first, what is finished last.
 STATE_ORDER = {
@@ -24,6 +25,8 @@ def goal_state(goal):
     items = [i for i in goal.items.all() if i.status != 'skipped']
     done = sum(1 for i in items if i.status == 'done')
     latest = goal.current_checkpoint()
+    core = microbadges.core_badges(goal)
+    earned = sum(1 for b in core if b.is_earned)
 
     if goal.mastered_at:
         state = 'mastered'
@@ -33,7 +36,7 @@ def goal_state(goal):
         state = 'retry'
     elif goal.needs_teacher_attention:
         state = 'blocked'
-    elif done:
+    elif done or earned:
         state = 'working'
     else:
         state = 'not_started'
@@ -44,7 +47,12 @@ def goal_state(goal):
         'state': state,
         'items_done': done,
         'items_total': len(items),
-        'percent': int(100 * done / len(items)) if items else 0,
+        'badges': core,
+        'badges_earned': earned,
+        'badges_total': len(core),
+        'retries': microbadges.retry_badges(goal),
+        'next_badge': microbadges.next_badge(goal),
+        'percent': int(100 * earned / len(core)) if core else 0,
         'checkpoint': latest,
         'score': goal.mastery_score,
         'mastered_at': goal.mastered_at,
@@ -55,7 +63,7 @@ def plan_card(plan):
     """Everything the progress card needs, in one shape."""
     goals = (plan.goals
              .select_related('topic')
-             .prefetch_related('items', 'checkpoints'))
+             .prefetch_related('items', 'checkpoints', 'micro_badges'))
     states = [goal_state(goal) for goal in goals]
     states.sort(key=lambda s: (STATE_ORDER[s['state']], s['topic'].name))
     mastered = sum(1 for s in states if s['state'] == 'mastered')
@@ -81,22 +89,33 @@ def active_plan_for(user, subject=None):
     return plans.select_related('subject', 'teacher').first()
 
 
-def week_view(plan, week):
-    """One week's items, with the links and labels the template needs."""
-    if week is None:
-        return {'week': None, 'items': [], 'minutes_total': 0, 'minutes_done': 0}
-    items = list(week.items.select_related(
+def badge_view(badge):
+    """One MicroBadge's items, with the links and labels the template needs."""
+    if badge is None:
+        return None
+    items = list(badge.items.select_related(
         'goal__topic', 'section__topic', 'exam_question__exam_paper',
         'exam_question_part__question__exam_paper', 'quickkick__topic',
         'flashcard_set__topic').order_by('order', 'id'))
     visible = [i for i in items if i.status != 'skipped']
     return {
-        'week': week,
+        'badge': badge,
         'items': visible,
+        'done': sum(1 for i in visible if i.status == 'done'),
         'minutes_total': sum(i.estimated_minutes for i in visible),
-        'minutes_done': sum(i.estimated_minutes for i in visible
-                            if i.status == 'done'),
     }
+
+
+def topic_blocks(plan):
+    """Per topic: its state, and the MicroBadge to work on next with its items."""
+    blocks = []
+    for state in plan_card(plan)['goals']:
+        blocks.append({
+            'state': state,
+            'next': (badge_view(state['next_badge'])
+                     if state['state'] != 'mastered' else None),
+        })
+    return blocks
 
 
 def achievements_for(user):

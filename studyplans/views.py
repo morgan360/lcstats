@@ -13,6 +13,7 @@ import json
 import logging
 from datetime import datetime, timedelta
 
+from django.conf import settings
 from django.contrib import messages
 from django.core.exceptions import PermissionDenied
 from django.db import transaction
@@ -25,6 +26,7 @@ from django.views.decorators.http import require_GET, require_POST
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
 
+from core import content_links
 from homework.models import TeacherClass
 from interactive_lessons.models import Topic
 from students.decorators import student_or_teacher_required, teacher_required
@@ -32,9 +34,10 @@ from students.decorators import student_or_teacher_required, teacher_required
 from . import constants
 from .models import (
     StudyPlan, StudyPlanCheckpoint, StudyPlanEvent, StudyPlanGoal, StudyPlanItem,
+    StudyPlanMicroBadge,
 )
 from .services import checkpoints as checkpoint_service
-from .services import completion, nightly, planner, progress
+from .services import completion, microbadges, nightly, planner, progress, stamps
 
 logger = logging.getLogger(__name__)
 
@@ -90,15 +93,15 @@ def _owned_class(request, class_id):
 
 @student_or_teacher_required
 def my_plan(request):
-    """The student's current plan: what they have proved, and this week's work."""
+    """The student's current plan: what they have proved, and what to do next."""
     plan = progress.active_plan_for(request.user, getattr(request, 'current_subject', None))
-    context = {'card': None, 'week': None, 'plan': None,
+    context = {'card': None, 'blocks': [], 'plan': None,
                'refresh_after_minutes': constants.REFRESH_THROTTLE_MINUTES}
 
     if plan:
         context['plan'] = plan
         context['card'] = progress.plan_card(plan)
-        context['week'] = progress.week_view(plan, plan.current_week())
+        context['blocks'] = progress.topic_blocks(plan)
         context['needs_refresh'] = (
             plan.last_checked_at is None
             or plan.last_checked_at < timezone.now() - timedelta(
@@ -113,19 +116,26 @@ def my_plan(request):
 
 @student_or_teacher_required
 def plan_detail(request, plan_id):
-    """Every week of one plan."""
+    """Every MicroBadge of one plan, topic by topic."""
     plan = _owned_plan(request, plan_id)
-    weeks = [progress.week_view(plan, week)
-             for week in plan.weeks.prefetch_related('items')]
-    today = timezone.localdate()
-    current = plan.current_week(today)
     return render(request, 'studyplans/plan_detail.html', {
         'plan': plan,
         'card': progress.plan_card(plan),
-        'weeks': weeks,
-        'current_week_id': current.id if current else None,
+        'topics': _topics_with_badges(plan),
         'is_owner': plan.student_id == request.user.id,
     })
+
+
+def _topics_with_badges(plan):
+    """Each goal's state, and every one of its MicroBadges with its items."""
+    topics = []
+    for state in progress.plan_card(plan)['goals']:
+        badges = state['badges'] + state['retries']
+        topics.append({
+            'state': state,
+            'badges': [progress.badge_view(b) for b in badges],
+        })
+    return topics
 
 
 @student_or_teacher_required
@@ -133,6 +143,15 @@ def achievements(request):
     """Every topic this student has ever mastered, across all their plans."""
     return render(request, 'studyplans/achievements.html', {
         'achievements': progress.achievements_for(request.user),
+    })
+
+
+@student_or_teacher_required
+def stamp_cards(request):
+    """A card for every topic in the subject, plan or no plan."""
+    return render(request, 'studyplans/stamp_cards.html', {
+        'cards': stamps.cards_for(
+            request.user, getattr(request, 'current_subject', None)),
     })
 
 
@@ -146,13 +165,38 @@ def checkpoint_detail(request, checkpoint_id):
     _owned_plan(request, checkpoint.goal.plan_id)
     parts = list(checkpoint.parts.select_related(
         'exam_question_part__question__exam_paper'))
+    # Answers given since it opened, read live: the per-part results on the
+    # checkpoint are only frozen once it is marked, so without this a student
+    # who has answered everything sees a page that says they have not started.
+    answered = set()
+    if checkpoint.status == 'ready':
+        answered = checkpoint_service.answered_part_ids(checkpoint)
     return render(request, 'studyplans/checkpoint_detail.html', {
         'checkpoint': checkpoint,
         'plan': checkpoint.goal.plan,
         'goal': checkpoint.goal,
         'parts': parts,
         'sat': checkpoint.is_decided,
+        'answered': answered,
+        'photo_counts': getattr(settings, 'WORK_PHOTO_COUNTS_ON_CHECKPOINTS', False),
+        'ready_to_mark': bool(parts) and all(
+            p.exam_question_part_id in answered for p in parts),
     })
+
+
+@require_POST
+@student_or_teacher_required
+def mark_checkpoint(request, checkpoint_id):
+    """Mark a checkpoint the student has finished, now rather than overnight."""
+    checkpoint = get_object_or_404(StudyPlanCheckpoint, id=checkpoint_id)
+    plan = _owned_plan(request, checkpoint.goal.plan_id)
+    # The same step the nightly run takes, so a pass or a fail has exactly the
+    # same consequences (retired work, revisits, the next round) either way.
+    nightly.grade_sat_checkpoints(plan)
+    checkpoint.refresh_from_db()
+    if not checkpoint.is_decided:
+        messages.error(request, "Every part needs an answer before the Badge Test can be marked.")
+    return redirect('studyplans:checkpoint_detail', checkpoint_id=checkpoint.id)
 
 
 @require_POST
@@ -179,7 +223,8 @@ def start_item(request, item_id):
 @student_or_teacher_required
 def toggle_item_done(request, item_id):
     """The student's own tick, for written exercises and self-report."""
-    item = get_object_or_404(StudyPlanItem.objects.select_related('plan'), id=item_id)
+    item = get_object_or_404(StudyPlanItem.objects.select_related('plan', 'goal'),
+                             id=item_id)
     _owned_plan(request, item.plan_id)
 
     if item.status == 'done':
@@ -191,9 +236,11 @@ def toggle_item_done(request, item_id):
         item.completed_at = timezone.now()
         item.evidence_note = 'Ticked by the student'
     item.save(update_fields=['status', 'completed_at', 'evidence_note', 'updated_at'])
+    # Unticking never takes a MicroBadge back; ticking may complete one.
+    earned = microbadges.award(microbadges.goals_of([item]))
 
     if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-        return JsonResponse({'status': item.status})
+        return JsonResponse({'status': item.status, 'earned': len(earned)})
     return redirect(request.META.get('HTTP_REFERER',
                                      reverse('studyplans:my_plan')))
 
@@ -211,6 +258,7 @@ def refresh_progress(request, plan_id):
                  .select_related('section', 'exam_question', 'exam_question_part',
                                  'quickkick', 'flashcard_set'))
     changed = completion.persist(items, student=plan.student)
+    earned = nightly.award_microbadges(plan)
 
     unlocked = nightly.unlock_due_checkpoints(plan)
     graded = nightly.grade_sat_checkpoints(plan)
@@ -220,12 +268,15 @@ def refresh_progress(request, plan_id):
 
     payload = {
         'updated': len(changed),
+        'earned': len(earned),
         'unlocked': len(unlocked),
         'graded': len(graded),
     }
     if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
         return JsonResponse(payload)
-    if changed or unlocked or graded:
+    if earned:
+        messages.success(request, f"{len(earned)} MicroBadge(s) earned!")
+    elif changed or unlocked or graded:
         messages.success(request, "Progress updated.")
     return redirect('studyplans:my_plan')
 
@@ -242,7 +293,8 @@ def teacher_dashboard(request):
              .filter(teacher=profile)
              .exclude(status='archived')
              .select_related('student', 'subject', 'teacher_class')
-             .prefetch_related('goals__checkpoints', 'goals__items'))
+             .prefetch_related('goals__checkpoints', 'goals__items',
+                               'goals__micro_badges'))
 
     rows = []
     for plan in plans:
@@ -502,16 +554,13 @@ def _rollout(request, teacher_class, form, source_template=None):
 def plan_manage(request, plan_id):
     """The teacher's view of one plan, and the controls for changing it."""
     plan = _owned_plan(request, plan_id)
-    weeks = [progress.week_view(plan, week)
-             for week in plan.weeks.prefetch_related('items')]
-    goals = [progress.goal_state(goal)
-             for goal in plan.goals.select_related('topic')
-             .prefetch_related('items', 'checkpoints')]
+    topics = _topics_with_badges(plan)
+    for topic in topics:
+        topic['addable'] = nightly.revisit_candidates(plan, topic['state']['goal'])
     return render(request, 'studyplans/teacher/plan_manage.html', {
         'plan': plan,
         'card': progress.plan_card(plan),
-        'goals': goals,
-        'weeks': weeks,
+        'topics': topics,
         'events': plan.events.all()[:30],
     })
 
@@ -527,7 +576,7 @@ def manage_checkpoint(request, plan_id, checkpoint_id):
 
     if action == 'unlock':
         checkpoint_service.unlock(checkpoint)
-        messages.success(request, "Checkpoint unlocked.")
+        messages.success(request, "Badge Test opened.")
     elif action == 'void':
         checkpoint.status = 'voided'
         checkpoint.save(update_fields=['status'])
@@ -537,9 +586,9 @@ def manage_checkpoint(request, plan_id, checkpoint_id):
             goal.mastery_score = None
             goal.save(update_fields=['mastered_at', 'mastery_score'])
         StudyPlanEvent.log(plan, 'teacher_edit',
-                           f"{checkpoint.goal.topic.name}: checkpoint "
+                           f"{checkpoint.goal.topic.name}: Badge Test "
                            f"{checkpoint.round} voided", checkpoint=checkpoint)
-        messages.success(request, "Checkpoint voided.")
+        messages.success(request, "Badge Test voided.")
     else:
         messages.error(request, "Unknown action.")
 
@@ -558,6 +607,73 @@ def remove_item(request, plan_id, item_id):
                        f"Removed: {item.get_content_display()}", item=item)
     messages.success(request, "Item removed from the plan.")
     return redirect('studyplans:plan_manage', plan_id=plan.id)
+
+
+@require_POST
+@teacher_required
+def move_item(request, plan_id, item_id):
+    """Move an item to another MicroBadge of the same topic."""
+    plan = _owned_plan(request, plan_id)
+    item = get_object_or_404(StudyPlanItem, id=item_id, plan=plan)
+    badge = get_object_or_404(StudyPlanMicroBadge,
+                              id=request.POST.get('micro_badge'),
+                              goal_id=item.goal_id)
+    if badge.id != item.micro_badge_id:
+        item.micro_badge = badge
+        item.due_date = max(badge.target_date, item.available_from)
+        item.order = badge.items.count() + 1
+        item.save()
+        StudyPlanEvent.log(plan, 'teacher_edit',
+                           f"Moved to {_badge_label(badge)}: "
+                           f"{item.get_content_display()}", item=item)
+        messages.success(request, f"Moved to {_badge_label(badge)}.")
+    return redirect('studyplans:plan_manage', plan_id=plan.id)
+
+
+@require_POST
+@teacher_required
+def add_item(request, plan_id, badge_id):
+    """Add one of the topic's unused pieces of practice to a MicroBadge."""
+    plan = _owned_plan(request, plan_id)
+    badge = get_object_or_404(StudyPlanMicroBadge.objects.select_related('goal__topic'),
+                              id=badge_id, goal__plan=plan)
+    kind, _, obj_id = (request.POST.get('content') or '').partition(':')
+    candidate = next((c for c in nightly.revisit_candidates(plan, badge.goal)
+                      if c.kind == kind and str(c.obj.id) == obj_id), None)
+    if candidate is None:
+        messages.error(request, "That is not available to add to this topic.")
+        return redirect('studyplans:plan_manage', plan_id=plan.id)
+
+    item = StudyPlanItem(
+        plan=plan, goal=badge.goal, micro_badge=badge, content_type=candidate.kind,
+        estimated_minutes=candidate.minutes, order=badge.items.count() + 1,
+        origin='teacher', available_from=plan.start_date,
+        due_date=max(badge.target_date, plan.start_date))
+    setattr(item, content_links.CONTENT_FK_FIELDS[candidate.kind], candidate.obj)
+    item.save()
+    StudyPlanEvent.log(plan, 'teacher_edit',
+                       f"Added to {_badge_label(badge)}: "
+                       f"{item.get_content_display()}", item=item)
+    messages.success(request, f"Added to {_badge_label(badge)}.")
+    return redirect('studyplans:plan_manage', plan_id=plan.id)
+
+
+@require_POST
+@teacher_required
+def award_microbadge(request, plan_id, badge_id):
+    """Mark a MicroBadge earned by hand -- the way past a thin topic or a
+    piece of work that cannot be completed."""
+    plan = _owned_plan(request, plan_id)
+    badge = get_object_or_404(StudyPlanMicroBadge.objects.select_related('goal__plan', 'goal__topic'),
+                              id=badge_id, goal__plan=plan)
+    if microbadges.earn(badge, by_teacher=True):
+        messages.success(request, f"{_badge_label(badge)} awarded.")
+    return redirect('studyplans:plan_manage', plan_id=plan.id)
+
+
+def _badge_label(badge):
+    name = "Retry MicroBadge" if badge.is_retry else f"MicroBadge {badge.number}"
+    return f"{badge.goal.topic.name} {name}"
 
 
 @require_POST
@@ -607,8 +723,9 @@ def run_now(request, plan_id):
     messages.success(
         request,
         f"Checked: {summary['completed']} item(s) done, "
-        f"{summary['unlocked']} checkpoint(s) unlocked, "
-        f"{summary['graded']} marked, {summary['carried']} carried forward.")
+        f"{summary['earned']} MicroBadge(s) earned, "
+        f"{summary['unlocked']} Badge Test(s) opened, "
+        f"{summary['graded']} marked, {summary['behind']} topic(s) behind.")
     return redirect('studyplans:plan_manage', plan_id=plan.id)
 
 
@@ -621,7 +738,8 @@ def class_oversight(request, class_id):
              .filter(student__in=students, teacher_class=teacher_class)
              .exclude(status='archived')
              .select_related('student')
-             .prefetch_related('goals__topic', 'goals__items', 'goals__checkpoints'))
+             .prefetch_related('goals__topic', 'goals__items', 'goals__checkpoints',
+                               'goals__micro_badges'))
 
     by_student = {plan.student_id: plan for plan in plans}
     topics, rows = [], []
@@ -651,11 +769,13 @@ def student_oversight(request, student_id):
     student = _owned_student(request, student_id)
     plans = (StudyPlan.objects.filter(student=student)
              .select_related('subject')
-             .prefetch_related('goals__topic', 'goals__items', 'goals__checkpoints'))
+             .prefetch_related('goals__topic', 'goals__items', 'goals__checkpoints',
+                               'goals__micro_badges'))
     return render(request, 'studyplans/teacher/student_oversight.html', {
         'student': student,
         'cards': [progress.plan_card(plan) for plan in plans],
         'achievements': progress.achievements_for(student),
+        'stamp_cards': stamps.cards_for(student),
     })
 
 

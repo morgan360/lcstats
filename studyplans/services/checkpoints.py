@@ -25,10 +25,12 @@ not just the attempt carrying the flag.
 """
 import logging
 
+from django.conf import settings
 from django.db import transaction
 from django.utils import timezone
 
 from exam_papers.models import ExamQuestionAttempt, ExamQuestionPart
+from students.models import WorkSubmission
 
 from .. import constants
 from ..models import (
@@ -216,18 +218,9 @@ def unlock(checkpoint, when=None):
     checkpoint.save(update_fields=['status', 'unlocked_at'])
     StudyPlanEvent.log(
         checkpoint.goal.plan, 'checkpoint_unlocked',
-        f"{checkpoint.goal.topic.name}: checkpoint {checkpoint.round} ready to sit",
+        f"{checkpoint.goal.topic.name}: Badge Test {checkpoint.round} ready to sit",
         checkpoint=checkpoint)
     return checkpoint
-
-
-def unlock_ratio(goal):
-    """Share of this goal's practice items that are finished, 0-1."""
-    items = [i for i in goal.items.all() if i.status != 'skipped']
-    if not items:
-        return 1.0
-    done = sum(1 for i in items if i.status == 'done')
-    return done / len(items)
 
 
 # ---------------------------------------------------------------------------
@@ -264,10 +257,42 @@ def attempts_in_window(checkpoint):
     return by_part
 
 
+def photos_in_window(checkpoint):
+    """{part_id: [work photos]} that gave a mark since the checkpoint opened.
+
+    Empty unless WORK_PHOTO_COUNTS_ON_CHECKPOINTS is on. Only a photo the
+    analysis was willing to put a mark on counts: work_analysis withholds one
+    for an unreadable page, low confidence or no working, and that decision is
+    not second-guessed here.
+    """
+    if not getattr(settings, 'WORK_PHOTO_COUNTS_ON_CHECKPOINTS', False):
+        return {}
+    part_ids = [p.exam_question_part_id for p in checkpoint.parts.all()]
+    if not part_ids or checkpoint.unlocked_at is None:
+        return {}
+    rows = (WorkSubmission.objects
+            .filter(student__user=checkpoint.goal.plan.student,
+                    exam_question_part_id__in=part_ids,
+                    status=WorkSubmission.Status.COMPLETE,
+                    estimated_mark__isnull=False,
+                    estimated_max_marks__gt=0,
+                    created_at__gte=checkpoint.unlocked_at)
+            .order_by('exam_question_part_id', '-created_at'))
+    by_part = {}
+    for row in rows:
+        by_part.setdefault(row.exam_question_part_id, []).append(row)
+    return by_part
+
+
+def answered_part_ids(checkpoint):
+    """Parts with a typed answer, or a marked photo, since it opened."""
+    return set(attempts_in_window(checkpoint)) | set(photos_in_window(checkpoint))
+
+
 def is_sat(checkpoint):
-    """True once every part has been attempted since the checkpoint opened."""
-    by_part = attempts_in_window(checkpoint)
-    return all(p.exam_question_part_id in by_part for p in checkpoint.parts.all())
+    """True once every part has been answered since the checkpoint opened."""
+    answered = answered_part_ids(checkpoint)
+    return all(p.exam_question_part_id in answered for p in checkpoint.parts.all())
 
 
 @transaction.atomic
@@ -281,8 +306,10 @@ def grade(checkpoint, when=None):
         return checkpoint
 
     by_part = attempts_in_window(checkpoint)
+    photos = photos_in_window(checkpoint)
     parts = list(checkpoint.parts.select_related('exam_question_part'))
-    if not all(p.exam_question_part_id in by_part for p in parts):
+    if not all(p.exam_question_part_id in by_part or p.exam_question_part_id in photos
+               for p in parts):
         return checkpoint  # not sat yet
 
     total_awarded = 0.0
@@ -290,26 +317,37 @@ def grade(checkpoint, when=None):
     any_solution = False
 
     for part in parts:
-        attempts = by_part[part.exam_question_part_id]
-        best = attempts[0]  # ordered by -marks_awarded
+        attempts = by_part.get(part.exam_question_part_id, [])
 
         # Taint is per part: the flag lands on the attempt before the one it
-        # influenced, so any flagged attempt taints the lot.
+        # influenced, so any flagged attempt taints the lot -- a photo's mark
+        # included, since a scheme opened is opened whichever way you answer.
         hint_used = any(a.hint_used for a in attempts)
         solution_viewed = any(a.solution_viewed for a in attempts)
         any_solution = any_solution or solution_viewed
 
-        max_marks = best.max_marks or part.marks_possible or 1
-        ratio = (best.marks_awarded or 0) / max_marks
+        # The better of the best typed answer and the best photo.
+        ratio, when, from_photo = 0.0, None, False
+        if attempts:
+            best = attempts[0]  # ordered by -marks_awarded
+            max_marks = best.max_marks or part.marks_possible or 1
+            ratio = (best.marks_awarded or 0) / max_marks
+            when = best.submitted_at
+        for photo in photos.get(part.exam_question_part_id, []):
+            photo_ratio = photo.estimated_mark / photo.estimated_max_marks
+            if when is None or photo_ratio > ratio:
+                ratio, when, from_photo = photo_ratio, photo.created_at, True
         ratio = max(0.0, min(1.0, ratio)) * _penalty_factor(hint_used, solution_viewed)
 
         part.marks_awarded = round(ratio * part.marks_possible, 2)
         part.score = round(ratio * 100, 1)
-        part.attempted_at = best.submitted_at
+        part.attempted_at = when
         part.hint_used = hint_used
         part.solution_viewed = solution_viewed
+        part.marked_from_photo = from_photo
         part.save(update_fields=['marks_awarded', 'score', 'attempted_at',
-                                 'hint_used', 'solution_viewed'])
+                                 'hint_used', 'solution_viewed',
+                                 'marked_from_photo'])
 
         total_awarded += part.marks_awarded
         total_possible += part.marks_possible
@@ -342,7 +380,7 @@ def record_result(checkpoint):
         goal.save(update_fields=['mastered_at', 'mastery_score'])
         StudyPlanEvent.log(
             plan, 'checkpoint_passed',
-            f"{goal.topic.name}: passed checkpoint {checkpoint.round} "
+            f"{goal.topic.name}: passed Badge Test {checkpoint.round} "
             f"with {checkpoint.score:.0f}%"
             + ("" if checkpoint.is_clean else " (marking scheme was opened)"),
             checkpoint=checkpoint)
@@ -358,7 +396,7 @@ def record_result(checkpoint):
     if checkpoint.status == 'failed':
         StudyPlanEvent.log(
             plan, 'checkpoint_failed',
-            f"{goal.topic.name}: checkpoint {checkpoint.round} scored "
+            f"{goal.topic.name}: Badge Test {checkpoint.round} scored "
             f"{checkpoint.score:.0f}%, needed {checkpoint.pass_mark}%",
             checkpoint=checkpoint)
         return 'failed'
@@ -366,23 +404,27 @@ def record_result(checkpoint):
     return checkpoint.status
 
 
-def next_round(goal):
-    """Open the next checkpoint after a fail, or tell the teacher we are out.
+def next_round(goal, open_now=True):
+    """Set up the next Badge Test after a fail, or tell the teacher we are out.
+
+    ``open_now=False`` leaves it locked behind the retry MicroBadge the fail
+    added; the nightly run opens it once that is earned.
 
     Never reuses a part the student has already met -- if the reserved pool is
-    exhausted, the goal is flagged instead, because a checkpoint on a seen
-    question is not evidence of anything.
+    exhausted, the goal is flagged instead, because a test on a seen question
+    is not evidence of anything.
     """
     pending = goal.checkpoints.filter(status='locked').order_by('round').first()
     if pending:
-        return unlock(pending)
+        return unlock(pending) if open_now else pending
 
     parts = suggest_parts(goal)
     if len(parts) < 1:
-        goal.flag("No unseen exam parts left for another checkpoint")
+        goal.flag("No unseen exam parts left for another Badge Test")
         StudyPlanEvent.log(
             goal.plan, 'attention',
-            f"{goal.topic.name}: ran out of unseen exam parts for a new checkpoint")
+            f"{goal.topic.name}: ran out of unseen exam parts for a new Badge Test")
         return None
 
-    return create_checkpoint(goal, parts=parts, status='ready')
+    return create_checkpoint(goal, parts=parts,
+                             status='ready' if open_now else 'locked')

@@ -14,34 +14,41 @@
 
   <div class="mb-8">{% include "studyplans/_progress_card.html" %}</div>
 
-  {% for week in weeks %}
-  <section class="mb-5 rounded-2xl bg-white p-5 shadow-sm
-      {% if week.week.id == current_week_id %}ring-2 ring-violet-royal{% else %}ring-1 ring-twilight/10{% endif %}">
+  {% for topic in topics %}
+  {% with state=topic.state %}
+  <section class="mb-6 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-twilight/10">
     <div class="mb-3 flex flex-wrap items-baseline justify-between gap-2">
-      <h3 class="text-base font-semibold text-midnight">
-        Week {{ week.week.index }}
-        {% if week.week.id == current_week_id %}
-          <span class="ml-2 rounded-full bg-violet-royal px-2 py-0.5 text-[0.65rem] font-bold uppercase tracking-wide text-white">now</span>
-        {% endif %}
-      </h3>
-      <p class="text-xs text-twilight/60">
-        {{ week.week.start_date|date:"j M" }} &ndash; {{ week.week.end_date|date:"j M" }}
-        &middot; {{ week.minutes_done }}/{{ week.minutes_total }} min
-      </p>
+      <h3 class="text-lg font-semibold text-midnight">{{ state.topic.name }}</h3>
+      <p class="text-sm text-twilight/70">{{ state.badges_earned }} of {{ state.badges_total }} MicroBadges</p>
     </div>
-    {% if week.week.focus_note %}
-    <p class="mb-3 text-sm italic text-twilight/70">{{ week.week.focus_note }}</p>
-    {% endif %}
-    <ul class="space-y-2">
-      {% for item in week.items %}
-        {% include "studyplans/_item_card.html" with item=item owner=is_owner %}
-      {% empty %}
-        <li class="rounded-xl bg-twilight/5 px-3 py-4 text-center text-sm text-twilight/60">
-          Nothing scheduled.
-        </li>
+    {% include "studyplans/_badge_strip.html" %}
+
+    <div class="mt-4 space-y-4">
+      {% for view in topic.badges %}
+      <div class="rounded-xl p-3 {% if view.badge == state.next_badge %}ring-2 ring-violet-royal{% else %}bg-twilight/5{% endif %}">
+        <div class="mb-2 flex flex-wrap items-baseline justify-between gap-2">
+          <p class="text-sm font-semibold text-midnight">
+            {% if view.badge.is_retry %}Retry MicroBadge{% else %}MicroBadge {{ view.badge.number }}{% endif %}
+            {% if view.badge.is_earned %}<span class="ml-1 text-violet-royal">&check; earned</span>{% endif %}
+          </p>
+          <p class="text-xs text-twilight/60">
+            {{ view.done }} of {{ view.items|length }} done &middot; target {{ view.badge.target_date|date:"j M" }}
+          </p>
+        </div>
+        <ul class="space-y-2">
+          {% for item in view.items %}
+            {% include "studyplans/_item_card.html" with item=item owner=is_owner %}
+          {% empty %}
+            <li class="rounded-xl bg-white px-3 py-3 text-center text-sm text-twilight/60">
+              Nothing in this MicroBadge yet.
+            </li>
+          {% endfor %}
+        </ul>
+      </div>
       {% endfor %}
-    </ul>
+    </div>
   </section>
+  {% endwith %}
   {% endfor %}
 
   <a href="{% url 'studyplans:my_plan' %}"

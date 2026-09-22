@@ -309,7 +309,7 @@ class StudyPlanCheckpoint(models.Model):
         ]
 
     def __str__(self):
-        return f"{self.goal.topic.name} checkpoint {self.round} ({self.get_status_display()})"
+        return f"{self.goal.topic.name} Badge Test {self.round} ({self.get_status_display()})"
 
     @property
     def is_decided(self):
@@ -341,6 +341,9 @@ class StudyPlanCheckpointPart(models.Model):
     attempted_at = models.DateTimeField(null=True, blank=True)
     hint_used = models.BooleanField(default=False)
     solution_viewed = models.BooleanField(default=False)
+    marked_from_photo = models.BooleanField(
+        default=False,
+        help_text="The mark came from a photo of the working, not a typed answer")
 
     class Meta:
         verbose_name = "Study Plan Checkpoint Part"
@@ -384,6 +387,57 @@ class StudyPlanWeek(models.Model):
         return self.start_date <= day <= self.end_date
 
 
+class StudyPlanMicroBadge(models.Model):
+    """One of a topic's ten bundles of practice. Finish its items, earn it.
+
+    Ten ``core`` MicroBadges per goal, and earning all ten opens the Badge Test
+    (a StudyPlanCheckpoint -- the student-facing name changed, the model did
+    not). A failed Badge Test adds a ``retry`` MicroBadge, numbered from 11, and
+    the next round opens once that is earned.
+
+    ``earned_at`` only ever moves from empty to set: unticking an item or a
+    teacher adding work later never takes a MicroBadge back. That is what keeps
+    a student's stamp card from going backwards.
+    """
+
+    KIND_CHOICES = [('core', 'MicroBadge'), ('retry', 'Retry MicroBadge')]
+
+    goal = models.ForeignKey(
+        StudyPlanGoal, on_delete=models.CASCADE, related_name='micro_badges')
+    number = models.PositiveSmallIntegerField(help_text="1-10 core, 11 on for retries")
+    kind = models.CharField(max_length=6, choices=KIND_CHOICES, default='core')
+    target_date = models.DateField(
+        help_text="When it should be earned by to finish on time -- a pace, not a lock")
+    earned_at = models.DateTimeField(null=True, blank=True)
+    earned_by_teacher = models.BooleanField(default=False)
+
+    class Meta:
+        verbose_name = "MicroBadge"
+        ordering = ['goal', 'number']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['goal', 'number'], name='microbadge_number_per_goal'),
+        ]
+
+    def __str__(self):
+        return f"{self.goal.topic.name} MicroBadge {self.number}"
+
+    @property
+    def is_earned(self):
+        return self.earned_at is not None
+
+    @property
+    def is_retry(self):
+        return self.kind == 'retry'
+
+    def live_items(self):
+        """Its items that still count -- a removed one is skipped, not gone.
+
+        Iterates in Python so a prefetch of `items` is used.
+        """
+        return [i for i in self.items.all() if i.status != 'skipped']
+
+
 class StudyPlanItem(models.Model):
     """One piece of work: a section, an exam part, a flashcard set, and so on.
 
@@ -414,6 +468,10 @@ class StudyPlanItem(models.Model):
     goal = models.ForeignKey(
         StudyPlanGoal, on_delete=models.SET_NULL, null=True, blank=True,
         related_name='items')
+    micro_badge = models.ForeignKey(
+        StudyPlanMicroBadge, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='items',
+        help_text="The MicroBadge this counts towards")
 
     content_type = models.CharField(
         max_length=20, choices=content_links.CONTENT_KIND_CHOICES)
@@ -500,6 +558,10 @@ class StudyPlanItem(models.Model):
         if self.week_id and self.plan_id and self.week.plan_id != self.plan_id:
             raise ValidationError(
                 {'week': 'That week belongs to a different plan'})
+        if (self.micro_badge_id and self.goal_id
+                and self.micro_badge.goal_id != self.goal_id):
+            raise ValidationError(
+                {'micro_badge': 'That MicroBadge belongs to a different topic'})
 
     def save(self, *args, **kwargs):
         self.full_clean()
@@ -543,9 +605,10 @@ class StudyPlanEvent(models.Model):
         ('rollout', 'Rolled out to a class'),
         ('carried', 'Work carried forward'),
         ('injected', 'Extra work added'),
-        ('checkpoint_unlocked', 'Checkpoint unlocked'),
-        ('checkpoint_passed', 'Checkpoint passed'),
-        ('checkpoint_failed', 'Checkpoint not passed'),
+        ('microbadge_earned', 'MicroBadge earned'),
+        ('checkpoint_unlocked', 'Badge Test opened'),
+        ('checkpoint_passed', 'Badge Test passed'),
+        ('checkpoint_failed', 'Badge Test not passed'),
         ('goal_mastered', 'Topic mastered'),
         ('teacher_edit', 'Teacher edited the plan'),
         ('attention', 'Needs the teacher'),
@@ -575,3 +638,4 @@ class StudyPlanEvent(models.Model):
         return cls.objects.create(
             plan=plan, kind=kind, message=message[:300],
             item=item, checkpoint=checkpoint)
+

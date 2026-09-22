@@ -8,7 +8,7 @@
   <h2 class="mb-1 text-2xl font-semibold text-mist">{{ plan.title }}</h2>
   <p class="mb-6 text-sm text-mist/70">
     {{ plan.student.username }} &middot; {{ plan.start_date|date:"j M" }} &ndash;
-    {{ plan.deadline|date:"j M Y" }} &middot; {{ plan.weekly_minutes }} min/week
+    {{ plan.deadline|date:"j M Y" }} &middot; {{ plan.weekly_minutes }} min/week committed
   </p>
   <div class="mb-8 h-1 w-full rounded-full bg-gradient-to-r from-violet-royal to-lime-glow"></div>
 
@@ -16,9 +16,9 @@
     <div>{% include "studyplans/_progress_card.html" with card=card %}</div>
 
     <div class="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-twilight/10">
-      <h3 class="mb-3 text-base font-semibold text-midnight">Checkpoints</h3>
+      <h3 class="mb-3 text-base font-semibold text-midnight">Badge Tests</h3>
       <div class="space-y-2">
-        {% for goal in goals %}
+        {% for topic in topics %}{% with goal=topic.state %}
         <div class="rounded-xl bg-twilight/5 px-3 py-2">
           <div class="flex flex-wrap items-center justify-between gap-2">
             <span class="text-sm font-semibold text-midnight">{{ goal.topic.name }}</span>
@@ -29,7 +29,7 @@
                 {% if goal.checkpoint.score is not None %}
                   &middot; {{ goal.checkpoint.score|floatformat:0 }}%
                 {% endif %}
-              {% else %}no checkpoint set{% endif %}
+              {% else %}no Badge Test set{% endif %}
             </span>
           </div>
           {% if goal.checkpoint %}
@@ -39,7 +39,7 @@
             {% if goal.checkpoint.status == 'locked' %}
             <button name="action" value="unlock"
                     class="rounded bg-violet-royal px-2 py-1 text-xs font-semibold text-white hover:bg-indigo-deep">
-              Unlock now
+              Open it now
             </button>
             {% endif %}
             {% if goal.checkpoint.status == 'passed' and not goal.checkpoint.is_clean %}
@@ -56,7 +56,7 @@
           </p>
           {% endif %}
         </div>
-        {% endfor %}
+        {% endwith %}{% endfor %}
       </div>
 
       <div class="mt-4 flex flex-wrap gap-2">
@@ -84,7 +84,7 @@
       </div>
       <p class="mt-2 text-xs text-twilight/60">
         A student has one active plan at a time. Archiving keeps everything --
-        passed checkpoints stay on their achievements.
+        passed Badge Tests stay on their achievements.
       </p>
       {% if plan.last_checked_at %}
       <p class="mt-2 text-xs text-twilight/50">
@@ -94,34 +94,84 @@
     </div>
   </div>
 
-  {% for week in weeks %}
-  <section class="mb-4 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-twilight/10">
+  {% for topic in topics %}
+  {% with state=topic.state %}
+  <section class="mb-6 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-twilight/10">
     <div class="mb-3 flex flex-wrap items-baseline justify-between gap-2">
-      <h3 class="text-base font-semibold text-midnight">Week {{ week.week.index }}</h3>
-      <p class="text-xs text-twilight/60">
-        {{ week.week.start_date|date:"j M" }} &ndash; {{ week.week.end_date|date:"j M" }}
-        &middot; {{ week.minutes_done }}/{{ week.minutes_total }} min
-      </p>
+      <h3 class="text-lg font-semibold text-midnight">{{ state.topic.name }}</h3>
+      <p class="text-sm text-twilight/70">{{ state.badges_earned }} of {{ state.badges_total }} MicroBadges earned</p>
     </div>
-    <ul class="space-y-1">
-      {% for item in week.items %}
-      <li class="flex flex-wrap items-center gap-2 rounded-lg bg-twilight/5 px-3 py-2">
-        <span class="min-w-0 flex-1 truncate text-sm text-midnight">
-          {{ item.get_content_display }}
-        </span>
-        <span class="text-xs text-twilight/60">{{ item.get_status_display }}</span>
-        <form method="post" action="{% url 'studyplans:remove_item' plan.id item.id %}">
+    {% include "studyplans/_badge_strip.html" %}
+
+    <div class="mt-4 space-y-3">
+      {% for view in topic.badges %}
+      <div class="rounded-xl bg-twilight/5 p-3">
+        <div class="mb-2 flex flex-wrap items-center justify-between gap-2">
+          <p class="text-sm font-semibold text-midnight">
+            {% if view.badge.is_retry %}Retry MicroBadge{% else %}MicroBadge {{ view.badge.number }}{% endif %}
+            <span class="ml-1 text-xs font-normal text-twilight/60">
+              target {{ view.badge.target_date|date:"j M" }} &middot; {{ view.minutes_total }} min
+            </span>
+          </p>
+          {% if view.badge.is_earned %}
+            <span class="text-xs font-semibold text-violet-royal">
+              &check; earned{% if view.badge.earned_by_teacher %} (awarded by you){% endif %}
+            </span>
+          {% else %}
+            <form method="post" action="{% url 'studyplans:award_microbadge' plan.id view.badge.id %}">
+              {% csrf_token %}
+              <button type="submit" class="rounded bg-violet-royal/10 px-2 py-1 text-xs font-semibold text-violet-royal hover:bg-violet-royal/20">
+                Award it
+              </button>
+            </form>
+          {% endif %}
+        </div>
+        <ul class="space-y-1">
+          {% for item in view.items %}
+          <li class="flex flex-wrap items-center gap-2 rounded-lg bg-white px-3 py-2">
+            <span class="min-w-0 flex-1 truncate text-sm text-midnight">{{ item.get_content_display }}</span>
+            <span class="text-xs text-twilight/60">{{ item.get_status_display }}</span>
+            <form method="post" action="{% url 'studyplans:move_item' plan.id item.id %}" class="flex items-center gap-1">
+              {% csrf_token %}
+              <select name="micro_badge" class="rounded border-twilight/20 py-0 text-xs"
+                      onchange="this.form.submit()" aria-label="Move to another MicroBadge">
+                {% for other in topic.badges %}
+                <option value="{{ other.badge.id }}" {% if other.badge.id == view.badge.id %}selected{% endif %}>
+                  {% if other.badge.is_retry %}Retry{% else %}MB {{ other.badge.number }}{% endif %}
+                </option>
+                {% endfor %}
+              </select>
+            </form>
+            <form method="post" action="{% url 'studyplans:remove_item' plan.id item.id %}">
+              {% csrf_token %}
+              <button type="submit" class="text-xs font-semibold text-rose-pop hover:underline">remove</button>
+            </form>
+          </li>
+          {% empty %}
+          <li class="px-3 py-2 text-sm text-twilight/50">Empty &mdash; add work, or award it.</li>
+          {% endfor %}
+        </ul>
+        {% if topic.addable and not view.badge.is_earned %}
+        <form method="post" action="{% url 'studyplans:add_item' plan.id view.badge.id %}"
+              class="mt-2 flex flex-wrap items-center gap-2">
           {% csrf_token %}
-          <button type="submit" class="text-xs font-semibold text-rose-pop hover:underline">
-            remove
+          <select name="content" class="min-w-0 flex-1 rounded border-twilight/20 py-1 text-xs">
+            {% for candidate in topic.addable %}
+            <option value="{{ candidate.kind }}:{{ candidate.obj.id }}">
+              {{ candidate.kind|capfirst }}: {{ candidate.obj }} ({{ candidate.minutes }} min)
+            </option>
+            {% endfor %}
+          </select>
+          <button type="submit" class="rounded bg-twilight/10 px-2 py-1 text-xs font-semibold text-twilight hover:bg-twilight/20">
+            Add
           </button>
         </form>
-      </li>
-      {% empty %}
-      <li class="px-3 py-2 text-sm text-twilight/50">Nothing scheduled.</li>
+        {% endif %}
+      </div>
       {% endfor %}
-    </ul>
+    </div>
   </section>
+  {% endwith %}
   {% endfor %}
 
   <section class="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-twilight/10">

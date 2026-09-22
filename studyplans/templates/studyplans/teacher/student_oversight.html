@@ -24,5 +24,14 @@
     <p class="text-sm text-twilight/70">No study plans for this student yet.</p>
   </div>
   {% endfor %}
+
+  {% if stamp_cards %}
+  <h3 class="mb-3 mt-10 text-lg font-semibold text-mist">Stamp cards</h3>
+  <div class="grid gap-4 sm:grid-cols-2">
+    {% for card in stamp_cards %}
+      {% include "studyplans/_stamp_card.html" with card=card %}
+    {% endfor %}
+  </div>
+  {% endif %}
 </div>
 {% endblock %}

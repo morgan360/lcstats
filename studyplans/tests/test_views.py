@@ -12,11 +12,14 @@ from django.urls import reverse
 from django.utils import timezone
 
 from core.models import Subject
-from exam_papers.models import ExamPaper, ExamQuestion, ExamQuestionPart
+from exam_papers.models import (
+    ExamAttempt, ExamPaper, ExamQuestion, ExamQuestionAttempt, ExamQuestionPart,
+)
 from homework.models import TeacherClass, TeacherProfile
 from interactive_lessons.models import Topic
 from studyplans.models import (
-    StudyPlan, StudyPlanCheckpoint, StudyPlanGoal, StudyPlanItem, StudyPlanWeek,
+    StudyPlan, StudyPlanCheckpoint, StudyPlanGoal, StudyPlanItem,
+    StudyPlanMicroBadge, StudyPlanWeek,
 )
 from studyplans.services import checkpoints as checkpoint_service
 
@@ -275,7 +278,7 @@ class BuilderTests(ViewTestBase):
         self.assertEqual(response.status_code, 302)
         plan = StudyPlan.objects.get(student=self.classmate, title='Spring plan')
         self.assertTrue(plan.goals.exists())
-        self.assertTrue(plan.weeks.exists())
+        self.assertEqual(plan.goals.get().micro_badges.filter(kind='core').count(), 10)
 
     def test_rolling_out_to_a_class_gives_every_student_their_own_plan(self):
         # aoife already holds the fixture plan, and a student may have only one
@@ -402,3 +405,168 @@ class EveryPageRendersTests(ViewTestBase):
         self.assertEqual(response.status_code, 200)
         self.assertIsNotNone(response.context['study_plan_card'])
         self.assertContains(response, self.plan.title)
+
+
+class MarkingACheckpointTests(ViewTestBase):
+    """A student who has answered every part must be able to see that, and get
+    a result, without waiting for the nightly run."""
+
+    def setUp(self):
+        self.checkpoint = checkpoint_service.create_checkpoint(
+            self.goal, parts=self.parts[:2], status='ready')
+
+    def answer(self, part, marks):
+        attempt, _ = ExamAttempt.objects.get_or_create(
+            student=self.student, exam_paper=part.question.exam_paper,
+            attempt_mode='question_practice')
+        ExamQuestionAttempt.objects.create(
+            exam_attempt=attempt, question_part=part, student_answer='x',
+            marks_awarded=marks, max_marks=10)
+
+    def page(self):
+        return self.client.get(
+            reverse('studyplans:checkpoint_detail', args=[self.checkpoint.id]))
+
+    def test_answered_parts_are_acknowledged(self):
+        self.answer(self.parts[0], 10)
+        self.client.force_login(self.student)
+        response = self.page()
+        self.assertContains(response, 'answered', count=1)
+        self.assertNotContains(response, 'Mark my Badge Test')
+
+    def test_marking_is_offered_once_every_part_is_answered(self):
+        self.answer(self.parts[0], 10)
+        self.answer(self.parts[1], 9)
+        self.client.force_login(self.student)
+        self.assertContains(self.page(), 'Mark my Badge Test')
+        self.checkpoint.refresh_from_db()
+        self.assertEqual(self.checkpoint.status, 'ready')  # the GET wrote nothing
+
+    def test_marking_it_gives_a_result(self):
+        self.answer(self.parts[0], 10)
+        self.answer(self.parts[1], 9)
+        self.client.force_login(self.student)
+        response = self.client.post(
+            reverse('studyplans:mark_checkpoint', args=[self.checkpoint.id]))
+        self.assertRedirects(response, reverse(
+            'studyplans:checkpoint_detail', args=[self.checkpoint.id]))
+        self.checkpoint.refresh_from_db()
+        self.assertEqual(self.checkpoint.status, 'passed')
+        self.assertEqual(self.checkpoint.score, 95)
+
+    def test_marking_an_unfinished_checkpoint_leaves_it_open(self):
+        self.answer(self.parts[0], 10)
+        self.client.force_login(self.student)
+        self.client.post(
+            reverse('studyplans:mark_checkpoint', args=[self.checkpoint.id]))
+        self.checkpoint.refresh_from_db()
+        self.assertEqual(self.checkpoint.status, 'ready')
+
+    def test_another_student_cannot_mark_it(self):
+        self.answer(self.parts[0], 10)
+        self.answer(self.parts[1], 9)
+        self.client.force_login(self.stranger)
+        response = self.client.post(
+            reverse('studyplans:mark_checkpoint', args=[self.checkpoint.id]))
+        self.assertEqual(response.status_code, 403)
+        self.checkpoint.refresh_from_db()
+        self.assertEqual(self.checkpoint.status, 'ready')
+
+    def test_stale_progress_is_checked_on_arrival(self):
+        self.client.force_login(self.student)
+        response = self.client.get(reverse('studyplans:my_plan'))
+        self.assertContains(response, 'id="refresh-progress"')
+        self.assertContains(response, "fetch(form.action")
+
+
+class MicroBadgeEditingTests(ViewTestBase):
+    """The teacher shapes each MicroBadge after the planner has filled it."""
+
+    def setUp(self):
+        self.badges = [
+            StudyPlanMicroBadge.objects.create(
+                goal=self.goal, number=n,
+                target_date=self.today + timedelta(days=2 * n))
+            for n in range(1, 11)
+        ]
+        self.item.micro_badge = self.badges[0]
+        self.item.save()
+
+    def test_moving_an_item_to_another_microbadge(self):
+        self.client.force_login(self.teacher_user)
+        self.client.post(
+            reverse('studyplans:move_item', args=[self.plan.id, self.item.id]),
+            {'micro_badge': self.badges[4].id})
+        self.item.refresh_from_db()
+        self.assertEqual(self.item.micro_badge, self.badges[4])
+        self.assertEqual(self.item.due_date, self.badges[4].target_date)
+
+    def test_an_item_cannot_move_to_another_topics_microbadge(self):
+        other_topic = Topic.objects.create(name='Other', subject=self.maths, paper='p1')
+        other_goal = StudyPlanGoal.objects.create(plan=self.plan, topic=other_topic)
+        foreign = StudyPlanMicroBadge.objects.create(
+            goal=other_goal, number=1, target_date=self.today)
+        self.client.force_login(self.teacher_user)
+        response = self.client.post(
+            reverse('studyplans:move_item', args=[self.plan.id, self.item.id]),
+            {'micro_badge': foreign.id})
+        self.assertEqual(response.status_code, 404)
+
+    def test_adding_unused_practice_to_a_microbadge(self):
+        part = self.parts[5]
+        self.client.force_login(self.teacher_user)
+        self.client.post(
+            reverse('studyplans:add_item', args=[self.plan.id, self.badges[2].id]),
+            {'content': f'exam_part:{part.id}'})
+        added = self.badges[2].items.get()
+        self.assertEqual((added.exam_question_part, added.origin), (part, 'teacher'))
+
+    def test_something_already_on_the_plan_cannot_be_added_again(self):
+        self.client.force_login(self.teacher_user)
+        self.client.post(
+            reverse('studyplans:add_item', args=[self.plan.id, self.badges[2].id]),
+            {'content': f'exam_part:{self.item.exam_question_part_id}'})
+        self.assertFalse(self.badges[2].items.exists())
+
+    def test_awarding_a_microbadge_by_hand(self):
+        self.client.force_login(self.teacher_user)
+        self.client.post(
+            reverse('studyplans:award_microbadge', args=[self.plan.id, self.badges[9].id]))
+        self.badges[9].refresh_from_db()
+        self.assertTrue(self.badges[9].is_earned)
+        self.assertTrue(self.badges[9].earned_by_teacher)
+
+    def test_a_student_cannot_award_their_own(self):
+        self.client.force_login(self.student)
+        response = self.client.post(
+            reverse('studyplans:award_microbadge', args=[self.plan.id, self.badges[9].id]))
+        self.assertEqual(response.status_code, 403)
+        self.badges[9].refresh_from_db()
+        self.assertFalse(self.badges[9].is_earned)
+
+    def test_another_teacher_cannot_edit(self):
+        self.client.force_login(self.other_teacher_user)
+        response = self.client.post(
+            reverse('studyplans:move_item', args=[self.plan.id, self.item.id]),
+            {'micro_badge': self.badges[4].id})
+        self.assertEqual(response.status_code, 403)
+
+    def test_ticking_the_last_item_earns_the_microbadge(self):
+        self.client.force_login(self.student)
+        response = self.client.post(
+            reverse('studyplans:toggle_item', args=[self.item.id]),
+            HTTP_X_REQUESTED_WITH='XMLHttpRequest')
+        self.assertEqual(response.json()['earned'], 1)
+        self.badges[0].refresh_from_db()
+        self.assertTrue(self.badges[0].is_earned)
+
+    def test_the_pages_render_with_microbadges(self):
+        self.client.force_login(self.teacher_user)
+        response = self.client.get(reverse('studyplans:plan_manage', args=[self.plan.id]))
+        self.assertContains(response, 'MicroBadge 10')
+        self.client.force_login(self.student)
+        for name in ('studyplans:my_plan',):
+            response = self.client.get(reverse(name))
+            self.assertContains(response, 'Next: MicroBadge 1')
+        response = self.client.get(reverse('studyplans:plan_detail', args=[self.plan.id]))
+        self.assertContains(response, 'MicroBadge 10')
