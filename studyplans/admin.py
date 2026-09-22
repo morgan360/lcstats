@@ -2,8 +2,14 @@ from django.contrib import admin
 
 from .models import (
     StudyPlan, StudyPlanCheckpoint, StudyPlanCheckpointPart, StudyPlanEvent,
-    StudyPlanGoal, StudyPlanItem, StudyPlanWeek,
+    StudyPlanGoal, StudyPlanItem, StudyPlanMicroBadge,
 )
+
+# StudyPlanWeek is deliberately not registered. Weeks stopped being part of a
+# plan when MicroBadges replaced them; the table is kept so no history was
+# thrown away, but offering it here only invites building a plan that cannot
+# work. Plans are built at /study-plans/teacher/new/ and shaped from the
+# manage page -- admin is for looking, and for the occasional repair.
 
 
 class StudyPlanGoalInline(admin.TabularInline):
@@ -15,10 +21,11 @@ class StudyPlanGoalInline(admin.TabularInline):
     autocomplete_fields = ('topic',)
 
 
-class StudyPlanWeekInline(admin.TabularInline):
-    model = StudyPlanWeek
+class StudyPlanMicroBadgeInline(admin.TabularInline):
+    model = StudyPlanMicroBadge
     extra = 0
-    fields = ('index', 'start_date', 'end_date', 'minutes_budget', 'focus_note')
+    fields = ('number', 'kind', 'target_date', 'earned_at', 'earned_by_teacher')
+    readonly_fields = ('earned_at', 'earned_by_teacher')
 
 
 @admin.register(StudyPlan)
@@ -29,7 +36,7 @@ class StudyPlanAdmin(admin.ModelAdmin):
     search_fields = ('title', 'student__username', 'student__first_name',
                      'student__last_name')
     date_hierarchy = 'start_date'
-    inlines = [StudyPlanGoalInline, StudyPlanWeekInline]
+    inlines = [StudyPlanGoalInline]
     readonly_fields = ('last_checked_at', 'created_at', 'updated_at')
 
     @admin.display(description="Mastered")
@@ -60,26 +67,53 @@ class StudyPlanCheckpointAdmin(admin.ModelAdmin):
 
 @admin.register(StudyPlanGoal)
 class StudyPlanGoalAdmin(admin.ModelAdmin):
-    list_display = ('topic', 'plan', 'target_mastery', 'mastery_score',
-                    'mastered_at', 'needs_teacher_attention')
+    list_display = ('topic', 'plan', 'badges_display', 'target_mastery',
+                    'mastery_score', 'mastered_at', 'needs_teacher_attention')
     list_filter = ('needs_teacher_attention', 'priority', 'topic__subject')
     search_fields = ('topic__name', 'plan__student__username')
+    inlines = [StudyPlanMicroBadgeInline]
+
+    @admin.display(description="MicroBadges")
+    def badges_display(self, obj):
+        badges = [b for b in obj.micro_badges.all() if b.kind == 'core']
+        return f"{sum(1 for b in badges if b.earned_at)}/{len(badges)}"
+
+
+class StudyPlanItemInline(admin.TabularInline):
+    model = StudyPlanItem
+    extra = 0
+    fields = ('order', 'content_type', 'section', 'exam_question_part',
+              'quickkick', 'flashcard_set', 'status', 'estimated_minutes')
+    readonly_fields = ('status',)
+    autocomplete_fields = ('section',)
+
+
+@admin.register(StudyPlanMicroBadge)
+class StudyPlanMicroBadgeAdmin(admin.ModelAdmin):
+    list_display = ('__str__', 'kind', 'target_date', 'items_display',
+                    'earned_at', 'earned_by_teacher')
+    list_filter = ('kind', 'earned_by_teacher', 'goal__topic__subject')
+    search_fields = ('goal__topic__name', 'goal__plan__student__username')
+    readonly_fields = ('earned_at', 'earned_by_teacher')
+    inlines = [StudyPlanItemInline]
+
+    @admin.display(description="Items done")
+    def items_display(self, obj):
+        items = obj.live_items()
+        return f"{sum(1 for i in items if i.status == 'done')}/{len(items)}"
 
 
 @admin.register(StudyPlanItem)
 class StudyPlanItemAdmin(admin.ModelAdmin):
-    list_display = ('__str__', 'content_type', 'status', 'origin', 'week',
+    list_display = ('__str__', 'content_type', 'status', 'origin', 'micro_badge',
                     'estimated_minutes', 'due_date')
     list_filter = ('status', 'origin', 'content_type', 'needs_teacher_attention')
     search_fields = ('plan__title', 'plan__student__username', 'instructions')
     readonly_fields = ('started_at', 'completed_at', 'evidence_score',
                        'evidence_note', 'carried_over_count')
-
-
-@admin.register(StudyPlanWeek)
-class StudyPlanWeekAdmin(admin.ModelAdmin):
-    list_display = ('plan', 'index', 'start_date', 'end_date', 'minutes_budget')
-    list_filter = ('plan__status',)
+    # `week` is dead weight on a plan built from MicroBadges, and a value in it
+    # would say a plan is shaped in a way nothing reads any more.
+    exclude = ('week',)
 
 
 @admin.register(StudyPlanEvent)
