@@ -87,6 +87,20 @@ class ViewTestBase(TestCase):
             estimated_minutes=5, available_from=cls.today,
             due_date=cls.today + timedelta(days=6))
 
+    def builder_post(self, **overrides):
+        data = {
+            'title': 'Spring plan',
+            'start_date': self.today.isoformat(),
+            'deadline': (self.today + timedelta(days=21)).isoformat(),
+            'weekly_minutes': '120',
+            'topics': [str(self.topic.id)],
+            f'target_{self.topic.id}': '75',
+            f'priority_{self.topic.id}': '1',
+            f'size_{self.topic.id}': '2',
+        }
+        data.update(overrides)
+        return data
+
 
 class AccessTests(ViewTestBase):
 
@@ -244,20 +258,6 @@ class AchievementsTests(ViewTestBase):
 
 
 class BuilderTests(ViewTestBase):
-
-    def builder_post(self, **overrides):
-        data = {
-            'title': 'Spring plan',
-            'start_date': self.today.isoformat(),
-            'deadline': (self.today + timedelta(days=21)).isoformat(),
-            'weekly_minutes': '120',
-            'topics': [str(self.topic.id)],
-            f'target_{self.topic.id}': '75',
-            f'priority_{self.topic.id}': '1',
-            f'size_{self.topic.id}': '2',
-        }
-        data.update(overrides)
-        return data
 
     def test_previewing_a_plan_writes_nothing(self):
         self.client.force_login(self.teacher_user)
@@ -570,3 +570,53 @@ class MicroBadgeEditingTests(ViewTestBase):
             self.assertContains(response, 'Next: MicroBadge 1')
         response = self.client.get(reverse('studyplans:plan_detail', args=[self.plan.id]))
         self.assertContains(response, 'MicroBadge 10')
+
+
+class DraftPlanTests(ViewTestBase):
+    """A draft is shaped by the teacher before the student ever sees it."""
+
+    def post(self, **extra):
+        self.client.force_login(self.teacher_user)
+        data = self.builder_post(student=str(self.classmate.id))
+        data.update(extra)
+        return self.client.post(reverse('studyplans:plan_create'), data)
+
+    def test_saving_as_a_draft_keeps_it_from_the_student(self):
+        self.post(save='draft')
+        plan = StudyPlan.objects.get(student=self.classmate, title='Spring plan')
+        self.assertEqual(plan.status, 'draft')
+        self.assertEqual(plan.goals.get().micro_badges.count(), 10)
+
+        self.client.force_login(self.classmate)
+        response = self.client.get(reverse('studyplans:my_plan'))
+        self.assertIsNone(response.context['plan'])
+
+    def test_a_draft_does_not_need_the_active_slot(self):
+        """aoife already holds the fixture plan; a draft must still be allowed."""
+        self.client.force_login(self.teacher_user)
+        data = self.builder_post(student=str(self.student.id))
+        data['save'] = 'draft'
+        self.client.post(reverse('studyplans:plan_create'), data)
+        self.assertTrue(StudyPlan.objects.filter(
+            student=self.student, title='Spring plan', status='draft').exists())
+        self.assertEqual(StudyPlan.objects.filter(
+            student=self.student, status='active').count(), 1)
+
+    def test_without_the_draft_button_it_goes_live(self):
+        self.post()
+        plan = StudyPlan.objects.get(student=self.classmate, title='Spring plan')
+        self.assertEqual(plan.status, 'active')
+
+    def test_a_draft_can_be_handed_over_later(self):
+        self.post(save='draft')
+        plan = StudyPlan.objects.get(student=self.classmate, title='Spring plan')
+        self.client.post(reverse('studyplans:set_plan_status', args=[plan.id]),
+                         {'action': 'activate'})
+        plan.refresh_from_db()
+        self.assertEqual(plan.status, 'active')
+
+    def test_the_preview_offers_the_draft_button(self):
+        self.client.force_login(self.teacher_user)
+        response = self.client.post(reverse('studyplans:plan_preview'),
+                                    self.builder_post(student=str(self.classmate.id)))
+        self.assertContains(response, 'Save as draft')

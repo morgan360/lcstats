@@ -443,8 +443,14 @@ def plan_preview(request):
 
 
 def _create_one_plan(request, student, form, source_template=None,
-                     teacher_class=None):
-    """Build and save a plan for one student, against their own history."""
+                     teacher_class=None, status='active'):
+    """Build and save a plan for one student, against their own history.
+
+    ``status='draft'`` saves it without the student seeing it: a draft is
+    skipped by the nightly run, does not take the student's one active slot,
+    and fills no stamp card. It is how a teacher reshapes the MicroBadges
+    before handing the plan over.
+    """
     proposal = planner.build_plan(
         student, form['specs'], form['start_date'], form['deadline'],
         form['weekly_minutes'])
@@ -455,11 +461,12 @@ def _create_one_plan(request, student, form, source_template=None,
         student=student, teacher=_teacher_profile(request), subject=subject,
         title=form['title'], description=form['description'],
         start_date=form['start_date'], deadline=form['deadline'],
-        weekly_minutes=form['weekly_minutes'], status='active',
+        weekly_minutes=form['weekly_minutes'], status=status,
         teacher_class=teacher_class, source_template=source_template)
     planner.persist_plan(plan, proposal)
     StudyPlanEvent.log(plan, 'created',
-                       f"Plan created with {plan.goals.count()} topic(s)")
+                       f"Plan created with {plan.goals.count()} topic(s)"
+                       + (" as a draft" if status == 'draft' else ""))
     return plan
 
 
@@ -475,11 +482,14 @@ def plan_create(request):
 
     student_id = request.POST.get('student')
     class_id = request.POST.get('teacher_class')
+    # A draft is invisible to the student, so it neither needs the active slot
+    # nor collides with a plan they are already working on.
+    status = 'draft' if request.POST.get('save') == 'draft' else 'active'
 
     if student_id:
         student = _owned_student(request, int(student_id))
-        existing = StudyPlan.objects.filter(
-            student=student, status='active').first()
+        existing = (StudyPlan.objects.filter(student=student, status='active')
+                    .first() if status == 'active' else None)
         if existing:
             messages.error(
                 request,
@@ -487,19 +497,27 @@ def plan_create(request):
                 f"“{existing.title}”. Archive that plan first, or edit "
                 f"it instead of starting another.")
             return redirect('studyplans:plan_manage', plan_id=existing.id)
-        plan = _create_one_plan(request, student, form)
-        messages.success(request, f"Plan set for {student.username}.")
+        plan = _create_one_plan(request, student, form, status=status)
+        if status == 'draft':
+            messages.success(
+                request,
+                f"Draft saved for {student.username}. They cannot see it yet -- "
+                f"shape the MicroBadges, then use “Make this the active "
+                f"plan”.")
+        else:
+            messages.success(request, f"Plan set for {student.username}.")
         return redirect('studyplans:plan_manage', plan_id=plan.id)
 
     if class_id:
         teacher_class = _owned_class(request, int(class_id))
-        return _rollout(request, teacher_class, form)
+        return _rollout(request, teacher_class, form, status=status)
 
     messages.error(request, "Choose a student or a class.")
     return redirect('studyplans:plan_builder')
 
 
-def _rollout(request, teacher_class, form, source_template=None):
+def _rollout(request, teacher_class, form, source_template=None,
+             status='active'):
     """One plan per student, each generated against that student's own history.
 
     Not a copy: the point of the feature is that two students on the same class
@@ -519,17 +537,18 @@ def _rollout(request, teacher_class, form, source_template=None):
                 continue
             if StudyPlan.objects.filter(
                     student=student, teacher_class=teacher_class,
-                    title=form['title'], status='active').exists():
+                    title=form['title'], status=status).exists():
                 skipped += 1
                 continue
             # One active plan per student: someone mid-way through another
             # plan is left alone rather than having it swapped underneath them.
-            if StudyPlan.objects.filter(student=student, status='active').exists():
+            if status == 'active' and StudyPlan.objects.filter(
+                    student=student, status='active').exists():
                 busy.append(student.username)
                 continue
             plan = _create_one_plan(request, student, form,
                                     source_template=template,
-                                    teacher_class=teacher_class)
+                                    teacher_class=teacher_class, status=status)
             if template is None:
                 template = plan
                 plan.source_template = plan
@@ -540,6 +559,9 @@ def _rollout(request, teacher_class, form, source_template=None):
 
     messages.success(
         request,
+        f"Saved {made} draft plan(s) for {teacher_class.name}. No student can "
+        f"see theirs yet."
+        if status == 'draft' else
         f"Set {made} plan(s) for {teacher_class.name}."
         + (f" {skipped} student(s) already had this one." if skipped else ""))
     if busy:
