@@ -1,4 +1,4 @@
-{% load static %}
+{% load static assets %}
 <!DOCTYPE html>
 <html lang="en">
 
@@ -11,7 +11,8 @@
     <link rel="icon" type="image/svg+xml" href="{% static 'images/numscoil_icon_only.svg' %}">
 
     <!-- Tailwind CSS -->
-    <link rel="stylesheet" href="{% static 'css/tailwind.css' %}">
+    {% asset_version 'css/tailwind.css' as css_version %}
+    <link rel="stylesheet" href="{% static 'css/tailwind.css' %}{% if css_version %}?v={{ css_version }}{% endif %}">
 
     <!-- ✅ MathLive styles -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/mathlive@0.107.1/mathlive-static.min.css">
