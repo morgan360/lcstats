@@ -151,7 +151,13 @@
           <li class="px-3 py-2 text-sm text-twilight/50">Empty &mdash; add work, or award it.</li>
           {% endfor %}
         </ul>
-        {% if topic.addable and not view.badge.is_earned %}
+        {% if view.badge.is_earned %}
+        {% elif not topic.addable %}
+        <p class="mt-2 text-xs text-twilight/50">
+          Nothing left on this topic to add &mdash; every piece of practice is
+          already on the plan. Move work here with the dropdowns instead.
+        </p>
+        {% else %}
         <form method="post" action="{% url 'studyplans:add_item' plan.id view.badge.id %}"
               class="mt-2 flex flex-wrap items-center gap-2">
           {% csrf_token %}

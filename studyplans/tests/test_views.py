@@ -22,6 +22,7 @@ from studyplans.models import (
     StudyPlanMicroBadge, StudyPlanWeek,
 )
 from studyplans.services import checkpoints as checkpoint_service
+from studyplans.services import nightly
 
 
 def make_teacher(username):
@@ -620,3 +621,64 @@ class DraftPlanTests(ViewTestBase):
         response = self.client.post(reverse('studyplans:plan_preview'),
                                     self.builder_post(student=str(self.classmate.id)))
         self.assertContains(response, 'Save as draft')
+
+
+class AddingWorkBackTests(ViewTestBase):
+    """Removing an item must not put it out of reach for good."""
+
+    def setUp(self):
+        self.badge = StudyPlanMicroBadge.objects.create(
+            goal=self.goal, number=1, target_date=self.today + timedelta(days=3))
+        self.item.micro_badge = self.badge
+        self.item.save()
+        self.client.force_login(self.teacher_user)
+
+    def add(self, part):
+        return self.client.post(
+            reverse('studyplans:add_item', args=[self.plan.id, self.badge.id]),
+            {'content': f'exam_part:{part.id}'})
+
+    def test_a_removed_item_can_be_added_back(self):
+        self.client.post(
+            reverse('studyplans:remove_item', args=[self.plan.id, self.item.id]))
+        self.item.refresh_from_db()
+        self.assertEqual(self.item.status, 'skipped')
+
+        self.add(self.item.exam_question_part)
+        self.item.refresh_from_db()
+        self.assertEqual(self.item.status, 'pending')
+        self.assertEqual(self.item.micro_badge, self.badge)
+        self.assertEqual(self.item.origin, 'teacher')
+
+    def test_adding_it_back_does_not_make_a_second_row(self):
+        part = self.item.exam_question_part
+        self.client.post(
+            reverse('studyplans:remove_item', args=[self.plan.id, self.item.id]))
+        self.add(part)
+        self.assertEqual(
+            self.plan.items.filter(exam_question_part=part).count(), 1)
+
+    def test_the_nightly_run_never_revives_what_a_teacher_removed(self):
+        self.client.post(
+            reverse('studyplans:remove_item', args=[self.plan.id, self.item.id]))
+        offered = [(c.kind, c.obj.id)
+                   for c in nightly.revisit_candidates(self.plan, self.goal)]
+        self.assertNotIn(('exam_part', self.item.exam_question_part_id), offered)
+
+    def test_the_teachers_own_list_offers_it_back(self):
+        self.client.post(
+            reverse('studyplans:remove_item', args=[self.plan.id, self.item.id]))
+        offered = [(c.kind, c.obj.id) for c in nightly.revisit_candidates(
+            self.plan, self.goal, allow_removed=True)]
+        self.assertIn(('exam_part', self.item.exam_question_part_id), offered)
+
+    def test_a_topic_with_nothing_left_says_so(self):
+        for part in self.parts:
+            StudyPlanItem.objects.create(
+                plan=self.plan, goal=self.goal, micro_badge=self.badge,
+                content_type='exam_part', exam_question_part=part,
+                estimated_minutes=5, available_from=self.today,
+                due_date=self.today + timedelta(days=3))
+        response = self.client.get(
+            reverse('studyplans:plan_manage', args=[self.plan.id]))
+        self.assertContains(response, 'Nothing left on this topic to add')

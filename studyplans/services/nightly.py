@@ -140,10 +140,17 @@ def _after_failure(plan, goal, today=None):
             f"Badge Test {checkpoint.round} opens once it is earned")
 
 
-def issued(plan):
-    """(kind, id) of every piece of content this plan has handed out, ever."""
+def issued(plan, count_removed=True):
+    """(kind, id) of every piece of content this plan has handed out.
+
+    ``count_removed=False`` leaves out what a teacher removed, so it can be
+    offered back to them. The automatic side never passes that: work a teacher
+    took off the plan must not reappear overnight.
+    """
     refs = set()
     for item in plan.items.all():
+        if not count_removed and item.status == 'skipped':
+            continue
         obj_id = {'section': item.section_id,
                   'exam_part': item.exam_question_part_id,
                   'exam_question': item.exam_question_id,
@@ -154,11 +161,17 @@ def issued(plan):
     return refs
 
 
-def revisit_candidates(plan, goal):
-    """Practice on this topic the plan has not handed out, best first."""
+def revisit_candidates(plan, goal, allow_removed=False):
+    """Practice on this topic the plan has not handed out, best first.
+
+    ``allow_removed=True`` also offers back anything the teacher removed --
+    for the teacher's own Add list, where undoing a mistaken removal is the
+    point. Parts held back for a Badge Test are never offered either way.
+    """
     excluded = (checkpoint_service.reserved_part_ids(plan)
-                | checkpoint_service.practice_part_ids(plan))
-    already = issued(plan)
+                | checkpoint_service.practice_part_ids(
+                    plan, count_removed=not allow_removed))
+    already = issued(plan, count_removed=not allow_removed)
     return [c for c in planner.candidates_for_goal(plan.student, goal.topic, excluded)
             if (c.kind, c.obj.id) not in already]
 

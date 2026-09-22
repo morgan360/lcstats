@@ -57,13 +57,17 @@ def reserved_part_ids(plan):
     )
 
 
-def practice_part_ids(plan):
-    """Parts this plan has already issued as ordinary practice."""
-    return set(
-        StudyPlanItem.objects
-        .filter(plan=plan, exam_question_part__isnull=False)
-        .values_list('exam_question_part_id', flat=True)
-    )
+def practice_part_ids(plan, count_removed=True):
+    """Parts this plan has already issued as ordinary practice.
+
+    ``count_removed=False`` leaves out parts a teacher took off the plan, so
+    they can be offered back. Only the teacher's own Add list asks for that:
+    everywhere else a removed part still counts as met.
+    """
+    items = StudyPlanItem.objects.filter(plan=plan, exam_question_part__isnull=False)
+    if not count_removed:
+        items = items.exclude(status='skipped')
+    return set(items.values_list('exam_question_part_id', flat=True))
 
 
 def attempted_part_ids(student, part_ids):

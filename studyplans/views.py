@@ -578,7 +578,8 @@ def plan_manage(request, plan_id):
     plan = _owned_plan(request, plan_id)
     topics = _topics_with_badges(plan)
     for topic in topics:
-        topic['addable'] = nightly.revisit_candidates(plan, topic['state']['goal'])
+        topic['addable'] = nightly.revisit_candidates(
+            plan, topic['state']['goal'], allow_removed=True)
     return render(request, 'studyplans/teacher/plan_manage.html', {
         'plan': plan,
         'card': progress.plan_card(plan),
@@ -660,18 +661,31 @@ def add_item(request, plan_id, badge_id):
     badge = get_object_or_404(StudyPlanMicroBadge.objects.select_related('goal__topic'),
                               id=badge_id, goal__plan=plan)
     kind, _, obj_id = (request.POST.get('content') or '').partition(':')
-    candidate = next((c for c in nightly.revisit_candidates(plan, badge.goal)
+    candidate = next((c for c in nightly.revisit_candidates(
+                          plan, badge.goal, allow_removed=True)
                       if c.kind == kind and str(c.obj.id) == obj_id), None)
     if candidate is None:
         messages.error(request, "That is not available to add to this topic.")
         return redirect('studyplans:plan_manage', plan_id=plan.id)
 
-    item = StudyPlanItem(
-        plan=plan, goal=badge.goal, micro_badge=badge, content_type=candidate.kind,
-        estimated_minutes=candidate.minutes, order=badge.items.count() + 1,
-        origin='teacher', available_from=plan.start_date,
-        due_date=max(badge.target_date, plan.start_date))
-    setattr(item, content_links.CONTENT_FK_FIELDS[candidate.kind], candidate.obj)
+    field = content_links.CONTENT_FK_FIELDS[candidate.kind]
+    # Adding back something removed earlier revives that row rather than making
+    # a second one, so the item's history -- and anything pointing at it --
+    # survives the round trip.
+    item = plan.items.filter(goal=badge.goal, content_type=candidate.kind,
+                             status='skipped',
+                             **{field: candidate.obj}).first()
+    if item is None:
+        item = StudyPlanItem(
+            plan=plan, goal=badge.goal, content_type=candidate.kind,
+            estimated_minutes=candidate.minutes, available_from=plan.start_date)
+        setattr(item, field, candidate.obj)
+    else:
+        item.status = 'pending'
+    item.micro_badge = badge
+    item.order = badge.items.count() + 1
+    item.origin = 'teacher'
+    item.due_date = max(badge.target_date, plan.start_date)
     item.save()
     StudyPlanEvent.log(plan, 'teacher_edit',
                        f"Added to {_badge_label(badge)}: "
