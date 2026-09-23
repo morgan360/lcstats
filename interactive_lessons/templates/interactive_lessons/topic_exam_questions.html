@@ -77,7 +77,7 @@
                     <!-- Question Parts Preview -->
                     <div class="parts-preview" style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #e0e0e0;">
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-                            <strong style="color: #2c3e50;">Question Parts:</strong>
+                            <strong style="color: #2c3e50;">{% if question.matching_parts %}Parts on this topic:{% else %}&nbsp;{% endif %}</strong>
                             <form method="post" action="{% url 'exam_papers:start_paper_attempt' question.exam_paper.slug %}" style="display: inline;">
                                 {% csrf_token %}
                                 <input type="hidden" name="mode" value="question_practice">
@@ -98,11 +98,14 @@
                             </form>
                         </div>
                         {% if question.matching_parts %}
-                        <p style="color: #6c757d; font-size: 0.9em; margin: 0 0 10px 0;">Parts on {{ topic.name }} are highlighted &mdash; click one to practise just that part.</p>
-                        {% endif %}
+                        <p style="color: #6c757d; font-size: 0.9em; margin: 0 0 10px 0;">Click one to practise just that part, or take the whole question.</p>
                         <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px;">
-                            {% for part in question.parts.all %}
-                            {% if part in question.matching_parts %}
+                            {% comment %}
+                              Only the parts on this topic. The rest of the question is still
+                              there behind "Practice This Question"; listing every part greyed
+                              out only asked the student to work out which ones were theirs.
+                            {% endcomment %}
+                            {% for part in question.matching_parts %}
                             <form method="post" action="{% url 'exam_papers:start_paper_attempt' question.exam_paper.slug %}" style="margin: 0;">
                                 {% csrf_token %}
                                 <input type="hidden" name="mode" value="question_practice">
@@ -112,21 +115,16 @@
                                     <div style="font-weight: 600; margin-bottom: 5px; display: flex; justify-content: space-between;">
                                         <span>{{ part.label }}</span>
                                         {% if part.best_attempt %}
-                                        <span style="font-size: 0.85em; color: {% if part.best_attempt.is_correct %}#155724{% else %}#856404{% endif %};">{% if part.best_attempt.is_correct %}✓{% else %}{{ part.best_attempt.marks_awarded|floatformat:0 }}/{{ part.best_attempt.max_marks }}{% endif %}</span>
+                                        <span style="font-size: 0.85em; color: {% if part.best_attempt.is_correct %}#155724{% else %}#856404{% endif %};">{% if part.best_attempt.is_correct %}&check;{% else %}{{ part.best_attempt.marks_awarded|floatformat:0 }}/{{ part.best_attempt.max_marks }}{% endif %}</span>
                                         {% endif %}
                                     </div>
                                     <div style="font-size: 0.85em;">{{ part.max_marks|default:"?" }} mark{{ part.max_marks|pluralize }}</div>
-                                    <div style="font-size: 0.8em; color: #fa709a; font-weight: 600; margin-top: 4px;">Practise this part →</div>
+                                    <div style="font-size: 0.8em; color: #fa709a; font-weight: 600; margin-top: 4px;">Practise this part &rarr;</div>
                                 </button>
                             </form>
-                            {% else %}
-                            <div class="part-badge" style="background: #f8f9fa; border: 1px solid #e0e0e0; color: #6c757d; padding: 10px; border-radius: 8px;">
-                                <div style="font-weight: 600; margin-bottom: 5px;">{{ part.label }}</div>
-                                <div style="font-size: 0.85em;">{{ part.max_marks|default:"?" }} mark{{ part.max_marks|pluralize }}</div>
-                            </div>
-                            {% endif %}
                             {% endfor %}
                         </div>
+                        {% endif %}
                     </div>
                 </div>
                 {% endfor %}
