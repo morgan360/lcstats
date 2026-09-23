@@ -153,6 +153,11 @@
                             class="desktop-dropdown absolute right-0 top-full z-40 mt-2 min-w-[13rem] space-y-1 rounded-xl bg-twilight p-2 text-mist shadow-lg opacity-0 invisible translate-y-1 pointer-events-none transition duration-150">
                             <a href="{% url 'homework:teacher_dashboard' %}"
                                 class="block rounded-lg px-3 py-2 text-sm font-semibold text-rose-pop hover:bg-rose-pop/20">Teacher</a>
+                            {% if perms.homework.add_homeworkassignment %}
+                            <a href="{% url 'admin:homework_homeworkassignment_add' %}"
+                                class="block rounded-lg px-3 py-2 text-sm font-semibold text-rose-pop hover:bg-rose-pop/20">New
+                                Homework</a>
+                            {% endif %}
                             <a href="{% url 'reports:dashboard' %}"
                                 class="block rounded-lg px-3 py-2 text-sm font-semibold text-rose-pop hover:bg-rose-pop/20">Reports</a>
                             <a href="{% url 'studyplans:teacher_dashboard' %}"
@@ -363,6 +368,10 @@
             {% if request.user.is_staff %}
             <a href="{% url 'homework:teacher_dashboard' %}"
                 class="block rounded-lg px-3 py-2 text-rose-pop transition hover:bg-mist/10">Teacher</a>
+            {% if perms.homework.add_homeworkassignment %}
+            <a href="{% url 'admin:homework_homeworkassignment_add' %}"
+                class="block rounded-lg px-3 py-2 text-rose-pop transition hover:bg-mist/10">New Homework</a>
+            {% endif %}
             <a href="{% url 'reports:dashboard' %}"
                 class="block rounded-lg px-3 py-2 text-rose-pop transition hover:bg-mist/10">Reports</a>
             <a href="{% url 'studyplans:teacher_dashboard' %}"
