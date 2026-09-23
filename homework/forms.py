@@ -3,6 +3,8 @@ from .models import HomeworkTask
 from interactive_lessons.models import Section
 from exam_papers.models import ExamQuestion, ExamQuestionPart
 from exam_papers.services.topic_parts import topic_filter
+
+from .labels import exam_part_label, exam_question_label
 from quickkicks.models import QuickKick
 from flashcards.models import FlashcardSet
 
@@ -15,19 +17,13 @@ class ExamQuestionChoiceField(forms.ModelChoiceField):
     the label said only "2022 - Q8" for either.
     """
     def label_from_instance(self, obj):
-        paper = obj.exam_paper
-        subject = paper.subject.name if paper and paper.subject else "No subject"
-        topic = obj.topic.name if obj.topic else "no topic"
-        return f"[{subject}] {paper} Q{obj.question_number} - {topic}"
+        return exam_question_label(obj)
 
 
 class ExamQuestionPartChoiceField(forms.ModelChoiceField):
     """Shows a part as the paper, question and label a teacher would say aloud"""
     def label_from_instance(self, obj):
-        paper = obj.question.exam_paper
-        marks = f"{obj.max_marks} marks" if obj.max_marks else "marks not set"
-        return (f"{paper.year} {paper.get_paper_type_display()} "
-                f"Q{obj.question.question_number}{obj.label} - {marks}")
+        return exam_part_label(obj)
 
 
 # Base form class with common functionality
@@ -142,7 +138,13 @@ class ExamQuestionsTaskForm(BaseHomeworkTaskForm):
             self.fields['exam_question'].help_text = (
                 f"Exam questions with anything on {self.topic.name}")
         else:
-            self.fields['exam_question'].help_text = "Select a topic above to filter these options"
+            self.fields['exam_question'].queryset = (
+                ExamQuestion.objects
+                .select_related('exam_paper__subject', 'topic')
+                .order_by('-exam_paper__year', 'exam_paper__paper_type',
+                          'question_number'))
+            self.fields['exam_question'].help_text = (
+                "Every question, newest first -- pick a topic above to narrow it")
 
     def clean(self):
         cleaned_data = super().clean()

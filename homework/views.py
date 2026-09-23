@@ -712,10 +712,15 @@ def topic_content_options(request, topic_id):
     Used by admin/js/homework_topic_filter.js to repopulate the task inline
     dropdowns when the teacher picks a topic, avoiding the save-first step.
     """
-    from interactive_lessons.models import Section
+    from interactive_lessons.models import Section, Topic
     from exam_papers.models import ExamQuestion, ExamQuestionPart
+    from exam_papers.services.topic_parts import topic_filter
     from quickkicks.models import QuickKick
     from flashcards.models import FlashcardSet
+
+    from .labels import exam_part_label, exam_question_label
+
+    topic = get_object_or_404(Topic, id=topic_id)
 
     # Optional ?classes=1,2 — mark content already assigned to those classes
     class_ids = [c for c in request.GET.get('classes', '').split(',') if c.isdigit()]
@@ -740,22 +745,19 @@ def topic_content_options(request, topic_id):
             for obj in qs
         ]
 
-    def exam_question_label(obj):
-        subject = obj.exam_paper.subject.name if obj.exam_paper and obj.exam_paper.subject else "No Subject"
-        year = obj.exam_paper.year if obj.exam_paper else "Unknown"
-        topic = obj.topic.name if obj.topic else "No Topic"
-        return f"[{subject}] {year} - Q{obj.question_number} - {topic}"
-
-    def exam_part_label(obj):
-        paper = obj.question.exam_paper
-        marks = f'{obj.max_marks} marks' if obj.max_marks else 'marks not set'
-        return (f'{paper.year} {paper.get_paper_type_display()} '
-                f'Q{obj.question.question_number}{obj.label} - {marks}')
 
     return JsonResponse({
         'section': options(Section.objects.filter(topic_id=topic_id), 'section'),
+        # A question counts for a topic if its own topic says so or any of its
+        # parts do -- the same rule as the form and the topic pages. This
+        # endpoint is what the dropdown actually shows once a topic is picked,
+        # so a narrower rule here would undo the one in the form.
         'exam_question': options(
-            ExamQuestion.objects.filter(topic_id=topic_id).select_related('exam_paper__subject', 'topic'),
+            ExamQuestion.objects.filter(topic_filter(topic))
+            .select_related('exam_paper__subject', 'topic')
+            .distinct()
+            .order_by('-exam_paper__year', 'exam_paper__paper_type',
+                      'question_number'),
             'exam_question',
             exam_question_label,
         ),

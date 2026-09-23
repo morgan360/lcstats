@@ -7,7 +7,9 @@ Functions and Integration.
 """
 from types import SimpleNamespace
 
+from django.contrib.auth.models import User
 from django.test import TestCase
+from django.urls import reverse
 
 from core.models import Subject
 from exam_papers.models import ExamPaper, ExamQuestion, ExamQuestionPart
@@ -15,7 +17,7 @@ from homework.forms import ExamQuestionsTaskForm
 from interactive_lessons.models import Topic
 
 
-class ExamQuestionPickerTests(TestCase):
+class PickerTestBase(TestCase):
 
     @classmethod
     def setUpTestData(cls):
@@ -50,6 +52,9 @@ class ExamQuestionPickerTests(TestCase):
     def offered(self, topic):
         return list(self.form_for(topic).fields['exam_question'].queryset)
 
+
+class ExamQuestionPickerTests(PickerTestBase):
+
     def test_a_question_is_offered_under_its_own_topic(self):
         self.assertIn(self.q8, self.offered(self.trig))
 
@@ -71,3 +76,39 @@ class ExamQuestionPickerTests(TestCase):
         self.assertEqual(field.label_from_instance(self.q8),
                          '[Maths] 2022 Paper 1 Q8 - Trigonometry')
         self.assertIn('(Deferred)', field.label_from_instance(self.deferred_q8))
+
+
+class TopicFilterEndpointTests(PickerTestBase):
+    """The dropdown a teacher actually sees once they pick a topic is built by
+    this endpoint, not by the form, so it must offer exactly the same thing."""
+
+    def setUp(self):
+        staff = User.objects.create_user('ms_teacher', password='pw', is_staff=True)
+        staff.is_superuser = True
+        staff.save()
+        self.client.force_login(staff)
+
+    def payload(self, topic):
+        response = self.client.get(
+            reverse('homework:topic_content_options', args=[topic.id]))
+        self.assertEqual(response.status_code, 200)
+        return response.json()
+
+    def test_it_offers_a_question_through_its_parts(self):
+        ids = [o['id'] for o in self.payload(self.functions)['exam_question']]
+        self.assertIn(self.q8.id, ids)
+
+    def test_each_question_appears_once(self):
+        ids = [o['id'] for o in self.payload(self.trig)['exam_question']]
+        self.assertEqual(len(ids), len(set(ids)))
+
+    def test_it_labels_them_like_the_form_does(self):
+        option = next(o for o in self.payload(self.trig)['exam_question']
+                      if o['id'] == self.q8.id)
+        field = self.form_for(self.trig).fields['exam_question']
+        self.assertEqual(option['label'], field.label_from_instance(self.q8))
+
+    def test_an_unknown_topic_is_a_404(self):
+        response = self.client.get(
+            reverse('homework:topic_content_options', args=[999999]))
+        self.assertEqual(response.status_code, 404)
