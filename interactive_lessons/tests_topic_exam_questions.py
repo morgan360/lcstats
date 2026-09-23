@@ -63,14 +63,20 @@ class TopicExamQuestionsTests(TestCase):
         self.assertNotContains(
             response, f'name="part_id" value="{self.other_part.id}"')
 
-    def test_a_question_with_no_matching_part_is_offered_whole(self):
+    def test_a_question_with_no_part_on_the_topic_is_not_listed(self):
+        """Q8 is filed under Trig but every part of it is Functions, so there is
+        nothing on this page for a student to do with it."""
         response = self.page(self.trig)
-        self.assertContains(response, 'Practice This Question')
+        self.assertContains(response, 'Question 3')
+        self.assertNotContains(response, 'Question 8')
         for part in self.whole.parts.all():
             self.assertNotContains(
                 response, f'name="part_id" value="{part.id}"')
 
-    def test_both_questions_are_still_listed(self):
+    def test_a_question_whose_parts_are_untagged_still_lists(self):
+        for part in self.mixed.parts.all():
+            part.topic = None
+            part.save(update_fields=['topic'])
         response = self.page(self.trig)
         self.assertContains(response, 'Question 3')
-        self.assertContains(response, 'Question 8')
+        self.assertContains(response, 'Practice This Question')

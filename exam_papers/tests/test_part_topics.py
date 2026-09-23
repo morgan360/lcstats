@@ -78,10 +78,23 @@ class TopicPageTests(PartTopicsTestBase):
                      for q in group['questions']]
         self.assertEqual(questions[0].matching_parts, [self.part_a, self.part_b])
 
-    def test_question_still_lists_on_its_own_topic_with_parts_filed_elsewhere(self):
-        """A question's own topic is enough, even if no part agrees."""
+    def test_a_question_drops_off_a_topic_none_of_its_parts_is_on(self):
+        """The parts decide. A question whose own tag says Functions while both
+        its parts are Calculus has nothing on the Functions page: it would show
+        as a question with no part a student could click."""
         self.part_a.topic = self.calculus
         self.part_a.save(update_fields=['topic'])
+
+        response = self.page(self.functions)
+        questions = [q for group in response.context['questions_by_paper'].values()
+                     for q in group['questions']]
+        self.assertEqual(questions, [])
+
+    def test_its_own_topic_still_counts_while_no_part_is_tagged(self):
+        """The fallback, for a question whose parts carry no topic at all."""
+        for part in self.question.parts.all():
+            part.topic = None
+            part.save(update_fields=['topic'])
 
         response = self.page(self.functions)
         questions = [q for group in response.context['questions_by_paper'].values()

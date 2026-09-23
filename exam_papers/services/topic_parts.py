@@ -11,9 +11,18 @@ from exam_papers.models import ExamQuestion, ExamQuestionAttempt, ExamQuestionPa
 
 def topic_filter(topic, prefix=''):
     """Q matching a question - or, with prefix='question__', a part's question -
-    that touches topic through its own topic or any of its parts'."""
-    return (Q(**{f'{prefix}topic': topic})
-            | Q(**{f'{prefix}parts__topic': topic}))
+    that belongs to topic.
+
+    The parts decide. A question listed because its own tag says so, while none
+    of its parts is on the topic, gives a student a question with nothing of
+    theirs in it: five parts, none clickable, no way to tell what they were
+    meant to do. Every part on file is tagged, so the question's own tag is
+    kept only as a fallback for a question whose parts carry no topic at all --
+    two of them, at the time of writing.
+    """
+    return (Q(**{f'{prefix}parts__topic': topic})
+            | (Q(**{f'{prefix}topic': topic})
+               & Q(**{f'{prefix}parts__topic__isnull': True})))
 
 
 def questions_for_topic(topic, published_only=True):

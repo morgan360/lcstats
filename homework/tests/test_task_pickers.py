@@ -55,7 +55,13 @@ class PickerTestBase(TestCase):
 
 class ExamQuestionPickerTests(PickerTestBase):
 
-    def test_a_question_is_offered_under_its_own_topic(self):
+    def test_a_question_is_not_offered_where_no_part_is_on_the_topic(self):
+        """Its own tag says Trig, but a teacher setting it for Trig would be
+        setting two parts of Functions and Integration."""
+        self.assertNotIn(self.q8, self.offered(self.trig))
+
+    def test_a_question_with_untagged_parts_falls_back_to_its_own_topic(self):
+        self.q8.parts.update(topic=None)
         self.assertIn(self.q8, self.offered(self.trig))
 
     def test_and_under_any_topic_its_parts_carry(self):
@@ -99,13 +105,13 @@ class TopicFilterEndpointTests(PickerTestBase):
         self.assertIn(self.q8.id, ids)
 
     def test_each_question_appears_once(self):
-        ids = [o['id'] for o in self.payload(self.trig)['exam_question']]
+        ids = [o['id'] for o in self.payload(self.functions)['exam_question']]
         self.assertEqual(len(ids), len(set(ids)))
 
     def test_it_labels_them_like_the_form_does(self):
-        option = next(o for o in self.payload(self.trig)['exam_question']
+        option = next(o for o in self.payload(self.functions)['exam_question']
                       if o['id'] == self.q8.id)
-        field = self.form_for(self.trig).fields['exam_question']
+        field = self.form_for(self.functions).fields['exam_question']
         self.assertEqual(option['label'], field.label_from_instance(self.q8))
 
     def test_an_unknown_topic_is_a_404(self):
