@@ -1,0 +1,73 @@
+"""What the homework pickers offer, and how they name it.
+
+A question files under one dominant topic while its parts carry their own, so
+picking by the question's topic alone hid questions a teacher could see on the
+topic page -- 2022 Paper 1 Q8 is filed under Trig with its parts tagged
+Functions and Integration.
+"""
+from types import SimpleNamespace
+
+from django.test import TestCase
+
+from core.models import Subject
+from exam_papers.models import ExamPaper, ExamQuestion, ExamQuestionPart
+from homework.forms import ExamQuestionsTaskForm
+from interactive_lessons.models import Topic
+
+
+class ExamQuestionPickerTests(TestCase):
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.maths = Subject.objects.get(slug='maths')
+        cls.trig = Topic.objects.create(name='Trigonometry', subject=cls.maths, paper='p2')
+        cls.functions = Topic.objects.create(name='Functions', subject=cls.maths, paper='p1')
+        cls.integration = Topic.objects.create(name='Integration', subject=cls.maths, paper='p1')
+
+        cls.paper = ExamPaper.objects.create(
+            subject=cls.maths, year=2022, paper_type='p1', total_marks=300,
+            is_published=True)
+        cls.deferred = ExamPaper.objects.create(
+            subject=cls.maths, year=2022, paper_type='p1', total_marks=300,
+            is_published=True, is_deferred=True)
+
+        # Filed under Trig, but its parts are Functions and Integration.
+        cls.q8 = ExamQuestion.objects.create(
+            exam_paper=cls.paper, question_number=8, topic=cls.trig, total_marks=25)
+        ExamQuestionPart.objects.create(
+            question=cls.q8, label='(a)', order=1, max_marks=10, topic=cls.functions)
+        ExamQuestionPart.objects.create(
+            question=cls.q8, label='(b)', order=2, max_marks=15, topic=cls.integration)
+
+        cls.deferred_q8 = ExamQuestion.objects.create(
+            exam_paper=cls.deferred, question_number=8, topic=cls.trig, total_marks=25)
+
+    def form_for(self, topic):
+        """The inline's form as the formset builds it: topic off the parent."""
+        return ExamQuestionsTaskForm(
+            parent_assignment=SimpleNamespace(topic=topic))
+
+    def offered(self, topic):
+        return list(self.form_for(topic).fields['exam_question'].queryset)
+
+    def test_a_question_is_offered_under_its_own_topic(self):
+        self.assertIn(self.q8, self.offered(self.trig))
+
+    def test_and_under_any_topic_its_parts_carry(self):
+        self.assertIn(self.q8, self.offered(self.functions))
+        self.assertIn(self.q8, self.offered(self.integration))
+
+    def test_it_is_offered_once_however_many_parts_match(self):
+        ExamQuestionPart.objects.create(
+            question=self.q8, label='(c)', order=3, max_marks=5, topic=self.functions)
+        self.assertEqual(self.offered(self.functions).count(self.q8), 1)
+
+    def test_an_unrelated_topic_does_not_get_it(self):
+        other = Topic.objects.create(name='Probability', subject=self.maths, paper='p2')
+        self.assertNotIn(self.q8, self.offered(other))
+
+    def test_the_label_names_the_paper_and_the_sitting(self):
+        field = self.form_for(self.trig).fields['exam_question']
+        self.assertEqual(field.label_from_instance(self.q8),
+                         '[Maths] 2022 Paper 1 Q8 - Trigonometry')
+        self.assertIn('(Deferred)', field.label_from_instance(self.deferred_q8))

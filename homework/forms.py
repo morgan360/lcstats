@@ -2,17 +2,23 @@ from django import forms
 from .models import HomeworkTask
 from interactive_lessons.models import Section
 from exam_papers.models import ExamQuestion, ExamQuestionPart
+from exam_papers.services.topic_parts import topic_filter
 from quickkicks.models import QuickKick
 from flashcards.models import FlashcardSet
 
 
 class ExamQuestionChoiceField(forms.ModelChoiceField):
-    """Custom choice field to display exam questions with subject"""
+    """Shows a question as the paper a teacher would name it by.
+
+    The paper's own str carries the sitting, so "2022 Paper 1 (Deferred) Q8"
+    cannot be mistaken for the main paper's Q8 -- both exist, and before this
+    the label said only "2022 - Q8" for either.
+    """
     def label_from_instance(self, obj):
-        subject = obj.exam_paper.subject.name if obj.exam_paper and obj.exam_paper.subject else "No Subject"
-        year = obj.exam_paper.year if obj.exam_paper else "Unknown"
-        topic = obj.topic.name if obj.topic else "No Topic"
-        return f"[{subject}] {year} - Q{obj.question_number} - {topic}"
+        paper = obj.exam_paper
+        subject = paper.subject.name if paper and paper.subject else "No subject"
+        topic = obj.topic.name if obj.topic else "no topic"
+        return f"[{subject}] {paper} Q{obj.question_number} - {topic}"
 
 
 class ExamQuestionPartChoiceField(forms.ModelChoiceField):
@@ -121,10 +127,20 @@ class ExamQuestionsTaskForm(BaseHomeworkTaskForm):
         # Auto-set task_type for this inline
         self.instance.task_type = 'exam_question'
 
-        # Filter exam questions by topic
+        # A question belongs to a topic if its own topic says so or any of its
+        # parts do -- the same rule the topic pages use. Filtering on the
+        # question's single topic alone hid, say, a question filed under Trig
+        # whose parts are tagged Functions and Integration.
         if self.topic:
-            self.fields['exam_question'].queryset = ExamQuestion.objects.filter(topic=self.topic)
-            self.fields['exam_question'].help_text = f"Exam questions for {self.topic.name}"
+            questions = (ExamQuestion.objects
+                         .filter(topic_filter(self.topic))
+                         .select_related('exam_paper__subject', 'topic')
+                         .distinct()
+                         .order_by('-exam_paper__year', 'exam_paper__paper_type',
+                                   'question_number'))
+            self.fields['exam_question'].queryset = questions
+            self.fields['exam_question'].help_text = (
+                f"Exam questions with anything on {self.topic.name}")
         else:
             self.fields['exam_question'].help_text = "Select a topic above to filter these options"
 
@@ -161,7 +177,8 @@ class ExamQuestionPartsTaskForm(BaseHomeworkTaskForm):
         super().__init__(*args, **kwargs)
         self.instance.task_type = 'exam_part'
 
-        parts = ExamQuestionPart.objects.select_related('question__exam_paper')
+        parts = ExamQuestionPart.objects.select_related(
+            'question__exam_paper', 'topic')
         if self.topic:
             parts = parts.filter(topic=self.topic)
             self.fields['exam_question_part'].help_text = (
