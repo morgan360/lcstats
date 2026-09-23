@@ -402,10 +402,11 @@ class HomeworkCheckFlowTests(TestCase):
 
 @override_settings(PRIVATE_MEDIA_ROOT=PRIVATE_ROOT)
 class DeletingAChecklistRowTests(TestCase):
-    """Removing a check from the list page.
+    """Removing a check from a student's history page.
 
     Deletion existed only on a check's own page, which meant clearing a few
     unwanted rows -- test runs, a mis-picked student -- was a round trip each.
+    It lived on the list page until that became one row per student.
     It is irreversible and takes the photographs with it, so the destructive
     half of these tests matters as much as the convenience half.
     """
@@ -437,8 +438,11 @@ class DeletingAChecklistRowTests(TestCase):
 
     # -- it is offered ----------------------------------------------------
 
-    def test_the_list_page_offers_a_delete_control_for_each_check(self):
-        response = self.client.get(reverse('homework_check:index'))
+    def history(self):
+        return reverse('homework_check:student_reports', args=[self.student.pk])
+
+    def test_the_history_page_offers_a_delete_control_for_each_check(self):
+        response = self.client.get(self.history())
         self.assertContains(response, self.url())
         self.assertContains(response, 'Delete this check')
 
@@ -487,6 +491,17 @@ class DeletingAChecklistRowTests(TestCase):
         response = self.client.post(self.url())
         self.assertRedirects(response, reverse('homework_check:index'))
 
+    def test_deleting_from_the_history_page_stays_on_it(self):
+        HomeworkCheck.objects.create(
+            teacher=self.teacher, teacher_class=self.teacher_class,
+            student=self.student, solution=self.solution, exercise_name='Ex 5B')
+        response = self.client.post(self.url(), {'student': self.student.pk})
+        self.assertRedirects(response, self.history())
+
+    def test_deleting_their_last_check_goes_back_to_the_list(self):
+        response = self.client.post(self.url(), {'student': self.student.pk})
+        self.assertRedirects(response, reverse('homework_check:index'))
+
     def test_a_junk_class_value_is_ignored_rather_than_reflected(self):
         response = self.client.post(self.url(), {'class': '../../evil'})
         self.assertRedirects(response, reverse('homework_check:index'))
@@ -506,7 +521,7 @@ class DeletingAChecklistRowTests(TestCase):
         self.assertEqual(response.status_code, 403)
         self.assertTrue(HomeworkCheck.objects.filter(pk=self.check.pk).exists())
 
-    def test_another_teachers_check_is_not_offered_for_deletion_in_the_list(self):
+    def test_another_teachers_check_is_not_offered_for_deletion(self):
         other_class = TeacherClass.objects.create(
             teacher=self.other_profile, name='5th Year')
         theirs = HomeworkCheck.objects.create(
@@ -514,7 +529,7 @@ class DeletingAChecklistRowTests(TestCase):
             student=self.student, solution=self.solution,
             exercise_name='Not mine',
         )
-        response = self.client.get(reverse('homework_check:index'))
+        response = self.client.get(self.history())
         self.assertNotContains(
             response,
             reverse('homework_check:check_delete', args=[theirs.pk]),

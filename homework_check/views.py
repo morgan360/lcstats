@@ -13,7 +13,7 @@ from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.models import User
 from django.core.exceptions import PermissionDenied
-from django.db.models import Q
+from django.db.models import Count, OuterRef, Q, Subquery
 from django.http import FileResponse, Http404, HttpResponseForbidden, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
@@ -126,11 +126,14 @@ def _rate_limited(user):
 @teacher_required
 @require_GET
 def index(request):
-    """Recent checks, optionally narrowed to one class."""
+    """One row per student, optionally narrowed to one class.
+
+    A row is the student's latest check, and opens their history page rather
+    than that check: with a copy corrected two or three times, a list of
+    every check buried everyone else under one student's resubmissions.
+    """
     classes = _pickable_classes(request)
-    checks = HomeworkCheck.objects.filter(
-        teacher_class__in=classes
-    ).select_related('student', 'teacher_class', 'solution')
+    checks = HomeworkCheck.objects.filter(teacher_class__in=classes)
 
     class_id = request.GET.get('class')
     current_class = None
@@ -139,8 +142,20 @@ def index(request):
         if current_class:
             checks = checks.filter(teacher_class=current_class)
 
+    # Latest by created_at, not pk: the two can disagree, and the history page
+    # orders by created_at. order_by() clears Meta.ordering from the count's
+    # GROUP BY, which would otherwise split it one group per check.
+    latest = checks.filter(student=OuterRef('student')).order_by(
+        '-created_at', '-pk').values('pk')[:1]
+    rows = list(checks.filter(pk=Subquery(latest)).select_related(
+        'student', 'teacher_class', 'solution')[:60])
+    totals = dict(checks.filter(student__in=[r.student_id for r in rows])
+                  .order_by().values_list('student').annotate(n=Count('pk')))
+    for row in rows:
+        row.total = totals.get(row.student_id, 1)
+
     return render(request, 'homework_check/index.html', {
-        'checks': checks[:60],
+        'checks': rows,
         'classes': classes,
         'current_class': current_class,
         'scans_waiting': InboundScan.objects.filter(teacher=request.user).count(),
@@ -216,6 +231,8 @@ def student_reports(request, student_id):
         'classes': sorted({c.teacher_class.name for c in checks}),
         'tally': [(label, tally[value]) for value, label in Rating.choices
                   if value in tally],
+        # The class the list was narrowed to, so "back" returns to it.
+        'back_class': request.GET.get('class', '') if request.GET.get('class', '').isdigit() else '',
     })
 
 
@@ -633,6 +650,13 @@ def check_delete(request, pk):
     # rather than back at all classes, which is where the next one to delete
     # almost certainly is. Digits only -- it is a form field, not a trusted one.
     class_id = request.POST.get('class', '')
+    # From a student's history page, back to that page -- unless that was
+    # their last check, when it would only say there is nothing to show.
+    student_id = request.POST.get('student', '')
+    if student_id.isdigit() and HomeworkCheck.objects.filter(
+            student_id=int(student_id), teacher_class__in=_owned_classes(request)).exists():
+        url = reverse('homework_check:student_reports', args=[int(student_id)])
+        return redirect(f"{url}?class={class_id}" if class_id.isdigit() else url)
     if class_id.isdigit():
         return redirect(f"{reverse('homework_check:index')}?class={class_id}")
     return redirect('homework_check:index')

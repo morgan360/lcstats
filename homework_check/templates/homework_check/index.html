@@ -41,18 +41,15 @@
   {% endif %}
 
   {% if checks %}
+    {% comment %}
+     One row per student: their latest check, and how many there are. The row
+       opens the student's history, where each check -- and its delete button --
+       lives.
+    {% endcomment %}
     <div class="space-y-2">
       {% for check in checks %}
-      {% comment %}
-       The delete button sits over the row rather than beside it, the same
-         way the photo grid does it. A button nested inside the anchor would be
-         invalid markup and a stray tap would open the check; laying the two
-         out side by side in a flex row made the card shrink to its text. The
-         anchor keeps its full width and just reserves room on the right.
-      {% endcomment %}
-      <div class="relative">
-        <a href="{% url 'homework_check:check_detail' check.pk %}"
-           class="block rounded-2xl bg-white p-4 pr-16 shadow-sm ring-1 ring-twilight/10 transition hover:ring-violet-royal/40">
+        <a href="{% url 'homework_check:student_reports' check.student_id %}{% if current_class %}?class={{ current_class.id }}{% endif %}"
+           class="block rounded-2xl bg-white p-4 shadow-sm ring-1 ring-twilight/10 transition hover:ring-violet-royal/40">
           <div class="flex flex-wrap items-center gap-2">
             <span class="font-semibold text-twilight">
               {{ check.student.get_full_name|default:check.student.username }}
@@ -62,35 +59,11 @@
             {% include "homework_check/_rating_chip.html" %}
           </div>
           <div class="mt-1 text-xs text-twilight/50">
-            {{ check.teacher_class.name }} · {{ check.solution.title }} ·
-            {{ check.created_at|date:"j M Y" }}
-            {% if check.is_reviewed %} · reviewed{% endif %}
+            {{ check.teacher_class.name }} · {{ check.created_at|date:"j M Y" }}
+            · {{ check.total }} check{{ check.total|pluralize }}
+            <span class="ml-1 font-semibold text-violet-royal">History →</span>
           </div>
         </a>
-
-        {% comment %}
-         Named in the prompt, because the rows differ only by student and
-           exercise and the photographs go with it irreversibly.
-        {% endcomment %}
-        <form method="post" class="absolute inset-y-0 right-2 flex items-center"
-              action="{% url 'homework_check:check_delete' check.pk %}"
-              onsubmit="return confirm('Delete {{ check.student.get_full_name|default:check.student.username|escapejs }} — {{ check.exercise_name|escapejs }}?\n\nThe report and its photos are removed for good.');">
-          {% csrf_token %}
-          {% if current_class %}
-            <input type="hidden" name="class" value="{{ current_class.id }}">
-          {% endif %}
-          {% comment %}
-           44px square: the minimum comfortable touch target, and this is
-             used on a phone beside a stack of copies.
-          {% endcomment %}
-          <button type="submit"
-                  aria-label="Delete this check"
-                  title="Delete this check"
-                  class="flex h-11 w-11 items-center justify-center rounded-xl text-lg font-bold text-rose-pop/40 transition hover:bg-rose-pop/10 hover:text-rose-pop">
-            ✕
-          </button>
-        </form>
-      </div>
       {% endfor %}
     </div>
   {% else %}

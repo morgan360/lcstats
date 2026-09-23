@@ -120,6 +120,43 @@ class StudentPageTests(TestCase):
         self.assertContains(response, self.url)
 
 
+class OneRowPerStudentTests(TestCase):
+    """The list page: each student once, opening their history."""
+
+    setUp = StudentPageTests.setUp
+    check = StudentPageTests.check
+
+    def test_a_student_checked_three_times_is_one_row(self):
+        self.check('Exercise 7.1', days_ago=2)
+        self.check('Exercise 7.2', days_ago=1, rating='poor')
+        latest = self.check('Exercise 7.2', rating='good')
+        rows = self.client.get(reverse('homework_check:index')).context['checks']
+        self.assertEqual([r.pk for r in rows], [latest.pk])
+        self.assertEqual(rows[0].total, 3)
+
+    def test_rows_open_the_history_and_newest_student_leads(self):
+        other = User.objects.create_user('ann', first_name='Ann', last_name='Other')
+        self.sixth.students.add(other)
+        self.check('Old', days_ago=5)
+        HomeworkCheck.objects.create(
+            teacher=self.teacher, teacher_class=self.sixth, student=other,
+            solution=self.solution, exercise_name='New')
+        response = self.client.get(reverse('homework_check:index'))
+        self.assertEqual([r.student for r in response.context['checks']],
+                         [other, self.student])
+        self.assertContains(response, self.url)
+
+    def test_the_class_filter_narrows_the_row_and_its_count(self):
+        fifth = TeacherClass.objects.create(teacher=self.profile, name='5th Year')
+        self.check('In 6th', days_ago=3)
+        self.check('In 5th', teacher_class=fifth)
+        response = self.client.get(reverse('homework_check:index'), {'class': self.sixth.pk})
+        rows = response.context['checks']
+        self.assertEqual([r.exercise_name for r in rows], ['In 6th'])
+        self.assertEqual(rows[0].total, 1)
+        self.assertContains(response, f'{self.url}?class={self.sixth.pk}')
+
+
 class CountLineTests(TestCase):
     def test_wording(self):
         self.assertEqual(_count_line({'total': 12, 'correct': 10, 'slip': 2}),
