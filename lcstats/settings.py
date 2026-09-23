@@ -467,7 +467,6 @@ SOCIALACCOUNT_EMAIL_AUTHENTICATION = True
 SOCIALACCOUNT_EMAIL_AUTHENTICATION_AUTO_CONNECT = True
 
 # Email confirmation and verification
-ACCOUNT_EMAIL_REQUIRED = True  # Email is required during signup
 ACCOUNT_EMAIL_CONFIRMATION_EXPIRE_DAYS = 3  # Confirmation link expires in 3 days
 ACCOUNT_EMAIL_SUBJECT_PREFIX = '[NumScoil] '  # Prefix for all emails
 
