@@ -91,8 +91,19 @@ class DisplayAndUrlTests(ContentLinkTestBase):
 
     def test_an_exam_part_links_straight_into_the_part(self):
         item = self.item('exam_part', exam_question_part=self.part)
-        self.assertEqual(item.get_content_url(),
-                         reverse('exam_papers:practise_part', args=[self.part.id]))
+        self.assertEqual(
+            item.get_content_url(),
+            reverse('exam_papers:practise_part', args=[self.part.id])
+            + '?subject=maths')
+
+    def test_an_exam_question_links_to_that_question_alone(self):
+        """Not to the topic's exam page, which lists every question on it."""
+        item = self.item('exam_question', exam_question=self.exam_question)
+        self.assertEqual(
+            item.get_content_url(),
+            reverse('exam_papers:practise_question', args=[self.exam_question.id])
+            + '?subject=maths')
+        self.assertNotIn('exam-questions/', item.get_content_url())
 
     def test_a_section_links_to_its_quiz_and_carries_the_subject(self):
         item = self.item('section', section=self.section)

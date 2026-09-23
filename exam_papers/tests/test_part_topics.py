@@ -311,3 +311,34 @@ class AlgebraRuleTests(PartTopicsTestBase):
     def test_rule_is_dropped_when_there_is_no_inequalities_topic(self):
         from exam_papers.management.commands.suggest_question_topics import algebra_rule
         self.assertEqual(algebra_rule([self.functions]), '')
+
+
+class PractiseQuestionLinkTests(PartTopicsTestBase):
+    """Homework and study plans hand out a whole question by link, so one has
+    to open that question and nothing else."""
+
+    def setUp(self):
+        self.client.force_login(self.student)
+
+    def test_it_opens_the_question_interface_for_that_question(self):
+        response = self.client.get(
+            reverse('exam_papers:practise_question', args=[self.question.id]))
+        self.assertEqual(response.status_code, 302)
+        page = self.client.get(response['Location'])
+        self.assertEqual(page.context['question'], self.question)
+        self.assertIsNone(page.context['focus_part'])
+
+    def test_it_reuses_the_students_practice_attempt(self):
+        first = self.client.get(
+            reverse('exam_papers:practise_question', args=[self.question.id]))
+        second = self.client.get(
+            reverse('exam_papers:practise_question', args=[self.other_question.id]))
+        self.assertEqual(first['Location'].split('/')[3],
+                         second['Location'].split('/')[3])
+
+    def test_an_unpublished_paper_is_a_404(self):
+        self.paper.is_published = False
+        self.paper.save(update_fields=['is_published'])
+        response = self.client.get(
+            reverse('exam_papers:practise_question', args=[self.question.id]))
+        self.assertEqual(response.status_code, 404)

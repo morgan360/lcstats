@@ -122,17 +122,16 @@ def content_url(kind, refs):
                 f"?subject={_subject_slug(topic)}")
 
     if kind == 'exam_question' and exam_question:
-        # No GET route opens one whole question, so link to the topic's exam
-        # page and anchor on the card -- see topic_exam_questions.html.
-        topic = exam_question.topic
-        if topic:
-            return (f"/interactive/{topic.slug}/exam-questions/"
-                    f"?subject={_subject_slug(topic)}#question-{exam_question.id}")
-        return "/exam-papers/"
+        # practise_question opens this question and nothing else. It used to
+        # link to the topic's exam page, which lists every question on the
+        # topic -- a student told to do one question landed on nineteen.
+        url = reverse('exam_papers:practise_question', args=[exam_question.pk])
+        return f"{url}?subject={_subject_slug(exam_question.topic)}"
 
     if kind == 'exam_part' and part:
         # practise_part exists precisely so a link, not a form, can open a part.
-        return reverse('exam_papers:practise_part', args=[part.pk])
+        url = reverse('exam_papers:practise_part', args=[part.pk])
+        return f"{url}?subject={_subject_slug(part.topic or part.question.topic)}"
 
     if kind == 'quickkick' and quickkick:
         topic = quickkick.topic

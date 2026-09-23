@@ -30,6 +30,8 @@ urlpatterns = [
     path('<slug:slug>/start/', views.start_paper_attempt, name='start_paper_attempt'),
 
     # Open a single question part for practice, straight from a link
+    path('question/<int:question_id>/practise/', views.practise_question,
+         name='practise_question'),
     path('part/<int:part_id>/practise/', views.practise_part, name='practise_part'),
 
     # Question interface

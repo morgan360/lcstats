@@ -169,6 +169,26 @@ def practise_part(request, part_id):
 
 
 @login_required
+def practise_question(request, question_id):
+    """Open one whole question for practice, from a link rather than a form.
+
+    The twin of practise_part, for the same reason: homework, study plans and
+    anything else that hands out a whole question need a GET route to it.
+    Without one they linked to the topic's exam page instead, which shows every
+    question on the topic -- a student sent to "do Q6" arrived at nineteen.
+    """
+    question = get_object_or_404(
+        ExamQuestion.objects.select_related('exam_paper'),
+        id=question_id,
+        exam_paper__is_published=True,
+    )
+    attempt = get_or_create_attempt(
+        request.user, question.exam_paper, 'question_practice')
+    return redirect('exam_papers:question_interface',
+                    attempt_id=attempt.id, question_id=question.id)
+
+
+@login_required
 def question_interface(request, attempt_id, question_id):
     """Display question interface with timer and answer submission"""
     attempt = get_object_or_404(ExamAttempt, id=attempt_id, student=request.user)

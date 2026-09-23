@@ -65,7 +65,8 @@ class TaskContentTests(ExamPartTaskTestBase):
         task = self.task()
         self.assertEqual(
             task.get_content_url(),
-            reverse('exam_papers:practise_part', args=[self.part_b.id]),
+            reverse('exam_papers:practise_part', args=[self.part_b.id])
+            + '?subject=maths',
         )
 
     def test_a_part_task_needs_a_part(self):
