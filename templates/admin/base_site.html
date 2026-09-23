@@ -7,6 +7,18 @@
 
 {% block branding %}
 <div id="site-name"><a href="{% url 'admin:index' %}">{{ site_header|default:_('NumScoil Administration') }}</a></div>
+{% comment %}
+  Student search on every admin page: finding one student is the most common
+  errand here, and it used to mean opening Student profiles first. A plain GET
+  to that changelist's own ?q=, so it searches the fields StudentProfileAdmin
+  lists (username, email, names, school) and needs no view of its own.
+{% endcomment %}
+{% if has_permission and perms.students.view_studentprofile %}
+<form id="ns-student-search" method="get" action="{% url 'admin:students_studentprofile_changelist' %}" role="search">
+  <input type="search" name="q" placeholder="Find a student…" aria-label="Find a student"
+         autocomplete="off" spellcheck="false">
+</form>
+{% endif %}
 {% if user.is_anonymous %}
   {% include "admin/color_theme_toggle.html" %}
 {% endif %}

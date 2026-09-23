@@ -67,6 +67,32 @@ html[data-theme="dark"] {
     --object-tools-hover-bg: #6d5ab8;
 }
 
+/* --- Header student search (templates/admin/base_site.html) ----------- */
+
+#branding {
+    align-items: center;
+}
+
+#ns-student-search input {
+    width: 220px;
+    padding: 6px 10px;
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    border-radius: 4px;
+    background: rgba(255, 255, 255, 0.1);
+    color: #fff;
+    font-size: 14px;
+}
+
+#ns-student-search input::placeholder {
+    color: rgba(255, 255, 255, 0.6);
+}
+
+#ns-student-search input:focus {
+    outline: 2px solid var(--accent);
+    outline-offset: -1px;
+    background: rgba(255, 255, 255, 0.15);
+}
+
 /* --- Index layout ------------------------------------------------------- */
 
 /* Django pins the dashboard to 600px, which is what makes ~50 models read as
