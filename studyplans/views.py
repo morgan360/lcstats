@@ -655,6 +655,29 @@ def move_item(request, plan_id, item_id):
 
 @require_POST
 @teacher_required
+def reorder_item(request, plan_id, item_id):
+    """Swap an item with its neighbour above or below in the same MicroBadge."""
+    plan = _owned_plan(request, plan_id)
+    item = get_object_or_404(StudyPlanItem, id=item_id, plan=plan,
+                             micro_badge__isnull=False)
+    step = {'up': -1, 'down': 1}.get(request.POST.get('direction'))
+    siblings = list(item.micro_badge.items.exclude(status='skipped')
+                    .order_by('order', 'id'))
+    here = siblings.index(item) if item in siblings else None
+    if step is not None and here is not None and 0 <= here + step < len(siblings):
+        siblings[here], siblings[here + step] = siblings[here + step], siblings[here]
+        # Renumber the lot: orders left over from moves and additions can tie,
+        # and a swap of two equal numbers would change nothing.
+        for position, sibling in enumerate(siblings, start=1):
+            if sibling.order != position:
+                sibling.order = position
+                sibling.save(update_fields=['order', 'updated_at'])
+    return redirect(f"{reverse('studyplans:plan_manage', args=[plan.id])}"
+                    f"#badge-{item.micro_badge_id}")
+
+
+@require_POST
+@teacher_required
 def add_item(request, plan_id, badge_id):
     """Add one of the topic's unused pieces of practice to a MicroBadge."""
     plan = _owned_plan(request, plan_id)

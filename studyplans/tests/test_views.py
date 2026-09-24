@@ -502,6 +502,50 @@ class MicroBadgeEditingTests(ViewTestBase):
         self.assertEqual(self.item.micro_badge, self.badges[4])
         self.assertEqual(self.item.due_date, self.badges[4].target_date)
 
+    def _second_item(self, order):
+        """Another item in MicroBadge 1, sharing the first's order if asked."""
+        return StudyPlanItem.objects.create(
+            plan=self.plan, goal=self.goal, micro_badge=self.badges[0],
+            content_type='exam_part', exam_question_part=self.parts[5],
+            order=order, available_from=self.item.available_from,
+            due_date=self.item.due_date)
+
+    def _order(self):
+        return list(self.badges[0].items.order_by('order', 'id')
+                    .values_list('id', flat=True))
+
+    def test_moving_an_item_up_within_its_microbadge(self):
+        second = self._second_item(order=self.item.order + 1)
+        self.client.force_login(self.teacher_user)
+        response = self.client.post(
+            reverse('studyplans:reorder_item', args=[self.plan.id, second.id]),
+            {'direction': 'up'})
+        self.assertEqual(self._order(), [second.id, self.item.id])
+        self.assertTrue(response.url.endswith(f'#badge-{self.badges[0].id}'))
+
+    def test_reordering_works_when_orders_tie(self):
+        second = self._second_item(order=self.item.order)
+        self.client.force_login(self.teacher_user)
+        self.client.post(
+            reverse('studyplans:reorder_item', args=[self.plan.id, self.item.id]),
+            {'direction': 'down'})
+        self.assertEqual(self._order(), [second.id, self.item.id])
+
+    def test_the_top_item_cannot_move_further_up(self):
+        second = self._second_item(order=self.item.order + 1)
+        self.client.force_login(self.teacher_user)
+        self.client.post(
+            reverse('studyplans:reorder_item', args=[self.plan.id, self.item.id]),
+            {'direction': 'up'})
+        self.assertEqual(self._order(), [self.item.id, second.id])
+
+    def test_another_teacher_cannot_reorder(self):
+        self.client.force_login(self.other_teacher_user)
+        response = self.client.post(
+            reverse('studyplans:reorder_item', args=[self.plan.id, self.item.id]),
+            {'direction': 'down'})
+        self.assertEqual(response.status_code, 403)
+
     def test_an_item_cannot_move_to_another_topics_microbadge(self):
         other_topic = Topic.objects.create(name='Other', subject=self.maths, paper='p1')
         other_goal = StudyPlanGoal.objects.create(plan=self.plan, topic=other_topic)

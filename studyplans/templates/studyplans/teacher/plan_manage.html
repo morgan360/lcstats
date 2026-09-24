@@ -105,7 +105,7 @@
 
     <div class="mt-4 space-y-3">
       {% for view in topic.badges %}
-      <div class="rounded-xl bg-twilight/5 p-3">
+      <div id="badge-{{ view.badge.id }}" class="scroll-mt-24 rounded-xl bg-twilight/5 p-3">
         <div class="mb-2 flex flex-wrap items-center justify-between gap-2">
           <p class="text-sm font-semibold text-midnight">
             {% if view.badge.is_retry %}Retry MicroBadge{% else %}MicroBadge {{ view.badge.number }}{% endif %}
@@ -129,6 +129,16 @@
         <ul class="space-y-1">
           {% for item in view.items %}
           <li class="flex flex-wrap items-center gap-2 rounded-lg bg-white px-3 py-2">
+            <form method="post" action="{% url 'studyplans:reorder_item' plan.id item.id %}"
+                  class="flex flex-col leading-none">
+              {% csrf_token %}
+              <button name="direction" value="up" aria-label="Move up"
+                      class="px-1 text-xs text-twilight/60 hover:text-violet-royal disabled:opacity-20"
+                      {% if forloop.first %}disabled{% endif %}>&#9650;</button>
+              <button name="direction" value="down" aria-label="Move down"
+                      class="px-1 text-xs text-twilight/60 hover:text-violet-royal disabled:opacity-20"
+                      {% if forloop.last %}disabled{% endif %}>&#9660;</button>
+            </form>
             <span class="min-w-0 flex-1 truncate text-sm text-midnight">{{ item.get_content_display }}</span>
             <span class="text-xs text-twilight/60">{{ item.get_status_display }}</span>
             <form method="post" action="{% url 'studyplans:move_item' plan.id item.id %}" class="flex items-center gap-1">
