@@ -37,7 +37,9 @@ from .models import (
     StudyPlanMicroBadge,
 )
 from .services import checkpoints as checkpoint_service
-from .services import completion, microbadges, nightly, planner, progress, stamps
+from .services import (
+    completion, copying, microbadges, nightly, planner, progress, stamps,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -321,13 +323,13 @@ def plan_builder(request):
     topics = Topic.objects.filter(subject=subject) if subject else Topic.objects.all()
 
     classes = profile.classes.filter(is_active=True).prefetch_related('students')
-    students = User.objects.filter(enrolled_classes__teacher=profile).distinct()
+    students = _taught_students(request)
 
     default_start = timezone.localdate()
     return render(request, 'studyplans/teacher/builder.html', {
         'topics': topics.select_related('subject').order_by('order', 'name'),
         'classes': classes,
-        'students': students.order_by('username'),
+        'students': students,
         'default_start': default_start,
         'default_deadline': default_start + timedelta(days=28),
         'default_minutes': constants.DEFAULT_WEEKLY_MINUTES,
@@ -594,7 +596,33 @@ def plan_manage(request, plan_id):
         'card': progress.plan_card(plan),
         'topics': _manage_topics(plan),
         'events': plan.events.all()[:30],
+        'copy_students': _taught_students(request),
     })
+
+
+def _taught_students(request):
+    """Everyone in this teacher's classes, for choosing who a plan is for."""
+    return (User.objects
+            .filter(enrolled_classes__teacher=_teacher_profile(request))
+            .distinct().order_by('username'))
+
+
+@require_POST
+@teacher_required
+def copy_plan(request, plan_id):
+    """Copy this plan, as it now stands, to a student as a draft."""
+    plan = _owned_plan(request, plan_id)
+    student_id = request.POST.get('student')
+    if not (student_id or '').isdigit():
+        messages.error(request, "Choose a student to copy the plan to.")
+        return redirect('studyplans:plan_manage', plan_id=plan.id)
+    student = _owned_student(request, int(student_id))
+    copy = copying.copy_plan(plan, student, _teacher_profile(request))
+    messages.success(
+        request,
+        f"Copied to {student.username} as a draft. They cannot see it yet -- "
+        f"change what you need, then use “Make this the active plan”.")
+    return redirect('studyplans:plan_manage', plan_id=copy.id)
 
 
 def _manage_topics(plan, goal_id=None):

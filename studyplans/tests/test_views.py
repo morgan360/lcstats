@@ -808,3 +808,98 @@ class AddingWorkBackTests(ViewTestBase):
         response = self.client.get(
             reverse('studyplans:plan_manage', args=[self.plan.id]))
         self.assertContains(response, 'Nothing left on this topic to add')
+
+
+class CopyPlanTests(ViewTestBase):
+    """A plan the teacher has shaped can be copied to someone else."""
+
+    def setUp(self):
+        self.badges = [
+            StudyPlanMicroBadge.objects.create(
+                goal=self.goal, number=n,
+                target_date=self.today + timedelta(days=2 * n))
+            for n in range(1, 11)
+        ]
+        self.item.micro_badge = self.badges[2]
+        self.item.order = 2
+        self.item.status = 'done'
+        self.item.save()
+        self.first = StudyPlanItem.objects.create(
+            plan=self.plan, goal=self.goal, micro_badge=self.badges[2],
+            content_type='exam_part', exam_question_part=self.parts[5],
+            order=1, origin='teacher', available_from=self.today,
+            due_date=self.today)
+        self.removed = StudyPlanItem.objects.create(
+            plan=self.plan, goal=self.goal, micro_badge=self.badges[0],
+            content_type='exam_part', exam_question_part=self.parts[3],
+            status='skipped', available_from=self.today, due_date=self.today)
+        retry = StudyPlanMicroBadge.objects.create(
+            goal=self.goal, number=11, kind='retry', target_date=self.today)
+        StudyPlanItem.objects.create(
+            plan=self.plan, goal=self.goal, micro_badge=retry,
+            content_type='exam_part', exam_question_part=self.parts[2],
+            origin='revisit', available_from=self.today, due_date=self.today)
+        self.badges[0].earned_at = timezone.now()
+        self.badges[0].save()
+        checkpoint_service.create_checkpoint(
+            self.goal, parts=self.parts[:2], round_number=1, status='ready')
+
+    def copy(self, student, user=None):
+        self.client.force_login(user or self.teacher_user)
+        return self.client.post(
+            reverse('studyplans:copy_plan', args=[self.plan.id]),
+            {'student': student.id})
+
+    def test_the_copy_keeps_the_work_and_its_order(self):
+        response = self.copy(self.classmate)
+        copy = StudyPlan.objects.get(student=self.classmate)
+        self.assertRedirects(response, reverse('studyplans:plan_manage', args=[copy.id]))
+        self.assertEqual(copy.status, 'draft')
+        self.assertEqual(copy.title, self.plan.title)
+
+        goal = copy.goals.get()
+        self.assertEqual(goal.micro_badges.count(), 10)
+        items = list(copy.items.order_by('micro_badge__number', 'order'))
+        self.assertEqual(
+            [(i.micro_badge.number, i.exam_question_part) for i in items],
+            [(3, self.parts[5]), (3, self.parts[4])])
+        self.assertEqual({i.status for i in items}, {'pending'})
+        self.assertEqual(items[0].origin, 'teacher')
+
+    def test_the_copy_leaves_the_first_students_progress_behind(self):
+        self.copy(self.classmate)
+        goal = StudyPlan.objects.get(student=self.classmate).goals.get()
+        self.assertFalse(goal.micro_badges.filter(earned_at__isnull=False).exists())
+        self.assertFalse(goal.micro_badges.filter(kind='retry').exists())
+        checkpoint = goal.checkpoints.get()
+        self.assertEqual(checkpoint.status, 'locked')
+        self.assertEqual(
+            [p.exam_question_part for p in checkpoint.parts.all()], self.parts[:2])
+
+    def test_the_copy_runs_as_long_as_the_source_from_today(self):
+        self.copy(self.classmate)
+        copy = StudyPlan.objects.get(student=self.classmate)
+        self.assertEqual(copy.start_date, self.today)
+        self.assertEqual(copy.deadline - copy.start_date,
+                         self.plan.deadline - self.plan.start_date)
+
+    def test_the_source_is_untouched(self):
+        self.copy(self.classmate)
+        self.assertEqual(self.plan.items.count(), 4)
+        self.item.refresh_from_db()
+        self.assertEqual(self.item.status, 'done')
+
+    def test_a_teacher_cannot_copy_to_a_student_they_do_not_teach(self):
+        response = self.copy(self.stranger)
+        self.assertEqual(response.status_code, 403)
+        self.assertFalse(StudyPlan.objects.filter(student=self.stranger).exists())
+
+    def test_another_teacher_cannot_copy_the_plan(self):
+        response = self.copy(self.classmate, user=self.other_teacher_user)
+        self.assertEqual(response.status_code, 403)
+
+    def test_the_manage_page_offers_the_copy(self):
+        self.client.force_login(self.teacher_user)
+        response = self.client.get(reverse('studyplans:plan_manage', args=[self.plan.id]))
+        self.assertContains(response, reverse('studyplans:copy_plan', args=[self.plan.id]))
+        self.assertContains(response, 'brian')

@@ -86,6 +86,28 @@
         A student has one active plan at a time. Archiving keeps everything --
         passed Badge Tests stay on their achievements.
       </p>
+      {% if copy_students %}
+      <form method="post" action="{% url 'studyplans:copy_plan' plan.id %}"
+            class="mt-4 flex flex-wrap items-center gap-2 border-t border-twilight/10 pt-4">
+        {% csrf_token %}
+        <label for="copy-student" class="text-sm font-semibold text-midnight">Copy to</label>
+        <select id="copy-student" name="student" required
+                class="min-w-0 flex-1 rounded border-twilight/20 py-1 text-sm">
+          <option value="">choose a student&hellip;</option>
+          {% for s in copy_students %}
+          <option value="{{ s.id }}">{{ s.username }}{% if s.get_full_name %} ({{ s.get_full_name }}){% endif %}</option>
+          {% endfor %}
+        </select>
+        <button type="submit"
+                class="rounded-lg bg-twilight/10 px-3 py-2 text-sm font-semibold text-twilight transition hover:bg-twilight/20">
+          Copy as draft
+        </button>
+      </form>
+      <p class="mt-2 text-xs text-twilight/60">
+        Same topics, work and Badge Tests, starting today, with none of this
+        student's progress.
+      </p>
+      {% endif %}
       {% if plan.last_checked_at %}
       <p class="mt-2 text-xs text-twilight/50">
         Last checked {{ plan.last_checked_at|timesince }} ago.
