@@ -17,7 +17,7 @@ from django.conf import settings
 from django.contrib import messages
 from django.core.exceptions import PermissionDenied
 from django.db import transaction
-from django.http import JsonResponse
+from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
@@ -589,16 +589,43 @@ def _rollout(request, teacher_class, form, source_template=None,
 def plan_manage(request, plan_id):
     """The teacher's view of one plan, and the controls for changing it."""
     plan = _owned_plan(request, plan_id)
-    topics = _topics_with_badges(plan)
-    for topic in topics:
-        topic['addable'] = nightly.revisit_candidates(
-            plan, topic['state']['goal'], allow_removed=True)
     return render(request, 'studyplans/teacher/plan_manage.html', {
         'plan': plan,
         'card': progress.plan_card(plan),
-        'topics': topics,
+        'topics': _manage_topics(plan),
         'events': plan.events.all()[:30],
     })
+
+
+def _manage_topics(plan, goal_id=None):
+    """The topics of plan_manage, each with what could still be added to it."""
+    topics = [t for t in _topics_with_badges(plan)
+              if goal_id is None or t['state']['goal'].id == goal_id]
+    for topic in topics:
+        topic['addable'] = nightly.revisit_candidates(
+            plan, topic['state']['goal'], allow_removed=True)
+    return topics
+
+
+def _is_ajax(request):
+    return request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+
+
+def _after_edit(request, plan, goal_id, message=None):
+    """Answer an item edit on plan_manage.
+
+    A background request gets the edited topic's section re-rendered, for the
+    page to swap in place; a plain form post gets the message and a redirect.
+    """
+    if _is_ajax(request):
+        topics = _manage_topics(plan, goal_id)
+        if not topics:
+            return HttpResponse(status=404)
+        return render(request, 'studyplans/teacher/_manage_topic.html',
+                      {'plan': plan, 'topic': topics[0]})
+    if message:
+        messages.success(request, message)
+    return redirect('studyplans:plan_manage', plan_id=plan.id)
 
 
 @require_POST
@@ -641,8 +668,7 @@ def remove_item(request, plan_id, item_id):
     item.save(update_fields=['status', 'updated_at'])
     StudyPlanEvent.log(plan, 'teacher_edit',
                        f"Removed: {item.get_content_display()}", item=item)
-    messages.success(request, "Item removed from the plan.")
-    return redirect('studyplans:plan_manage', plan_id=plan.id)
+    return _after_edit(request, plan, item.goal_id, "Item removed from the plan.")
 
 
 @require_POST
@@ -654,6 +680,7 @@ def move_item(request, plan_id, item_id):
     badge = get_object_or_404(StudyPlanMicroBadge,
                               id=request.POST.get('micro_badge'),
                               goal_id=item.goal_id)
+    message = None
     if badge.id != item.micro_badge_id:
         item.micro_badge = badge
         item.due_date = max(badge.target_date, item.available_from)
@@ -662,8 +689,8 @@ def move_item(request, plan_id, item_id):
         StudyPlanEvent.log(plan, 'teacher_edit',
                            f"Moved to {_badge_label(badge)}: "
                            f"{item.get_content_display()}", item=item)
-        messages.success(request, f"Moved to {_badge_label(badge)}.")
-    return redirect('studyplans:plan_manage', plan_id=plan.id)
+        message = f"Moved to {_badge_label(badge)}."
+    return _after_edit(request, plan, item.goal_id, message)
 
 
 @require_POST
@@ -685,6 +712,8 @@ def reorder_item(request, plan_id, item_id):
             if sibling.order != position:
                 sibling.order = position
                 sibling.save(update_fields=['order', 'updated_at'])
+    if _is_ajax(request):
+        return _after_edit(request, plan, item.goal_id)
     return redirect(f"{reverse('studyplans:plan_manage', args=[plan.id])}"
                     f"#badge-{item.micro_badge_id}")
 
@@ -702,6 +731,10 @@ def add_item(request, plan_id, badge_id):
                       if c.kind == kind and str(c.obj.id) == obj_id), None)
     if candidate is None:
         messages.error(request, "That is not available to add to this topic.")
+        # A background request reloads the page on an error status, which
+        # then shows this message.
+        if _is_ajax(request):
+            return HttpResponse(status=400)
         return redirect('studyplans:plan_manage', plan_id=plan.id)
 
     field = content_links.CONTENT_FK_FIELDS[candidate.kind]
@@ -726,8 +759,8 @@ def add_item(request, plan_id, badge_id):
     StudyPlanEvent.log(plan, 'teacher_edit',
                        f"Added to {_badge_label(badge)}: "
                        f"{item.get_content_display()}", item=item)
-    messages.success(request, f"Added to {_badge_label(badge)}.")
-    return redirect('studyplans:plan_manage', plan_id=plan.id)
+    return _after_edit(request, plan, badge.goal_id,
+                       f"Added to {_badge_label(badge)}.")
 
 
 @require_POST

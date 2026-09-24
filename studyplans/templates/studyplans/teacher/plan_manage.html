@@ -95,99 +95,7 @@
   </div>
 
   {% for topic in topics %}
-  {% with state=topic.state %}
-  <section class="mb-6 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-twilight/10">
-    <div class="mb-3 flex flex-wrap items-baseline justify-between gap-2">
-      <h3 class="text-lg font-semibold text-midnight">{{ state.topic.name }}</h3>
-      <p class="text-sm text-twilight/70">{{ state.badges_earned }} of {{ state.badges_total }} MicroBadges earned</p>
-    </div>
-    {% include "studyplans/_badge_strip.html" %}
-
-    <div class="mt-4 space-y-3">
-      {% for view in topic.badges %}
-      <div id="badge-{{ view.badge.id }}" class="scroll-mt-24 rounded-xl bg-twilight/5 p-3">
-        <div class="mb-2 flex flex-wrap items-center justify-between gap-2">
-          <p class="text-sm font-semibold text-midnight">
-            {% if view.badge.is_retry %}Retry MicroBadge{% else %}MicroBadge {{ view.badge.number }}{% endif %}
-            <span class="ml-1 text-xs font-normal text-twilight/60">
-              target {{ view.badge.target_date|date:"j M" }} &middot; {{ view.minutes_total }} min
-            </span>
-          </p>
-          {% if view.badge.is_earned %}
-            <span class="text-xs font-semibold text-violet-royal">
-              &check; earned{% if view.badge.earned_by_teacher %} (awarded by you){% endif %}
-            </span>
-          {% else %}
-            <form method="post" action="{% url 'studyplans:award_microbadge' plan.id view.badge.id %}">
-              {% csrf_token %}
-              <button type="submit" class="rounded bg-violet-royal/10 px-2 py-1 text-xs font-semibold text-violet-royal hover:bg-violet-royal/20">
-                Award it
-              </button>
-            </form>
-          {% endif %}
-        </div>
-        <ul class="space-y-1">
-          {% for item in view.items %}
-          <li class="flex flex-wrap items-center gap-2 rounded-lg bg-white px-3 py-2">
-            <form method="post" action="{% url 'studyplans:reorder_item' plan.id item.id %}"
-                  class="flex flex-col leading-none">
-              {% csrf_token %}
-              <button name="direction" value="up" aria-label="Move up"
-                      class="px-1 text-xs text-twilight/60 hover:text-violet-royal disabled:opacity-20"
-                      {% if forloop.first %}disabled{% endif %}>&#9650;</button>
-              <button name="direction" value="down" aria-label="Move down"
-                      class="px-1 text-xs text-twilight/60 hover:text-violet-royal disabled:opacity-20"
-                      {% if forloop.last %}disabled{% endif %}>&#9660;</button>
-            </form>
-            <span class="min-w-0 flex-1 truncate text-sm text-midnight">{{ item.get_content_display }}</span>
-            <span class="text-xs text-twilight/60">{{ item.get_status_display }}</span>
-            <form method="post" action="{% url 'studyplans:move_item' plan.id item.id %}" class="flex items-center gap-1">
-              {% csrf_token %}
-              <select name="micro_badge" class="rounded border-twilight/20 py-0 text-xs"
-                      onchange="this.form.submit()" aria-label="Move to another MicroBadge">
-                {% for other in topic.badges %}
-                <option value="{{ other.badge.id }}" {% if other.badge.id == view.badge.id %}selected{% endif %}>
-                  {% if other.badge.is_retry %}Retry{% else %}MB {{ other.badge.number }}{% endif %}
-                </option>
-                {% endfor %}
-              </select>
-            </form>
-            <form method="post" action="{% url 'studyplans:remove_item' plan.id item.id %}">
-              {% csrf_token %}
-              <button type="submit" class="text-xs font-semibold text-rose-pop hover:underline">remove</button>
-            </form>
-          </li>
-          {% empty %}
-          <li class="px-3 py-2 text-sm text-twilight/50">Empty &mdash; add work, or award it.</li>
-          {% endfor %}
-        </ul>
-        {% if view.badge.is_earned %}
-        {% elif not topic.addable %}
-        <p class="mt-2 text-xs text-twilight/50">
-          Nothing left on this topic to add &mdash; every piece of practice is
-          already on the plan. Move work here with the dropdowns instead.
-        </p>
-        {% else %}
-        <form method="post" action="{% url 'studyplans:add_item' plan.id view.badge.id %}"
-              class="mt-2 flex flex-wrap items-center gap-2">
-          {% csrf_token %}
-          <select name="content" class="min-w-0 flex-1 rounded border-twilight/20 py-1 text-xs">
-            {% for candidate in topic.addable %}
-            <option value="{{ candidate.kind }}:{{ candidate.obj.id }}">
-              {{ candidate.kind|capfirst }}: {{ candidate.obj }} ({{ candidate.minutes }} min)
-            </option>
-            {% endfor %}
-          </select>
-          <button type="submit" class="rounded bg-twilight/10 px-2 py-1 text-xs font-semibold text-twilight hover:bg-twilight/20">
-            Add
-          </button>
-        </form>
-        {% endif %}
-      </div>
-      {% endfor %}
-    </div>
-  </section>
-  {% endwith %}
+  {% include "studyplans/teacher/_manage_topic.html" %}
   {% endfor %}
 
   <section class="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-twilight/10">
@@ -204,4 +112,31 @@
     </ul>
   </section>
 </div>
+<script>
+// The item controls post in the background: the reply is the topic's section
+// re-rendered, swapped in place so the page keeps its scroll position. Any
+// failure falls back to a full reload, which shows the server's message.
+document.addEventListener('submit', async (event) => {
+  const form = event.target.closest('form[data-ajax]');
+  if (!form) return;
+  event.preventDefault();
+  const section = form.closest('section[id^="topic-"]');
+  const data = new FormData(form);
+  if (event.submitter && event.submitter.name) {
+    data.append(event.submitter.name, event.submitter.value);
+  }
+  section.querySelectorAll('button, select').forEach((el) => { el.disabled = true; });
+  section.classList.add('opacity-60');
+  try {
+    const response = await fetch(form.action, {
+      method: 'POST', body: data,
+      headers: {'X-Requested-With': 'XMLHttpRequest'},
+    });
+    if (!response.ok) throw new Error(response.status);
+    section.outerHTML = await response.text();
+  } catch (error) {
+    window.location.reload();
+  }
+});
+</script>
 {% endblock %}

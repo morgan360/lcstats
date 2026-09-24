@@ -555,6 +555,52 @@ class MicroBadgeEditingTests(ViewTestBase):
             {'direction': 'up'})
         self.assertEqual(self._order(), [self.item.id, second.id])
 
+    def test_a_background_reorder_answers_with_the_topic_section(self):
+        second = self._second_item(order=self.item.order + 1)
+        self.client.force_login(self.teacher_user)
+        response = self.client.post(
+            reverse('studyplans:reorder_item', args=[self.plan.id, second.id]),
+            {'direction': 'up'}, HTTP_X_REQUESTED_WITH='XMLHttpRequest')
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, f'id="topic-{self.goal.id}"')
+        self.assertNotContains(response, '<html')
+        self.assertEqual(self._order(), [second.id, self.item.id])
+
+    def test_a_background_remove_leaves_no_message_for_the_next_page(self):
+        self.client.force_login(self.teacher_user)
+        response = self.client.post(
+            reverse('studyplans:remove_item', args=[self.plan.id, self.item.id]),
+            HTTP_X_REQUESTED_WITH='XMLHttpRequest')
+        self.assertContains(response, 'Empty &mdash; add work')
+        page = self.client.get(reverse('studyplans:plan_manage', args=[self.plan.id]))
+        self.assertNotContains(page, 'Item removed from the plan.')
+
+    def test_a_background_move_and_add_answer_with_the_section(self):
+        self.client.force_login(self.teacher_user)
+        ajax = {'HTTP_X_REQUESTED_WITH': 'XMLHttpRequest'}
+        response = self.client.post(
+            reverse('studyplans:move_item', args=[self.plan.id, self.item.id]),
+            {'micro_badge': self.badges[4].id}, **ajax)
+        self.assertContains(response, f'id="topic-{self.goal.id}"')
+        response = self.client.post(
+            reverse('studyplans:add_item', args=[self.plan.id, self.badges[2].id]),
+            {'content': f'exam_part:{self.parts[5].id}'}, **ajax)
+        self.assertContains(response, f'id="topic-{self.goal.id}"')
+        self.assertTrue(self.badges[2].items.exists())
+
+    def test_a_background_add_that_fails_says_so_by_status(self):
+        self.client.force_login(self.teacher_user)
+        response = self.client.post(
+            reverse('studyplans:add_item', args=[self.plan.id, self.badges[2].id]),
+            {'content': 'exam_part:0'}, HTTP_X_REQUESTED_WITH='XMLHttpRequest')
+        self.assertEqual(response.status_code, 400)
+
+    def test_the_manage_page_posts_its_item_controls_in_the_background(self):
+        self.client.force_login(self.teacher_user)
+        response = self.client.get(reverse('studyplans:plan_manage', args=[self.plan.id]))
+        self.assertContains(response, 'data-ajax')
+        self.assertContains(response, f'id="topic-{self.goal.id}"')
+
     def test_another_teacher_cannot_reorder(self):
         self.client.force_login(self.other_teacher_user)
         response = self.client.post(
