@@ -400,6 +400,22 @@ class EveryPageRendersTests(ViewTestBase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, self.plan.title)
 
+    def test_an_archived_plan_is_listed_apart_on_the_dashboard(self):
+        self.plan.status = 'archived'
+        self.plan.save()
+        self.client.force_login(self.teacher_user)
+        response = self.client.get(reverse('studyplans:teacher_dashboard'))
+        self.assertEqual(response.context['rows'], [])
+        self.assertEqual(list(response.context['archived']), [self.plan])
+        self.assertContains(response, reverse('studyplans:plan_manage', args=[self.plan.id]))
+
+    def test_another_teachers_archived_plan_is_not_listed(self):
+        self.plan.status = 'archived'
+        self.plan.save()
+        self.client.force_login(self.other_teacher_user)
+        response = self.client.get(reverse('studyplans:teacher_dashboard'))
+        self.assertEqual(list(response.context['archived']), [])
+
     def test_the_student_dashboard_shows_the_plan_card(self):
         self.client.force_login(self.student)
         response = self.client.get(reverse('dashboard'))
@@ -635,6 +651,26 @@ class DraftPlanTests(ViewTestBase):
         self.client.force_login(self.classmate)
         response = self.client.get(reverse('studyplans:my_plan'))
         self.assertIsNone(response.context['plan'])
+
+    def test_a_blank_draft_has_its_microbadges_but_no_work(self):
+        """A draft plan is expected to generate work; this tells a blank one apart."""
+        self.post(save='draft')
+        self.assertTrue(StudyPlan.objects.get(
+            student=self.classmate, title='Spring plan').items.exists())
+
+        StudyPlan.objects.filter(student=self.classmate).delete()
+        self.post(save='blank')
+        plan = StudyPlan.objects.get(student=self.classmate, title='Spring plan')
+        self.assertEqual(plan.status, 'draft')
+        self.assertEqual(plan.goals.get().micro_badges.count(), 10)
+        self.assertFalse(plan.items.exists())
+
+    def test_the_preview_offers_a_blank_draft(self):
+        self.client.force_login(self.teacher_user)
+        response = self.client.post(
+            reverse('studyplans:plan_preview'),
+            self.builder_post(student=str(self.classmate.id)))
+        self.assertContains(response, 'value="blank"')
 
     def test_a_draft_does_not_need_the_active_slot(self):
         """aoife already holds the fixture plan; a draft must still be allowed."""

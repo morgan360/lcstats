@@ -104,7 +104,9 @@
     {% endfor %}
     <p class="mb-3 text-sm text-mist/70">
       A draft is saved but hidden from the student, so you can shape the
-      MicroBadges first and hand it over when you are ready.
+      MicroBadges first and hand it over when you are ready. A blank draft
+      has the same topics and Badge Tests, but empty MicroBadges for you to
+      fill yourself.
     </p>
     <div class="flex flex-wrap gap-3">
       <button type="submit"
@@ -114,6 +116,10 @@
       <button type="submit" name="save" value="draft"
               class="rounded-lg bg-white/10 px-5 py-3 text-sm font-semibold text-mist transition hover:bg-white/20">
         Save as draft
+      </button>
+      <button type="submit" name="save" value="blank"
+              class="rounded-lg bg-white/10 px-5 py-3 text-sm font-semibold text-mist transition hover:bg-white/20">
+        Save as blank draft
       </button>
       <a href="{% url 'studyplans:plan_builder' %}"
          class="rounded-lg bg-white/10 px-5 py-3 text-sm font-semibold text-mist transition hover:bg-white/20">

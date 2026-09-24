@@ -289,6 +289,8 @@ def refresh_progress(request, plan_id):
 def teacher_dashboard(request):
     """Every plan this teacher is running, with the ones needing attention first."""
     profile = _teacher_profile(request)
+    archived = (StudyPlan.objects.filter(teacher=profile, status='archived')
+                .select_related('student'))
     plans = (StudyPlan.objects
              .filter(teacher=profile)
              .exclude(status='archived')
@@ -306,6 +308,7 @@ def teacher_dashboard(request):
 
     return render(request, 'studyplans/teacher/dashboard.html', {
         'rows': rows,
+        'archived': archived,
         'classes': profile.classes.filter(is_active=True) if profile else [],
     })
 
@@ -449,11 +452,17 @@ def _create_one_plan(request, student, form, source_template=None,
     ``status='draft'`` saves it without the student seeing it: a draft is
     skipped by the nightly run, does not take the student's one active slot,
     and fills no stamp card. It is how a teacher reshapes the MicroBadges
-    before handing the plan over.
+    before handing the plan over. ``form['blank']`` leaves every MicroBadge
+    empty for the teacher to fill.
     """
     proposal = planner.build_plan(
         student, form['specs'], form['start_date'], form['deadline'],
         form['weekly_minutes'])
+    if form.get('blank'):
+        # Topics, MicroBadges and Badge Tests as usual, but no practice: the
+        # teacher fills each MicroBadge by hand from the Add lists.
+        for goal in proposal.goals:
+            goal.badges = [[] for _ in goal.badges]
     subject = form['specs'][0]['topic'].subject or getattr(
         request, 'current_subject', None)
 
@@ -484,7 +493,11 @@ def plan_create(request):
     class_id = request.POST.get('teacher_class')
     # A draft is invisible to the student, so it neither needs the active slot
     # nor collides with a plan they are already working on.
-    status = 'draft' if request.POST.get('save') == 'draft' else 'active'
+    # A blank plan is always a draft: empty, it has nothing for the student
+    # to do until the teacher fills it.
+    save = request.POST.get('save')
+    form['blank'] = save == 'blank'
+    status = 'draft' if save in ('draft', 'blank') else 'active'
 
     if student_id:
         student = _owned_student(request, int(student_id))

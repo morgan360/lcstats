@@ -88,5 +88,30 @@
     </div>
     {% endfor %}
   </div>
+
+  {% if archived %}
+  {# Archived plans drop off the grid above; listing them here is the only way
+     back to one without knowing its URL. #}
+  <details class="mt-10 rounded-2xl bg-white/5 p-5 ring-1 ring-white/10">
+    <summary class="cursor-pointer text-sm font-semibold text-mist">
+      Archived ({{ archived|length }})
+    </summary>
+    <ul class="mt-3 divide-y divide-white/10">
+      {% for plan in archived %}
+      <li class="flex flex-wrap items-center justify-between gap-2 py-2">
+        <span class="min-w-0 text-sm text-mist">
+          <span class="font-semibold">{{ plan.student.username }}</span>
+          <span class="text-mist/60">&middot; {{ plan.title }} &middot;
+            {{ plan.start_date|date:"j M" }} &ndash; {{ plan.deadline|date:"j M Y" }}</span>
+        </span>
+        <a href="{% url 'studyplans:plan_manage' plan.id %}"
+           class="rounded-lg bg-white/10 px-3 py-1 text-xs font-semibold text-mist transition hover:bg-white/20">
+          Open &rarr;
+        </a>
+      </li>
+      {% endfor %}
+    </ul>
+  </details>
+  {% endif %}
 </div>
 {% endblock %}
