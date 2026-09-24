@@ -898,6 +898,13 @@ class CopyPlanTests(ViewTestBase):
         response = self.copy(self.classmate, user=self.other_teacher_user)
         self.assertEqual(response.status_code, 403)
 
+    def test_opening_a_badge_test_and_archiving_ask_first(self):
+        self.goal.checkpoints.update(status='locked', unlocked_at=None)
+        self.client.force_login(self.teacher_user)
+        response = self.client.get(reverse('studyplans:plan_manage', args=[self.plan.id]))
+        self.assertContains(response, "confirm('Open this Badge Test now?")
+        self.assertContains(response, "confirm('Archive this plan?")
+
     def test_the_manage_page_offers_the_copy(self):
         self.client.force_login(self.teacher_user)
         response = self.client.get(reverse('studyplans:plan_manage', args=[self.plan.id]))
