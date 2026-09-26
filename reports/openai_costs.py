@@ -3,8 +3,9 @@ OpenAI organization spend, for the superuser-only cost page.
 
 OpenAI does not expose a prepaid *balance* over the API. It does expose actual
 dollar *spend* via the org Costs API, which needs an Admin key (sk-admin-...),
-not the project API key. This module fetches daily spend and, if a top-up figure
-is configured, derives a "remaining" estimate ourselves.
+not the project API key. This module fetches daily spend and derives a "remaining"
+estimate ourselves: the newest CreditBalance entered on the spend page, or the
+OPENAI_CREDIT_* settings before one exists, minus the spend since.
 
 Costs API: GET https://api.openai.com/v1/organization/costs
   headers: Authorization: Bearer <OPENAI_ADMIN_KEY>
@@ -12,6 +13,7 @@ Costs API: GET https://api.openai.com/v1/organization/costs
   data[] : {object:"bucket", start_time, results:[{amount:{value, currency}}]}
 """
 import datetime as dt
+from decimal import Decimal
 import logging
 
 import requests
@@ -69,6 +71,59 @@ def _fetch_daily_costs(start_ts):
     return by_date, currency
 
 
+def _credit_reference():
+    """(balance, since date, spend on that date already in it, when entered).
+
+    The newest CreditBalance wins; the settings are the fallback, and a
+    settings date is taken as the start of that day, so none of it is
+    already counted.
+    """
+    from .models import CreditBalance
+
+    row = CreditBalance.latest_for("openai")
+    if row:
+        return (
+            float(row.amount),
+            row.recorded_at.astimezone(dt.timezone.utc).date(),
+            float(row.spend_already_counted),
+            row.recorded_at,
+        )
+    return settings.OPENAI_CREDIT_TOPUP, settings.OPENAI_CREDIT_SINCE, 0.0, None
+
+
+def spend_so_far_today():
+    """Today's org spend (UTC) as the Costs API has it now; 0.0 if unreachable.
+
+    Stored with a newly entered balance, which already has this taken off.
+    Unreachable means the estimate may run up to one day's spend low, which
+    is better than refusing to save the balance.
+    """
+    if not settings.OPENAI_ADMIN_KEY:
+        return 0.0
+    today = dt.datetime.now(dt.timezone.utc).date()
+    start_ts = dt.datetime(today.year, today.month, today.day, tzinfo=dt.timezone.utc).timestamp()
+    try:
+        by_date, _ = _fetch_daily_costs(start_ts)
+    except Exception as exc:  # noqa: BLE001 -- saving the balance must not fail on this
+        log.warning("Could not read today's OpenAI spend for a new balance: %s", exc)
+        return 0.0
+    return by_date.get(today, 0.0)
+
+
+def record_balance(amount, user=None):
+    """Save the balance read off OpenAI's billing page, and drop the cached summary."""
+    from .models import CreditBalance
+
+    row = CreditBalance.objects.create(
+        provider="openai",
+        amount=amount,
+        spend_already_counted=Decimal(str(round(spend_so_far_today(), 6))),
+        recorded_by=user,
+    )
+    cache.delete(CACHE_KEY)
+    return row
+
+
 def get_cost_summary(force_refresh=False):
     """
     Cached spend summary for the template. Always returns a dict; on failure it
@@ -91,8 +146,7 @@ def get_cost_summary(force_refresh=False):
         today = now.date()
         month_start = today.replace(day=1)
 
-        topup = settings.OPENAI_CREDIT_TOPUP
-        since = settings.OPENAI_CREDIT_SINCE
+        topup, since, already_counted, recorded_at = _credit_reference()
 
         # Fetch back far enough to cover both the current month and the top-up date.
         fetch_from = month_start
@@ -124,13 +178,17 @@ def get_cost_summary(force_refresh=False):
             "since": None,
             "spent_since": None,
             "remaining": None,
+            "recorded_at": None,
         }
 
         if topup is not None and since is not None:
-            spent_since = sum(a for d, a in by_date.items() if d >= since)
+            spent_since = max(
+                0.0, sum(a for d, a in by_date.items() if d >= since) - already_counted
+            )
             summary.update({
                 "topup": topup,
                 "since": since,
+                "recorded_at": recorded_at,
                 "spent_since": spent_since,
                 "remaining": topup - spent_since,
             })

@@ -4,6 +4,7 @@ from .models import (
     ClassSession,
     ClassTest,
     CommentPreset,
+    CreditBalance,
     StudentClassNote,
     StudentSessionRecord,
     TestResult,
@@ -60,3 +61,15 @@ class StudentClassNoteAdmin(admin.ModelAdmin):
     list_filter = ('teacher_class', 'ability')
     search_fields = ('student__username', 'student__first_name', 'student__last_name', 'note')
     raw_id_fields = ('student',)
+
+
+@admin.register(CreditBalance)
+class CreditBalanceAdmin(admin.ModelAdmin):
+    """History only. New balances go in on the AI spend page, which also notes
+    the OpenAI spend already taken off, so there is no Add button here."""
+    list_display = ('provider', 'amount', 'recorded_at', 'spend_already_counted', 'recorded_by')
+    list_filter = ('provider',)
+    readonly_fields = ('provider', 'amount', 'recorded_at', 'spend_already_counted', 'recorded_by')
+
+    def has_add_permission(self, request):
+        return False

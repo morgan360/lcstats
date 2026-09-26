@@ -1,5 +1,6 @@
 import json
 from datetime import date, time, timedelta
+from decimal import Decimal
 from unittest.mock import patch
 
 from django.contrib.auth.models import Group, User
@@ -483,3 +484,103 @@ class RosterNameTests(BaseReportTestCase):
         ability_at = html.index('data-field="ability"')
         self.assertGreater(ability_at, panel_start,
                            "ability chip should sit inside the expandable panel")
+
+
+class CreditBalanceTests(TestCase):
+    """The spend page's remaining figure, counted down from an entered balance."""
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.admin = User.objects.create_superuser('boss', password='pw')
+        cls.teacher, _ = make_teacher('teacher_c')
+
+    def setUp(self):
+        from django.core.cache import cache
+        from . import openai_costs
+        cache.delete(openai_costs.CACHE_KEY)
+
+    def _today(self):
+        import datetime as dt
+        return dt.datetime.now(dt.timezone.utc).date()
+
+    def test_openai_counts_down_without_counting_today_twice(self):
+        from django.test import override_settings
+        from . import openai_costs
+        from .models import CreditBalance
+
+        today = self._today()
+        with override_settings(OPENAI_ADMIN_KEY='sk-admin-test'), \
+                patch.object(openai_costs, '_fetch_daily_costs',
+                             return_value=({today: 0.40}, 'usd')):
+            row = openai_costs.record_balance(Decimal('11.55'), user=self.admin)
+        self.assertEqual(row.spend_already_counted, Decimal('0.400000'))
+
+        # Later the same day, 0.25 more has gone: only that comes off.
+        with override_settings(OPENAI_ADMIN_KEY='sk-admin-test'), \
+                patch.object(openai_costs, '_fetch_daily_costs',
+                             return_value=({today: 0.65}, 'usd')):
+            summary = openai_costs.get_cost_summary(force_refresh=True)
+        self.assertAlmostEqual(summary['spent_since'], 0.25)
+        self.assertAlmostEqual(summary['remaining'], 11.30)
+        self.assertEqual(summary['recorded_at'], CreditBalance.latest_for('openai').recorded_at)
+
+    def test_openai_falls_back_to_settings_before_any_balance(self):
+        from django.test import override_settings
+        from . import openai_costs
+
+        today = self._today()
+        with override_settings(OPENAI_ADMIN_KEY='sk-admin-test', OPENAI_CREDIT_TOPUP=8.0,
+                               OPENAI_CREDIT_SINCE=today), \
+                patch.object(openai_costs, '_fetch_daily_costs',
+                             return_value=({today: 1.5}, 'usd')):
+            summary = openai_costs.get_cost_summary(force_refresh=True)
+        self.assertAlmostEqual(summary['remaining'], 6.5)
+        self.assertIsNone(summary['recorded_at'])
+
+    def test_gemini_counts_only_calls_after_the_balance(self):
+        import datetime as dt
+        from django.test import override_settings
+        from homework_check.models import VisionUsage
+        from . import gemini_spend
+
+        entered = timezone.now() - dt.timedelta(minutes=10)
+        VisionUsage.objects.create(model='gemini-x', cost_usd=Decimal('0.50'),
+                                   created_at=entered - dt.timedelta(minutes=1))
+        VisionUsage.objects.create(model='gemini-x', cost_usd=Decimal('0.23'),
+                                   created_at=entered + dt.timedelta(minutes=1))
+        row = gemini_spend.record_balance(Decimal('20.00'))
+        row.recorded_at = entered
+        row.save()
+        with override_settings(GEMINI_USD_PER_CREDIT=1.15):
+            summary = gemini_spend.get_gemini_summary()
+        self.assertAlmostEqual(summary['spent_since_usd'], 0.23)
+        self.assertAlmostEqual(summary['remaining'], 20 - 0.23 / 1.15)
+
+    def test_superuser_saves_a_balance_from_the_page(self):
+        from .models import CreditBalance
+
+        self.client.login(username='boss', password='pw')
+        with patch('reports.openai_costs.spend_so_far_today', return_value=0.0):
+            resp = self.client.post(reverse('reports:openai_costs'),
+                                    {'provider': 'openai', 'amount': '$11.55'})
+        self.assertRedirects(resp, reverse('reports:openai_costs'), fetch_redirect_response=False)
+        row = CreditBalance.latest_for('openai')
+        self.assertEqual(row.amount, Decimal('11.55'))
+        self.assertEqual(row.recorded_by, self.admin)
+
+    def test_bad_amounts_save_nothing(self):
+        from .models import CreditBalance
+
+        self.client.login(username='boss', password='pw')
+        for amount in ('', 'abc', '-3', 'NaN'):
+            self.client.post(reverse('reports:openai_costs'), {'provider': 'openai', 'amount': amount})
+        self.client.post(reverse('reports:openai_costs'), {'provider': 'bogus', 'amount': '5'})
+        self.assertFalse(CreditBalance.objects.exists())
+
+    def test_non_superuser_cannot_save_a_balance(self):
+        from .models import CreditBalance
+
+        self.client.login(username='teacher_c', password='pw')
+        resp = self.client.post(reverse('reports:openai_costs'), {'provider': 'openai', 'amount': '5'})
+        self.assertEqual(resp.status_code, 403)
+        self.assertFalse(CreditBalance.objects.exists())

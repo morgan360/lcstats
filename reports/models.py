@@ -1,5 +1,6 @@
 from django.conf import settings
 from django.db import models
+from django.utils import timezone
 
 
 class CommentPreset(models.Model):
@@ -245,3 +246,48 @@ class TestResult(models.Model):
     @property
     def has_comment(self):
         return bool(self.comment_preset_id or self.comment_text)
+
+
+class CreditBalance(models.Model):
+    """A prepaid AI balance, as read off the provider's billing page.
+
+    Neither OpenAI nor Google will report a prepaid balance over the API, so
+    the spend page works out what is left as the newest of these minus the
+    spend since it was entered. Entering a fresh one after each top-up keeps
+    that honest; the OPENAI_/GEMINI_CREDIT_* settings are only a fallback for
+    before the first row exists.
+    """
+    PROVIDER_CHOICES = [
+        ('openai', 'OpenAI'),
+        ('gemini', 'Gemini'),
+    ]
+
+    provider = models.CharField(max_length=10, choices=PROVIDER_CHOICES)
+    amount = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        help_text="OpenAI in dollars; Gemini in the currency Google charges the credit in",
+    )
+    recorded_at = models.DateTimeField(default=timezone.now, editable=False)
+    # OpenAI's Costs API only reports whole UTC days, and the balance on the
+    # billing page already has today's spend taken off. Subtracting all of
+    # today again would count it twice, so the spend so far today is noted
+    # at entry and left out. Gemini's calls are timestamped and need none.
+    spend_already_counted = models.DecimalField(
+        max_digits=12, decimal_places=6, default=0, editable=False,
+    )
+    recorded_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL,
+        null=True, blank=True, editable=False, related_name='+',
+    )
+
+    class Meta:
+        ordering = ['-recorded_at']
+        get_latest_by = 'recorded_at'
+
+    def __str__(self):
+        return f"{self.get_provider_display()} {self.amount} at {self.recorded_at:%Y-%m-%d %H:%M}"
+
+    @classmethod
+    def latest_for(cls, provider):
+        return cls.objects.filter(provider=provider).order_by('-recorded_at', '-id').first()

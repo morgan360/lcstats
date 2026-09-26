@@ -50,6 +50,8 @@ def openai_costs(request):
     """
     if not request.user.is_superuser:
         raise PermissionDenied
+    if request.method == "POST":
+        return _record_credit_balance(request)
     summary = openai_costs_service.get_cost_summary(
         force_refresh=request.GET.get("refresh") == "1"
     )
@@ -57,6 +59,25 @@ def openai_costs(request):
         "summary": summary,
         "gemini": gemini_spend.get_gemini_summary(),
     })
+
+
+def _record_credit_balance(request):
+    """Save a balance read off a provider's billing page, then show the page again."""
+    recorders = {
+        "openai": openai_costs_service.record_balance,
+        "gemini": gemini_spend.record_balance,
+    }
+    provider = request.POST.get("provider")
+    try:
+        amount = Decimal(request.POST.get("amount", "").strip().lstrip("$€"))
+    except InvalidOperation:
+        amount = None
+    if provider not in recorders or amount is None or not amount.is_finite() or amount < 0:
+        messages.error(request, "Enter the balance as a number, such as 11.55.")
+    else:
+        recorders[provider](amount.quantize(Decimal("0.01")), user=request.user)
+        messages.success(request, "Balance saved. Remaining now counts down from it.")
+    return redirect("reports:openai_costs")
 
 
 # ------------------------------------------------------------
