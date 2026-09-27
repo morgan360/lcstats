@@ -230,6 +230,31 @@ class ActivityServiceTests(BaseReportTestCase):
         self.assertEqual(activity[self.student1.id][day_key]['total'], 4)
         self.assertNotIn(self.student2.id, activity)
 
+    def test_exam_answers_count_on_the_day_they_were_submitted(self):
+        """Practice reuses one open attempt per paper, so the day it started
+        says nothing about when the answers came."""
+        from core.models import Subject
+        from exam_papers.models import (ExamAttempt, ExamPaper, ExamQuestion,
+                                        ExamQuestionAttempt, ExamQuestionPart)
+        paper = ExamPaper.objects.create(subject=Subject.objects.get(slug='maths'),
+                                         year=2022, paper_type='p1', total_marks=300)
+        part = ExamQuestionPart.objects.create(
+            question=ExamQuestion.objects.create(exam_paper=paper, question_number=10,
+                                                 total_marks=50),
+            label='(c)', max_marks=10)
+        attempt = ExamAttempt.objects.create(student=self.student1, exam_paper=paper)
+        opened = timezone.now() - timedelta(days=5)
+        ExamAttempt.objects.filter(pk=attempt.pk).update(started_at=opened)
+        for _ in range(3):
+            ExamQuestionAttempt.objects.create(exam_attempt=attempt, question_part=part,
+                                               marks_awarded=7, max_marks=10)
+
+        activity = services.get_activity_by_day(
+            [self.student1], timezone.now() - timedelta(days=7), timezone.now())
+        days = activity[self.student1.id]
+        self.assertEqual(days[timezone.now().date()]['exams'], 3)
+        self.assertNotIn(opened.date(), days)
+
     def test_user_ids_active_since(self):
         profile = StudentProfile.objects.get(user=self.student1)
         topic = Topic.objects.create(name='Trig')

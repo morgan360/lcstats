@@ -1,6 +1,6 @@
 """
 Aggregation of automatic NumScoil activity (question attempts, homework tasks,
-flashcards, quickkicks, exam attempts, work photos) for teacher reports.
+flashcards, quickkicks, exam part answers, work photos) for teacher reports.
 
 Both public functions take the whole roster at once and run exactly one query
 per activity source (6 total) — never per student.
@@ -10,7 +10,7 @@ from collections import defaultdict
 from django.db.models import Count, DateTimeField
 from django.db.models.functions import Coalesce, TruncDate
 
-from exam_papers.models import ExamAttempt
+from exam_papers.models import ExamQuestionAttempt
 from flashcards.models import FlashcardAttempt
 from homework.models import StudentHomeworkProgress
 from quickkicks.models import QuickKickView
@@ -51,10 +51,13 @@ def _sources(user_ids):
             'user_id',
         ),
         (
+            # Exam part answers, dated when submitted. Not ExamAttempt: practice
+            # reuses one open attempt per paper, so its started_at is the day
+            # the paper was first opened and later days' work never counted.
             'exams',
-            ExamAttempt.objects.filter(student_id__in=user_ids),
-            'started_at',
-            'student_id',
+            ExamQuestionAttempt.objects.filter(exam_attempt__student_id__in=user_ids),
+            'submitted_at',
+            'exam_attempt__student_id',
         ),
         (
             # Photos of working sent from a phone by QR. The row exists from the

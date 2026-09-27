@@ -694,7 +694,7 @@ ACTIVITY_LABELS = {
     'homework_tasks': 'Homework tasks completed',
     'flashcards': 'Flashcards',
     'quickkicks': 'QuickKicks',
-    'exams': 'Exam attempts',
+    'exams': 'Exam part answers',
     'photos': 'Work photos (QR uploads)',
 }
 
