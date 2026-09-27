@@ -9,9 +9,9 @@ from django.urls import reverse
 from django.utils import timezone
 
 from homework.models import TeacherClass, TeacherProfile
-from interactive_lessons.models import Question, Topic
+from interactive_lessons.models import Question, QuestionPart, Topic
 from quickkicks.models import QuickKick, QuickKickView
-from students.models import QuestionAttempt, StudentProfile
+from students.models import QuestionAttempt, StudentProfile, WorkSubmission
 
 from . import services
 from .models import (
@@ -212,16 +212,22 @@ class ActivityServiceTests(BaseReportTestCase):
             title='QK', topic=topic, content_type='geogebra', geogebra_code='abc123'
         )
         QuickKickView.objects.create(user=self.student1, quickkick=quickkick, viewed_at=day)
+        # A photo sent by QR counts; a QR opened with no photo sent does not.
+        part = QuestionPart.objects.create(question=question, label='(a)', prompt='Solve')
+        for status in (WorkSubmission.Status.COMPLETE, WorkSubmission.Status.AWAITING_PHOTO):
+            WorkSubmission.objects.filter(pk=WorkSubmission.objects.create(
+                student=profile, question_part=part, status=status).pk).update(created_at=day)
 
         start = timezone.now() - timedelta(days=7)
         end = timezone.now()
-        with self.assertNumQueries(5):
+        with self.assertNumQueries(6):
             activity = services.get_activity_by_day([self.student1, self.student2], start, end)
 
         day_key = day.date()
         self.assertEqual(activity[self.student1.id][day_key]['questions'], 2)
         self.assertEqual(activity[self.student1.id][day_key]['quickkicks'], 1)
-        self.assertEqual(activity[self.student1.id][day_key]['total'], 3)
+        self.assertEqual(activity[self.student1.id][day_key]['photos'], 1)
+        self.assertEqual(activity[self.student1.id][day_key]['total'], 4)
         self.assertNotIn(self.student2.id, activity)
 
     def test_user_ids_active_since(self):

@@ -1,9 +1,9 @@
 """
 Aggregation of automatic NumScoil activity (question attempts, homework tasks,
-flashcards, quickkicks, exam attempts) for teacher reports.
+flashcards, quickkicks, exam attempts, work photos) for teacher reports.
 
 Both public functions take the whole roster at once and run exactly one query
-per activity source (5 total) — never per student.
+per activity source (6 total) — never per student.
 """
 from collections import defaultdict
 
@@ -14,7 +14,7 @@ from exam_papers.models import ExamAttempt
 from flashcards.models import FlashcardAttempt
 from homework.models import StudentHomeworkProgress
 from quickkicks.models import QuickKickView
-from students.models import QuestionAttempt
+from students.models import QuestionAttempt, WorkSubmission
 
 # Each source: (report key, queryset builder taking user_ids, timestamp expression
 # name, path to the user id in values()).
@@ -56,15 +56,24 @@ def _sources(user_ids):
             'started_at',
             'student_id',
         ),
+        (
+            # Photos of working sent from a phone by QR. The row exists from the
+            # moment the QR is shown, so a slot with no photo yet is not activity.
+            'photos',
+            WorkSubmission.objects.filter(student__user_id__in=user_ids).exclude(
+                status=WorkSubmission.Status.AWAITING_PHOTO),
+            'created_at',
+            'student__user_id',
+        ),
     ]
 
 
 def get_activity_by_day(students, start_dt, end_dt):
     """
-    Per-day activity counts per student across all five sources.
+    Per-day activity counts per student across all six sources.
 
     Returns {user_id: {date: {'questions': n, 'homework_tasks': n, 'flashcards': n,
-                              'quickkicks': n, 'exams': n, 'total': n}}}.
+                              'quickkicks': n, 'exams': n, 'photos': n, 'total': n}}}.
     Days with no activity are absent from the inner dict.
     """
     user_ids = [getattr(s, 'id', s) for s in students]
