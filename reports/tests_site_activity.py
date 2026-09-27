@@ -100,6 +100,7 @@ class SiteActivityTests(TestCase):
 
     def test_page_is_superuser_only(self):
         url = reverse('reports:site_activity')
+        self.assertEqual(self.client.get(url).status_code, 302)
         self.client.force_login(self.teacher)
         self.assertEqual(self.client.get(url).status_code, 403)
         self.client.force_login(self.admin)

@@ -62,6 +62,7 @@ def openai_costs(request):
     })
 
 
+@login_required
 def site_activity(request):
     """Everything students did on the site on one day - today unless ?date= says.
 
