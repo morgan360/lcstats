@@ -42,7 +42,7 @@ class Event:
     when: datetime
     kind: str
     text: str
-    outcome: str = ''   # 'good', 'bad' or '' - colours the row
+    outcome: str = ''   # 'good', 'partial', 'bad' or '' - colours the row
 
 
 @dataclass
@@ -78,6 +78,13 @@ def _marks(awarded, possible):
     return f'{awarded:g}/{possible:g}'
 
 
+def _score_outcome(awarded, possible):
+    """Full marks good, some marks partial, none bad."""
+    if possible and awarded >= possible:
+        return 'good'
+    return 'partial' if awarded > 0 else 'bad'
+
+
 def _events(start, end):
     """(user, Event) pairs from every source, in no particular order."""
     span = {'__gte': start, '__lt': end}
@@ -100,7 +107,7 @@ def _events(start, end):
         part = f' {row.question_part.label}' if row.question_part else ''
         yield row.student.user, Event(
             row.attempted_at, 'lesson', f'{where}: Q{question.order}{part}',
-            'good' if row.is_correct else 'bad')
+            'good' if row.is_correct else _score_outcome(row.score_awarded, 100))
 
     for row in (ExamQuestionAttempt.objects.filter(**within('submitted_at'))
                 .select_related('exam_attempt__student',
@@ -111,7 +118,7 @@ def _events(start, end):
         yield row.exam_attempt.student, Event(
             row.submitted_at, 'exam',
             f'{row.question_part} - {_marks(row.marks_awarded, row.max_marks)}{note}',
-            'good' if row.is_correct else 'bad')
+            'good' if row.is_correct else _score_outcome(row.marks_awarded, row.max_marks))
 
     for row in (FlashcardAttempt.objects.filter(**within('last_answered_at'))
                 .select_related('student', 'flashcard__flashcard_set')):

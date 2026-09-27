@@ -72,6 +72,13 @@ class SiteActivityTests(TestCase):
         self.assertEqual(ann.counts, [('Logins', 1), ('Lesson answers', 1),
                                       ('Exam part answers', 1)])
 
+    def test_exam_rows_are_coloured_by_marks(self):
+        self.exam(self.ann, at(self.today, 9), marks=10)
+        self.exam(self.ann, at(self.today, 10), marks=7)
+        self.exam(self.ann, at(self.today, 11), marks=0)
+        [ann] = activity_for_day(self.today)['students']
+        self.assertEqual([e.outcome for e in ann.events], ['good', 'partial', 'bad'])
+
     def test_only_the_chosen_day_counts(self):
         self.lesson(self.ann, at(self.yesterday, 23, 59))
         self.lesson(self.bob, at(self.today, 0, 1))

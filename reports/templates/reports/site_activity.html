@@ -1,5 +1,7 @@
 {% extends "_base.html" %}
 {% block title %}Today · NumScoil{% endblock %}
+{# The student AI helper has no use here, and sat on top of the heading. #}
+{% block mascot %}{% endblock %}
 
 {% block content %}
 {# Text outside the white cards is mist: the page ground is midnight. #}
@@ -56,7 +58,7 @@
             {% for event in student.events %}
             <li class="flex gap-3 py-1">
                 <span class="w-12 shrink-0 tabular-nums text-twilight/70">{{ event.when|time:"H:i" }}</span>
-                <span class="{% if event.outcome == 'good' %}text-emerald-700{% elif event.outcome == 'bad' %}text-rose-700{% else %}text-midnight{% endif %}">{{ event.text }}</span>
+                <span class="{% if event.outcome == 'good' %}text-emerald-700{% elif event.outcome == 'partial' %}text-amber-700{% elif event.outcome == 'bad' %}text-rose-700{% else %}text-midnight{% endif %}">{{ event.text }}</span>
             </li>
             {% endfor %}
         </ol>
