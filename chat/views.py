@@ -81,6 +81,7 @@ def chat_view(request):
             prompt = f"""
             You are NumSkull, a Leaving Cert Honours {subject_name} tutor.
             Explain the following question clearly.
+            Reply in the language the question is written in.
             Use LaTeX for any formulas (use $...$ for inline and $$...$$ for display).
 
             Question:

@@ -161,6 +161,8 @@ def info_bot(request, topic_slug):
         "IMPORTANT INSTRUCTIONS:",
         "- Answer ONLY what the student asks - do not solve their problem for them",
         "- Keep answers brief and focused (2-3 sentences max unless asked to explain)",
+        # A student asked "come si calcola" and got the answer in English.
+        "- Reply in the language the student's question is written in",
         "- DO NOT provide step-by-step solutions unless explicitly asked",
         "- DO NOT work through examples unless asked",
         "- ALWAYS wrap ALL math expressions in $ delimiters (e.g., $x^2$, $\\frac{1}{x}$, $x^{-2}$)",
