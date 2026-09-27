@@ -7,6 +7,7 @@ from django.conf import settings
 from datetime import timedelta
 from students.models import StudentProfile, QuestionAttempt
 from django.contrib.auth.models import User
+from reports.activity import activity_between
 
 
 class Command(BaseCommand):
@@ -74,11 +75,6 @@ class Command(BaseCommand):
         correct_attempts = attempts_in_period.filter(is_correct=True).count()
         accuracy = (correct_attempts / total_attempts * 100) if total_attempts > 0 else 0
 
-        # Unique students who attempted questions
-        active_students = attempts_in_period.values_list(
-            'student__user__username', 'student__user__first_name', 'student__user__last_name'
-        ).distinct()
-
         # Topics worked on
         topics_data = attempts_in_period.values(
             'question__topic__name'
@@ -123,8 +119,34 @@ class Command(BaseCommand):
                     'lessons_completed': student.lessons_completed,
                 })
 
-        # Sort by attempt count
-        student_stats.sort(key=lambda x: x['attempt_count'], reverse=True)
+        # Everything else students did - exam parts, flashcards, MicroBadges,
+        # AI Help and so on - from the same source as the Today page. A student
+        # who only practised exam questions used to be missing from this report.
+        activity = activity_between(
+            start_date, end_date, include_staff=True,  # as the lesson stats above do
+            exclude_usernames=(exclude_username,) if exclude_username else ())
+        by_username = {s['username']: s for s in student_stats}
+        ai_help_total = 0
+        for day in activity['students']:
+            entry = by_username.get(day.user.username)
+            if entry is None:
+                entry = by_username[day.user.username] = {
+                    'username': day.user.username,
+                    'full_name': day.user.get_full_name() or day.user.username,
+                    'attempt_count': 0,
+                    'topics': [],
+                }
+                student_stats.append(entry)
+            # Lesson answers are already reported above in more detail.
+            entry['other_activity'] = [(label, n) for label, n in day.counts
+                                       if label != 'Lesson answers']
+            entry['ai_help'] = [e for e in day.events if e.kind == 'ai_help']
+            entry['last_active'] = day.last
+            ai_help_total += len(entry['ai_help'])
+
+        # Sort by attempt count, then by how recently they were on
+        student_stats.sort(key=lambda x: (x['attempt_count'], x.get('last_active') or start_date),
+                           reverse=True)
 
         # Prepare context for template
         context = {
@@ -134,7 +156,8 @@ class Command(BaseCommand):
             'total_attempts': total_attempts,
             'correct_attempts': correct_attempts,
             'accuracy': accuracy,
-            'active_student_count': len(active_students),
+            'active_student_count': len(student_stats),
+            'ai_help_total': ai_help_total,
             'unique_questions': unique_questions,
             'topics_data': topics_data,
             'student_stats': student_stats,
@@ -179,7 +202,9 @@ class Command(BaseCommand):
         lines.append('=' * 70)
         lines.append('DAILY STUDENT ACTIVITY REPORT')
         lines.append('=' * 70)
-        lines.append(f"Period: {context['period_start'].strftime('%Y-%m-%d %H:%M')} to {context['period_end'].strftime('%Y-%m-%d %H:%M')}")
+        start = timezone.localtime(context['period_start'])
+        end = timezone.localtime(context['period_end'])
+        lines.append(f"Period: {start.strftime('%Y-%m-%d %H:%M')} to {end.strftime('%Y-%m-%d %H:%M')} (Irish time)")
         lines.append(f"Duration: {context['days']} day(s)")
         if context['excluded_user']:
             lines.append(f"Excluded user: {context['excluded_user']}")
@@ -194,6 +219,7 @@ class Command(BaseCommand):
         lines.append(f"Correct Answers: {context['correct_attempts']}")
         lines.append(f"Overall Accuracy: {context['accuracy']:.1f}%")
         lines.append(f"Unique Questions Attempted: {context['unique_questions']}")
+        lines.append(f"AI Help Questions Asked: {context['ai_help_total']}")
         lines.append('')
 
         # Topics Summary
@@ -218,11 +244,21 @@ class Command(BaseCommand):
             lines.append('-' * 70)
             for student in context['student_stats']:
                 lines.append(f"\n{student['full_name']} ({student['username']})")
-                lines.append(f"  Attempts: {student['attempt_count']}")
-                lines.append(f"  Correct: {student['correct_count']} ({student['accuracy']:.1f}%)")
-                lines.append(f"  Average Score: {student['avg_score']:.1f}%")
-                lines.append(f"  Total Score (cumulative): {student['total_score']}")
-                lines.append(f"  Lessons Completed (cumulative): {student['lessons_completed']}")
+                if student['attempt_count']:
+                    lines.append(f"  Attempts: {student['attempt_count']}")
+                    lines.append(f"  Correct: {student['correct_count']} ({student['accuracy']:.1f}%)")
+                    lines.append(f"  Average Score: {student['avg_score']:.1f}%")
+                    lines.append(f"  Total Score (cumulative): {student['total_score']}")
+                    lines.append(f"  Lessons Completed (cumulative): {student['lessons_completed']}")
+                if student.get('other_activity'):
+                    lines.append("  Activity: " + ", ".join(
+                        f"{label} {n}" for label, n in student['other_activity']))
+                if student.get('ai_help'):
+                    stamp = '%H:%M' if context['days'] == 1 else '%d %b %H:%M'
+                    lines.append("  AI Help:")
+                    for event in student['ai_help']:
+                        when = timezone.localtime(event.when).strftime(stamp)
+                        lines.append(f"    {when}  {event.text}")
 
                 if student['topics']:
                     lines.append(f"  Topics:")
@@ -234,7 +270,7 @@ class Command(BaseCommand):
 
         lines.append('')
         lines.append('=' * 70)
-        lines.append(f"Report generated at: {timezone.now().strftime('%Y-%m-%d %H:%M:%S')}")
+        lines.append(f"Report generated at: {timezone.localtime().strftime('%Y-%m-%d %H:%M:%S')}")
         lines.append('=' * 70)
 
         return '\n'.join(lines)

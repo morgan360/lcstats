@@ -209,14 +209,18 @@ def _events(start, end):
 
 
 def activity_for_day(day, include_staff=False):
-    """The day's activity: per-student timelines, totals, and failed logins.
+    """The day's activity: per-student timelines, totals, and failed logins."""
+    return activity_between(*day_bounds(day), include_staff=include_staff)
+
+
+def activity_between(start, end, include_staff=False, exclude_usernames=()):
+    """Activity in [start, end): per-student timelines, totals, failed logins.
 
     Students come most recently active first; each timeline runs in time order.
     """
-    start, end = day_bounds(day)
     students = {}
     for user, event in _events(start, end):
-        if user.is_staff and not include_staff:
+        if (user.is_staff and not include_staff) or user.username in exclude_usernames:
             continue
         students.setdefault(user.pk, StudentDay(user)).events.append(event)
 
