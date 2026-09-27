@@ -1,7 +1,10 @@
+import bleach
+import markdown
 from django.contrib import admin
 from django.shortcuts import render
 from django.urls import path
 from django.utils.html import format_html
+from django.utils.safestring import mark_safe
 from django import forms
 from .models import Note, InfoBotQuery, InfoBotFeedback
 from .utils import search_similar
@@ -52,13 +55,47 @@ class NoteAdmin(admin.ModelAdmin):
 
 
 # ---------- InfoBotQuery Admin ----------
+KATEX = "https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/"
+
+# The answer is model output prompted by a student, so it is untrusted HTML on a
+# superuser's page: keep formatting tags only, no attributes, no scripts.
+PREVIEW_TAGS = {
+    "p", "br", "hr", "em", "strong", "b", "i", "code", "pre", "blockquote",
+    "ul", "ol", "li", "table", "thead", "tbody", "tr", "th", "td",
+    "h1", "h2", "h3", "h4", "h5", "h6", "sub", "sup",
+}
+
+
+def render_answer(text):
+    """An InfoBot answer as the student saw it, minus the maths pass.
+
+    The notes and topic views store raw Markdown; the site-help chat stores
+    the HTML it already made. KaTeX is left to the browser, as on the site.
+    """
+    text = text or ""
+    html = text if text.lstrip().startswith("<") else markdown.markdown(
+        text, extensions=["extra", "fenced_code", "tables"])
+    return bleach.clean(html, tags=PREVIEW_TAGS, attributes={}, strip=True)
+
+
 @admin.register(InfoBotQuery)
 class InfoBotQueryAdmin(admin.ModelAdmin):
     list_display = ("created_at", "user", "topic_slug", "source_type", "confidence", "short_question", "short_answer")
     list_filter = ("topic_slug", "source_type")
     search_fields = ("question", "answer", "sources")
     ordering = ("-created_at",)
-    readonly_fields = ("created_at", "question", "answer", "confidence", "sources", "source_type", "topic_slug")
+    readonly_fields = ("created_at", "question", "answer", "rendered_answer",
+                       "confidence", "sources", "source_type", "topic_slug")
+
+    class Media:
+        css = {"all": (KATEX + "katex.min.css",)}
+        js = (KATEX + "katex.min.js", KATEX + "contrib/auto-render.min.js",
+              "js/feedback_render.js", "admin/js/infobot_preview.js")
+
+    @admin.display(description="Answer as the student saw it")
+    def rendered_answer(self, obj):
+        return format_html('<div class="infobot-preview">{}</div>',
+                           mark_safe(render_answer(obj.answer)))
 
     def has_module_permission(self, request):
         """Only superusers can access InfoBot queries"""
