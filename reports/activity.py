@@ -42,12 +42,26 @@ KINDS = [
 ]
 
 
+EXAM_LABEL = dict(KINDS)['exam']
+
+
+def marks_note(events):
+    """'21 of 75 marks (28%)' over the exam answers among events, or ''."""
+    marked = [e.marks for e in events if e.marks]
+    possible = sum(p for _, p in marked)
+    if not possible:
+        return ''
+    awarded = sum(a for a, _ in marked)
+    return f'{awarded:g} of {possible:g} marks ({awarded / possible:.0%})'
+
+
 @dataclass
 class Event:
     when: datetime
     kind: str
     text: str
     outcome: str = ''   # 'good', 'partial', 'bad' or '' - colours the row
+    marks: tuple = None  # (awarded, possible) on an exam part answer
 
 
 @dataclass
@@ -69,6 +83,13 @@ class StudentDay:
         for event in self.events:
             tally[event.kind] = tally.get(event.kind, 0) + 1
         return [(label, tally[key]) for key, label in KINDS if key in tally]
+
+    @property
+    def chips(self):
+        """(label, count, note) per kind - the note gives exam marks."""
+        note = marks_note(self.events)
+        return [(label, n, note if label == EXAM_LABEL else '')
+                for label, n in self.counts]
 
 
 def day_bounds(day):
@@ -146,7 +167,8 @@ def _events(start, end):
         yield row.exam_attempt.student, Event(
             row.submitted_at, 'exam',
             f'{row.question_part} - {_marks(row.marks_awarded, row.max_marks)}{note}',
-            'good' if row.is_correct else _score_outcome(row.marks_awarded, row.max_marks))
+            'good' if row.is_correct else _score_outcome(row.marks_awarded, row.max_marks),
+            marks=(row.marks_awarded, row.max_marks))
 
     for row in (FlashcardAttempt.objects.filter(**within('last_answered_at'))
                 .select_related('student', 'flashcard__flashcard_set')):
@@ -233,12 +255,15 @@ def activity_between(start, end, include_staff=False, exclude_usernames=()):
         for label, count in student.counts:
             totals[label] += count
 
+    exam_note = marks_note([e for student in ordered for e in student.events])
+
     failed_logins = list(LoginHistory.objects.filter(
         timestamp__gte=start, timestamp__lt=end, success=False
     ).order_by('-timestamp'))
 
     return {
         'students': ordered,
-        'totals': [(label, n) for label, n in totals.items() if n],
+        'totals': [(label, n, exam_note if label == EXAM_LABEL else '')
+                   for label, n in totals.items() if n],
         'failed_logins': failed_logins,
     }

@@ -30,10 +30,11 @@
 
 {% if totals %}
 <div class="mb-6 grid gap-3 grid-cols-2 sm:grid-cols-3 lg:grid-cols-5">
-    {% for label, count in totals %}
+    {% for label, count, note in totals %}
     <div class="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-twilight/10">
         <div class="text-sm text-twilight/70">{{ label }}</div>
         <div class="mt-1 text-2xl font-bold text-midnight">{{ count }}</div>
+        {% if note %}<div class="mt-1 text-sm text-twilight/70">{{ note }}</div>{% endif %}
     </div>
     {% endfor %}
 </div>
@@ -49,8 +50,8 @@
                 <span class="text-sm text-twilight/70">· {{ student.first|time:"H:i" }}–{{ student.last|time:"H:i" }}</span>
             </div>
             <div class="flex flex-wrap gap-1">
-                {% for label, count in student.counts %}
-                <span class="rounded-lg bg-twilight/10 px-2 py-1 text-xs font-semibold text-midnight">{{ label }}: {{ count }}</span>
+                {% for label, count, note in student.chips %}
+                <span class="rounded-lg bg-twilight/10 px-2 py-1 text-xs font-semibold text-midnight">{{ label }}: {{ count }}{% if note %} · {{ note }}{% endif %}</span>
                 {% endfor %}
             </div>
         </summary>

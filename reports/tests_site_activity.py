@@ -82,6 +82,15 @@ class SiteActivityTests(TestCase):
         [ann] = activity_for_day(self.today)['students']
         self.assertEqual([e.outcome for e in ann.events], ['good', 'partial', 'bad'])
 
+    def test_exam_marks_are_added_up_per_student_and_for_the_day(self):
+        self.exam(self.ann, at(self.today, 9), marks=7)
+        self.exam(self.ann, at(self.today, 10), marks=0)
+        self.exam(self.bob, at(self.today, 11), marks=10)
+        result = activity_for_day(self.today)
+        bob, ann = result['students']
+        self.assertIn(('Exam part answers', 2, '7 of 20 marks (35%)'), ann.chips)
+        self.assertIn(('Exam part answers', 3, '17 of 30 marks (57%)'), result['totals'])
+
     def test_only_the_chosen_day_counts(self):
         self.lesson(self.ann, at(self.yesterday, 23, 59))
         self.lesson(self.bob, at(self.today, 0, 1))
