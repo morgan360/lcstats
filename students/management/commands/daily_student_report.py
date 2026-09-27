@@ -1,11 +1,12 @@
 from django.core.management.base import BaseCommand
 from django.utils import timezone
-from django.db.models import Count, Avg, Q
+from django.db.models import Count, Avg, Q, Sum
 from django.template.loader import render_to_string
 from django.core.mail import send_mail
 from django.conf import settings
 from datetime import timedelta
 from students.models import StudentProfile, QuestionAttempt
+from exam_papers.models import ExamQuestionAttempt
 from django.contrib.auth.models import User
 from reports.activity import activity_between
 
@@ -48,8 +49,8 @@ class Command(BaseCommand):
 
         self.stdout.write(
             self.style.SUCCESS(
-                f'\nGenerating report for period: {start_date.strftime("%Y-%m-%d %H:%M")} '
-                f'to {end_date.strftime("%Y-%m-%d %H:%M")}\n'
+                f'\nGenerating report for period: {timezone.localtime(start_date).strftime("%Y-%m-%d %H:%M")} '
+                f'to {timezone.localtime(end_date).strftime("%Y-%m-%d %H:%M")} (Irish time)\n'
             )
         )
 
@@ -74,6 +75,22 @@ class Command(BaseCommand):
         total_attempts = attempts_in_period.count()
         correct_attempts = attempts_in_period.filter(is_correct=True).count()
         accuracy = (correct_attempts / total_attempts * 100) if total_attempts > 0 else 0
+
+        # Exam question parts answered - on the question interface, in timed
+        # papers and in Badge Tests alike
+        exam_answers = ExamQuestionAttempt.objects.filter(
+            submitted_at__gte=start_date, submitted_at__lte=end_date)
+        if exclude_username:
+            exam_answers = exam_answers.exclude(exam_attempt__student__username=exclude_username)
+        exam_totals = exam_answers.aggregate(
+            count=Count('id'),
+            parts=Count('question_part', distinct=True),
+            awarded=Sum('marks_awarded'),
+            possible=Sum('max_marks'),
+            full=Count('id', filter=Q(is_correct=True)),
+        )
+        exam_percent = (exam_totals['awarded'] / exam_totals['possible'] * 100
+                        if exam_totals['possible'] else 0)
 
         # Topics worked on
         topics_data = attempts_in_period.values(
@@ -158,6 +175,8 @@ class Command(BaseCommand):
             'accuracy': accuracy,
             'active_student_count': len(student_stats),
             'ai_help_total': ai_help_total,
+            'exam_totals': exam_totals,
+            'exam_percent': exam_percent,
             'unique_questions': unique_questions,
             'topics_data': topics_data,
             'student_stats': student_stats,
@@ -215,10 +234,22 @@ class Command(BaseCommand):
         lines.append('OVERALL SUMMARY')
         lines.append('-' * 70)
         lines.append(f"Active Students: {context['active_student_count']}")
-        lines.append(f"Total Attempts: {context['total_attempts']}")
-        lines.append(f"Correct Answers: {context['correct_attempts']}")
-        lines.append(f"Overall Accuracy: {context['accuracy']:.1f}%")
-        lines.append(f"Unique Questions Attempted: {context['unique_questions']}")
+        lines.append('')
+        lines.append("Practice lessons")
+        lines.append(f"  Attempts: {context['total_attempts']}")
+        lines.append(f"  Correct Answers: {context['correct_attempts']}")
+        lines.append(f"  Accuracy: {context['accuracy']:.1f}%")
+        lines.append(f"  Unique Questions Attempted: {context['unique_questions']}")
+        exam = context['exam_totals']
+        lines.append('')
+        lines.append("Exam questions")
+        lines.append(f"  Part Answers: {exam['count']}")
+        lines.append(f"  Different Parts: {exam['parts']}")
+        lines.append(f"  Full Marks: {exam['full']}")
+        if exam['possible']:
+            lines.append(f"  Marks: {exam['awarded']:g} of {exam['possible']:g} "
+                         f"({context['exam_percent']:.1f}%)")
+        lines.append('')
         lines.append(f"AI Help Questions Asked: {context['ai_help_total']}")
         lines.append('')
 

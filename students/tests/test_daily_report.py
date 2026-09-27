@@ -50,6 +50,9 @@ class DailyReportTests(TestCase):
         self.assertIn(f'Asked AI Help about {self.part}: "come si calcola"', text)
         self.assertIn('AI Help Questions Asked: 1', text)
         self.assertIn('Active Students: 1', text)
+        self.assertIn('Part Answers: 1', text)
+        self.assertIn('Full Marks: 0', text)
+        self.assertIn('Marks: 7 of 10 (70.0%)', text)
 
     def test_lesson_stats_are_still_reported(self):
         QuestionAttempt.objects.create(student=StudentProfile.objects.get(user=self.ann),
