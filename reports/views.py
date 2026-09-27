@@ -22,6 +22,7 @@ from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, Tabl
 from homework.models import TeacherClass
 from students.decorators import teacher_required
 
+from . import activity
 from . import gemini_spend
 from . import openai_costs as openai_costs_service
 from . import services
@@ -58,6 +59,31 @@ def openai_costs(request):
     return render(request, "reports/openai_costs.html", {
         "summary": summary,
         "gemini": gemini_spend.get_gemini_summary(),
+    })
+
+
+def site_activity(request):
+    """Everything students did on the site on one day - today unless ?date= says.
+
+    Superuser only, like AI spend: it spans every school and class, which is
+    more than any one teacher's view should show.
+    """
+    if not request.user.is_superuser:
+        raise PermissionDenied
+    today = timezone.localdate()
+    try:
+        day = datetime.strptime(request.GET.get("date", ""), "%Y-%m-%d").date()
+    except ValueError:
+        day = today
+    day = min(day, today)
+    include_staff = request.GET.get("staff") == "1"
+    return render(request, "reports/site_activity.html", {
+        **activity.activity_for_day(day, include_staff=include_staff),
+        "day": day,
+        "today": today,
+        "previous_day": day - timedelta(days=1),
+        "next_day": day + timedelta(days=1) if day < today else None,
+        "include_staff": include_staff,
     })
 
 

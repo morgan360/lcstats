@@ -1,0 +1,85 @@
+{% extends "_base.html" %}
+{% block title %}Today · NumScoil{% endblock %}
+
+{% block content %}
+{# Text outside the white cards is mist: the page ground is midnight. #}
+<div class="mb-6 flex flex-wrap items-center justify-between gap-3">
+    <div>
+        <h1 class="text-2xl font-bold text-mist">{% if day == today %}Today{% else %}{{ day|date:"l j F" }}{% endif %} on the site</h1>
+        <p class="text-sm text-mist/70">{{ day|date:"l j F Y" }} · {{ students|length }} student{{ students|length|pluralize }} active{% if include_staff %}, staff included{% endif %}</p>
+    </div>
+    <div class="flex flex-wrap items-center gap-2">
+        <a href="?date={{ previous_day|date:'Y-m-d' }}{% if include_staff %}&staff=1{% endif %}"
+            class="rounded-lg bg-white/10 px-3 py-2 text-sm font-semibold text-mist transition hover:bg-mist hover:text-midnight">← Previous day</a>
+        {% if next_day %}
+        <a href="?date={{ next_day|date:'Y-m-d' }}{% if include_staff %}&staff=1{% endif %}"
+            class="rounded-lg bg-white/10 px-3 py-2 text-sm font-semibold text-mist transition hover:bg-mist hover:text-midnight">Next day →</a>
+        {% endif %}
+        <form method="get" class="flex items-center gap-2">
+            <input type="date" name="date" value="{{ day|date:'Y-m-d' }}" max="{{ today|date:'Y-m-d' }}"
+                onchange="this.form.submit()"
+                class="rounded-lg border-0 bg-white px-3 py-2 text-sm text-midnight">
+            {% if include_staff %}<input type="hidden" name="staff" value="1">{% endif %}
+        </form>
+        <a href="?date={{ day|date:'Y-m-d' }}{% if not include_staff %}&staff=1{% endif %}"
+            class="rounded-lg bg-white/10 px-3 py-2 text-sm font-semibold text-mist transition hover:bg-mist hover:text-midnight">{% if include_staff %}Hide staff{% else %}Show staff{% endif %}</a>
+    </div>
+</div>
+
+{% if totals %}
+<div class="mb-6 grid gap-3 grid-cols-2 sm:grid-cols-3 lg:grid-cols-5">
+    {% for label, count in totals %}
+    <div class="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-twilight/10">
+        <div class="text-sm text-twilight/70">{{ label }}</div>
+        <div class="mt-1 text-2xl font-bold text-midnight">{{ count }}</div>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+{% if students %}
+<div class="space-y-3">
+    {% for student in students %}
+    <details class="rounded-2xl bg-white shadow-sm ring-1 ring-twilight/10">
+        <summary class="flex cursor-pointer flex-wrap items-center justify-between gap-2 p-4">
+            <div>
+                <span class="font-semibold text-midnight">{{ student.user.get_full_name|default:student.user.username }}</span>
+                <span class="text-sm text-twilight/70">· {{ student.first|time:"H:i" }}–{{ student.last|time:"H:i" }}</span>
+            </div>
+            <div class="flex flex-wrap gap-1">
+                {% for label, count in student.counts %}
+                <span class="rounded-lg bg-twilight/10 px-2 py-1 text-xs font-semibold text-midnight">{{ label }}: {{ count }}</span>
+                {% endfor %}
+            </div>
+        </summary>
+        <ol class="border-t border-twilight/10 px-4 py-2 text-sm">
+            {% for event in student.events %}
+            <li class="flex gap-3 py-1">
+                <span class="w-12 shrink-0 tabular-nums text-twilight/70">{{ event.when|time:"H:i" }}</span>
+                <span class="{% if event.outcome == 'good' %}text-emerald-700{% elif event.outcome == 'bad' %}text-rose-700{% else %}text-midnight{% endif %}">{{ event.text }}</span>
+            </li>
+            {% endfor %}
+        </ol>
+    </details>
+    {% endfor %}
+</div>
+{% else %}
+<div class="rounded-2xl bg-white p-6 text-twilight/70 shadow-sm ring-1 ring-twilight/10">No student activity on this day.</div>
+{% endif %}
+
+{% if failed_logins %}
+<h2 class="mb-3 mt-8 text-lg font-semibold text-mist">Failed logins</h2>
+<div class="rounded-2xl bg-white p-4 text-sm shadow-sm ring-1 ring-twilight/10">
+    <ol>
+        {% for row in failed_logins %}
+        <li class="flex gap-3 py-1">
+            <span class="w-12 shrink-0 tabular-nums text-twilight/70">{{ row.timestamp|time:"H:i" }}</span>
+            <span class="text-midnight">{{ row.username_attempted|default:"(blank)" }}{% if row.ip_address %} <span class="text-twilight/70">from {{ row.ip_address }}</span>{% endif %}</span>
+        </li>
+        {% endfor %}
+    </ol>
+</div>
+{% endif %}
+
+<p class="mt-6 text-xs text-mist/70">Flashcards show the last answer on each card, so a card answered twice today counts once. Times are Irish time.</p>
+{% endblock %}

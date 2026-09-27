@@ -72,6 +72,10 @@
         class="inline-flex items-center gap-2 rounded-lg bg-twilight/10 px-3 py-2 text-sm font-semibold text-midnight transition hover:bg-twilight/20">
         <span>💸</span> AI spend
     </a>
+    <a href="{% url 'reports:site_activity' %}"
+        class="ml-2 inline-flex items-center gap-2 rounded-lg bg-twilight/10 px-3 py-2 text-sm font-semibold text-midnight transition hover:bg-twilight/20">
+        <span>📅</span> Today on the site
+    </a>
 </div>
 {% endif %}
 {% endblock %}
