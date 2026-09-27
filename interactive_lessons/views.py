@@ -135,6 +135,7 @@ def info_bot(request, topic_slug):
             extensions=["extra", "fenced_code", "tables", KatexExtension()],
         )
         query_obj = InfoBotQuery.objects.create(
+            user=request.user,
             topic_slug=topic_slug,
             question=query,
             answer=note.content,
@@ -243,6 +244,7 @@ def info_bot(request, topic_slug):
     )
 
     query_obj = InfoBotQuery.objects.create(
+        user=request.user,
         topic_slug=topic_slug,
         question=query,
         answer=raw_answer,

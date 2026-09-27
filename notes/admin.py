@@ -54,7 +54,7 @@ class NoteAdmin(admin.ModelAdmin):
 # ---------- InfoBotQuery Admin ----------
 @admin.register(InfoBotQuery)
 class InfoBotQueryAdmin(admin.ModelAdmin):
-    list_display = ("created_at", "topic_slug", "source_type", "confidence", "short_question", "short_answer")
+    list_display = ("created_at", "user", "topic_slug", "source_type", "confidence", "short_question", "short_answer")
     list_filter = ("topic_slug", "source_type")
     search_fields = ("question", "answer", "sources")
     ordering = ("-created_at",)

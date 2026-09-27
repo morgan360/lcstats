@@ -57,6 +57,7 @@ def chat_view(request):
             answer = mark_safe(answer_html)
 
             log = InfoBotQuery.objects.create(
+                user=request.user,
                 question=query,
                 answer=answer_html,
                 confidence=best_confidence,
@@ -108,6 +109,7 @@ def chat_view(request):
             answer = mark_safe(answer_html)
 
             log = InfoBotQuery.objects.create(
+                user=request.user,
                 question=query,
                 answer=answer_html,
                 sources=", ".join(note.title for _, note in retrieved),

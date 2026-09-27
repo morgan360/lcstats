@@ -8,6 +8,9 @@ rather than with __date so it does not lean on MySQL's timezone tables.
 Flashcards are the one approximate source: FlashcardAttempt keeps a single
 row per student per card, with only the latest answer's time, so a card
 answered twice today appears once.
+
+AI Help questions carry who asked only from notes migration 0008 on; older
+ones have no user and are left out.
 """
 from collections import OrderedDict
 from dataclasses import dataclass, field
@@ -16,9 +19,10 @@ from datetime import datetime, time, timedelta
 from django.contrib.auth.models import User
 from django.utils import timezone
 
-from exam_papers.models import ExamQuestionAttempt
+from exam_papers.models import ExamQuestion, ExamQuestionAttempt, ExamQuestionPart
 from flashcards.models import FlashcardAttempt
 from homework.models import HomeworkSubmission, StudentHomeworkProgress
+from notes.models import InfoBotQuery
 from quickkicks.models import QuickKickView
 from students.models import LoginHistory, QuestionAttempt, WorkSubmission
 from studyplans.models import StudyPlanCheckpoint, StudyPlanMicroBadge
@@ -30,6 +34,7 @@ KINDS = [
     ('exam', 'Exam part answers'),
     ('flashcard', 'Flashcards'),
     ('photo', 'Work photos'),
+    ('ai_help', 'AI Help questions'),
     ('microbadge', 'MicroBadges'),
     ('badge_test', 'Badge Tests'),
     ('homework', 'Homework'),
@@ -85,6 +90,29 @@ def _score_outcome(awarded, possible):
     return 'partial' if awarded > 0 else 'bad'
 
 
+def _what_ai_help_was_about(queries):
+    """' about 2022 Paper 1 - Q10 (d)' per query, or '' - in two queries.
+
+    InfoBotQuery stores bare ids rather than foreign keys, so an exam part's
+    name is looked up here.
+    """
+    part_ids = {q.question_part_id for q in queries
+                if q.exam_question_id and q.question_part_id}
+    question_ids = {q.exam_question_id for q in queries if q.exam_question_id}
+    parts = ExamQuestionPart.objects.select_related(
+        'question__exam_paper').in_bulk(part_ids)
+    questions = ExamQuestion.objects.select_related('exam_paper').in_bulk(question_ids)
+    for q in queries:
+        target = (parts.get(q.question_part_id) if q.exam_question_id else None) \
+            or questions.get(q.exam_question_id)
+        if target:
+            yield f' about {target}'
+        elif q.practice_question_id:
+            yield ' about a practice question'
+        else:
+            yield ''
+
+
 def _events(start, end):
     """(user, Event) pairs from every source, in no particular order."""
     span = {'__gte': start, '__lt': end}
@@ -134,6 +162,15 @@ def _events(start, end):
         yield row.student.user, Event(
             row.created_at, 'photo',
             f'Photographed working{f" for {target}" if target else ""}')
+
+    queries = list(InfoBotQuery.objects.filter(**within('created_at'),
+                                                user__isnull=False).select_related('user'))
+    for row, about in zip(queries, _what_ai_help_was_about(queries)):
+        asked = ' '.join(row.question.split())
+        if len(asked) > 140:
+            asked = asked[:137] + '...'
+        yield row.user, Event(row.created_at, 'ai_help',
+                              f'Asked AI Help{about}: "{asked}"')
 
     for row in (StudyPlanMicroBadge.objects.filter(**within('earned_at'))
                 .select_related('goal__plan__student', 'goal__topic')):

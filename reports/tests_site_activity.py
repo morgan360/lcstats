@@ -1,5 +1,7 @@
 """The Today page: one day's activity across the site, per student."""
 from datetime import datetime, time, timedelta
+from types import SimpleNamespace
+from unittest.mock import patch
 
 from django.contrib.auth.models import User
 from django.test import TestCase
@@ -9,6 +11,7 @@ from django.utils import timezone
 from core.models import Subject
 from exam_papers.models import ExamAttempt, ExamPaper, ExamQuestion, ExamQuestionAttempt, ExamQuestionPart
 from interactive_lessons.models import Question, Topic
+from notes.models import InfoBotQuery
 from students.models import LoginHistory, QuestionAttempt, StudentProfile
 
 from .activity import activity_for_day
@@ -128,3 +131,25 @@ class SiteActivityTests(TestCase):
 
         response = self.client.get(url, {'date': 'rubbish'})
         self.assertEqual(response.context['day'], self.today)
+
+    def test_ai_help_questions_show_with_the_part_they_were_about(self):
+        InfoBotQuery.objects.create(
+            user=self.ann, question='how do I   start this?', created_at=at(self.today, 9),
+            exam_question_id=self.part.question_id, question_part_id=self.part.id)
+        InfoBotQuery.objects.create(question='asked before users were recorded',
+                                    created_at=at(self.today, 10))
+
+        [ann] = activity_for_day(self.today)['students']
+        [event] = ann.events
+        self.assertEqual(event.kind, 'ai_help')
+        self.assertEqual(event.text,
+                         f'Asked AI Help about {self.part}: "how do I start this?"')
+
+    def test_ai_help_records_who_asked(self):
+        note = SimpleNamespace(content='Factorise first.', title='Factorising')
+        self.client.force_login(self.ann)
+        with patch('interactive_lessons.views.match_note', return_value=(note, 0.95, [])):
+            response = self.client.get(
+                reverse('info_bot', args=['algebra']), {'query': 'help'})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(InfoBotQuery.objects.get().user, self.ann)

@@ -154,6 +154,14 @@ class Note(models.Model):
 
 class InfoBotQuery(models.Model):
     created_at = models.DateTimeField(default=timezone.now)
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="infobot_queries",
+        help_text="Who asked. Blank for questions asked before this was recorded.",
+    )
     topic_slug = models.SlugField(blank=True, null=True)
     question = models.TextField()
     answer = models.TextField(blank=True)
