@@ -12,7 +12,7 @@ from core.models import Subject
 from exam_papers.models import ExamAttempt, ExamPaper, ExamQuestion, ExamQuestionAttempt, ExamQuestionPart
 from interactive_lessons.models import Question, Topic
 from notes.models import InfoBotQuery
-from students.models import LoginHistory, QuestionAttempt, StudentProfile
+from students.models import LoginHistory, QuestionAttempt, StudentProfile, WorkSubmission
 
 from .activity import activity_for_day
 
@@ -90,6 +90,21 @@ class SiteActivityTests(TestCase):
         bob, ann = result['students']
         self.assertIn(('Exam part answers', 2, '7 of 20 marks (35%)'), ann.chips)
         self.assertIn(('Exam part answers', 3, '17 of 30 marks (57%)'), result['totals'])
+
+    def test_an_unused_qr_code_is_not_called_a_photo(self):
+        profile = StudentProfile.objects.get(user=self.ann)
+        for status, hour in ((WorkSubmission.Status.AWAITING_PHOTO, 9),
+                             (WorkSubmission.Status.COMPLETE, 10)):
+            row = WorkSubmission.objects.create(student=profile,
+                                                exam_question_part=self.part, status=status)
+            WorkSubmission.objects.filter(pk=row.pk).update(created_at=at(self.today, hour))
+
+        [ann] = activity_for_day(self.today)['students']
+        self.assertEqual([(e.kind, e.text) for e in ann.events], [
+            ('qr', f'Opened the QR upload for {self.part} - no photo'),
+            ('photo', f'Photographed working for {self.part}'),
+        ])
+        self.assertEqual(ann.counts, [('Work photos', 1), ('QR opened, no photo', 1)])
 
     def test_only_the_chosen_day_counts(self):
         self.lesson(self.ann, at(self.yesterday, 23, 59))

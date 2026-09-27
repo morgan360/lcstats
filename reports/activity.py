@@ -34,6 +34,7 @@ KINDS = [
     ('exam', 'Exam part answers'),
     ('flashcard', 'Flashcards'),
     ('photo', 'Work photos'),
+    ('qr', 'QR opened, no photo'),
     ('ai_help', 'AI Help questions'),
     ('microbadge', 'MicroBadges'),
     ('badge_test', 'Badge Tests'),
@@ -180,10 +181,18 @@ def _events(start, end):
     for row in (WorkSubmission.objects.filter(**within('created_at'))
                 .select_related('student__user', 'exam_question_part__question__exam_paper',
                                 'question_part')):
+        # The row is made when the QR is shown, before any photo exists.
         target = row.exam_question_part or row.question_part
+        target = f' for {target}' if target else ''
+        if row.status == WorkSubmission.Status.AWAITING_PHOTO:
+            yield row.student.user, Event(
+                row.created_at, 'qr', f'Opened the QR upload{target} - no photo')
+            continue
+        after = {WorkSubmission.Status.ANALYSING: ' - still being analysed',
+                 WorkSubmission.Status.FAILED: ' - analysis failed'}.get(row.status, '')
         yield row.student.user, Event(
-            row.created_at, 'photo',
-            f'Photographed working{f" for {target}" if target else ""}')
+            row.created_at, 'photo', f'Photographed working{target}{after}',
+            'bad' if row.status == WorkSubmission.Status.FAILED else '')
 
     queries = list(InfoBotQuery.objects.filter(**within('created_at'),
                                                 user__isnull=False).select_related('user'))
