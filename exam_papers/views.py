@@ -4,7 +4,7 @@ from django.http import HttpResponse, JsonResponse
 from django.urls import reverse
 from django.utils import timezone
 from django.utils.text import slugify
-from django.db.models import Q, Count, Sum, Prefetch
+from django.db.models import Count, Sum, Prefetch
 from django.views.decorators.http import require_POST
 import json
 import logging
@@ -18,7 +18,7 @@ from interactive_lessons.models import Topic
 from students.work_access import work_capture_visible
 from .services.vision_grading import grade_with_vision_marking_scheme
 from .services.topic_parts import (
-    attach_matching_parts, best_part_attempts, questions_for_topic, topic_filter,
+    attach_matching_parts, best_part_attempts, questions_for_topic,
 )
 
 logger = logging.getLogger(__name__)
@@ -641,12 +641,12 @@ def worksheet_generator(request):
     selected_topic_id = request.GET.get('topic')
     selected_subject_id = request.GET.get('subject')
 
-    # Only show topics that have questions with images, filed either on the
-    # question or on one of its parts
+    # Whole questions print here, so they list by the question's own tag -
+    # not by its parts', which would pull in a question for one stray part.
+    # The parts worksheet is where part tags decide.
     with_images = ExamQuestion.objects.exclude(image='').exclude(image__isnull=True)
     topics = Topic.objects.filter(
-        Q(exam_questions__in=with_images)
-        | Q(exam_question_parts__question__in=with_images)
+        exam_questions__in=with_images
     ).distinct().select_related('subject').order_by('subject__name', 'name')
 
     if selected_subject_id:
@@ -660,8 +660,8 @@ def worksheet_generator(request):
             ).exclude(image='').exclude(image__isnull=True)
         else:
             questions = ExamQuestion.objects.filter(
-                topic_filter(selected_topic_id)
-            ).exclude(image='').exclude(image__isnull=True).distinct()
+                topic_id=selected_topic_id
+            ).exclude(image='').exclude(image__isnull=True)
         questions = questions.select_related(
             'exam_paper', 'topic'
         ).prefetch_related('parts').order_by('-exam_paper__year', 'question_number')

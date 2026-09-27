@@ -342,3 +342,27 @@ class PractiseQuestionLinkTests(PartTopicsTestBase):
         response = self.client.get(
             reverse('exam_papers:practise_question', args=[self.question.id]))
         self.assertEqual(response.status_code, 404)
+
+
+class QuestionWorksheetTests(PartTopicsTestBase):
+    """The question worksheet prints whole questions, so it lists them by the
+    question's own tag alone - a part on another topic does not pull one in."""
+
+    def setUp(self):
+        self.client.force_login(self.student)
+        ExamQuestion.objects.filter(pk=self.question.pk).update(image='q6.png')
+
+    def listed(self, topic):
+        response = self.client.get(reverse('exam_papers:worksheet_generator'),
+                                   {'topic': topic.id})
+        return list(response.context['questions']), list(response.context['topics'])
+
+    def test_listed_under_its_own_topic(self):
+        questions, topics = self.listed(self.functions)
+        self.assertEqual(questions, [self.question])
+        self.assertIn(self.functions, topics)
+
+    def test_not_listed_under_a_topic_only_a_part_is_on(self):
+        questions, topics = self.listed(self.calculus)
+        self.assertEqual(questions, [])
+        self.assertNotIn(self.calculus, topics)
