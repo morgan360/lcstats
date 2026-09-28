@@ -4,9 +4,11 @@ from django.http import HttpResponse, JsonResponse
 from django.urls import reverse
 from django.utils import timezone
 from django.utils.text import slugify
+from django.db import transaction
 from django.db.models import Count, Sum, Prefetch
 from django.views.decorators.http import require_POST
 import json
+from datetime import timedelta
 import logging
 
 from .models import (
@@ -292,6 +294,32 @@ def question_interface(request, attempt_id, question_id):
     return render(request, 'exam_papers/question_interface.html', context)
 
 
+# The same answer to the same part again this soon is one submission sent
+# twice, not a second try. Short on purpose: a student who resubmits a moment
+# later is making a new attempt, even with the same answer.
+DUPLICATE_SUBMIT_WINDOW = timedelta(seconds=10)
+
+
+def _answer_result(question_attempt, part, total_attempts, duplicate=False):
+    """The JSON a submitted answer gets back, fresh or repeated."""
+    # Solution unlocks if: correct answer OR reached attempt threshold OR set to 0
+    solution_unlocked = (
+        question_attempt.is_correct or
+        part.solution_unlock_after_attempts == 0 or
+        total_attempts >= part.solution_unlock_after_attempts
+    )
+    return {
+        'success': True,
+        'is_correct': question_attempt.is_correct,
+        'marks_awarded': question_attempt.marks_awarded,
+        'max_marks': part.max_marks,
+        'feedback': question_attempt.feedback,
+        'attempt_number': total_attempts,
+        'solution_unlocked': solution_unlocked,
+        'duplicate': duplicate,
+    }
+
+
 @login_required
 @require_POST
 def submit_answer(request, attempt_id):
@@ -313,69 +341,63 @@ def submit_answer(request, attempt_id):
 
         part = get_object_or_404(ExamQuestionPart, id=part_id)
 
-        # Count previous attempts
-        previous_attempts = ExamQuestionAttempt.objects.filter(
-            exam_attempt=attempt,
-            question_part=part
-        ).count()
+        # One answer at a time per attempt: the row lock is held while this one
+        # is marked. Marking takes seconds, and a double click used to send two
+        # requests that both counted no earlier tries, so the one answer was
+        # marked (and paid for) twice, saved as two tries, and unlocked the
+        # solution after one. The second request now waits here, then finds
+        # the first one's row and hands back its result.
+        with transaction.atomic():
+            ExamAttempt.objects.select_for_update().get(pk=attempt.pk)
+            earlier = ExamQuestionAttempt.objects.filter(
+                exam_attempt=attempt, question_part=part)
+            previous_attempts = earlier.count()
+            last = earlier.order_by('-submitted_at', '-id').first()
+            if (last is not None and last.student_answer == student_answer
+                    and timezone.now() - last.submitted_at < DUPLICATE_SUBMIT_WINDOW):
+                return JsonResponse(_answer_result(last, part, previous_attempts,
+                                                   duplicate=True))
 
-        # Grade the answer using GPT-4 Vision with marking scheme image
-        grading_result = grade_with_vision_marking_scheme(
-            student_answer=student_answer,
-            marking_scheme_image=part.solution_images,
-            question_part_label=part.label,
-            max_marks=part.max_marks,  # Pass existing max_marks (or None)
-            question_image=None,  # No part.image anymore
-            hint_used=False,
-            solution_used=False
-        )
+            # Grade the answer using GPT-4 Vision with marking scheme image
+            grading_result = grade_with_vision_marking_scheme(
+                student_answer=student_answer,
+                marking_scheme_image=part.solution_images,
+                question_part_label=part.label,
+                max_marks=part.max_marks,  # Pass existing max_marks (or None)
+                question_image=None,  # No part.image anymore
+                hint_used=False,
+                solution_used=False
+            )
 
-        # Extract results from grading
-        marks_awarded = grading_result['marks_awarded']
-        is_correct = grading_result['is_correct']
-        feedback = grading_result.get('feedback', '')
-        extracted_max_marks = grading_result.get('max_marks', part.max_marks)
+            # Extract results from grading
+            marks_awarded = grading_result['marks_awarded']
+            is_correct = grading_result['is_correct']
+            feedback = grading_result.get('feedback', '')
+            extracted_max_marks = grading_result.get('max_marks', part.max_marks)
 
-        # Save extracted max_marks to database if it was auto-extracted
-        if part.max_marks is None and extracted_max_marks:
-            part.max_marks = extracted_max_marks
-            part.save(update_fields=['max_marks'])
-            logger.info(f"Saved auto-extracted max_marks={extracted_max_marks} for {part}")
+            # Save extracted max_marks to database if it was auto-extracted
+            if part.max_marks is None and extracted_max_marks:
+                part.max_marks = extracted_max_marks
+                part.save(update_fields=['max_marks'])
+                logger.info(f"Saved auto-extracted max_marks={extracted_max_marks} for {part}")
 
-        # Create attempt record
-        question_attempt = ExamQuestionAttempt.objects.create(
-            exam_attempt=attempt,
-            question_part=part,
-            student_answer=student_answer,
-            marks_awarded=marks_awarded,
-            max_marks=part.max_marks,
-            is_correct=is_correct,
-            feedback=feedback,  # Use enhanced feedback
-            attempt_number=previous_attempts + 1,
-            time_spent_seconds=time_spent
-        )
+            # Create attempt record
+            question_attempt = ExamQuestionAttempt.objects.create(
+                exam_attempt=attempt,
+                question_part=part,
+                student_answer=student_answer,
+                marks_awarded=marks_awarded,
+                max_marks=part.max_marks,
+                is_correct=is_correct,
+                feedback=feedback,  # Use enhanced feedback
+                attempt_number=previous_attempts + 1,
+                time_spent_seconds=time_spent
+            )
 
-        # Update exam attempt score
-        attempt.calculate_score()
+            # Update exam attempt score
+            attempt.calculate_score()
 
-        # Check if solution is now unlocked
-        # Solution unlocks if: correct answer OR reached attempt threshold OR set to 0
-        total_attempts = previous_attempts + 1
-        solution_unlocked = (
-            is_correct or  # Unlock immediately if correct
-            part.solution_unlock_after_attempts == 0 or
-            total_attempts >= part.solution_unlock_after_attempts
-        )
-
-        return JsonResponse({
-            'success': True,
-            'is_correct': is_correct,
-            'marks_awarded': marks_awarded,
-            'max_marks': part.max_marks,
-            'feedback': feedback,  # Return enhanced feedback
-            'attempt_number': total_attempts,
-            'solution_unlocked': solution_unlocked,
-        })
+        return JsonResponse(_answer_result(question_attempt, part, previous_attempts + 1))
 
     except Exception as e:
         return JsonResponse({

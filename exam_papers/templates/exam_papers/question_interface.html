@@ -190,7 +190,7 @@
                         onclick="addSubpartBox({{ part_data.part.id }})">+ Answer (ii) separately</button>
 
                 <div class="answer-actions">
-                    <button class="btn btn-primary" onclick="submitAnswer({{ part_data.part.id }}, {{ attempt.id }})">
+                    <button class="btn btn-primary" id="submit-btn-{{ part_data.part.id }}" onclick="submitAnswer({{ part_data.part.id }}, {{ attempt.id }})">
                         Check Answer
                     </button>
                     <button class="btn btn-solution" id="solution-btn-{{ part_data.part.id }}" onclick="toggleSolution({{ part_data.part.id }}, {{ attempt.id }}, {{ part_data.solution_unlocked|yesno:'true,false' }})">
@@ -984,14 +984,26 @@ function collectAnswer(partId) {
     return labelled.join('\\quad ');
 }
 
+// Parts with an answer out for marking. Marking takes seconds, and a second
+// click in that time used to save the same answer twice - counting as two
+// tries and unlocking the solution after one.
+const markingParts = new Set();
+
 // Submit answer function
 function submitAnswer(partId, attemptId) {
+    if (markingParts.has(partId)) return;
     const answer = collectAnswer(partId);
 
     if (!answer.trim()) {
         alert('Please enter an answer before submitting.');
         return;
     }
+
+    const submitBtn = document.getElementById('submit-btn-' + partId);
+    const submitLabel = submitBtn.textContent;
+    markingParts.add(partId);
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Marking…';
 
     fetch("{% url 'exam_papers:submit_answer' attempt.id %}", {
         method: 'POST',
@@ -1049,6 +1061,11 @@ function submitAnswer(partId, attemptId) {
     .catch(error => {
         console.error('Error:', error);
         alert('An error occurred while submitting your answer.');
+    })
+    .finally(() => {
+        markingParts.delete(partId);
+        submitBtn.disabled = false;
+        submitBtn.textContent = submitLabel;
     });
 }
 
