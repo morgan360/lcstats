@@ -164,6 +164,10 @@
                             <a href="{% url 'reports:site_activity' %}"
                                 class="block rounded-lg px-3 py-2 text-sm font-semibold text-rose-pop hover:bg-rose-pop/20">Today</a>
                             {% endif %}
+                            {% if perms.auth.view_user %}
+                            <a href="{% url 'admin:auth_user_changelist' %}"
+                                class="block rounded-lg px-3 py-2 text-sm font-semibold text-rose-pop hover:bg-rose-pop/20">Users</a>
+                            {% endif %}
                             <a href="{% url 'studyplans:teacher_dashboard' %}"
                                 class="block rounded-lg px-3 py-2 text-sm font-semibold text-rose-pop hover:bg-rose-pop/20">Study
                                 Plans</a>
@@ -381,6 +385,10 @@
             {% if request.user.is_superuser %}
             <a href="{% url 'reports:site_activity' %}"
                 class="block rounded-lg px-3 py-2 text-rose-pop transition hover:bg-mist/10">Today</a>
+            {% endif %}
+            {% if perms.auth.view_user %}
+            <a href="{% url 'admin:auth_user_changelist' %}"
+                class="block rounded-lg px-3 py-2 text-rose-pop transition hover:bg-mist/10">Users</a>
             {% endif %}
             <a href="{% url 'studyplans:teacher_dashboard' %}"
                 class="block rounded-lg px-3 py-2 text-rose-pop transition hover:bg-mist/10">Study Plans</a>
