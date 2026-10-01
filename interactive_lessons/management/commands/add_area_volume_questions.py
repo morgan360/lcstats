@@ -14,7 +14,15 @@ that is the form the grader parses both numerically (so a decimal such as
 904.78 is accepted) and algebraically (so ``288\\pi`` is accepted). A
 fractional multiple such as ``256*pi/3`` defeats the algebraic check and falls
 through to GPT, so the numbers here are chosen to avoid one.
+
+Five part (a)s carry a diagram from scripts/area_volume_diagrams.py. Images live
+in media/, which git does not carry, so copy media/question_part_images/av_*.png
+to production before running this there; a missing file is reported and skipped
+rather than attached as a broken image.
 """
+from pathlib import Path
+
+from django.conf import settings
 from django.core.management.base import BaseCommand
 from django.db import transaction
 
@@ -107,6 +115,7 @@ $$h = \frac{288}{36} = 8$$
                     "prompt": r"""A solid cone has a base radius of $5$ cm and a perpendicular height of $12$ cm.
 
 Find the slant height of the cone.""",
+                    "image": "question_part_images/av_easy2_cone.png",
                     "answer": "13",
                     "expected_format": "Number only, in cm (e.g., 10)",
                     "expected_type": "numeric",
@@ -220,6 +229,7 @@ $$\text{Percentage error} = \frac{\text{Error}}{\text{True value}} \times 100 = 
                     "prompt": r"""A solid metal ornament is made from a cylinder with a hemisphere on top. The cylinder has radius $3$ cm and height $10$ cm. The hemisphere has the same radius as the cylinder.
 
 Find the total volume of the ornament, in terms of $\pi$.""",
+                    "image": "question_part_images/av_medium1_ornament.png",
                     "answer": "108*pi",
                     "expected_format": PI_FORMAT,
                     "expected_type": "expression",
@@ -362,6 +372,7 @@ $$d = \frac{960\pi}{320} = 3\pi = 9.4247\ldots$$
                     "prompt": r"""A sector of a circle has radius $15$ cm and angle $216°$. The two straight edges of the sector are joined, without overlap, to form the curved surface of a cone.
 
 Find the arc length of the sector, in terms of $\pi$.""",
+                    "image": "question_part_images/av_medium3_sector_cone.png",
                     "answer": "18*pi",
                     "expected_format": PI_FORMAT,
                     "expected_type": "expression",
@@ -436,6 +447,7 @@ $$V = \frac{1}{3}\pi(9)^2(12) = \frac{1}{3}\pi(81)(12) = 324\pi$$
                     "prompt": r"""A bucket is in the shape of a frustum of a cone. The radius of the open top is $15$ cm, the radius of the base is $10$ cm, and the perpendicular height is $12$ cm.
 
 Find the capacity of the bucket, in terms of $\pi$.""",
+                    "image": "question_part_images/av_hard1_bucket.png",
                     "answer": "1900*pi",
                     "expected_format": PI_FORMAT,
                     "expected_type": "expression",
@@ -532,6 +544,7 @@ $$\frac{762.5\pi}{1900\pi} \times 100 = 40.13\ldots\%$$
                     "prompt": r"""A solid toy is made from a hemisphere of radius $r$ cm with a cone of the same radius on its flat face. The perpendicular height of the cone is $2r$ cm.
 
 Show that the volume of the toy is $\frac{4}{3}\pi r^3$ cm³.""",
+                    "image": "question_part_images/av_hard2_toy.png",
                     "answer": r"""$\frac{2}{3}\pi r^3 + \frac{1}{3}\pi r^2(2r) = \frac{2}{3}\pi r^3 + \frac{2}{3}\pi r^3 = \frac{4}{3}\pi r^3$""",
                     "expected_format": r"""A short derivation: write the volume of each part in terms of $r$, then add them to reach $\frac{4}{3}\pi r^3$.""",
                     "expected_type": "manual",
@@ -757,6 +770,7 @@ class Command(BaseCommand):
                     topic.save(update_fields=list(repairs))
 
             questions = parts = 0
+            missing = []
             for section_name, section_order, entries in QUESTIONS:
                 section, _ = Section.objects.get_or_create(
                     topic=topic,
@@ -797,10 +811,18 @@ class Command(BaseCommand):
                     )
 
                     for order, part in enumerate(entry["parts"]):
+                        extra = {}
+                        image = part.get("image")
+                        if image:
+                            if (Path(settings.MEDIA_ROOT) / image).exists():
+                                extra["image"] = image
+                            else:
+                                missing.append(image)
                         QuestionPart.objects.update_or_create(
                             question=question,
                             label=part["label"],
                             defaults={
+                                **extra,
                                 "prompt": part["prompt"],
                                 "answer": part["answer"],
                                 "expected_format": part["expected_format"],
@@ -817,6 +839,11 @@ class Command(BaseCommand):
 
             if dry_run:
                 transaction.set_rollback(True)
+
+        for image in missing:
+            self.stderr.write(self.style.WARNING(
+                f"  not attached, no file at MEDIA_ROOT/{image} - copy it and re-run"
+            ))
 
         prefix = "Would touch" if dry_run else "Wrote"
         self.stdout.write(self.style.SUCCESS(
