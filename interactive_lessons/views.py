@@ -8,6 +8,8 @@ from django.contrib import messages
 import markdown
 from markdown_katex import KatexExtension
 
+from core.markdown_tables import TableClassExtension
+
 from .models import Topic, Question, QuestionPart, StudentInquiry
 from students.models import QuestionAttempt
 from students.work_access import work_capture_visible
@@ -132,7 +134,7 @@ def info_bot(request, topic_slug):
     if note:
         html_answer = markdown.markdown(
             note.content,
-            extensions=["extra", "fenced_code", "tables", KatexExtension()],
+            extensions=["extra", "fenced_code", "tables", KatexExtension(), TableClassExtension()],
         )
         query_obj = InfoBotQuery.objects.create(
             user=request.user,
@@ -242,7 +244,7 @@ def info_bot(request, topic_slug):
 
     html_answer = markdown.markdown(
         raw_answer,
-        extensions=["extra", "fenced_code", "tables", KatexExtension()],
+        extensions=["extra", "fenced_code", "tables", KatexExtension(), TableClassExtension()],
     )
 
     query_obj = InfoBotQuery.objects.create(
@@ -604,7 +606,7 @@ def render_math_markdown(text):
         return ""
     html = markdown.markdown(
         text,
-        extensions=["extra", "fenced_code", "tables", KatexExtension()],
+        extensions=["extra", "fenced_code", "tables", KatexExtension(), TableClassExtension()],
     )
     return mark_safe(html)
 

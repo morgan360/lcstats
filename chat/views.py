@@ -7,6 +7,8 @@ from django.http import JsonResponse
 from django.shortcuts import render
 from django.utils.safestring import mark_safe
 
+from core.markdown_tables import TableClassExtension
+
 from notes.helpers.numskull import append_turn, ask_openai, get_history, relevant_context
 from notes.helpers.site_help import match_site_help
 from notes.models import InfoBotQuery
@@ -16,7 +18,7 @@ from notes.utils import search_similar
 def _markdown_to_html(raw_text):
     answer_html = markdown.markdown(
         raw_text,
-        extensions=["fenced_code", "tables"],
+        extensions=["fenced_code", "tables", TableClassExtension()],
         output_format="html5",
     )
     # Fix escaped backslashes for MathJax/KaTeX

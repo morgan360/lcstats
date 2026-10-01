@@ -35,6 +35,7 @@ def notes_topic(request, topic_name):
     from interactive_lessons.models import Topic
     import markdown
     from markdown_katex import KatexExtension
+    from core.markdown_tables import TableClassExtension
 
     # Try to get topic by ID first, then by name/slug
     try:
@@ -59,7 +60,7 @@ def notes_topic(request, topic_name):
         if note.content:
             note.content_html = markdown.markdown(
                 note.content,
-                extensions=["extra", "fenced_code", "tables", KatexExtension()],
+                extensions=["extra", "fenced_code", "tables", KatexExtension(), TableClassExtension()],
             )
         else:
             note.content_html = ""

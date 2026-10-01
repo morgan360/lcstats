@@ -14,6 +14,7 @@ from exam_papers.models import ExamPaper, ExamQuestion
 from flashcards.models import Flashcard
 from quickkicks.models import QuickKick
 from core.models import Subject
+from core.markdown_tables import TableClassExtension
 
 
 def home(request):
@@ -41,7 +42,7 @@ def home(request):
             item.content_html = mark_safe(
                 markdown.markdown(
                     item.content,
-                    extensions=['markdown_katex', 'fenced_code', 'tables', 'nl2br']
+                    extensions=['markdown_katex', 'fenced_code', 'tables', 'nl2br', TableClassExtension()]
                 )
             )
         except:
@@ -49,7 +50,7 @@ def home(request):
             item.content_html = mark_safe(
                 markdown.markdown(
                     item.content,
-                    extensions=['fenced_code', 'tables', 'nl2br']
+                    extensions=['fenced_code', 'tables', 'nl2br', TableClassExtension()]
                 )
             )
 

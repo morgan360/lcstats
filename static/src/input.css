@@ -26,3 +26,34 @@
         outline: none;
     }
 }
+
+/* Tables rendered from Markdown (question text, solutions, notes, NumSkull),
+   tagged by core/markdown_tables.py. Tailwind's reset leaves a bare table
+   with no borders or padding, so its cells run together. Outside @layer so
+   it is always emitted, since the class is added in Python, not a template. */
+.md-table {
+    display: block;
+    width: max-content;
+    max-width: 100%;
+    overflow-x: auto;
+    border-collapse: collapse;
+    margin: 0.75rem 0;
+    font-size: 0.95em;
+}
+
+.md-table th,
+.md-table td {
+    border: 1px solid rgba(51, 34, 119, 0.25);
+    padding: 0.35rem 0.75rem;
+    text-align: center;
+}
+
+.md-table th {
+    background: rgba(51, 34, 119, 0.06);
+    font-weight: 600;
+}
+
+.md-table td:first-child,
+.md-table th:first-child {
+    text-align: left;
+}
