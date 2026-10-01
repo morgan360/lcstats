@@ -14,6 +14,10 @@ that is the form the grader parses both numerically (so a decimal such as
 904.78 is accepted) and algebraically (so ``288\\pi`` is accepted). A
 fractional multiple such as ``256*pi/3`` defeats the algebraic check and falls
 through to GPT, so the numbers here are chosen to avoid one.
+
+No Markdown tables: Tailwind's reset strips their borders and padding on the
+question page, so the cells run together ("1015", "1.01.2x"). Readings are
+set out as a display-maths list instead.
 """
 from django.core.management.base import BaseCommand
 from django.db import transaction
@@ -629,11 +633,9 @@ $$d = 1$$
             "parts": [
                 {
                     "label": "(a)",
-                    "prompt": r"""A swimming pool is $25$ m long and $10$ m wide. Its depth varies along its length but not across its width. The depth, measured at intervals of $5$ m from the shallow end, is:
+                    "prompt": r"""A swimming pool is $25$ m long and $10$ m wide. Its depth varies along its length but not across its width. The depth is measured every $5$ m along the length, starting at the shallow end, at $0, 5, 10, 15, 20$ and $25$ m. The depths, in metres, are, in order:
 
-| Distance from shallow end (m) | $0$ | $5$ | $10$ | $15$ | $20$ | $25$ |
-|---|---|---|---|---|---|---|
-| Depth (m) | $1.0$ | $1.2$ | $x$ | $2.0$ | $2.4$ | $2.6$ |
+$$1.0, \quad 1.2, \quad x, \quad 2.0, \quad 2.4, \quad 2.6$$
 
 Use the trapezoidal rule to find an expression, in terms of $x$, for the area of the side cross-section of the pool.""",
                     "answer": "37 + 5*x",
