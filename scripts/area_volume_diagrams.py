@@ -167,6 +167,8 @@ def hard1_bucket():
     solid(ax, (R, h), (r, 0))
     dashed(ax, (-r, 0), (0, apex_y), lw=1.0)
     dashed(ax, (r, 0), (0, apex_y), lw=1.0)
+    # Centre line (dash-dot, unlabelled): the axis the similar triangles in (c) use.
+    ax.plot([0, 0], [h, apex_y], color="k", lw=0.9, ls=(0, (9, 3, 2, 3)))
     dashed(ax, (0, h), (R, h))
     dashed(ax, (0, 0), (r, 0))
     ax.text(R / 2, h + 0.5, "15 cm", fontsize=FS, ha="center", va="bottom")
