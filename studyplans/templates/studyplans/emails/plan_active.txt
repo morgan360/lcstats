@@ -1,0 +1,16 @@
+Hi {{ student.first_name|default:student.username }},
+
+{{ teacher_name }} has set you a new study plan on NumScoil:
+
+Plan: {{ plan.title }}
+{% if topics %}Topics: {{ topics|join:", " }}
+{% endif %}Runs: {{ plan.start_date|date:"j F" }} to {{ plan.deadline|date:"j F Y" }}
+About {{ plan.weekly_minutes }} minutes a week
+{% if plan.description %}
+{{ plan.description }}
+{% endif %}
+Each topic is a set of MicroBadges, then a Badge Test.
+
+Open your plan: {{ site_url }}/study-plans/
+
+- NumScoil

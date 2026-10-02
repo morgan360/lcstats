@@ -612,6 +612,7 @@ class StudyPlanEvent(models.Model):
         ('goal_mastered', 'Topic mastered'),
         ('teacher_edit', 'Teacher edited the plan'),
         ('attention', 'Needs the teacher'),
+        ('notified', 'Student emailed'),
     ]
 
     plan = models.ForeignKey(StudyPlan, on_delete=models.CASCADE, related_name='events')

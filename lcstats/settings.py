@@ -402,6 +402,10 @@ EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD', '')
 # Default email addresses
 DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', 'NumScoil <admin@numscoil.ie>')
 SERVER_EMAIL = os.getenv('SERVER_EMAIL', 'admin@numscoil.ie')
+
+# Absolute base for links in emails, which have no request to build them from.
+# Unset, the homework email linked to numscoil.com, a domain that does not resolve.
+SITE_URL = os.getenv('SITE_URL', 'https://www.numscoil.ie').rstrip('/')
 TEACHER_EMAIL = os.getenv('TEACHER_EMAIL', 'morganmcknight@gmail.com')
 
 # ------------------------------------------------------------

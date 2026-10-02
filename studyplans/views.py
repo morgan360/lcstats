@@ -38,7 +38,7 @@ from .models import (
 )
 from .services import checkpoints as checkpoint_service
 from .services import (
-    completion, copying, microbadges, nightly, planner, progress, stamps,
+    completion, copying, microbadges, nightly, notify, planner, progress, stamps,
 )
 
 logger = logging.getLogger(__name__)
@@ -520,7 +520,8 @@ def plan_create(request):
                 f"shape the MicroBadges, then use “Make this the active "
                 f"plan”.")
         else:
-            messages.success(request, f"Plan set for {student.username}.")
+            sent = notify.describe(notify.notify_students([plan]))
+            messages.success(request, f"Plan set for {student.username}. {sent}".strip())
         return redirect('studyplans:plan_manage', plan_id=plan.id)
 
     if class_id:
@@ -539,6 +540,7 @@ def _rollout(request, teacher_class, form, source_template=None,
     plan get different work, because they arrive at it from different places.
     """
     made, skipped, busy = 0, 0, []
+    made_plans = []
     with transaction.atomic():
         template = source_template
         for student in teacher_class.students.order_by('username'):
@@ -571,6 +573,11 @@ def _rollout(request, teacher_class, form, source_template=None,
             StudyPlanEvent.log(plan, 'rollout',
                                f"Rolled out to {teacher_class.name}")
             made += 1
+            made_plans.append(plan)
+
+    # After the commit, so a rollout that failed part-way emails nobody about
+    # plans that no longer exist. Drafts are skipped inside notify_students.
+    sent = notify.describe(notify.notify_students(made_plans))
 
     messages.success(
         request,
@@ -578,7 +585,8 @@ def _rollout(request, teacher_class, form, source_template=None,
         f"see theirs yet."
         if status == 'draft' else
         f"Set {made} plan(s) for {teacher_class.name}."
-        + (f" {skipped} student(s) already had this one." if skipped else ""))
+        + (f" {skipped} student(s) already had this one." if skipped else "")
+        + (f" {sent}" if sent else ""))
     if busy:
         messages.error(
             request,
@@ -839,8 +847,9 @@ def set_plan_status(request, plan_id):
         plan.status = 'active'
         plan.save(update_fields=['status'])
         StudyPlanEvent.log(plan, 'teacher_edit', "Plan made active")
+        sent = notify.describe(notify.notify_students([plan]))
         messages.success(request, f"“{plan.title}” is now live for "
-                                  f"{plan.student.username}.")
+                                  f"{plan.student.username}. {sent}".strip())
         return redirect('studyplans:plan_manage', plan_id=plan.id)
 
     messages.error(request, "Unknown action.")

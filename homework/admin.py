@@ -408,45 +408,43 @@ class HomeworkAssignmentAdmin(admin.ModelAdmin):
         return super().formfield_for_manytomany(db_field, request, **kwargs)
 
     def save_related(self, request, form, formsets, change):
-        """Auto-number task order (field is hidden from the form)."""
+        """Auto-number task order (field is hidden from the form), then email students.
+
+        The email goes here, not in save_model: the ticked classes are saved with
+        the related objects, so until now a new assignment has no students. Hooking
+        save_model, and only for an unpublished-to-published edit, is why an
+        assignment created already published -- the usual single-save flow --
+        never emailed anyone.
+        """
         super().save_related(request, form, formsets, change)
         for i, task in enumerate(form.instance.tasks.order_by('order', 'id')):
             if task.order != i:
                 task.order = i
                 task.save(update_fields=['order'])
 
-    def save_model(self, request, obj, form, change):
-        """Detect when is_published transitions to True and send email notifications."""
-        should_notify = False
-        if change and 'is_published' in form.changed_data and obj.is_published:
-            # Verify it was previously unpublished
-            try:
-                old = HomeworkAssignment.objects.get(pk=obj.pk)
-                if not old.is_published and not old.notification_sent:
-                    should_notify = True
-            except HomeworkAssignment.DoesNotExist:
-                pass
-
-        super().save_model(request, obj, form, change)
-
-        if should_notify:
-            from .services import send_assignment_published_email
-            result = send_assignment_published_email(obj)
-            obj.notification_sent = True
-            obj.save(update_fields=['notification_sent'])
-
-            if result['sent'] > 0:
-                self.message_user(
-                    request,
-                    f"Email notifications sent to {result['sent']} student(s).",
-                    level='SUCCESS'
-                )
-            if result['failed'] > 0:
-                self.message_user(
-                    request,
-                    f"Failed to send {result['failed']} email(s). Check logs for details.",
-                    level='WARNING'
-                )
+        from .services import notify_if_newly_published
+        result = notify_if_newly_published(form.instance)
+        if result is None:
+            return
+        if result['sent']:
+            self.message_user(
+                request,
+                f"Emailed {result['sent']} student(s) about this homework.",
+                level='SUCCESS'
+            )
+        if result['failed']:
+            self.message_user(
+                request,
+                f"Failed to send {result['failed']} email(s). Check logs for details."
+                + (" Saving again will retry." if not result['sent'] else ""),
+                level='WARNING'
+            )
+        if result['no_email']:
+            self.message_user(
+                request,
+                f"{result['no_email']} student(s) have no email address and were not emailed.",
+                level='WARNING'
+            )
 
 
 @admin.register(HomeworkTask)
