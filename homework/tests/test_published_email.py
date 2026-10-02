@@ -74,6 +74,13 @@ class PublishedEmailTests(TestCase):
                       mail.outbox[0].body)
         self.assertNotIn('numscoil.com', mail.outbox[0].body)
 
+    @override_settings(NOTIFICATION_BCC=['admin@numscoil.ie'])
+    def test_each_email_is_blind_copied_to_admin(self):
+        self.add_form(is_published='on')
+        for message in mail.outbox:
+            self.assertEqual(message.bcc, ['admin@numscoil.ie'])
+            self.assertNotIn('admin@numscoil.ie', message.to)
+
     def test_a_draft_emails_nobody_until_it_is_published(self):
         self.add_form()
         self.assertEqual(len(mail.outbox), 0)

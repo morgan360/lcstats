@@ -50,6 +50,7 @@ def send_assignment_published_email(assignment):
                     body=body_text,
                     from_email=settings.DEFAULT_FROM_EMAIL,
                     to=[student.email],
+                    bcc=settings.NOTIFICATION_BCC,
                     connection=connection,
                 )
                 email.attach_alternative(body_html, "text/html")

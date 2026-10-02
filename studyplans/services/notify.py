@@ -57,6 +57,7 @@ def notify_students(plans):
                     body=render_to_string('studyplans/emails/plan_active.txt', context),
                     from_email=settings.DEFAULT_FROM_EMAIL,
                     to=[plan.student.email],
+                    bcc=settings.NOTIFICATION_BCC,
                     connection=connection,
                 )
                 email.attach_alternative(

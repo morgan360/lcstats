@@ -32,6 +32,11 @@ class PlanEmailTests(ViewTestBase):
         self.assertIn('https://www.numscoil.ie/study-plans/', message.body)
         self.assertIn('Integration', message.body)
 
+    @override_settings(NOTIFICATION_BCC=['admin@numscoil.ie'])
+    def test_the_email_is_blind_copied_to_admin(self):
+        self.create()
+        self.assertEqual(mail.outbox[0].bcc, ['admin@numscoil.ie'])
+
     def test_a_draft_emails_nobody_until_it_is_made_active(self):
         self.create(save='draft')
         self.assertEqual(len(mail.outbox), 0)

@@ -406,6 +406,11 @@ SERVER_EMAIL = os.getenv('SERVER_EMAIL', 'admin@numscoil.ie')
 # Absolute base for links in emails, which have no request to build them from.
 # Unset, the homework email linked to numscoil.com, a domain that does not resolve.
 SITE_URL = os.getenv('SITE_URL', 'https://www.numscoil.ie').rstrip('/')
+
+# Blind copy of every homework and study plan email to students, so there is a
+# record outside Brevo of what went out. admin@ forwards to the teacher's Gmail.
+# Set it empty in .env to stop the copies.
+NOTIFICATION_BCC = [a.strip() for a in os.getenv('NOTIFICATION_BCC', 'admin@numscoil.ie').split(',') if a.strip()]
 TEACHER_EMAIL = os.getenv('TEACHER_EMAIL', 'morganmcknight@gmail.com')
 
 # ------------------------------------------------------------
