@@ -31,6 +31,97 @@ def _is_superscript(expr: str, i: int) -> bool:
     return 0 <= i < len(expr) and expr[i] in _SUPERSCRIPTS
 
 
+# MathLive's answer box sends LaTeX. SymPy's own LaTeX parser needs antlr4, which
+# is installed neither locally nor on production, so every \frac and \sqrt used
+# to fail both local checks and fall through to GPT. latex_to_plain rewrites the
+# LaTeX students actually produce into the plain syntax the checks already read.
+_LATEX_WORDS = {
+    r"\cdot": "*",
+    r"\times": "*",
+    r"\div": "/",
+    # Bracketed so a following letter cannot fuse with them: 2\pi r -> 2(pi)r, not 2pir.
+    r"\imaginaryI": "(i)",     # MathLive's i; answers are stored with a plain i
+    r"\exponentialE": "(e)",   # likewise e
+    r"\pi": "(pi)",
+    r"\degree": "°",
+}
+_LATEX_SPACING = re.compile(r"\\(?:,|;|:|!|quad|qquad|displaystyle)|\\ ")
+
+
+def _read_latex_arg(s: str, i: int):
+    """Read one argument of a LaTeX command at s[i]: {...}, \\name, or one character.
+
+    Returns (argument, index after it). MathLive writes \\frac13 for 1/3, so a bare
+    single character is a whole argument.
+    """
+    while i < len(s) and s[i] == " ":
+        i += 1
+    if i >= len(s):
+        return "", i
+    if s[i] == "{":
+        depth = 0
+        for j in range(i, len(s)):
+            if s[j] == "{":
+                depth += 1
+            elif s[j] == "}":
+                depth -= 1
+                if depth == 0:
+                    return s[i + 1:j], j + 1
+        return s[i + 1:], len(s)  # unbalanced: take the rest
+    if s[i] == "\\":
+        m = re.match(r"\\[a-zA-Z]+", s[i:])
+        if m:
+            return m.group(0), i + m.end()
+    return s[i], i + 1
+
+
+def latex_to_plain(expr: str) -> str:
+    """Rewrite MathLive LaTeX as plain maths: \\frac{a}{b} -> ((a)/(b)), \\sqrt{x} -> (sqrt(x)).
+
+    Results are parenthesised so that implicit multiplication -- 2\\sqrt{3}, \\frac{2}{3}i --
+    stays a product and never fuses into one name. Text with no backslash is
+    returned unchanged, so plain answers are read exactly as before.
+    """
+    if not expr or "\\" not in expr:
+        return expr
+
+    s = expr.strip().strip("$")
+    s = s.replace("\\\\", "\\")
+    s = re.sub(r"\\[dt]frac\b", r"\\frac", s)
+    s = re.sub(r"\\(?:left|right)\b\.?", "", s)
+    s = _LATEX_SPACING.sub("", s)
+    s = re.sub(r"\^\{?\\circ\}?", "°", s)
+
+    def convert(t: str) -> str:
+        out, i = [], 0
+        while i < len(t):
+            if t.startswith(r"\frac", i) and not t[i + 5:i + 6].isalpha():
+                num, i = _read_latex_arg(t, i + 5)
+                den, i = _read_latex_arg(t, i)
+                out.append(f"(({convert(num)})/({convert(den)}))")
+            elif t.startswith(r"\sqrt", i) and not t[i + 5:i + 6].isalpha():
+                i += 5
+                index = None
+                if t[i:i + 1] == "[":
+                    close = t.find("]", i)
+                    if close != -1:
+                        index, i = t[i + 1:close], close + 1
+                radicand, i = _read_latex_arg(t, i)
+                if index:
+                    out.append(f"(({convert(radicand)})**(1/({convert(index)})))")
+                else:
+                    out.append(f"(sqrt({convert(radicand)}))")
+            else:
+                out.append(t[i])
+                i += 1
+        return "".join(out)
+
+    s = convert(s)
+    for word, plain in _LATEX_WORDS.items():
+        s = re.sub(re.escape(word) + r"(?![a-zA-Z])", plain, s)
+    return s
+
+
 def _preclean_plain(expr: str) -> str:
     """Make text/MathLive-ish input safe for parse_expr (non-LaTeX path)."""
     if not expr:
@@ -38,6 +129,9 @@ def _preclean_plain(expr: str) -> str:
 
     # Trim and strip $ wrappers
     expr = expr.strip().strip("$")
+
+    # MathLive LaTeX (\frac, \sqrt, \left, \cdot, ...) to plain syntax
+    expr = latex_to_plain(expr)
 
     # Normalize double backslashes so we can inspect tokens sanely
     expr = expr.replace("\\\\", "\\")
@@ -138,14 +232,12 @@ def _parse_any(expr: str):
 
     plain = _preclean_plain(expr)
 
-    # Heuristic: if clearly LaTeX-ish, go straight to LaTeX
-    looks_latex = bool(re.search(r"\\(frac|sqrt|pi)\b", expr)) or ("√" in expr)
-
-    if not looks_latex:
-        try:
-            return parse_expr(plain, transformations=_TRANSFORMS)
-        except (SympifyError, SyntaxError, TypeError, ValueError, TokenError):
-            pass
+    # The plain path now reads \frac and \sqrt itself (latex_to_plain), so it
+    # always goes first; parse_latex needs antlr4, which is not installed.
+    try:
+        return parse_expr(plain, transformations=_TRANSFORMS)
+    except (SympifyError, SyntaxError, TypeError, ValueError, TokenError):
+        pass
 
     # LaTeX fallback
     try:

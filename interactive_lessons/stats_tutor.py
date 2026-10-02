@@ -2,7 +2,7 @@ from openai import OpenAI
 from fractions import Fraction
 import json, re, math
 from django.conf import settings
-from interactive_lessons.services.utils_math import compare_algebraic
+from interactive_lessons.services.utils_math import compare_algebraic, latex_to_plain
 
 client = OpenAI()
 
@@ -56,7 +56,8 @@ def normalise_numeric_answer(answer):
     if not answer:
         return []
 
-    answer = answer.strip()
+    # MathLive sends LaTeX: \frac{2}{15} must read as 2/15, not be dropped.
+    answer = latex_to_plain(answer.strip())
 
     # Convert unicode superscripts to regular power notation
     # e.g., "2⁵" → "2^(5)", "x²" → "x^(2)", "2⁵/²" → "2^(5/2)"
@@ -117,9 +118,29 @@ def normalise_numeric_answer(answer):
     return sorted(values)
 
 
+def _tolerance(correct, tol=0.02):
+    """How far a student's number may be from ``correct`` and still match.
+
+    A flat +-0.02 is right for answers of 2 or more but far too loose for small
+    ones: it passed 12/52 (0.231) for 1/4, and would pass any answer under 0.02
+    for a probability of 1/270725. So it shrinks with the answer while still
+    accepting one rounded to 2 decimal places (0.13 for 2/15). A miss is not
+    marked wrong; it goes on to GPT.
+    """
+    size = abs(correct)
+    if size >= 2:
+        return tol
+    if size >= 0.5:
+        return min(tol, 0.01 * size)
+    if size >= 0.01:
+        return min(tol, 0.005)
+    return 0.02 * size if size else 1e-9
+
+
 def compare_answers(student_ans, correct_ans, tol=0.02):
     """
-    Compare two lists of numeric answers, order-independent, within a tolerance.
+    Compare two lists of numeric answers, order-independent, within a tolerance
+    that scales with each correct value (see _tolerance).
     Returns a score fraction (1.0 = perfect match, 0.5 = one correct, 0 = none).
     """
     if not student_ans or not correct_ans:
@@ -129,7 +150,7 @@ def compare_answers(student_ans, correct_ans, tol=0.02):
     used = set()
     for s in student_ans:
         for i, c in enumerate(correct_ans):
-            if i not in used and math.isclose(s, c, abs_tol=tol):
+            if i not in used and abs(s - c) <= _tolerance(c, tol):
                 matched += 1
                 used.add(i)
                 break
