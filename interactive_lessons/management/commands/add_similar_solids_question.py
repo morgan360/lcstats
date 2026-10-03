@@ -8,7 +8,7 @@ The video's rule on fresh numbers -- two similar cylinders, radii 4 and 6:
 them exactly, numerically and algebraically.
 
 Idempotent, keyed on topic slug, section name and question order like the other
-add_* commands. It sits in Area & Volume's Medium section, after the three from
+add_* commands. It sits in Area & Volume's Workout section, after the three from
 add_area_volume_questions. The QuickFlick lives only on production; where it is
 missing the question is still written and the link is reported as skipped.
 """
@@ -19,7 +19,7 @@ from interactive_lessons.models import Question, QuestionPart, Section, Topic
 from quickkicks.models import QuickKick
 
 TOPIC_SLUG = "area-volume"
-SECTION_NAME = "Medium"
+SECTION_NAME = "Workout"
 ORDER = 4
 QUICKFLICK_TITLE = "Similar Solids: k, k², k³"
 

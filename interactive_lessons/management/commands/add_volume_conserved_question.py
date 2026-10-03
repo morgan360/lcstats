@@ -8,7 +8,7 @@ One solid carried through the video's ideas, on fresh numbers:
 the grader checks them exactly.
 
 Idempotent, keyed on topic slug, section name and question order like the other
-add_* commands: Area & Volume's Medium section, after the Similar Solids test
+add_* commands: Area & Volume's Workout section, after the Similar Solids test
 question. Links itself to the QuickFlick only where one exists (production).
 """
 from django.core.management.base import BaseCommand
@@ -18,7 +18,7 @@ from interactive_lessons.models import Question, QuestionPart, Section, Topic
 from quickkicks.models import QuickKick
 
 TOPIC_SLUG = "area-volume"
-SECTION_NAME = "Medium"
+SECTION_NAME = "Workout"
 ORDER = 5
 QUICKFLICK_TITLE = "Volume is Conserved"
 

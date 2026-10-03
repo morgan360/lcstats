@@ -1,4 +1,4 @@
-"""Add the Area & Volume practice questions: three Easy, three Medium, three Hard.
+"""Add the Area & Volume practice questions: three Warm-up, three Workout, three Stretch.
 
 Content authored on local and replayed here so production gets exactly what was
 tested. Idempotent: keyed on topic slug, section name and question order rather
@@ -38,7 +38,7 @@ PI_FORMAT = r"""In terms of $\pi$, number only (e.g., $48\pi$)"""
 
 # (section name, section order, [questions])
 QUESTIONS = [
-    ("""Easy""", 1, [
+    ("""Warm-up""", 1, [
         {
             "order": 1,
             "hint": r"""The sphere and cylinder formulae are on page 10 of the *Formulae & Tables*. When a solid is **melted down and recast**, the volume stays the same: set the two volume expressions equal and solve.""",
@@ -219,7 +219,7 @@ $$\text{Percentage error} = \frac{\text{Error}}{\text{True value}} \times 100 = 
             ],
         },
     ]),
-    ("""Medium""", 2, [
+    ("""Workout""", 2, [
         {
             "order": 1,
             "hint": r"""Split the solid into the shapes it is made from and work on each separately. For the **surface area**, count only the faces you could actually touch: where the hemisphere sits on the cylinder, neither the top of the cylinder nor the flat face of the hemisphere is on the outside.""",
@@ -437,7 +437,7 @@ $$V = \frac{1}{3}\pi(9)^2(12) = \frac{1}{3}\pi(81)(12) = 324\pi$$
             ],
         },
     ]),
-    ("""Hard""", 3, [
+    ("""Stretch""", 3, [
         {
             "order": 1,
             "hint": r"""A frustum is a cone with its top cut off, and its formulae are on page 11 of the *Formulae & Tables*. To find the height of the **full** cone, use similar triangles: the radius grows in proportion to the distance from the tip. Water standing in the bucket forms a smaller frustum, which you can also find as the difference of two cones.""",

@@ -1,4 +1,4 @@
-"""Add the Geometry-Theorems practice questions: four Easy, four Medium, four Hard.
+"""Add the Geometry-Theorems practice questions: four Warm-up, four Workout, four Stretch.
 
 Content authored on local and replayed here so production gets exactly what was
 tested. Idempotent: keyed on topic slug, section name and question order rather
@@ -38,7 +38,7 @@ WHOLE = "Whole number only (e.g., 9)"
 
 # (section name, section order, [questions])
 QUESTIONS = [
-    ("""Easy""", 1, [
+    ("""Warm-up""", 1, [
         {
             "order": 1,
             "hint": r"""**Theorem 1:** vertically opposite angles are equal. Angles on a straight line add to $180^\circ$.""",
@@ -200,7 +200,7 @@ $$|\angle ACB| = 180 - 126 = 54$$
             ],
         },
     ]),
-    ("""Medium""", 2, [
+    ("""Workout""", 2, [
         {
             "order": 1,
             "hint": r"""In a parallelogram, opposite angles are equal (**Theorem 9**) and the diagonals bisect each other (**Theorem 10**). Neighbouring angles add to $180^\circ$, because the sides are parallel.""",
@@ -385,7 +385,7 @@ $$|AD|^2 = |AC|^2 + |CD|^2 = 625 + 3600 = 4225$$
             ],
         },
     ]),
-    ("""Hard""", 3, [
+    ("""Stretch""", 3, [
         {
             "order": 1,
             "hint": r"""**Theorem 19:** the angle at the centre is twice the angle at the circumference standing on the same arc. Any two radii make an isosceles triangle.""",
