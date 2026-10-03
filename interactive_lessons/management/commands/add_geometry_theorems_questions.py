@@ -28,7 +28,7 @@ from core.models import Subject
 from interactive_lessons.models import Topic, Question, QuestionPart, Section
 
 TOPIC_SLUG = "geometry-theorems"
-TOPIC_NAME = "Geometry-Theorems"
+TOPIC_NAME = "Angles, Lines & Triangles"
 SUBJECT_NAME = "Maths"
 PAPER = "p2"
 
