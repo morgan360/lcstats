@@ -158,6 +158,23 @@ def compare_answers(student_ans, correct_ans, tol=0.02):
     return matched / len(correct_ans)
 
 
+def compare_ignoring_one_sided_degrees(student_answer, correct_answer):
+    """Score ``53`` against a stored ``53°`` (or the reverse) as a match.
+
+    normalise_numeric_answer reads ° as *pi/180, which is right when both sides
+    carry it but makes a bare 53 and 53° differ by a factor of 57. A wrong
+    numeric answer is scored 50 without GPT, so that mismatch failed students
+    who left the degree sign off. When exactly one side has one, compare the
+    numbers with the sign dropped from both. Returns None when it does not apply.
+    """
+    student_plain = latex_to_plain((student_answer or "").strip())
+    correct_plain = latex_to_plain((correct_answer or "").strip())
+    if ("°" in student_plain) == ("°" in correct_plain):
+        return None
+    return compare_answers(normalise_numeric_answer(student_plain.replace("°", "")),
+                           normalise_numeric_answer(correct_plain.replace("°", "")))
+
+
 def mark_student_answer(question_text, student_answer, correct_answer,
                         hint_used=False, solution_used=False):
     # --- 1️⃣ Check for interval notation first ---
@@ -194,6 +211,10 @@ def mark_student_answer(question_text, student_answer, correct_answer,
         correct_vals = normalise_numeric_answer(correct_answer)
 
         auto_score = compare_answers(student_vals, correct_vals)
+        if auto_score < 1.0:
+            degrees_score = compare_ignoring_one_sided_degrees(student_answer, correct_answer)
+            if degrees_score is not None:
+                auto_score = max(auto_score, degrees_score)
 
         # ✅ Algebraic check fallback if numeric failed
         algebraic_match = False

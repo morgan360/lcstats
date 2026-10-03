@@ -8,7 +8,9 @@ input below is a form a student actually submitted.
 from django.test import SimpleTestCase
 
 from interactive_lessons.services.utils_math import compare_algebraic, latex_to_plain
-from interactive_lessons.stats_tutor import compare_answers, normalise_numeric_answer
+from interactive_lessons.stats_tutor import (
+    compare_answers, compare_ignoring_one_sided_degrees, normalise_numeric_answer,
+)
 
 
 def numeric_match(student, correct):
@@ -82,3 +84,27 @@ class ToleranceTests(SimpleTestCase):
 
     def test_large_answers_keep_the_old_tolerance(self):
         self.assertTrue(numeric_match("1080.01", "1080"))
+
+
+class OneSidedDegreeSignTests(SimpleTestCase):
+    """° reads as *pi/180, so 53 and a stored 53° used to differ by 57 times."""
+
+    def test_bare_number_against_stored_degrees(self):
+        self.assertEqual(compare_ignoring_one_sided_degrees("53", "53°"), 1.0)
+        self.assertEqual(compare_ignoring_one_sided_degrees("30", r"$30^\circ$"), 1.0)
+
+    def test_degree_sign_against_stored_bare_number(self):
+        self.assertEqual(compare_ignoring_one_sided_degrees("40°", "40"), 1.0)
+        self.assertEqual(compare_ignoring_one_sided_degrees(r"40^{\circ}", "40"), 1.0)
+
+    def test_wrong_angle_still_fails(self):
+        self.assertEqual(compare_ignoring_one_sided_degrees("50", "40°"), 0.0)
+
+    def test_does_not_apply_when_both_sides_agree(self):
+        self.assertIsNone(compare_ignoring_one_sided_degrees("40°", "40°"))
+        self.assertIsNone(compare_ignoring_one_sided_degrees("40", "40"))
+
+    def test_radians_are_not_mistaken_for_degrees(self):
+        # 30 is not pi/6: only the degree sign is dropped, never a unit invented.
+        self.assertEqual(compare_ignoring_one_sided_degrees("30°", "pi/6"), 0.0)
+        self.assertTrue(numeric_match("30°", "pi/6"))
