@@ -17,79 +17,20 @@ NumScoil is a Django-based web application providing an AI-powered interactive t
 
 ### Django Apps Structure
 
-The project follows a modular Django app pattern:
+`core` (subjects + `SubjectMiddleware`), `interactive_lessons`, `students`,
+`exam_papers`, `studyplans`, `homework`, `homework_check`, `notes` (RAG),
+`flashcards`, `quickkicks`, `home` (news), `chat`, `cheatsheets`, `revision`,
+`reports`, `schools`, `stats_simulator`.
 
-0. **`core/`** - Multi-subject support (NEW - 2026-01-26)
-   - Models: `Subject` (Maths, Physics)
-   - Middleware: `SubjectMiddleware` - tracks current subject in session
-   - All content (Topics, ExamPapers) now has a `subject` ForeignKey
-   - Homepage displays subject selector cards
-   - Session-based subject switching via `?subject=maths` or `?subject=physics`
-   - **IMPORTANT**: All queries must filter by `request.current_subject`
+Two things `ls` and the models will not tell you:
 
-1. **`interactive_lessons/`** - Core question/lesson functionality
-   - Models: `Topic`, `Question`, `QuestionPart` (multi-part questions with parts like (a), (b), etc.)
-   - `stats_tutor.py`: Answer normalization and grading logic (numeric, algebraic, GPT fallback)
-   - `services/marking.py`: Primary grading service
-   - `services/utils_math.py`: Algebraic comparison utilities
-
-2. **`students/`** - Student tracking and progress
-   - Models: `StudentProfile`, `QuestionAttempt`
-   - Tracks scores, attempts per question part, and progress across topics
-   - Auto-calculates `marks_awarded` based on `score_awarded` and `max_marks`
-
-3. **`exam_papers/`** - Full exam paper system
-   - Models: `ExamPaper`, `ExamQuestion`, `ExamQuestionPart`, `ExamAttempt`, `ExamQuestionAttempt`
-   - Supports timed exam mode (150 min) and individual question practice
-   - Questions link to Topics for practice access from Interactive Lessons
-   - Dual timer system: overall exam timer + per-question suggested time
-   - Solution images and marking scheme PDFs attached to questions/papers
-   - Management command: `extract_exam_questions` for PDF parsing
-
-4. **`notes/`** - RAG-based knowledge system
-   - Models: `Note` (auto-embeds on save), `InfoBotQuery` (chat history)
-   - `helpers/match_note.py`: Semantic search with threshold-based matching
-   - `utils.py`: Vector search utilities using FAISS
-   - Notes linked to Topics; embeddings regenerated on content/metadata changes
-
-5. **`chat/`** - Standalone chat interface for AI tutor
-
-6. **`home/`** - Landing pages and news system
-   - Models: `NewsItem` (announcements and updates)
-   - **Class-specific and general announcements**:
-     - General announcements: No `target_classes` set, visible to all students
-     - Class-specific: Link to one or more `TeacherClass`, only visible to enrolled students
-   - Supports markdown with LaTeX, pinning, expiry dates, and dismissal tracking
-   - Categories: general, new content, study tips, system updates, events
-
-7. **`homework/`** - Teacher-student homework assignment system
-   - Models: `TeacherProfile`, `TeacherClass`, `HomeworkAssignment`, `HomeworkTask`, `StudentHomeworkProgress`
-   - Teachers create assignments with tasks (topics, sections, exam questions, single exam question **parts**, QuickKicks)
-   - A part task is picked in `/homework/teacher/assignment/<id>/parts/`, which shows each question and its marking schemes; it completes when that part alone is attempted
-   - Students see assignments on dashboard with progress tracking
-   - Notification snooze system for homework reminders
-   - Auto-calculates completion percentage and overdue status
-
-8. **`quickkicks/`** - Bite-sized practice questions
-
-9. **`flashcards/`** - Spaced repetition flashcard system
-   - Models: `FlashcardSet`, `Flashcard`, `FlashcardAttempt`
-   - Multiple choice questions with 3 distractors + 1 correct answer
-   - Mastery-based progression: new → learning → know → retired
-   - Self-assessment mode for mastered cards (know state)
-   - Commands: `import_flashcards`, `export_flashcards` for JSON import/export
-   - Cards support LaTeX, images on front/back, and explanations
-
-10. **`schools/`** - School outreach management system
-    - Models: `School`, `EmailLog`
-    - Tracks secondary schools for marketing/outreach campaigns
-    - Email tracking with status (sent, failed, bounced)
-    - Follow-up scheduling and response tracking
-    - Support for Gaelscoileanna and multiple school types
-
-11. **`revision/`** - Revision materials and resources
-12. **`cheatsheets/`** - Quick reference sheets
-13. **`stats_simulator/`** - Interactive statistics simulations
+- **Every content query filters by `request.current_subject`.** Topics and exam
+  papers belong to a Subject, and `core.middleware.SubjectMiddleware` tracks
+  which one the session is in.
+- **Exam questions are set and listed whole.** Homework, study-plan items and
+  Badge Tests hand out whole questions; older `exam_part` homework tasks and
+  plan items still exist and still complete when that part alone is attempted,
+  but nothing creates new ones.
 
 ### Key Architectural Patterns
 
@@ -132,10 +73,10 @@ The project follows a modular Django app pattern:
   - Full marking scheme PDFs uploaded to `ExamPaper.marking_scheme_pdf` (accessible anytime)
   - Solutions unlock after: correct answer OR attempts >= threshold OR threshold = 0
 - **Shared Grading**: Exam questions use same `mark_student_answer()` from `stats_tutor.py`
-- **One level of parts**: a part is a letter — `(a)`, `(b)` — never `(a)(i)`. `merge_question_parts` folds any sub-parts it finds back into their letter.
-- **Topic Linking**: `ExamQuestion.topic` is the question's dominant topic; `ExamQuestionPart.topic` is the one topic carrying most of that part's marks. Topic pages list a question if either matches (`exam_papers/services/topic_parts.py`), and a part opens on its own via `?part=<id>` on the question interface.
-- **Stacked marking schemes**: a part's first crop is `ExamQuestionPart.solution_image`; a merged part's further crops are `ExamPartSolutionImage` rows. Read them together through `part.solution_images` — that is what the grader, the printable sheets and the PDFs use.
-- **Retagging**: `/exam-papers/worksheet/` (questions) and `/exam-papers/worksheet/parts/` (parts) each carry a per-card topic dropdown for **superusers only** (`exam_papers/topic_editing.py`); the save endpoints re-check, so hiding the control is not the access control.
+- **One level of parts**: a part is a letter — `(a)`, `(b)` — never `(a)(i)`, and a student answers it in one box. Sub-parts are gone from the data; only the official scheme PDFs still print (i)/(ii) rows, which the scheme reader in `exam_papers/utils.py` has to understand.
+- **Topic Linking**: each `ExamQuestion` has a main `topic`, an optional `secondary_topic` (listed under it only when `list_under_secondary` is ticked) and an optional `need_to_know_topic` (a minor part: shown on the question, never listed). `topic_filter` in `exam_papers/services/topic_questions.py` is the one listing rule, used by topic pages, the Exam Questions index, the homework picker and the worksheet. `ExamQuestionPart.topic` is still filled by `tag_part_topics` but only feeds `tag_question_topics`, which ranks a question's topics by part marks to fill blank slots (secondary ticked at ≥ ⅓ of the marks). `?part=<id>` still opens one part, for older part tasks.
+- **One marking-scheme image per part**: `ExamQuestionPart.solution_image`, covering the whole letter, (i)–(iv) included. `extract_solution_images` cuts it with `letter_region`, which merges every scheme row for the letter. Read through `part.solution_images` — that is what the grader, the printable sheets and the PDFs use.
+- **Retagging**: `/exam-papers/worksheet/` carries a per-card main / secondary (+ "List under it") / need-to-know editor for **superusers only** (`exam_papers/topic_editing.py`); the save endpoint re-checks, so hiding the control is not the access control.
 
 **News & Announcements System** (`home/models.py:NewsItem`):
 - **Audience Targeting**:
@@ -154,171 +95,27 @@ The project follows a modular Django app pattern:
 
 ## Common Development Commands
 
-### Environment Setup
+The standard Django and npm invocations all work as you would expect. Two
+things that are not standard:
+
 ```bash
-# Activate virtual environment (note: directory is .venv not venv)
-source .venv/bin/activate
-
-# Install dependencies
-pip install -r requirements.txt
-
-# Environment variables (.env file required)
-# OPENAI_API_KEY - OpenAI API key for GPT-4o-mini and embeddings
-# OPENAI_ORG_ID - OpenAI organization ID
-# SECRET_KEY - Django secret key (REQUIRED - no fallback)
-# DEBUG - Set to 'True' for development (defaults to False)
-# ALLOWED_HOSTS - Comma-separated list of allowed hostnames
-# OPENAI_EMBED_MODEL - Embedding model (default: text-embedding-3-small)
-# OPENAI_CHAT_MODEL - Chat model (default: gpt-4o-mini)
-# FAQ_MATCH_THRESHOLD - RAG confidence threshold (default: 0.7)
+source .venv/bin/activate   # .venv, not venv
+npm run watch:css           # run alongside runserver when editing templates
 ```
 
-### Django Management
-```bash
-# Run development server
-python manage.py runserver
-
-# Database migrations
-python manage.py makemigrations
-python manage.py migrate
-
-# Create superuser
-python manage.py createsuperuser
-
-# Shell access
-python manage.py shell
-
-# Collect static files (for production)
-python manage.py collectstatic
-```
-
-### Testing
-```bash
-# Run the full test suite
-python manage.py test
-
-# Run tests for a single app
-python manage.py test exam_papers
-
-# Run a single test case or method
-python manage.py test interactive_lessons.tests.SomeTestCase
-python manage.py test interactive_lessons.tests.SomeTestCase.test_something
-```
-Note: most apps currently have only stub `tests.py` files (`# Create your tests here.`); coverage is thin, so don't assume existing behavior is regression-tested.
-
-### Frontend (Tailwind CSS)
-```bash
-# Install JS dependencies
-npm install
-
-# One-off production build (minified) -> static/css/tailwind.css
-npm run build:css
-
-# Rebuild on file changes during development
-npm run watch:css
-```
-Tailwind input lives at `static/src/input.css`; run `watch:css` alongside `runserver` when editing templates/styles.
+`.env` is required and `SECRET_KEY` has no fallback -- `.env.example` lists the
+rest. Most apps still carry stub `tests.py` files, so a green suite is weaker
+evidence here than it looks: prefer adding a test to trusting the coverage.
 
 ### Custom Management Commands
 
-**Exam Papers:**
-```bash
-# Download LC exam papers
-python manage.py download_lc_papers
-
-# Download the deferred sitting instead (2022 onwards, Higher Level, English
-# version). These have no predictable URL: the paths come from walking the
-# archive's search form, so the years on offer are read from the site and
-# --start-year/--end-year only narrow that list.
-python manage.py download_lc_papers --deferred --dry-run
-python manage.py download_lc_papers --deferred
-
-# Extract questions from exam PDFs (--auto reads structure from the text layer,
-# --dry-run shows what was detected without writing). Both paths fill only
-# blanks, so re-running never disturbs work done by hand.
-python manage.py extract_exam_questions <paper_id> --auto
-
-# Papers before 2012 Paper 2 number questions "1." and fit two to a page, so
-# they need --legacy, which crops each question out of the page by position.
-python manage.py extract_exam_questions <paper_id> --legacy --dry-run
-
-# Fill in question part max_marks from the marking scheme. Reads the
-# "Scale 10C (0, 3, 7, 10)" notation out of the scheme's text layer, summing
-# every scale in a part's region -- a part covering (i) and (ii) carries one
-# scale each and is worth both. Falls back to reading the crop with vision
-# (needs solution_image) only where there is no usable text; --no-vision
-# forbids even that. Fills blanks only unless --overwrite.
-#
-# Each question's parts are checked against its total, which is known
-# independently from the paper, and a question that does not add up is left
-# alone rather than written wrong. That check is ON by default; turn it off
-# with --no-verify-total only when the question totals are themselves wrong.
-python manage.py auto_extract_marking_info <paper_id> --dry-run
-
-# Give every question part its one topic. Writes straight to the database,
-# overwriting what is there; correct it afterwards from the parts page.
-python manage.py tag_part_topics <paper_id> --dry-run
-python manage.py tag_part_topics <paper_id>
-
-# Fold (b)(i) and (b)(ii) back into one (b), summing marks and keeping both
-# marking-scheme crops. Writes ONLY with --apply: every FK to a part cascades,
-# so the inert run is the default. --check exits 1 while any group is unmerged.
-python manage.py merge_question_parts --paper <paper_id>
-python manage.py merge_question_parts --paper <paper_id> --apply
-
-# Populate answer format fields
-python manage.py populate_answer_formats
-
-# Import exam paper (interactive_lessons)
-python manage.py import_exam_paper
-
-# Import marking scheme (interactive_lessons)
-python manage.py import_marking_scheme
-```
-
-**Worksheets:**
-`/exam-papers/worksheet/` picks questions by topic and either prints them or
-downloads a PDF (`exam_papers/services/worksheet_pdf.py`, images re-encoded at
-150 DPI so a sheet stays emailable).
-```bash
-```
-
-**Student Management:**
-```bash
-# Generate daily student progress report
-python manage.py daily_student_report
-
-# Log out all active users
-python manage.py logout_all_users
-```
-
-**Database Backup:**
-```bash
-# Create database backup
-python manage.py backup_database
-
-# Create compressed backup (recommended for production)
-python manage.py backup_database --compress
-
-# Keep backups for 60 days (default: 30)
-python manage.py backup_database --keep-days 60
-
-# Custom backup directory
-python manage.py backup_database --backup-dir /path/to/backups
-```
-
-**Flashcards:**
-```bash
-# Import flashcards from JSON
-python manage.py import_flashcards path/to/flashcards.json
-
-# Export flashcards to JSON
-python manage.py export_flashcards --topic "Topic Name"
-```
+This project has a dozen of its own `manage.py` commands, several with traps
+their `--help` does not mention. They live in the **`project-commands`** skill;
+read it before running any of them.
 
 ### Database
 - **MySQL connection**: `lcaim` database on localhost:3306
-- **Credentials**: Username: `morgan`, Password: `help1234`
+- **Credentials**: in `.env` / `lcstats/settings.py` -- never repeated here
 - **Data Entry**: Questions are added via Django Admin (`/admin/`), not fixtures
 - **Direct Access**: Use Django ORM or MySQL client for queries
 
@@ -372,69 +169,6 @@ if not column_exists:
    - **Student**: `Signup → Login → Dashboard → Select Topic → Select Section → Answer Questions → Get Hints/Solutions → View Progress`
    - **Teacher**: `Signup → Login → Teacher Dashboard → Create Classes → Create Homework Assignments → Monitor Student Progress`
 
-### Question Attempt Flow
-```
-Student submits answer
-  ↓
-POST /interactive/<topic>/<section>/question/<n>/
-  ↓
-views.section_question_view()
-  ↓
-services/marking.py:grade_submission()
-  ↓
-1. Try algebraic comparison (utils_math.py)
-2. Try numeric normalization (stats_tutor.py)
-3. Fall back to GPT-4o-mini
-  ↓
-Create QuestionAttempt record
-  ↓
-Auto-calculate marks_awarded (via model save())
-  ↓
-Update StudentProfile.total_score
-  ↓
-Return feedback to student
-```
-
-### Exam Attempt Flow
-```
-Start exam → ExamAttempt created (attempt_mode='full_timed')
-  ↓
-Timer starts (150 min countdown)
-  ↓
-Student navigates questions → answers saved to ExamQuestionAttempt
-  ↓
-Timer expires OR student clicks "Complete"
-  ↓
-ExamAttempt.completed_at set
-  ↓
-Results page shows score, time taken, answers
-```
-
-## URL Structure
-
-- `/` - Home (home app)
-- `/admin/` - Django admin
-- `/students/` - Student dashboard, login, progress
-- `/interactive/` - Question interface, topics
-  - `/interactive/<topic-slug>/exam-questions/` - Exam questions for a topic (practice mode)
-- `/exam-papers/` - Exam papers list and timed exams
-- `/notes/` - Notes management
-- `/chat/` - AI chat interface
-- `/homework/` - Student/teacher homework interface
-- `/markdownx/` - Markdown editor endpoints
-
-## Important Configuration
-
-**settings.py OpenAI Settings:**
-- `OPENAI_API_KEY`, `OPENAI_ORG_ID` loaded from `.env`
-- `OPENAI_EMBED_MODEL` (default: "text-embedding-3-small")
-- `OPENAI_CHAT_MODEL` (default: "gpt-4o-mini")
-- `FAQ_MATCH_THRESHOLD` (default: 0.7) - confidence threshold for RAG matches
-
-**Login Redirects:**
-- `LOGIN_REDIRECT_URL = '/students/dashboard/'`
-- `LOGOUT_REDIRECT_URL = '/students/login/'`
-
 ## Code Patterns to Follow
 
 **When adding new question types:**
@@ -476,105 +210,10 @@ Results page shows score, time taken, answers
 - Each card has `get_shuffled_options()` method for randomized display
 - Progress tracked via `FlashcardAttempt` with `view_count`, `correct_count`, `incorrect_count`
 
-## Advanced Architecture Details
+## Production Deployment
 
-### Grading System Deep Dive
-
-The grading pipeline (`interactive_lessons/services/marking.py` → `stats_tutor.py`) is multi-layered:
-
-1. **Algebraic Equivalence** (`services/utils_math.py`):
-   - Uses SymPy to parse and simplify expressions
-   - Handles implicit multiplication (e.g., `2x` vs `2*x`)
-   - Catches `SympifyError` for invalid expressions
-   - Returns immediate 100% if algebraically equivalent
-
-2. **Numeric Normalization** (`stats_tutor.py`):
-   - Fraction handling: `"3/4"` → `0.75`
-   - Decimal cleaning: `"3.14159"` → `3.14` (configurable precision)
-   - Angle conversion: degrees ↔ radians
-   - π handling: `"2π"` → `6.283...`
-   - Tolerance-based comparison for floating point
-
-3. **GPT Fallback** (OpenAI GPT-4o-mini):
-   - Triggered when algebraic/numeric methods fail
-   - Receives question text, student answer, correct answer
-   - Returns score (0-100) and feedback
-   - Used for free-text, proof-based, or complex answers
-
-4. **Penalty Application**:
-   - Hint used: -20% from final score
-   - Solution viewed: -50% from final score
-   - Applied AFTER base score calculation
-
-**Entry point:** `grade_submission()` in `services/marking.py`
-
-### Signal System
-
-Django signals auto-trigger side effects (`students/signals.py`):
-
-- **`post_save(User)`**: Auto-creates `StudentProfile` for new users
-- **`user_logged_in`**: Creates `LoginHistory` and `UserSession` records
-- **`user_logged_out`**: Deletes `UserSession`
-- **`user_login_failed`**: Logs failed attempt with IP/user agent
-- **`pre_delete(Session)`**: Cleans up orphaned `UserSession`
-
-These run automatically via `students/apps.py` signal registration.
-
-### RAG (Retrieval-Augmented Generation) System
-
-**Embedding Pipeline** (`notes/models.py`):
-```python
-Note.save() → compute_hash() → check if changed →
-  → generate_embedding() → OpenAI API → store in vector_embedding field
-```
-
-**Retrieval Pipeline** (`notes/helpers/match_note.py`):
-```python
-Student query → expand_query() → generate embedding →
-  → FAISS similarity search → top_n matches →
-  → check threshold →
-    if confidence >= threshold: return best note
-    else: GPT with top 3 notes as context
-```
-
-**Query Expansion**: Short queries like "mean" expanded to "mean average central value sum divided count" for better semantic matching.
-
-### Production Deployment Considerations
-
-**Security (settings.py, lines 56-85):**
-- Cloudflare proxy setup: Uses `X-Forwarded-Proto` header for HTTPS detection
-- `SECURE_SSL_REDIRECT` disabled to prevent redirect loops with Cloudflare
-- HSTS enabled with 1-year expiry, subdomains, and preload
-- Session/CSRF cookies marked secure in production
-- `X_FRAME_OPTIONS = 'SAMEORIGIN'` to allow video controls
-
-**Static Files:**
-- `STATICFILES_DIRS = [BASE_DIR / "static"]` - Development static files
-- `STATIC_ROOT = BASE_DIR / "staticfiles"` - Production collected statics
-- `MEDIA_ROOT = BASE_DIR / "media"` - User uploads (marking schemes, images)
-
-**Any change under `static/` needs `collectstatic` on production, plus a reload.**
-Production serves `/static/` from `staticfiles/`, not from `static/`, so a file
-copied to `static/` alone is a 404 however correct the code referencing it is.
-This bites hardest with a *new* file: the page still renders, the `<script>` tag
-is right there in the HTML, and the only symptom is that its functions are
-undefined -- a dropdown that does nothing, a button that does not respond.
-Nothing in the server log says so.
-
-    ./venv/bin/python manage.py collectstatic --noinput
-    touch /var/www/www_numscoil_ie_wsgi.py
-
-Verify by fetching the file, not by eye:
-
-    curl -s -o /dev/null -w "%{http_code}\n" https://www.numscoil.ie/static/js/<file>
-
-**Cloudflare caches the 404.** numscoil.ie sits behind Cloudflare, so an asset
-that 404'd before `collectstatic` keeps 404ing afterwards until the cache
-expires. Add a query string (`?v=123`) to check whether it is really fixed --
-if the busted URL returns 200 and the plain one does not, the file is fine and
-you are looking at cache. Hard-refresh the browser too.
-
-**Environment Detection:**
-- `DEBUG = os.getenv('DEBUG', 'False') == 'True'` - Explicit opt-in for debug mode
-- `SECRET_KEY` MUST be set in `.env` - raises `ValueError` if missing
-- `ALLOWED_HOSTS` parsed from comma-separated env variable
+Deploying, and the Cloudflare/static-file setup behind it, is in the
+**`deploying`** skill. The one rule worth carrying without it: **any change
+under `static/` needs `collectstatic` and a wsgi touch on production, or the
+file 404s silently** -- the page renders, the `<script>` tag is there, and only
+its functions are missing.
