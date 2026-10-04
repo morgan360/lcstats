@@ -259,8 +259,8 @@ class Command(BaseCommand):
             self.style.SUCCESS(
                 f'\nNext steps in /admin/exam_papers/examquestion/:\n'
                 f'   - Topic classification (not detectable from the PDF)\n'
-                f'   - Split any part that has sub-parts, e.g. (b) into (b) (i) and (b) (ii)\n'
-                f'   - Marking scheme crop into each part\'s solution image, then\n'
+                f'   - One part per letter: (b) covers its (i) and (ii), never split\n'
+                f'   - extract_solution_images for each part\'s scheme image, then\n'
                 f'     auto_extract_marking_info to fill in per-part marks\n'
             )
         )
