@@ -60,3 +60,31 @@ class SearchSimilarScopingTests(TestCase):
         with patch("notes.utils.get_query_embedding", return_value=np.array(FAKE_VEC, dtype=np.float32)):
             results = search_similar("anything", content_type="site_help", audience="student")
         self.assertEqual(results, [])
+
+
+class OldStudyResourcesLinksTests(TestCase):
+    """The Study Resources pages were replaced by Summary Notes; old links still land somewhere."""
+
+    def test_index_and_unknown_topics_redirect_to_summary_notes(self):
+        from django.urls import reverse
+
+        target = reverse("cheatsheets:summary_notes_index")
+        for url in ("/notes/", "/notes/no-such-topic/"):
+            self.assertRedirects(self.client.get(url), target, fetch_redirect_response=False)
+
+    def test_topic_page_redirects_to_that_topics_sheets(self):
+        from django.urls import reverse
+
+        from interactive_lessons.models import Topic
+
+        Topic.objects.create(name="Probability", slug="probability-t")
+        self.assertRedirects(
+            self.client.get("/notes/probability-t/"),
+            reverse("cheatsheets:cheatsheets_topic", args=["probability-t"]),
+            fetch_redirect_response=False,
+        )
+
+    def test_info_bot_save_endpoint_is_kept(self):
+        from django.urls import reverse
+
+        self.assertEqual(reverse("save_info"), "/notes/save-info/")
