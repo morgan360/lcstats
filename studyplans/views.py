@@ -38,7 +38,8 @@ from .models import (
 )
 from .services import checkpoints as checkpoint_service
 from .services import (
-    completion, copying, microbadges, nightly, notify, planner, progress, stamps,
+    completion, copying, exam_stamps, microbadges, nightly, notify, planner,
+    progress, stamps,
 )
 
 logger = logging.getLogger(__name__)
@@ -150,11 +151,17 @@ def achievements(request):
 
 @student_or_teacher_required
 def stamp_cards(request):
-    """A card for every topic in the subject, plan or no plan."""
-    return render(request, 'studyplans/stamp_cards.html', {
-        'cards': stamps.cards_for(
-            request.user, getattr(request, 'current_subject', None)),
-    })
+    """A card for every topic in the subject, plan or no plan; or, on the
+    Exam Papers tab, a row for every past paper."""
+    subject = getattr(request, 'current_subject', None)
+    tab = 'exams' if request.GET.get('tab') == 'exams' else 'topics'
+    context = {'tab': tab}
+    if tab == 'exams':
+        context['rows'] = exam_stamps.rows_for(request.user, subject)
+        context['slots'] = range(1, exam_stamps.SLOTS + 1)
+    else:
+        context['cards'] = stamps.cards_for(request.user, subject)
+    return render(request, 'studyplans/stamp_cards.html', context)
 
 
 @student_or_teacher_required

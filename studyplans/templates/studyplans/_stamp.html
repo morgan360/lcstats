@@ -5,9 +5,10 @@
   filled true once earned; a blank is a dashed outline waiting for ink
   label  the letter in the middle of a full badge (the topic's initial)
   uid    unique on the page -- the badge's rim text needs its own path id
+  small  draw a full badge at half size, for the exam paper rows
 {% endcomment %}
 {% if kind == "stamp" %}
-<svg viewBox="0 0 100 100" class="h-20 w-20 shrink-0 {% if filled %}-rotate-12{% endif %}"
+<svg viewBox="0 0 100 100" class="{% if small %}h-10 w-10{% else %}h-20 w-20{% endif %} shrink-0 {% if filled %}-rotate-12{% endif %}"
      role="img" aria-label="{% if filled %}Full badge earned{% else %}Full badge not yet earned{% endif %}">
   {% if filled %}
     <defs>

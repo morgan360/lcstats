@@ -4,6 +4,72 @@
 {% block content %}
 <div class="mx-auto max-w-4xl px-4 py-8 sm:px-6 lg:px-8">
   <h2 class="mb-1 text-2xl font-semibold text-mist">My Stamp Cards</h2>
+
+  <nav class="mb-4 mt-3 flex gap-2" aria-label="Stamp card type">
+    <a href="{% url 'studyplans:stamp_cards' %}"
+       class="rounded-full px-4 py-1.5 text-sm font-semibold transition {% if tab == 'topics' %}bg-violet-royal text-mist{% else %}text-mist/70 hover:bg-mist/10{% endif %}"
+       {% if tab == 'topics' %}aria-current="page"{% endif %}>Topics</a>
+    <a href="{% url 'studyplans:stamp_cards' %}?tab=exams"
+       class="rounded-full px-4 py-1.5 text-sm font-semibold transition {% if tab == 'exams' %}bg-violet-royal text-mist{% else %}text-mist/70 hover:bg-mist/10{% endif %}"
+       {% if tab == 'exams' %}aria-current="page"{% endif %}>Exam Papers</a>
+  </nav>
+
+  {% if tab == 'exams' %}
+  <p class="mb-6 text-sm text-mist/70">
+    Answer every part of a question to earn its MicroBadge. Earn all of a
+    paper's MicroBadges for its paper badge.
+  </p>
+  <div class="mb-8 h-1 w-full rounded-full bg-gradient-to-r from-violet-royal to-lime-glow"></div>
+
+  {% if rows %}
+  {# The grid scrolls on its own on a phone, so the page never scrolls sideways. #}
+  <div class="overflow-x-auto rounded-2xl bg-white p-4 shadow-sm ring-1 ring-twilight/10">
+    <table class="w-full border-separate border-spacing-y-1 text-sm">
+      <thead>
+        <tr class="text-xs font-semibold text-twilight/60">
+          <th scope="col" class="pr-3 text-left">Paper</th>
+          {% for n in slots %}<th scope="col" class="px-0.5 text-center">Q{{ n }}</th>{% endfor %}
+          <th scope="col" class="pl-2 text-center">Paper badge</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in rows %}
+        <tr>
+          <th scope="row" class="whitespace-nowrap pr-3 text-left font-semibold text-midnight">
+            {{ row.paper.year }} {{ row.paper.get_paper_type_display }}
+            <span class="block text-xs font-normal text-twilight/60">{{ row.earned }} of {{ row.total }}</span>
+          </th>
+          {% for cell in row.cells %}
+          <td class="px-0.5 text-center">
+            {% if cell.question %}
+            <a href="{% url 'exam_papers:practise_question' cell.question.id %}"
+               class="inline-block align-middle"
+               title="{{ row.paper }} Q{{ cell.number }}{% if cell.stamped %} - MicroBadge earned{% endif %}"
+               aria-label="Question {{ cell.number }}{% if cell.stamped %}, MicroBadge earned{% else %}, not yet earned{% endif %}">
+              {% include "studyplans/_stamp.html" with kind="micro" filled=cell.stamped %}
+            </a>
+            {% else %}
+            <span class="inline-block h-7 w-7 rounded-full bg-twilight/5 align-middle sm:h-8 sm:w-8" aria-hidden="true"></span>
+            {% endif %}
+          </td>
+          {% endfor %}
+          <td class="pl-2 text-center">
+            <span class="inline-block align-middle">
+              {% include "studyplans/_stamp.html" with kind="stamp" filled=row.stamped label=row.paper.paper_type|slice:"1:" uid=row.paper.id small=True %}
+            </span>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="rounded-2xl bg-white p-8 text-center shadow-sm ring-1 ring-twilight/10">
+    <p class="text-sm text-twilight/70">No exam papers in this subject yet.</p>
+  </div>
+  {% endif %}
+
+  {% else %}
   <p class="mb-6 text-sm text-mist/70">
     Each topic on your plan has ten MicroBadges. Earn all ten to open its Badge
     Test, and pass that for the full badge.
@@ -19,5 +85,6 @@
     </div>
     {% endfor %}
   </div>
+  {% endif %}
 </div>
 {% endblock %}
