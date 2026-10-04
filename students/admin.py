@@ -837,3 +837,52 @@ class WorkSubmissionAdmin(admin.ModelAdmin):
             reverse('work_photo', args=[obj.pk]),
         )
     photo_preview.short_description = 'Photo'
+
+
+# ---------------------------------------------------------------------------
+# Users list: filter by class and by teacher
+# ---------------------------------------------------------------------------
+from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
+from django.contrib.auth.models import User
+
+
+class EnrolledClassFilter(admin.SimpleListFilter):
+    """Students enrolled in one class."""
+    title = 'class'
+    parameter_name = 'class'
+
+    def lookups(self, request, model_admin):
+        from homework.models import TeacherClass
+        classes = TeacherClass.objects.select_related('teacher__user').order_by(
+            '-is_active', 'teacher__display_name', 'name')
+        return [(c.pk, str(c) if c.is_active else f'{c} (inactive)') for c in classes]
+
+    def queryset(self, request, queryset):
+        if self.value():
+            return queryset.filter(enrolled_classes=self.value()).distinct()
+        return queryset
+
+
+class ClassTeacherFilter(admin.SimpleListFilter):
+    """Students in any class this teacher runs."""
+    title = 'teacher'
+    parameter_name = 'teacher'
+
+    def lookups(self, request, model_admin):
+        from homework.models import TeacherProfile
+        teachers = TeacherProfile.objects.filter(classes__isnull=False).distinct() \
+            .select_related('user')
+        return sorted(((t.pk, str(t)) for t in teachers), key=lambda pair: pair[1].lower())
+
+    def queryset(self, request, queryset):
+        if self.value():
+            return queryset.filter(enrolled_classes__teacher=self.value()).distinct()
+        return queryset
+
+
+admin.site.unregister(User)
+
+
+@admin.register(User)
+class UserAdmin(BaseUserAdmin):
+    list_filter = (EnrolledClassFilter, ClassTeacherFilter) + BaseUserAdmin.list_filter
