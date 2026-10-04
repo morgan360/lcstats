@@ -5,7 +5,8 @@ its parts, in any mode and at any score. The paper's badge is inked once every
 question on it has its MicroBadge. Unlike the topic cards this reads attempts
 directly -- no plan is involved.
 
-Deferred papers are left off. Reads only.
+Deferred papers get rows of their own, after that year's ordinary papers.
+Reads only.
 """
 from collections import defaultdict
 
@@ -17,12 +18,12 @@ SLOTS = 10
 
 
 def rows_for(user, subject=None):
-    """[{'paper', 'cells', 'earned', 'total', 'stamped'}], newest paper first,
-    Paper 1 before Paper 2."""
+    """[{'paper', 'cells', 'earned', 'total', 'stamped'}], newest year first;
+    within a year Paper 1 then Paper 2, then the deferred Paper 1 and 2."""
     papers = (ExamPaper.objects
-              .filter(is_published=True, is_deferred=False)
+              .filter(is_published=True)
               .prefetch_related('questions')
-              .order_by('-year', 'paper_type'))
+              .order_by('-year', 'is_deferred', 'paper_type'))
     if subject is not None:
         papers = papers.filter(subject=subject)
     papers = list(papers)

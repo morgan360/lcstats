@@ -25,8 +25,9 @@ class ExamStampTests(TestCase):
                                           total_marks=300, is_published=True)
         cls.older = ExamPaper.objects.create(subject=cls.maths, year=2024, paper_type='p1',
                                              total_marks=300, is_published=True)
-        ExamPaper.objects.create(subject=cls.maths, year=2025, paper_type='p1',
-                                 total_marks=300, is_published=True, is_deferred=True)
+        cls.deferred = ExamPaper.objects.create(
+            subject=cls.maths, year=2025, paper_type='p1',
+            total_marks=300, is_published=True, is_deferred=True)
 
         cls.q1 = ExamQuestion.objects.create(exam_paper=cls.p1, question_number=1, total_marks=20)
         cls.q2 = ExamQuestion.objects.create(exam_paper=cls.p1, question_number=2, total_marks=20)
@@ -46,9 +47,9 @@ class ExamStampTests(TestCase):
         return next(r for r in exam_stamps.rows_for(self.student, self.maths)
                     if r['paper'] == paper)
 
-    def test_rows_run_newest_first_paper_1_before_paper_2_without_deferred(self):
+    def test_rows_run_newest_first_with_deferred_after_that_years_papers(self):
         papers = [r['paper'] for r in exam_stamps.rows_for(self.student, self.maths)]
-        self.assertEqual(papers, [self.p1, self.p2, self.older])
+        self.assertEqual(papers, [self.p1, self.p2, self.deferred, self.older])
 
     def test_every_row_has_ten_question_columns(self):
         row = self.row(self.p1)
@@ -81,6 +82,7 @@ class ExamStampTests(TestCase):
         response = self.client.get(reverse('studyplans:stamp_cards'), {'tab': 'exams'})
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, '2025 Paper 1')
+        self.assertContains(response, 'Deferred &middot;')
         self.assertContains(response, 'MicroBadge earned')
         self.assertContains(response, reverse('exam_papers:practise_question',
                                               args=[self.q2.id]))

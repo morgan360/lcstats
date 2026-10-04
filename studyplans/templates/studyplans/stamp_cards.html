@@ -37,7 +37,7 @@
         <tr>
           <th scope="row" class="whitespace-nowrap pr-3 text-left font-semibold text-midnight">
             {{ row.paper.year }} {{ row.paper.get_paper_type_display }}
-            <span class="block text-xs font-normal text-twilight/60">{{ row.earned }} of {{ row.total }}</span>
+            <span class="block text-xs font-normal text-twilight/60">{% if row.paper.is_deferred %}Deferred &middot; {% endif %}{{ row.earned }} of {{ row.total }}</span>
           </th>
           {% for cell in row.cells %}
           <td class="px-0.5 text-center">
