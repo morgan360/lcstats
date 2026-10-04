@@ -5,8 +5,16 @@
 {% block content %}
 {% include "reports/includes/messages.html" %}
 
-<h1 class="mb-1 text-2xl font-bold">My Classes</h1>
-<p class="mb-6 text-sm text-twilight/70">{{ today|date:"l j F Y" }}</p>
+<div class="mb-6 flex items-start justify-between gap-4">
+    <div>
+        <h1 class="mb-1 text-2xl font-bold">My Classes</h1>
+        <p class="text-sm text-twilight/70">{{ today|date:"l j F Y" }}</p>
+    </div>
+    {% if new_class_url %}
+    <a href="{{ new_class_url }}"
+        class="shrink-0 rounded-lg bg-gradient-03 px-4 py-2 text-sm font-semibold text-mist shadow-sm transition hover:brightness-105">+ New class</a>
+    {% endif %}
+</div>
 
 {% if todays_classes %}
 <h2 class="mb-3 text-lg font-semibold">Today</h2>
@@ -63,7 +71,7 @@
     {% endfor %}
 </div>
 {% else %}
-<p class="text-twilight/70">No active classes yet — create one from the <a class="underline" href="{% url 'homework:teacher_dashboard' %}">Homework page</a>.</p>
+<p class="text-twilight/70">No active classes yet{% if new_class_url %} — use <a class="underline" href="{{ new_class_url }}">New class</a> to set one up{% endif %}.</p>
 {% endif %}
 
 {% if request.user.is_superuser %}

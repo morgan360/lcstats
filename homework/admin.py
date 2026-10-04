@@ -85,6 +85,21 @@ class TeacherClassAdmin(admin.ModelAdmin):
         }),
     )
 
+    def response_add(self, request, obj, post_url_continue=None):
+        """Plain "Save" goes back to ?next= when the form was opened with one --
+        the New class button on My Classes -- rather than to the admin list."""
+        from django.contrib import messages
+        from django.shortcuts import redirect
+        from django.utils.http import url_has_allowed_host_and_scheme
+
+        next_url = request.GET.get('next')
+        if (next_url and '_continue' not in request.POST and '_addanother' not in request.POST
+                and url_has_allowed_host_and_scheme(next_url, allowed_hosts={request.get_host()},
+                                                    require_https=request.is_secure())):
+            messages.success(request, f'Class "{obj.name}" created.')
+            return redirect(next_url)
+        return super().response_add(request, obj, post_url_continue)
+
     def get_queryset(self, request):
         qs = super().get_queryset(request)
         # If user is a teacher (not superuser), only show their classes

@@ -3,6 +3,7 @@ import json
 from datetime import datetime, time, timedelta
 from decimal import Decimal, InvalidOperation
 from io import BytesIO
+from urllib.parse import urlencode
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
@@ -180,6 +181,17 @@ def _roster_name(user, class_note):
 # ------------------------------------------------------------
 
 @teacher_required
+def _new_class_url(request, teacher_profile):
+    """The admin's add-class form, with this teacher filled in, coming back here
+    on save. None for anyone not allowed to add classes."""
+    if not request.user.has_perm('homework.add_teacherclass'):
+        return None
+    params = {'next': reverse('reports:dashboard')}
+    if teacher_profile is not None:
+        params['teacher'] = teacher_profile.pk
+    return f"{reverse('admin:homework_teacherclass_add')}?{urlencode(params)}"
+
+
 def dashboard(request):
     try:
         teacher_profile = request.user.teacher_profile
@@ -250,6 +262,7 @@ def dashboard(request):
 
     context = {
         'classes': classes,
+        'new_class_url': _new_class_url(request, teacher_profile),
         'todays_classes': todays_classes,
         'gaps': gaps,
         'today': today,
