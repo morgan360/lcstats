@@ -165,7 +165,7 @@
                             <p class="mt-1 border-t border-mist/10 px-3 pt-3 pb-1 text-[11px] font-semibold uppercase tracking-wide text-mist/50">Admin</p>
                             {% if request.user.is_superuser %}
                             <a href="{% url 'reports:site_activity' %}"
-                                class="block rounded-lg px-3 py-2 text-sm font-semibold text-rose-pop hover:bg-rose-pop/20">Today</a>
+                                class="block rounded-lg px-3 py-2 text-sm font-semibold text-rose-pop hover:bg-rose-pop/20">Site Activity</a>
                             {% endif %}
                             {% if perms.auth.view_user %}
                             <a href="{% url 'admin:auth_user_changelist' %}"
@@ -383,7 +383,7 @@
             <p class="px-3 pt-3 pb-1 text-[11px] font-semibold uppercase tracking-wide text-mist/50">Admin</p>
             {% if request.user.is_superuser %}
             <a href="{% url 'reports:site_activity' %}"
-                class="block rounded-lg px-3 py-2 text-rose-pop transition hover:bg-mist/10">Today</a>
+                class="block rounded-lg px-3 py-2 text-rose-pop transition hover:bg-mist/10">Site Activity</a>
             {% endif %}
             {% if perms.auth.view_user %}
             <a href="{% url 'admin:auth_user_changelist' %}"

@@ -4,7 +4,7 @@ from django.test import TestCase
 from homework.models import TeacherProfile
 
 ORDER = ['My Classes', 'Student assignments', 'Homework', 'New Homework', 'Study Plans',
-         'Homework Check', '>Admin<', 'Today', 'Users', 'Import Flashcards', 'Main Admin']
+         'Homework Check', '>Admin<', 'Site Activity', 'Users', 'Import Flashcards', 'Main Admin']
 
 
 class StaffMenuTests(TestCase):
@@ -31,7 +31,7 @@ class StaffMenuTests(TestCase):
         teacher = User.objects.create_user('teach', password='pw', is_staff=True)
         TeacherProfile.objects.create(user=teacher, display_name='Ms Teach')
         menu = self._desktop_menu(teacher)
-        for label in ('Today', '>Users<', 'New Homework'):
+        for label in ('Site Activity', '>Users<', 'New Homework'):
             self.assertNotIn(label, menu)
         for label in ('>Admin<', 'Import Flashcards', 'Main Admin', 'My Classes'):
             self.assertIn(label, menu)
