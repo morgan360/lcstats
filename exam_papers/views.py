@@ -5,23 +5,21 @@ from django.urls import reverse
 from django.utils import timezone
 from django.utils.text import slugify
 from django.db import transaction
-from django.db.models import Count, Sum, Prefetch
+from django.db.models import Count, Sum, Prefetch, Q
 from django.views.decorators.http import require_POST
 import json
 from datetime import timedelta
 import logging
 
 from .models import (
-    ExamPaper, ExamQuestion, ExamQuestionPart,
+    ExamPaper, ExamQuestion, ExamQuestionPart, topic_errors,
     ExamAttempt, ExamQuestionAttempt
 )
 from .topic_editing import topic_editing_visible
 from interactive_lessons.models import Topic
 from students.work_access import work_capture_visible
 from .services.vision_grading import grade_with_vision_marking_scheme
-from .services.topic_parts import (
-    attach_matching_parts, best_part_attempts, questions_for_topic,
-)
+from .services.topic_questions import topic_filter
 
 logger = logging.getLogger(__name__)
 
@@ -663,12 +661,12 @@ def worksheet_generator(request):
     selected_topic_id = request.GET.get('topic')
     selected_subject_id = request.GET.get('subject')
 
-    # Whole questions print here, so they list by the question's own tag -
-    # not by its parts', which would pull in a question for one stray part.
-    # The parts worksheet is where part tags decide.
+    # Listed the same way as the topic pages: main topic, or a secondary
+    # topic ticked for listing.
     with_images = ExamQuestion.objects.exclude(image='').exclude(image__isnull=True)
     topics = Topic.objects.filter(
-        exam_questions__in=with_images
+        Q(exam_questions__in=with_images)
+        | Q(secondary_exam_questions__in=with_images.filter(list_under_secondary=True))
     ).distinct().select_related('subject').order_by('subject__name', 'name')
 
     if selected_subject_id:
@@ -677,15 +675,12 @@ def worksheet_generator(request):
     questions = ExamQuestion.objects.none()
     if selected_topic_id:
         if selected_topic_id == 'none':
-            questions = ExamQuestion.objects.filter(
-                topic__isnull=True
-            ).exclude(image='').exclude(image__isnull=True)
-        else:
-            questions = ExamQuestion.objects.filter(
-                topic_id=selected_topic_id
-            ).exclude(image='').exclude(image__isnull=True)
+            questions = with_images.filter(topic__isnull=True)
+        elif selected_topic_id.isdigit():
+            questions = with_images.filter(
+                topic_filter(int(selected_topic_id))).distinct()
         questions = questions.select_related(
-            'exam_paper', 'topic'
+            'exam_paper', 'topic', 'secondary_topic', 'need_to_know_topic'
         ).prefetch_related('parts').order_by('-exam_paper__year', 'question_number')
 
     # Count unassigned questions with images
@@ -786,173 +781,55 @@ def _topics_for_picker(request, subject_id=None):
 
 
 @login_required
-def parts_generator(request):
-    """The worksheet page, one card per question part.
-
-    A part has no image of its own -- the question image covers all of them --
-    so a card shows its parent question and its own marking-scheme crops. This
-    is where part topics get reviewed and corrected after the classifier run.
-    """
-    from core.models import Subject
-
-    subjects = Subject.objects.filter(is_active=True)
-    selected_topic_id = request.GET.get('topic')
-    selected_subject_id = request.GET.get('subject')
-
-    topics = (Topic.objects.filter(exam_question_parts__isnull=False)
-              .distinct().select_related('subject')
-              .order_by('subject__name', 'name'))
-    if selected_subject_id:
-        topics = topics.filter(subject_id=selected_subject_id)
-
-    parts = ExamQuestionPart.objects.none()
-    if selected_topic_id:
-        parts = ExamQuestionPart.objects.all()
-        if selected_topic_id == 'none':
-            parts = parts.filter(topic__isnull=True)
-        else:
-            parts = parts.filter(topic_id=selected_topic_id)
-        if selected_subject_id:
-            parts = parts.filter(
-                question__exam_paper__subject_id=selected_subject_id)
-        parts = (parts.select_related('question__exam_paper', 'topic')
-                 .prefetch_related('extra_solution_images')
-                 .order_by('-question__exam_paper__year',
-                           'question__question_number', 'order', 'id'))
-
-    untagged_count = ExamQuestionPart.objects.filter(topic__isnull=True).count()
-    parts = list(parts)
-
-    context = {
-        'subjects': subjects,
-        'topics': topics,
-        'groups': group_parts_by_question(parts),
-        'part_count': len(parts),
-        'selected_topic_id': selected_topic_id,
-        'selected_subject_id': int(selected_subject_id) if selected_subject_id else None,
-        'untagged_count': untagged_count,
-        'can_edit_topics': topic_editing_visible(request.user),
-        'all_topics': _topics_for_picker(request, selected_subject_id),
-        'pdf_url': reverse('exam_papers:parts_pdf'),
-    }
-    return render(request, 'exam_papers/parts_generator.html', context)
-
-
-def group_parts_by_question(parts):
-    """[(question, [part, ...]), ...] from parts already in question order.
-
-    A part has no picture of its own, so both the page and the printed sheet
-    show its question once with its parts underneath. Ten cards of the same
-    Q7 image told you nothing about which part was which.
-    """
-    groups = []
-    for part in parts:
-        if groups and groups[-1][0].pk == part.question_id:
-            groups[-1][1].append(part)
-        else:
-            groups.append((part.question, [part]))
-    return groups
-
-
-def selected_worksheet_parts(request):
-    """The parts ticked on the parts form, grouped under their question."""
-    part_ids = request.POST.getlist('part_ids')
-    if not part_ids:
-        return None
-    parts = (ExamQuestionPart.objects.filter(id__in=part_ids)
-             .select_related('question__exam_paper', 'topic')
-             .prefetch_related('extra_solution_images')
-             .order_by('question__exam_paper__year',
-                       'question__question_number', 'order', 'id'))
-    return group_parts_by_question(parts)
-
-
-@login_required
 @require_POST
-def parts_print(request):
-    """A printable page of the ticked parts, under their question images."""
-    from django.contrib import messages
-
-    groups = selected_worksheet_parts(request)
-    if groups is None:
-        messages.error(request, 'No parts selected.')
-        return redirect('exam_papers:parts_generator')
-
-    return render(request, 'exam_papers/parts_print.html', {
-        'groups': groups,
-        'title': 'Question parts',
-    })
-
-
-@login_required
-@require_POST
-def parts_pdf(request):
-    """The same selection as a PDF file to keep or send."""
-    from django.contrib import messages
-
-    from .services.worksheet_pdf import build_parts_worksheet_pdf
-
-    groups = selected_worksheet_parts(request)
-    if groups is None:
-        messages.error(request, 'No parts selected.')
-        return redirect('exam_papers:parts_generator')
-
-    topic = next((part.topic for _, parts in groups for part in parts
-                  if part.topic), None)
-    title = f'{topic.name} - question parts' if topic else 'Question parts'
-    filename = slugify(title) or 'question-parts'
-
-    pdf = build_parts_worksheet_pdf(groups, title=title)
-    response = HttpResponse(pdf, content_type='application/pdf')
-    response['Content-Disposition'] = f'attachment; filename="{filename}.pdf"'
-    return response
-
-
-def _retag(request, instance, paper):
-    """Set instance.topic from the posted id, or clear it. Shared by both."""
+def set_question_topics(request, pk):
+    """Set a question's main, secondary and need-to-know topics in one go."""
     if not topic_editing_visible(request.user):
         # Deliberately not staff_member_required: that redirects to the admin
         # login, and a fetch() would read the 200 that comes back as success.
         return JsonResponse({'error': 'Not permitted'}, status=403)
 
-    raw = (request.POST.get('topic') or '').strip()
-    if not raw:
-        instance.topic = None
-    else:
-        if not raw.isdigit():
-            return JsonResponse({'error': 'Unknown topic'}, status=400)
-        topic = Topic.objects.filter(pk=int(raw)).first()
+    question = get_object_or_404(
+        ExamQuestion.objects.select_related('exam_paper__subject'), pk=pk)
+
+    chosen = {}
+    for field in ('topic', 'secondary_topic', 'need_to_know_topic'):
+        raw = (request.POST.get(field) or '').strip()
+        if not raw:
+            chosen[field] = None
+            continue
+        topic = Topic.objects.filter(pk=int(raw)).first() if raw.isdigit() else None
         if topic is None:
             return JsonResponse({'error': 'Unknown topic'}, status=400)
-        # A Maths question has no business under a Physics topic, and the
-        # dropdown lists every subject when the page is not filtered to one.
-        if paper.subject_id and topic.subject_id != paper.subject_id:
-            return JsonResponse(
-                {'error': f'{topic.name} is not a {paper.subject} topic'},
-                status=400)
-        instance.topic = topic
+        chosen[field] = topic
 
-    instance.save(update_fields=['topic'])
+    errors = topic_errors(question.exam_paper, chosen['topic'],
+                          chosen['secondary_topic'], chosen['need_to_know_topic'])
+    if errors:
+        return JsonResponse({'error': next(iter(errors.values()))}, status=400)
+
+    for field, topic in chosen.items():
+        setattr(question, field, topic)
+    question.list_under_secondary = bool(
+        chosen['secondary_topic'] and request.POST.get('list_under_secondary') == '1')
+    question.save(update_fields=['topic', 'secondary_topic', 'need_to_know_topic',
+                                 'list_under_secondary'])
     return JsonResponse({
         'ok': True,
-        'topic': instance.topic.name if instance.topic else None,
+        'list_under_secondary': question.list_under_secondary,
     })
 
 
 @login_required
-@require_POST
-def set_question_topic(request, pk):
-    """Refile a whole exam question under a different topic."""
-    question = get_object_or_404(
-        ExamQuestion.objects.select_related('exam_paper__subject'), pk=pk)
-    return _retag(request, question, question.exam_paper)
-
-
-@login_required
-@require_POST
-def set_part_topic(request, pk):
-    """Refile one question part under a different topic."""
-    part = get_object_or_404(
-        ExamQuestionPart.objects.select_related('question__exam_paper__subject'),
-        pk=pk)
-    return _retag(request, part, part.question.exam_paper)
+def exam_questions_index(request):
+    """Every topic in the subject, with how many exam questions it lists."""
+    topics = Topic.objects.all()
+    subject = getattr(request, 'current_subject', None)
+    if subject:
+        topics = topics.filter(subject=subject)
+    published = ExamQuestion.objects.filter(exam_paper__is_published=True)
+    rows = []
+    for topic in topics.order_by('order', 'name'):
+        count = published.filter(topic_filter(topic)).distinct().count()
+        rows.append({'topic': topic, 'count': count})
+    return render(request, 'exam_papers/exam_questions_index.html', {'rows': rows})

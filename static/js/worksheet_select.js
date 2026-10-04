@@ -1,9 +1,8 @@
-/* Ticking, counting and retagging on the two worksheet pages.
+/* Ticking, counting and retagging on the worksheet page.
  *
- * The questions page ticks a whole card; the parts page ticks one row inside
- * a card, because a question's parts share its picture. So the element that
- * gets the .selected styling is whatever carries data-selectable, and the
- * checkbox name is read from the page rather than hard-coded.
+ * The element that gets the .selected styling is whatever carries
+ * data-selectable, and the checkbox name is read from the page rather than
+ * hard-coded.
  */
 (function () {
     var holder = document.querySelector('[data-worksheet-checkbox]');
@@ -61,40 +60,42 @@
         return input ? input.value : '';
     }
 
+    /* A question's three topics and its "also list" tick post together, so
+       a change to any one of them saves the whole set. */
     document.addEventListener('change', function (event) {
-        var select = event.target;
-        if (!select.classList || !select.classList.contains('topic-retag')) return;
+        var control = event.target.closest && event.target.closest('.topic-retag');
+        if (!control) return;
 
-        var state = select.parentElement.querySelector('.retag-state');
+        var state = control.querySelector('.retag-state');
         var body = new FormData();
-        body.append('topic', select.value);
+        control.querySelectorAll('select[name]').forEach(function (select) {
+            body.append(select.name, select.value);
+        });
+        var tick = control.querySelector('input[name="list_under_secondary"]');
+        body.append('list_under_secondary', tick && tick.checked ? '1' : '');
         body.append('csrfmiddlewaretoken', csrf());
         state.textContent = 'saving…';
+        state.style.color = '';
 
-        fetch(select.dataset.endpoint, {
+        fetch(control.dataset.endpoint, {
             method: 'POST',
             body: body,
             credentials: 'same-origin',
             headers: {'X-Requested-With': 'XMLHttpRequest'}
         }).then(function (response) {
-            if (!response.ok) throw new Error(response.status);
-            return response.json();
-        }).then(function () {
+            return response.json().then(function (data) {
+                if (!response.ok) throw new Error(data.error || response.status);
+                return data;
+            });
+        }).then(function (data) {
+            if (tick) tick.checked = data.list_under_secondary;
             state.textContent = 'saved';
             state.style.color = '#B8E986';
-        }).catch(function () {
-            state.textContent = 'not saved';
+        }).catch(function (error) {
+            state.textContent = 'not saved: ' + error.message;
             state.style.color = '#FA709A';
         });
     });
-
-    /* Tick every part of one question, from the button on its card. */
-    window.selectQuestion = function (button, on) {
-        button.closest('[data-question]')
-            .querySelectorAll('input[type="checkbox"][name="' + boxName + '"]')
-            .forEach(function (box) { box.checked = on; mark(box); });
-        updateCount();
-    };
 
     document.addEventListener('DOMContentLoaded', function () {
         if (document.getElementById('count')) updateCount();

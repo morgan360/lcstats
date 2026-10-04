@@ -129,49 +129,11 @@ class PractisePartTests(ExamPartTaskTestBase):
         self.assertEqual(response.status_code, 404)
 
 
-class PickerTests(ExamPartTaskTestBase):
-    def setUp(self):
-        self.client.force_login(self.staff)
-        self.url = reverse('homework:pick_exam_parts', args=[self.assignment.id])
+class OlderPartTaskTests(ExamPartTaskTestBase):
+    """Homework is set as whole questions now; part tasks already set stay
+    editable but no new ones can be added."""
 
-    def test_students_cannot_open_it(self):
-        self.client.force_login(self.student)
-        self.assertEqual(self.client.get(self.url).status_code, 302)
-
-    def test_lists_only_the_parts_on_the_chosen_topic(self):
-        response = self.client.get(self.url, {'topic': self.integration.id})
-        matching = [p for q in response.context['questions'] for p in q.matching_parts]
-        self.assertEqual(matching, [self.part_b])
-
-    def test_ticked_parts_become_tasks_and_are_not_doubled_up(self):
-        self.client.post(self.url, {'part_ids': [self.part_b.id]})
-        self.client.post(self.url, {'part_ids': [self.part_b.id, self.part_a.id]})
-
-        tasks = HomeworkTask.objects.filter(assignment=self.assignment, task_type='exam_part')
-        self.assertEqual(
-            sorted(t.exam_question_part_id for t in tasks),
-            sorted([self.part_a.id, self.part_b.id]),
-        )
-
-
-class PickerReturnsToFormTests(ExamPartTaskTestBase):
-    """The picker can run before an assignment exists, handing its ticks back to
-    the form so an assignment and its parts are saved together."""
-
-    def setUp(self):
-        self.client.force_login(self.staff)
-
-    def test_it_opens_without_an_assignment(self):
-        response = self.client.get(
-            reverse('homework:pick_exam_parts_unsaved'),
-            {'topic': self.integration.id, 'return': 'form'},
-        )
-        self.assertEqual(response.status_code, 200)
-        self.assertIsNone(response.context['assignment'])
-        self.assertTrue(response.context['return_to_form'])
-        self.assertContains(response, 'Add to the assignment form')
-
-    def test_a_part_from_another_topic_still_validates(self):
+    def test_an_existing_part_task_still_validates(self):
         from homework.forms import ExamQuestionPartsTaskForm
 
         form = ExamQuestionPartsTaskForm(
@@ -186,9 +148,9 @@ class PickerReturnsToFormTests(ExamPartTaskTestBase):
         self.assertTrue(form.is_valid(), form.errors)
         self.assertEqual(form.cleaned_data['exam_question_part'], self.part_a)
 
-    def test_the_admin_form_carries_the_picker_link_and_its_script(self):
+    def test_the_admin_form_no_longer_offers_parts(self):
         admin = User.objects.create_superuser('admin', 'admin@example.com', 'pw')
         self.client.force_login(admin)
         response = self.client.get('/admin/homework/homeworkassignment/add/')
-        self.assertContains(response, 'id="parts-picker-link"')
-        self.assertContains(response, 'homework_parts_picker.js')
+        self.assertNotContains(response, 'parts-picker-link')
+        self.assertNotContains(response, 'homework_parts_picker.js')

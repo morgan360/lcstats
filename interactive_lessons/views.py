@@ -271,7 +271,7 @@ def select_topic(request):
     from notes.models import Note
     from revision.models import RevisionModule
     from cheatsheets.models import CheatSheet
-    from exam_papers.services.topic_parts import questions_for_topic
+    from exam_papers.services.topic_questions import questions_for_topic
     from quickkicks.models import QuickKick
     from flashcards.models import FlashcardSet
 
@@ -294,7 +294,7 @@ def select_topic(request):
         quickkick_count = QuickKick.objects.filter(topic=topic).count()
         flashcard_count = FlashcardSet.objects.filter(topic=topic, is_published=True).count()
         # Count exam questions for this topic (only from published papers)
-        # A question counts if it or any of its parts is filed under the topic
+        # Main topic, or a secondary topic ticked for listing
         exam_question_count = questions_for_topic(topic).count()
         # Check if this topic has a published revision module
         revision_module = RevisionModule.objects.filter(
@@ -760,10 +760,9 @@ def question_view(request, topic_id, number):
 # ----------------------------------------------------------------------
 @login_required
 def topic_exam_questions(request, topic_slug):
-    """Exam questions touching a topic, grouped by paper, with the parts on the
-    topic picked out so each can be practised on its own."""
-    from exam_papers.services.topic_parts import (
-        attach_matching_parts, best_part_attempts, questions_for_topic,
+    """Exam questions listed under a topic, grouped by paper."""
+    from exam_papers.services.topic_questions import (
+        best_part_attempts, questions_for_topic,
     )
 
     topic = get_object_or_404(Topic, slug=topic_slug)
@@ -771,7 +770,6 @@ def topic_exam_questions(request, topic_slug):
     exam_questions = list(questions_for_topic(topic).order_by(
         '-exam_paper__year', 'exam_paper__paper_type', 'question_number'
     ))
-    attach_matching_parts(exam_questions, topic)
 
     all_parts = [part for question in exam_questions for part in question.parts.all()]
     part_attempts = best_part_attempts(request.user, all_parts)
@@ -797,9 +795,6 @@ def topic_exam_questions(request, topic_slug):
                 'parts_attempted': 0,
                 'total_parts': len(parts),
             }
-        for part in question.matching_parts:
-            best = part_attempts.get(part.id, {}).get('best')
-            part.best_attempt = best
 
         paper_key = f"{question.exam_paper.year} {question.exam_paper.get_paper_type_display()}"
         questions_by_paper.setdefault(paper_key, {
@@ -811,7 +806,6 @@ def topic_exam_questions(request, topic_slug):
         'topic': topic,
         'questions_by_paper': questions_by_paper,
         'total_questions': len(exam_questions),
-        'total_parts': sum(len(q.matching_parts) for q in exam_questions),
     }
 
     return render(request, 'interactive_lessons/topic_exam_questions.html', context)

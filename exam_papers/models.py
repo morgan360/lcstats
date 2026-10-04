@@ -100,6 +100,24 @@ class ExamPaper(models.Model):
         super().save(*args, **kwargs)
 
 
+def topic_errors(paper, *topics):
+    """Why these main/secondary/need-to-know topics cannot go together, if
+    they cannot: {field: message}. Shared by the model and the save endpoint.
+    """
+    fields = ('topic', 'secondary_topic', 'need_to_know_topic')
+    names = ('main topic', 'secondary topic', 'need-to-know topic')
+    errors, seen = {}, {}
+    for field, name, topic in zip(fields, names, topics):
+        if topic is None:
+            continue
+        if paper is not None and paper.subject_id and topic.subject_id != paper.subject_id:
+            errors[field] = f"{topic.name} is not a {paper.subject} topic"
+        elif topic.pk in seen:
+            errors[field] = f"{topic.name} is already the {seen[topic.pk]}"
+        seen.setdefault(topic.pk, name)
+    return errors
+
+
 class ExamQuestion(models.Model):
     """
     Represents a question on an exam paper.
@@ -116,14 +134,38 @@ class ExamQuestion(models.Model):
         help_text="Question number on the paper (e.g., 1, 2, 3)"
     )
 
-    # Topic classification
+    # Topic classification. A question has one main topic, optionally a
+    # secondary one it is also listed under when list_under_secondary is
+    # ticked, and optionally a need-to-know topic that plays a minor part:
+    # shown on the question, never used to list it.
     topic = models.ForeignKey(
         Topic,
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
         related_name='exam_questions',
-        help_text="Topic this question belongs to"
+        verbose_name="Main topic",
+        help_text="The topic this question is mainly about"
+    )
+    secondary_topic = models.ForeignKey(
+        Topic,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='secondary_exam_questions',
+        help_text="A second significant topic in this question"
+    )
+    list_under_secondary = models.BooleanField(
+        default=False,
+        help_text="Also list this question under its secondary topic"
+    )
+    need_to_know_topic = models.ForeignKey(
+        Topic,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='need_to_know_exam_questions',
+        help_text="A topic that plays a minor part; shown, never listed under"
     )
 
     # Question content
@@ -181,14 +223,33 @@ class ExamQuestion(models.Model):
             return None
         return f"{seconds // 60}:{seconds % 60:02d}"
 
-    def get_retag_url(self):
-        """Where the print page posts a new topic for this question."""
-        from django.urls import reverse
-        return reverse('exam_papers:set_question_topic', args=[self.pk])
+    def clean(self):
+        from django.core.exceptions import ValidationError
+        errors = topic_errors(self.exam_paper if self.exam_paper_id else None,
+                              self.topic, self.secondary_topic,
+                              self.need_to_know_topic)
+        if errors:
+            raise ValidationError(errors)
 
-    def parts_on_topic(self, topic):
-        """Parts tagged with topic, in display order."""
-        return [part for part in self.parts.all() if part.topic_id == topic.pk]
+    @property
+    def topic_labels(self):
+        """(label, topic) pairs for the topics set, main first."""
+        labels = [('Main topic', self.topic),
+                  ('Also covers', self.secondary_topic),
+                  ('Need to know', self.need_to_know_topic)]
+        return [(label, topic) for label, topic in labels if topic]
+
+    @property
+    def topic_slots(self):
+        """(field, label, topic id) for each topic slot, for the editor."""
+        return [('topic', 'Main topic', self.topic_id),
+                ('secondary_topic', 'Secondary topic', self.secondary_topic_id),
+                ('need_to_know_topic', 'Need to know', self.need_to_know_topic_id)]
+
+    def get_retag_url(self):
+        """Where the worksheet page posts this question's topics."""
+        from django.urls import reverse
+        return reverse('exam_papers:set_question_topics', args=[self.pk])
 
     @property
     def parts_with_schemes(self):
@@ -284,11 +345,6 @@ class ExamQuestionPart(models.Model):
 
     def __str__(self):
         return f"{self.question} {self.label}"
-
-    def get_retag_url(self):
-        """Where the parts page posts a new topic for this part."""
-        from django.urls import reverse
-        return reverse('exam_papers:set_part_topic', args=[self.pk])
 
     @property
     def solution_images(self):

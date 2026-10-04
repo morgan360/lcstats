@@ -268,7 +268,7 @@ class ExamQuestionAdmin(admin.ModelAdmin):
         'exam_paper__year',
         'topic__name',
     )
-    autocomplete_fields = ['exam_paper', 'topic']
+    autocomplete_fields = ['exam_paper', 'topic', 'secondary_topic', 'need_to_know_topic']
     list_select_related = ('exam_paper', 'topic')
     # Annotating clears the model's default ordering for pagination purposes,
     # so state it here; these are the same three fields as Meta.ordering.
@@ -279,7 +279,8 @@ class ExamQuestionAdmin(admin.ModelAdmin):
             'fields': ('exam_paper', 'question_number', 'order')
         }),
         ('Content', {
-            'fields': ('topic', 'title', 'image', 'image_preview')
+            'fields': ('topic', ('secondary_topic', 'list_under_secondary'),
+                       'need_to_know_topic', 'title', 'image', 'image_preview')
         }),
         ('Marking & Timing', {
             'fields': ('total_marks', 'suggested_time_minutes'),

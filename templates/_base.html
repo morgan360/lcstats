@@ -49,11 +49,15 @@
                             class="desktop-dropdown absolute left-0 top-full z-40 mt-2 min-w-[13rem] space-y-1 rounded-xl bg-twilight p-2 text-mist shadow-lg opacity-0 invisible translate-y-1 pointer-events-none transition duration-150">
                             <a href="{% url 'select_topic' %}"
                                 class="block rounded-lg px-3 py-2 text-sm font-semibold hover:bg-rose-pop/20">
-                                Practice Questions
+                                Exercises
                             </a>
                             <a href="{% url 'exam_papers:paper_list' %}"
                                 class="block rounded-lg px-3 py-2 text-sm font-semibold hover:bg-rose-pop/20">
                                 Exam Papers
+                            </a>
+                            <a href="{% url 'exam_papers:exam_questions_index' %}"
+                                class="block rounded-lg px-3 py-2 text-sm font-semibold hover:bg-rose-pop/20">
+                                Exam Questions
                             </a>
                         </div>
                     </div>
@@ -98,16 +102,11 @@
                         <div
                             class="desktop-dropdown absolute left-0 top-full z-40 mt-2 min-w-[13rem] space-y-1 rounded-xl bg-twilight p-2 text-mist shadow-lg opacity-0 invisible translate-y-1 pointer-events-none transition duration-150">
                             <a href="{% url 'exam_papers:papers_and_solutions' %}"
-                                class="block rounded-lg px-3 py-2 text-sm font-semibold text-mist hover:bg-rose-pop/20">Papers
-                                & Marking Schemes</a>
+                                class="block rounded-lg px-3 py-2 text-sm font-semibold text-mist hover:bg-rose-pop/20">Exam
+                                Papers & Marking Schemes</a>
                             <a href="{% url 'exam_papers:worksheet_generator' %}"
-                                class="block rounded-lg px-3 py-2 text-sm font-semibold text-mist hover:bg-rose-pop/20">Print
-                                Exam Questions</a>
-                            {% if user.is_staff %}
-                            <a href="{% url 'exam_papers:parts_generator' %}"
-                                class="block rounded-lg px-3 py-2 text-sm font-semibold text-mist hover:bg-rose-pop/20">Print
-                                Question Parts</a>
-                            {% endif %}
+                                class="block rounded-lg px-3 py-2 text-sm font-semibold text-mist hover:bg-rose-pop/20">Exam
+                                Questions & Marking Schemes</a>
                             <a href="{% url 'hw_solutions:hw_solutions_index' %}"
                                 class="block rounded-lg px-3 py-2 text-sm font-semibold text-mist hover:bg-rose-pop/20">HW-Solutions</a>
                         </div>
@@ -264,10 +263,11 @@
                 </button>
                 <div class="mobile-dropdown hidden space-y-1 rounded-lg bg-indigo-deep/80 p-1">
                     <a href="{% url 'select_topic' %}"
-                        class="block rounded-lg px-3 py-2 text-sm font-semibold hover:bg-mist/10">Practice
-                        Questions</a>
+                        class="block rounded-lg px-3 py-2 text-sm font-semibold hover:bg-mist/10">Exercises</a>
                     <a href="{% url 'exam_papers:paper_list' %}"
                         class="block rounded-lg px-3 py-2 text-sm font-semibold hover:bg-mist/10">Exam Papers</a>
+                    <a href="{% url 'exam_papers:exam_questions_index' %}"
+                        class="block rounded-lg px-3 py-2 text-sm font-semibold hover:bg-mist/10">Exam Questions</a>
                 </div>
             </div>
 
@@ -309,13 +309,9 @@
                 </button>
                 <div class="mobile-dropdown hidden space-y-1 rounded-lg bg-indigo-deep/80 p-1">
                     <a href="{% url 'exam_papers:papers_and_solutions' %}"
-                        class="block rounded-lg px-3 py-2 text-sm font-semibold hover:bg-mist/10">Papers & Marking Schemes</a>
+                        class="block rounded-lg px-3 py-2 text-sm font-semibold hover:bg-mist/10">Exam Papers & Marking Schemes</a>
                     <a href="{% url 'exam_papers:worksheet_generator' %}"
-                        class="block rounded-lg px-3 py-2 text-sm font-semibold hover:bg-mist/10">Print Exam Questions</a>
-                    {% if user.is_staff %}
-                    <a href="{% url 'exam_papers:parts_generator' %}"
-                        class="block rounded-lg px-3 py-2 text-sm font-semibold hover:bg-mist/10">Print Question Parts</a>
-                    {% endif %}
+                        class="block rounded-lg px-3 py-2 text-sm font-semibold hover:bg-mist/10">Exam Questions & Marking Schemes</a>
                     <a href="{% url 'hw_solutions:hw_solutions_index' %}"
                         class="block rounded-lg px-3 py-2 text-sm font-semibold hover:bg-mist/10">HW-Solutions</a>
                 </div>

@@ -1,9 +1,7 @@
 """What the homework pickers offer, and how they name it.
 
-A question files under one dominant topic while its parts carry their own, so
-picking by the question's topic alone hid questions a teacher could see on the
-topic page -- 2022 Paper 1 Q8 is filed under Trig with its parts tagged
-Functions and Integration.
+The same listing rule as the topic pages: a question's main topic, or its
+secondary topic when that is ticked for listing. Part tags play no part.
 """
 from types import SimpleNamespace
 
@@ -55,23 +53,22 @@ class PickerTestBase(TestCase):
 
 class ExamQuestionPickerTests(PickerTestBase):
 
-    def test_a_question_is_not_offered_where_no_part_is_on_the_topic(self):
-        """Its own tag says Trig, but a teacher setting it for Trig would be
-        setting two parts of Functions and Integration."""
-        self.assertNotIn(self.q8, self.offered(self.trig))
-
-    def test_a_question_with_untagged_parts_falls_back_to_its_own_topic(self):
-        self.q8.parts.update(topic=None)
+    def test_a_question_is_offered_under_its_main_topic(self):
         self.assertIn(self.q8, self.offered(self.trig))
 
-    def test_and_under_any_topic_its_parts_carry(self):
-        self.assertIn(self.q8, self.offered(self.functions))
-        self.assertIn(self.q8, self.offered(self.integration))
+    def test_part_tags_do_not_offer_it(self):
+        self.assertNotIn(self.q8, self.offered(self.functions))
 
-    def test_it_is_offered_once_however_many_parts_match(self):
-        ExamQuestionPart.objects.create(
-            question=self.q8, label='(c)', order=3, max_marks=5, topic=self.functions)
-        self.assertEqual(self.offered(self.functions).count(self.q8), 1)
+    def test_a_ticked_secondary_topic_offers_it(self):
+        ExamQuestion.objects.filter(pk=self.q8.pk).update(
+            secondary_topic=self.functions, list_under_secondary=True)
+        self.assertIn(self.q8, self.offered(self.functions))
+
+    def test_an_unticked_secondary_or_need_to_know_does_not(self):
+        ExamQuestion.objects.filter(pk=self.q8.pk).update(
+            secondary_topic=self.functions, need_to_know_topic=self.integration)
+        self.assertNotIn(self.q8, self.offered(self.functions))
+        self.assertNotIn(self.q8, self.offered(self.integration))
 
     def test_an_unrelated_topic_does_not_get_it(self):
         other = Topic.objects.create(name='Probability', subject=self.maths, paper='p2')
@@ -100,18 +97,21 @@ class TopicFilterEndpointTests(PickerTestBase):
         self.assertEqual(response.status_code, 200)
         return response.json()
 
-    def test_it_offers_a_question_through_its_parts(self):
-        ids = [o['id'] for o in self.payload(self.functions)['exam_question']]
+    def test_it_offers_a_question_under_its_main_topic(self):
+        ids = [o['id'] for o in self.payload(self.trig)['exam_question']]
         self.assertIn(self.q8.id, ids)
 
+    def test_it_no_longer_offers_single_parts(self):
+        self.assertNotIn('exam_question_part', self.payload(self.trig))
+
     def test_each_question_appears_once(self):
-        ids = [o['id'] for o in self.payload(self.functions)['exam_question']]
+        ids = [o['id'] for o in self.payload(self.trig)['exam_question']]
         self.assertEqual(len(ids), len(set(ids)))
 
     def test_it_labels_them_like_the_form_does(self):
-        option = next(o for o in self.payload(self.functions)['exam_question']
+        option = next(o for o in self.payload(self.trig)['exam_question']
                       if o['id'] == self.q8.id)
-        field = self.form_for(self.functions).fields['exam_question']
+        field = self.form_for(self.trig).fields['exam_question']
         self.assertEqual(option['label'], field.label_from_instance(self.q8))
 
     def test_an_unknown_topic_is_a_404(self):

@@ -2,7 +2,7 @@ from django import forms
 from .models import HomeworkTask
 from interactive_lessons.models import Section
 from exam_papers.models import ExamQuestion, ExamQuestionPart
-from exam_papers.services.topic_parts import topic_filter
+from exam_papers.services.topic_questions import topic_filter
 
 from .labels import exam_part_label, exam_question_label
 from quickkicks.models import QuickKick
@@ -123,10 +123,8 @@ class ExamQuestionsTaskForm(BaseHomeworkTaskForm):
         # Auto-set task_type for this inline
         self.instance.task_type = 'exam_question'
 
-        # A question belongs to a topic if its own topic says so or any of its
-        # parts do -- the same rule the topic pages use. Filtering on the
-        # question's single topic alone hid, say, a question filed under Trig
-        # whose parts are tagged Functions and Integration.
+        # Main topic, or a secondary topic ticked for listing -- the same rule
+        # the topic pages use.
         if self.topic:
             questions = (ExamQuestion.objects
                          .filter(topic_filter(self.topic))
@@ -162,8 +160,8 @@ class ExamQuestionsTaskForm(BaseHomeworkTaskForm):
 class ExamQuestionPartsTaskForm(BaseHomeworkTaskForm):
     """Form for single exam question part tasks
 
-    The parts picker is the usual way in, since it shows the question; this is
-    here so parts can be reordered or removed alongside the other task types.
+    Homework is set as whole questions now; this keeps older part tasks
+    editable alongside the other task types.
     """
 
     exam_question_part = ExamQuestionPartChoiceField(

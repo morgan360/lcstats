@@ -1,8 +1,7 @@
 """The topic's exam question list, as a student reads it.
 
-A question is listed when the topic is its own or any of its parts'. What it
-shows underneath is only the parts on that topic: the greyed-out others said
-"here is work that is not yours", which is a puzzle rather than information.
+Whole questions only, listed by the question's own topics; a part's topic no
+longer decides anything here.
 """
 from django.contrib.auth.models import Group, User
 from django.test import TestCase
@@ -52,31 +51,17 @@ class TopicExamQuestionsTests(TestCase):
         self.assertEqual(response.status_code, 200)
         return response
 
-    def test_it_offers_the_parts_on_this_topic(self):
-        response = self.page(self.trig)
-        self.assertContains(
-            response, f'name="part_id" value="{self.trig_part.id}"')
-        self.assertContains(response, 'Practise this part')
-
-    def test_it_does_not_list_parts_belonging_to_other_topics(self):
-        response = self.page(self.trig)
-        self.assertNotContains(
-            response, f'name="part_id" value="{self.other_part.id}"')
-
-    def test_a_question_with_no_part_on_the_topic_is_not_listed(self):
-        """Q8 is filed under Trig but every part of it is Functions, so there is
-        nothing on this page for a student to do with it."""
+    def test_it_lists_questions_under_their_main_topic(self):
         response = self.page(self.trig)
         self.assertContains(response, 'Question 3')
-        self.assertNotContains(response, 'Question 8')
-        for part in self.whole.parts.all():
-            self.assertNotContains(
-                response, f'name="part_id" value="{part.id}"')
-
-    def test_a_question_whose_parts_are_untagged_still_lists(self):
-        for part in self.mixed.parts.all():
-            part.topic = None
-            part.save(update_fields=['topic'])
-        response = self.page(self.trig)
-        self.assertContains(response, 'Question 3')
+        self.assertContains(response, 'Question 8')
         self.assertContains(response, 'Practice This Question')
+
+    def test_it_no_longer_offers_single_parts(self):
+        response = self.page(self.trig)
+        self.assertNotContains(response, 'name="part_id"')
+        self.assertNotContains(response, 'Practise this part')
+
+    def test_part_tags_do_not_list_a_question(self):
+        """Q3 has a Functions part, but Functions is not one of its topics."""
+        self.assertNotContains(self.page(self.functions), 'Question 3')

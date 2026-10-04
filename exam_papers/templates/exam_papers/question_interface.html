@@ -133,14 +133,19 @@
             <span class="marks-badge">{{ question.total_marks }} marks</span>
         </div>
 
+        {% if question.topic_labels %}
+        <div class="question-topics">
+            {% for label, topic in question.topic_labels %}
+            <span class="topic-tag"><span class="topic-kind">{{ label }}</span> {{ topic.name }}</span>
+            {% endfor %}
+        </div>
+        {% endif %}
+
         {% if focus_part %}
         <div class="focus-banner">
-            You're answering part <strong>{{ focus_part.label }}</strong>
-            {% if focus_part.topic %}&mdash; {{ focus_part.topic.name }}{% endif %}.
+            You're answering part <strong>{{ focus_part.label }}</strong>.
             The full question is shown for context; its other parts are hidden below.
         </div>
-        {% elif question.topic %}
-        <div class="topic-tag">{{ question.topic.name }}</div>
         {% endif %}
 
         {% if question.image %}
@@ -158,11 +163,6 @@
                 <h3>{{ part_data.part.label }}</h3>
                 <span class="part-marks">{{ part_data.part.max_marks }} marks</span>
             </div>
-            {% if part_data.part.topic %}
-            <div class="part-topics">
-                <span class="topic-tag">{{ part_data.part.topic.name }}</span>
-            </div>
-            {% endif %}
 
             {% if part_data.part.image %}
             <div class="part-image">
@@ -423,16 +423,20 @@
     margin-bottom: 15px;
 }
 
-.part-topics {
+.question-topics {
     display: flex;
     flex-wrap: wrap;
     gap: 6px;
-    margin-bottom: 10px;
+    margin-bottom: 15px;
 }
 
-.part-topics .topic-tag {
+.question-topics .topic-tag {
     margin-bottom: 0;
-    font-size: 0.85em;
+}
+
+.topic-kind {
+    font-weight: 600;
+    opacity: 0.75;
 }
 
 /* Hidden rather than left out, so answer and solution scripts still find

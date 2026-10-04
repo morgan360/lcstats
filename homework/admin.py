@@ -168,11 +168,18 @@ class ExamQuestionsTaskInline(BaseHomeworkTaskInline):
 
 
 class ExamQuestionPartsTaskInline(BaseHomeworkTaskInline):
+    """Part tasks set before homework moved to whole questions.
+
+    Shown so they can still be reordered or removed; no new ones are added.
+    """
     form = ExamQuestionPartsTaskForm
     verbose_name = "Exam Question Part Task"
-    verbose_name_plural = "🔎 Exam Question Parts"
+    verbose_name_plural = "🔎 Exam Question Parts (older homework)"
 
     fields = ('exam_question_part',)
+
+    def has_add_permission(self, request, obj=None):
+        return False
 
     def get_queryset(self, request):
         qs = super().get_queryset(request)
@@ -231,7 +238,7 @@ class HomeworkAssignmentAdmin(admin.ModelAdmin):
     list_filter = ('teacher', 'topic__subject', 'topic', 'is_published', 'due_date', 'assigned_date')
     search_fields = ('title', 'description', 'teacher__display_name', 'topic__name')
     filter_horizontal = ('assigned_students',)
-    readonly_fields = ('created_at', 'updated_at', 'progress_summary', 'notification_sent', 'parts_picker')
+    readonly_fields = ('created_at', 'updated_at', 'progress_summary', 'notification_sent')
     inlines = [
         PracticeQuestionsTaskInline,
         ExamQuestionsTaskInline,
@@ -243,27 +250,7 @@ class HomeworkAssignmentAdmin(admin.ModelAdmin):
     date_hierarchy = 'due_date'
 
     class Media:
-        js = ('admin/js/homework_topic_filter.js', 'admin/js/homework_parts_picker.js')
-
-    @admin.display(description='Exam question parts')
-    def parts_picker(self, obj):
-        """Link to the picker, which shows each question while parts are chosen
-
-        It sits beside Topic rather than with the part inline: the inlines render
-        below every fieldset, so anything filed with them lands at the foot of a
-        long page where it was missed. The picker hands its ticks back to this
-        form (admin/js/homework_parts_picker.js), so an assignment and its parts
-        are still created in one save.
-        """
-        url = (reverse('homework:pick_exam_parts', args=[obj.pk]) if obj and obj.pk
-               else reverse('homework:pick_exam_parts_unsaved'))
-        return format_html(
-            '<a class="button" id="parts-picker-link" href="{}" data-url="{}" '
-            'target="_blank">\U0001F4F7 Browse exam question parts (shows the questions)</a>'
-            '<p class="help" id="parts-picker-note">Pick single parts, such as Q6(b), '
-            'seeing each question and its marking schemes as you choose. They are '
-            'added to the "Exam Question Parts" section below, and saved with the '
-            'assignment.</p>', url, url)
+        js = ('admin/js/homework_topic_filter.js',)
 
     formfield_overrides = {
         models.TextField: {'widget': forms.Textarea(attrs={'rows': 3})},
@@ -280,7 +267,7 @@ class HomeworkAssignmentAdmin(admin.ModelAdmin):
 
     fieldsets = (
         ('Assignment Details', {
-            'fields': ('teacher', 'topic', 'parts_picker', 'title', 'description',
+            'fields': ('teacher', 'topic', 'title', 'description',
                        'assigned_date', 'due_date')
         }),
         ('Assign To', {

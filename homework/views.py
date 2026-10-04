@@ -713,12 +713,12 @@ def topic_content_options(request, topic_id):
     dropdowns when the teacher picks a topic, avoiding the save-first step.
     """
     from interactive_lessons.models import Section, Topic
-    from exam_papers.models import ExamQuestion, ExamQuestionPart
-    from exam_papers.services.topic_parts import topic_filter
+    from exam_papers.models import ExamQuestion
+    from exam_papers.services.topic_questions import topic_filter
     from quickkicks.models import QuickKick
     from flashcards.models import FlashcardSet
 
-    from .labels import exam_part_label, exam_question_label
+    from .labels import exam_question_label
 
     topic = get_object_or_404(Topic, id=topic_id)
 
@@ -748,10 +748,9 @@ def topic_content_options(request, topic_id):
 
     return JsonResponse({
         'section': options(Section.objects.filter(topic_id=topic_id), 'section'),
-        # A question counts for a topic if its own topic says so or any of its
-        # parts do -- the same rule as the form and the topic pages. This
-        # endpoint is what the dropdown actually shows once a topic is picked,
-        # so a narrower rule here would undo the one in the form.
+        # The same listing rule as the form and the topic pages: this endpoint
+        # is what the dropdown actually shows once a topic is picked, so a
+        # different rule here would undo the one in the form.
         'exam_question': options(
             ExamQuestion.objects.filter(topic_filter(topic))
             .select_related('exam_paper__subject', 'topic')
@@ -761,90 +760,6 @@ def topic_content_options(request, topic_id):
             'exam_question',
             exam_question_label,
         ),
-        'exam_question_part': options(
-            ExamQuestionPart.objects.filter(topic_id=topic_id)
-            .select_related('question__exam_paper')
-            .order_by('-question__exam_paper__year', 'question__question_number',
-                      'order', 'id'),
-            'exam_question_part',
-            exam_part_label,
-        ),
         'quickkick': options(QuickKick.objects.filter(topic_id=topic_id), 'quickkick'),
         'flashcard_set': options(FlashcardSet.objects.filter(topic_id=topic_id), 'flashcard_set'),
     })
-
-
-@staff_member_required
-def pick_exam_parts(request, assignment_id=None):
-    """Choose exam question parts, with the questions in view.
-
-    A part is a line in a dropdown and nothing more, so picking one blind is
-    guesswork. Here each question's image is shown beside its parts, and each
-    part can show its marking scheme, which is the closest thing on file to a
-    picture of the part itself.
-
-    Opened from the assignment form with ?return=form, the ticks are handed
-    back to that form rather than saved here, so a new assignment and its parts
-    are still created in one save - which is how every other task type works.
-    Opened on its own for a saved assignment, it writes the tasks itself.
-    """
-    from exam_papers.models import ExamQuestionPart
-    from exam_papers.services.topic_parts import (
-        attach_matching_parts, questions_for_topic,
-    )
-    from interactive_lessons.models import Topic
-
-    assignment = (get_object_or_404(HomeworkAssignment, id=assignment_id)
-                  if assignment_id else None)
-    return_to_form = request.GET.get('return') == 'form'
-
-    topics = Topic.objects.all()
-    if assignment and assignment.topic:
-        topics = topics.filter(subject=assignment.topic.subject)
-    topics = topics.order_by('paper', 'order', 'name')
-
-    topic_id = request.GET.get('topic') or (assignment.topic_id if assignment else None)
-    topic = topics.filter(id=topic_id).first() if topic_id else None
-
-    already = set()
-    if assignment:
-        already = set(HomeworkTask.objects
-                      .filter(assignment=assignment, task_type='exam_part')
-                      .values_list('exam_question_part_id', flat=True))
-
-    if request.method == 'POST' and assignment:
-        wanted = [int(i) for i in request.POST.getlist('part_ids') if i.isdigit()]
-        parts = (ExamQuestionPart.objects
-                 .filter(id__in=wanted)
-                 .exclude(id__in=already)
-                 .select_related('question'))
-        order = (HomeworkTask.objects.filter(assignment=assignment)
-                 .aggregate(Count('id'))['id__count'] or 0)
-        added = 0
-        for part in parts:
-            HomeworkTask.objects.create(
-                assignment=assignment,
-                task_type='exam_part',
-                exam_question_part=part,
-                order=order + added,
-            )
-            added += 1
-        messages.success(request, f'Added {added} exam question part{"" if added == 1 else "s"} '
-                                  f'to "{assignment.title}".')
-        return redirect(reverse('admin:homework_homeworkassignment_change', args=[assignment.id]))
-
-    questions = []
-    if topic:
-        questions = list(questions_for_topic(topic).order_by(
-            '-exam_paper__year', 'exam_paper__paper_type', 'question_number'))
-        attach_matching_parts(questions, topic)
-
-    context = {
-        'assignment': assignment,
-        'topics': topics,
-        'topic': topic,
-        'questions': questions,
-        'already': already,
-        'return_to_form': return_to_form,
-    }
-    return render(request, 'homework/pick_exam_parts.html', context)

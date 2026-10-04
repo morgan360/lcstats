@@ -1,7 +1,10 @@
-"""Give a question the topic its parts say it is about.
+"""Give a question the topics its parts say it is about.
 
-``ExamQuestion.topic`` is the question's dominant topic: the one carrying most
-of its marks. That is a fact its parts already hold once they are tagged, so
+``ExamQuestion.topic`` is the question's main topic: the one carrying most of
+its marks. The runner-up becomes its secondary topic and the third its
+need-to-know topic. The secondary is ticked to list the question only when it
+carries at least a third of the marks; a superuser reviews the rest on the
+worksheet page. That is a fact its parts already hold once they are tagged, so
 there is no need to read the paper again -- unlike ``suggest_question_topics``,
 which asks a model to judge an untagged question from its text and is the tool
 for a question whose parts are bare too.
@@ -10,7 +13,7 @@ It matters beyond tidiness: a question with no topic is invisible in the
 homework picker and on the topic pages, however well tagged its parts are. The
 deferred 2022 papers arrived that way -- twenty questions nobody could set.
 
-Fills blanks only, unless ``--overwrite``. Marks decide; where a part has no
+Fills blank fields only, unless ``--overwrite``. Marks decide; where a part has no
 ``max_marks`` it counts as one mark, so a tagged part is never worth nothing.
 A tie goes to the topic that appears earliest in the question, because that is
 the one a teacher naming the question would say first.
@@ -26,14 +29,19 @@ from django.core.management.base import BaseCommand, CommandError
 from exam_papers.models import ExamPaper, ExamQuestion
 
 
-def dominant_topic(question):
-    """(topic, marks, total) for the topic carrying most of a question's marks.
+#: Share of a question's marks its secondary topic needs before the question
+#: is listed under it as well.
+LIST_SECONDARY_SHARE = 1 / 3
 
-    Returns (None, 0, 0) when no part is tagged -- nothing to go on, and a
-    guess is worse than a blank.
+
+def ranked_topics(question):
+    """[(topic, marks)] by marks carried, most first, and the total marks.
+
+    Returns ([], 0) when no part is tagged -- nothing to go on, and a guess is
+    worse than a blank.
     """
     marks = defaultdict(int)
-    first_seen = {}
+    first_seen, topics = {}, {}
     total = 0
     for order, part in enumerate(question.parts.all()):
         if part.topic_id is None:
@@ -42,13 +50,33 @@ def dominant_topic(question):
         marks[part.topic_id] += weight
         total += weight
         first_seen.setdefault(part.topic_id, order)
+        topics[part.topic_id] = part.topic
 
-    if not marks:
-        return None, 0, 0
+    ranked = sorted(marks, key=lambda t: (-marks[t], first_seen[t]))
+    return [(topics[t], marks[t]) for t in ranked], total
 
-    topic_id = max(marks, key=lambda t: (marks[t], -first_seen[t]))
-    topic = next(p.topic for p in question.parts.all() if p.topic_id == topic_id)
-    return topic, marks[topic_id], total
+
+def proposed_topics(question, keep_main=False):
+    """{field: value} the parts suggest for the question's three topics.
+
+    With keep_main, a main topic already set stays, and the others are the
+    best-carrying topics after it.
+    """
+    ranked, total = ranked_topics(question)
+    if keep_main and question.topic_id:
+        main = question.topic
+    else:
+        main = ranked[0][0] if ranked else None
+    rest = [(t, m) for t, m in ranked if main is None or t.pk != main.pk]
+    rest += [(None, 0)] * 2
+    (secondary, secondary_marks), (need, _) = rest[:2]
+    return {
+        'topic': main,
+        'secondary_topic': secondary,
+        'list_under_secondary': bool(
+            secondary and secondary_marks >= total * LIST_SECONDARY_SHARE),
+        'need_to_know_topic': need,
+    }
 
 
 class Command(BaseCommand):
@@ -63,7 +91,8 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         questions = (ExamQuestion.objects
-                     .select_related('exam_paper', 'topic')
+                     .select_related('exam_paper', 'topic', 'secondary_topic',
+                                     'need_to_know_topic')
                      .prefetch_related('parts__topic')
                      .order_by('exam_paper__year', 'exam_paper__paper_type',
                                'question_number'))
@@ -71,8 +100,6 @@ class Command(BaseCommand):
             if not ExamPaper.objects.filter(id=options['paper']).exists():
                 raise CommandError(f"No paper with id {options['paper']}")
             questions = questions.filter(exam_paper_id=options['paper'])
-        if not options['overwrite']:
-            questions = questions.filter(topic__isnull=True)
 
         if options['dry_run']:
             self.stdout.write(self.style.WARNING(
@@ -80,21 +107,41 @@ class Command(BaseCommand):
 
         changed, unchanged, bare = 0, 0, []
         for question in questions:
-            topic, marks, total = dominant_topic(question)
-            if topic is None:
-                bare.append(question)
+            proposal = proposed_topics(question, keep_main=not options['overwrite'])
+            if not any(p.topic_id for p in question.parts.all()):
+                if question.topic_id is None:
+                    bare.append(question)
                 continue
-            if question.topic_id == topic.id:
+
+            updates = {}
+            for field in ('topic', 'secondary_topic', 'need_to_know_topic'):
+                current = getattr(question, field)
+                wanted = proposal[field]
+                if current == wanted or (current and not options['overwrite']):
+                    continue
+                updates[field] = wanted
+            if 'secondary_topic' in updates:
+                updates['list_under_secondary'] = proposal['list_under_secondary']
+            # Never leave a topic in two slots after a partial fill.
+            final = {f: updates.get(f, getattr(question, f))
+                     for f in ('topic', 'secondary_topic', 'need_to_know_topic')}
+            ids = [t.pk for t in final.values() if t]
+            if len(ids) != len(set(ids)):
+                updates = {}
+
+            if not updates:
                 unchanged += 1
                 continue
 
-            was = question.topic.name if question.topic else "nothing"
+            described = ", ".join(
+                f"{f.replace('_', ' ')} -> {v.name if hasattr(v, 'name') else v}"
+                for f, v in updates.items())
             self.stdout.write(
-                f"  {question.exam_paper} Q{question.question_number}: "
-                f"{was} -> {topic.name} ({marks} of {total} marks)")
+                f"  {question.exam_paper} Q{question.question_number}: {described}")
             if not options['dry_run']:
-                question.topic = topic
-                question.save(update_fields=['topic'])
+                for field, value in updates.items():
+                    setattr(question, field, value)
+                question.save(update_fields=list(updates))
             changed += 1
 
         for question in bare:

@@ -6,13 +6,12 @@
     <!-- Header -->
     <div class="header" style="margin-bottom: 30px;">
         <div class="breadcrumb" style="color: #6c757d; margin-bottom: 15px;">
-            <a href="{% url 'select_topic' %}" style="color: #007bff; text-decoration: none;">Topics</a> →
-            <span>{{ topic.name }}</span> →
-            <span>Exam Questions</span>
+            <a href="{% url 'exam_papers:exam_questions_index' %}" style="color: #007bff; text-decoration: none;">Exam Questions</a> →
+            <span>{{ topic.name }}</span>
         </div>
         <h1 style="margin: 0 0 10px 0; color: #2c3e50;">{{ topic.name}} - Past Exam Questions</h1>
         <p style="color: #6c757d; font-size: 1.1em;">
-            Practice with real Leaving Certificate exam questions ({{ total_questions }} question{{ total_questions|pluralize }}{% if total_parts %}, {{ total_parts }} part{{ total_parts|pluralize }} on {{ topic.name }}{% endif %})
+            Practice with real Leaving Certificate exam questions ({{ total_questions }} question{{ total_questions|pluralize }})
         </p>
     </div>
 
@@ -74,57 +73,30 @@
                         </div>
                     </div>
 
-                    <!-- Question Parts Preview -->
-                    <div class="parts-preview" style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #e0e0e0;">
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-                            <strong style="color: #2c3e50;">{% if question.matching_parts %}Parts on this topic:{% else %}&nbsp;{% endif %}</strong>
-                            <form method="post" action="{% url 'exam_papers:start_paper_attempt' question.exam_paper.slug %}" style="display: inline;">
-                                {% csrf_token %}
-                                <input type="hidden" name="mode" value="question_practice">
-                                <input type="hidden" name="question_id" value="{{ question.id }}">
-                                <button type="submit"
-                                        class="practice-btn"
-                                        style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                                               color: white;
-                                               padding: 10px 20px;
-                                               border-radius: 8px;
-                                               border: none;
-                                               font-weight: 600;
-                                               font-size: 1em;
-                                               transition: all 0.3s;
-                                               cursor: pointer;">
-                                    Practice This Question →
-                                </button>
-                            </form>
-                        </div>
-                        {% if question.matching_parts %}
-                        <p style="color: #6c757d; font-size: 0.9em; margin: 0 0 10px 0;">Click one to practise just that part, or take the whole question.</p>
-                        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px;">
-                            {% comment %}
-                              Only the parts on this topic. The rest of the question is still
-                              there behind "Practice This Question"; listing every part greyed
-                              out only asked the student to work out which ones were theirs.
-                            {% endcomment %}
-                            {% for part in question.matching_parts %}
-                            <form method="post" action="{% url 'exam_papers:start_paper_attempt' question.exam_paper.slug %}" style="margin: 0;">
-                                {% csrf_token %}
-                                <input type="hidden" name="mode" value="question_practice">
-                                <input type="hidden" name="question_id" value="{{ question.id }}">
-                                <input type="hidden" name="part_id" value="{{ part.id }}">
-                                <button type="submit" class="part-badge part-badge-link" style="width: 100%; text-align: left; background: #fff0f5; border: 2px solid #fa709a; color: #2c3e50; padding: 10px; border-radius: 8px; cursor: pointer; font: inherit;">
-                                    <div style="font-weight: 600; margin-bottom: 5px; display: flex; justify-content: space-between;">
-                                        <span>{{ part.label }}</span>
-                                        {% if part.best_attempt %}
-                                        <span style="font-size: 0.85em; color: {% if part.best_attempt.is_correct %}#155724{% else %}#856404{% endif %};">{% if part.best_attempt.is_correct %}&check;{% else %}{{ part.best_attempt.marks_awarded|floatformat:0 }}/{{ part.best_attempt.max_marks }}{% endif %}</span>
-                                        {% endif %}
-                                    </div>
-                                    <div style="font-size: 0.85em;">{{ part.max_marks|default:"?" }} mark{{ part.max_marks|pluralize }}</div>
-                                    <div style="font-size: 0.8em; color: #fa709a; font-weight: 600; margin-top: 4px;">Practise this part &rarr;</div>
-                                </button>
-                            </form>
+                    <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #e0e0e0; display: flex; flex-wrap: wrap; gap: 12px; justify-content: space-between; align-items: center;">
+                        <div class="topic-labels">
+                            {% for label, label_topic in question.topic_labels %}
+                            <span class="topic-label"><span class="topic-label-kind">{{ label }}</span> {{ label_topic.name }}</span>
                             {% endfor %}
                         </div>
-                        {% endif %}
+                        <form method="post" action="{% url 'exam_papers:start_paper_attempt' question.exam_paper.slug %}" style="display: inline;">
+                            {% csrf_token %}
+                            <input type="hidden" name="mode" value="question_practice">
+                            <input type="hidden" name="question_id" value="{{ question.id }}">
+                            <button type="submit"
+                                    class="practice-btn"
+                                    style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                                           color: white;
+                                           padding: 10px 20px;
+                                           border-radius: 8px;
+                                           border: none;
+                                           font-weight: 600;
+                                           font-size: 1em;
+                                           transition: all 0.3s;
+                                           cursor: pointer;">
+                                Practice This Question →
+                            </button>
+                        </form>
                     </div>
                 </div>
                 {% endfor %}
@@ -140,8 +112,22 @@
 </div>
 
 <style>
-.part-badge-link:hover {
-    box-shadow: 0 4px 12px rgba(250, 112, 154, 0.35);
+.topic-labels {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+.topic-label {
+    background: #fff0f5;
+    border: 1px solid #fa709a;
+    color: #2c3e50;
+    border-radius: 999px;
+    padding: 3px 10px;
+    font-size: 0.85em;
+}
+.topic-label-kind {
+    color: #6c757d;
+    font-weight: 600;
 }
 .practice-btn:hover {
     transform: translateY(-2px);

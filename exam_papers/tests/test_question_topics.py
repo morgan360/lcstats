@@ -1,6 +1,6 @@
-"""Part-level topics: a question shows on the topic any of its parts is filed
-under, a single part can be opened on its own, and the classifier writes one
-topic per part.
+"""Question topics: a question lists under its main topic and, when ticked,
+its secondary one; its need-to-know topic shows but never lists it. Parts keep
+a topic of their own for the classifier, and a part can still be opened alone.
 """
 import json
 from io import StringIO
@@ -58,49 +58,35 @@ class TopicPageTests(PartTopicsTestBase):
     def page(self, topic):
         return self.client.get(reverse('topic_exam_questions', args=[topic.slug]))
 
-    def test_question_appears_under_a_topic_only_one_part_is_on(self):
-        response = self.page(self.calculus)
-        questions = [q for group in response.context['questions_by_paper'].values()
-                     for q in group['questions']]
-        self.assertEqual(questions, [self.question])
-        self.assertEqual(questions[0].matching_parts, [self.part_b])
-        self.assertContains(response, 'name="part_id" value="%d"' % self.part_b.id)
-        self.assertNotContains(response, 'name="part_id" value="%d"' % self.part_a.id)
+    def set_topics(self, **fields):
+        ExamQuestion.objects.filter(pk=self.question.pk).update(**fields)
 
-    def test_question_is_listed_once_when_two_parts_share_a_topic(self):
-        self.part_b.topic = self.functions
-        self.part_b.save(update_fields=['topic'])
+    def test_listed_under_its_main_topic(self):
+        self.assertContains(self.page(self.functions), 'Question 6')
 
+    def test_a_part_tag_alone_no_longer_lists_it(self):
+        self.assertNotContains(self.page(self.calculus), 'Question 6')
+
+    def test_a_ticked_secondary_topic_lists_it(self):
+        self.set_topics(secondary_topic=self.calculus, list_under_secondary=True)
+        self.assertContains(self.page(self.calculus), 'Question 6')
+
+    def test_an_unticked_secondary_topic_does_not(self):
+        self.set_topics(secondary_topic=self.calculus, list_under_secondary=False)
+        self.assertNotContains(self.page(self.calculus), 'Question 6')
+
+    def test_need_to_know_never_lists_it(self):
+        self.set_topics(need_to_know_topic=self.finance)
+        response = self.page(self.finance)
+        self.assertContains(response, 'Question 7')
+        self.assertNotContains(response, 'Question 6')
+
+    def test_all_three_topics_are_shown_on_the_card(self):
+        self.set_topics(secondary_topic=self.calculus, need_to_know_topic=self.finance)
         response = self.page(self.functions)
-        self.assertEqual(response.context['total_questions'], 1)
-        self.assertEqual(response.context['total_parts'], 2)
-        questions = [q for group in response.context['questions_by_paper'].values()
-                     for q in group['questions']]
-        self.assertEqual(questions[0].matching_parts, [self.part_a, self.part_b])
-
-    def test_a_question_drops_off_a_topic_none_of_its_parts_is_on(self):
-        """The parts decide. A question whose own tag says Functions while both
-        its parts are Calculus has nothing on the Functions page: it would show
-        as a question with no part a student could click."""
-        self.part_a.topic = self.calculus
-        self.part_a.save(update_fields=['topic'])
-
-        response = self.page(self.functions)
-        questions = [q for group in response.context['questions_by_paper'].values()
-                     for q in group['questions']]
-        self.assertEqual(questions, [])
-
-    def test_its_own_topic_still_counts_while_no_part_is_tagged(self):
-        """The fallback, for a question whose parts carry no topic at all."""
-        for part in self.question.parts.all():
-            part.topic = None
-            part.save(update_fields=['topic'])
-
-        response = self.page(self.functions)
-        questions = [q for group in response.context['questions_by_paper'].values()
-                     for q in group['questions']]
-        self.assertEqual(questions, [self.question])
-        self.assertEqual(questions[0].matching_parts, [])
+        self.assertContains(response, 'Also covers')
+        self.assertContains(response, 'Need to know')
+        self.assertContains(response, 'Differential Calculus')
 
 
 class FocusedPartTests(PartTopicsTestBase):
@@ -201,97 +187,65 @@ class TagPartTopicsTests(PartTopicsTestBase):
 
 
 class RetagTests(PartTopicsTestBase):
-    """Only a superuser may move a question or a part to another topic."""
+    """Only a superuser may set a question's topics."""
 
-    def part_url(self):
-        return reverse('exam_papers:set_part_topic', args=[self.part_a.id])
+    def url(self):
+        return reverse('exam_papers:set_question_topics', args=[self.question.id])
 
-    def test_a_superuser_can_retag_a_part(self):
-        self.client.force_login(self.admin)
-        response = self.client.post(self.part_url(), {'topic': self.finance.id})
+    def post(self, user, **data):
+        self.client.force_login(user)
+        body = {'topic': self.functions.id, 'secondary_topic': '',
+                'need_to_know_topic': '', 'list_under_secondary': ''}
+        body.update(data)
+        return self.client.post(self.url(), body)
 
+    def test_a_superuser_can_set_all_three(self):
+        response = self.post(self.admin, secondary_topic=self.calculus.id,
+                             list_under_secondary='1',
+                             need_to_know_topic=self.finance.id)
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.json()['topic'], 'Finance')
-        self.part_a.refresh_from_db()
-        self.assertEqual(self.part_a.topic, self.finance)
+        self.question.refresh_from_db()
+        self.assertEqual(self.question.topic, self.functions)
+        self.assertEqual(self.question.secondary_topic, self.calculus)
+        self.assertTrue(self.question.list_under_secondary)
+        self.assertEqual(self.question.need_to_know_topic, self.finance)
 
     def test_a_staff_teacher_cannot(self):
         """is_staff is every teacher; a topic is shared across all of them."""
-        self.client.force_login(self.staff)
-        response = self.client.post(self.part_url(), {'topic': self.finance.id})
-
+        response = self.post(self.staff, topic=self.finance.id)
         self.assertEqual(response.status_code, 403)
-        self.part_a.refresh_from_db()
-        self.assertEqual(self.part_a.topic, self.functions)
+        self.question.refresh_from_db()
+        self.assertEqual(self.question.topic, self.functions)
 
     def test_a_student_cannot(self):
-        self.client.force_login(self.student)
-        self.assertEqual(
-            self.client.post(self.part_url(), {'topic': self.finance.id}).status_code,
-            403)
+        self.assertEqual(self.post(self.student, topic=self.finance.id).status_code, 403)
 
-    def test_a_blank_topic_clears_it(self):
-        self.client.force_login(self.admin)
-        self.client.post(self.part_url(), {'topic': ''})
-        self.part_a.refresh_from_db()
-        self.assertIsNone(self.part_a.topic)
+    def test_the_tick_is_dropped_without_a_secondary(self):
+        self.post(self.admin, list_under_secondary='1')
+        self.question.refresh_from_db()
+        self.assertIsNone(self.question.secondary_topic)
+        self.assertFalse(self.question.list_under_secondary)
+
+    def test_one_topic_cannot_fill_two_slots(self):
+        response = self.post(self.admin, secondary_topic=self.functions.id)
+        self.assertEqual(response.status_code, 400)
+        self.question.refresh_from_db()
+        self.assertIsNone(self.question.secondary_topic)
 
     def test_a_topic_from_another_subject_is_refused(self):
-        """A Maths part has no business under a Physics topic."""
+        """A Maths question has no business under a Physics topic."""
         physics = Subject.objects.get(slug='physics')
         elsewhere = Topic.objects.create(name='Waves', subject=physics, paper='p1')
-
-        self.client.force_login(self.admin)
-        response = self.client.post(self.part_url(), {'topic': elsewhere.id})
-
+        response = self.post(self.admin, need_to_know_topic=elsewhere.id)
         self.assertEqual(response.status_code, 400)
-        self.part_a.refresh_from_db()
-        self.assertEqual(self.part_a.topic, self.functions)
-
-    def test_a_question_can_be_retagged_too(self):
-        self.client.force_login(self.admin)
-        self.client.post(
-            reverse('exam_papers:set_question_topic', args=[self.question.id]),
-            {'topic': self.finance.id})
         self.question.refresh_from_db()
-        self.assertEqual(self.question.topic, self.finance)
+        self.assertIsNone(self.question.need_to_know_topic)
 
-
-class PartsPageTests(PartTopicsTestBase):
-    url = reverse('exam_papers:parts_generator')
-
-    def test_lists_only_parts_on_the_chosen_topic(self):
-        self.client.force_login(self.admin)
-        response = self.client.get(self.url, {'topic': self.calculus.id})
-        self.assertEqual(response.context['groups'],
-                         [(self.question, [self.part_b])])
-        self.assertEqual(response.context['part_count'], 1)
-
-    def test_parts_of_one_question_share_a_single_card(self):
-        """The question image is shown once, not once per part."""
-        self.part_a.topic = self.calculus
-        self.part_a.save(update_fields=['topic'])
-
-        self.client.force_login(self.admin)
-        response = self.client.get(self.url, {'topic': self.calculus.id})
-
-        self.assertEqual(response.context['groups'],
-                         [(self.question, [self.part_a, self.part_b])])
-        self.assertEqual(response.context['part_count'], 2)
-        self.assertEqual(response.content.decode().count('data-question'), 1)
-
-    def test_the_dropdown_is_for_superusers_only(self):
-        self.client.force_login(self.admin)
-        self.assertContains(self.client.get(self.url, {'topic': self.calculus.id}),
-                            'topic-retag')
-
-        self.client.force_login(self.staff)
-        self.assertNotContains(self.client.get(self.url, {'topic': self.calculus.id}),
-                               'topic-retag')
-
-    def test_the_topic_map_is_gone(self):
-        with self.assertRaises(NoReverseMatch):
-            reverse('exam_papers:topic_cross_reference')
+    def test_the_parts_pages_are_gone(self):
+        for name in ('parts_generator', 'set_part_topic', 'set_question_topic',
+                     'topic_cross_reference'):
+            with self.assertRaises(NoReverseMatch):
+                reverse(f'exam_papers:{name}')
 
 
 class AlgebraRuleTests(PartTopicsTestBase):
@@ -345,8 +299,7 @@ class PractiseQuestionLinkTests(PartTopicsTestBase):
 
 
 class QuestionWorksheetTests(PartTopicsTestBase):
-    """The question worksheet prints whole questions, so it lists them by the
-    question's own tag alone - a part on another topic does not pull one in."""
+    """The worksheet lists questions by the same rule as the topic pages."""
 
     def setUp(self):
         self.client.force_login(self.student)
@@ -357,7 +310,7 @@ class QuestionWorksheetTests(PartTopicsTestBase):
                                    {'topic': topic.id})
         return list(response.context['questions']), list(response.context['topics'])
 
-    def test_listed_under_its_own_topic(self):
+    def test_listed_under_its_main_topic(self):
         questions, topics = self.listed(self.functions)
         self.assertEqual(questions, [self.question])
         self.assertIn(self.functions, topics)
@@ -366,3 +319,60 @@ class QuestionWorksheetTests(PartTopicsTestBase):
         questions, topics = self.listed(self.calculus)
         self.assertEqual(questions, [])
         self.assertNotIn(self.calculus, topics)
+
+    def test_listed_under_a_ticked_secondary(self):
+        ExamQuestion.objects.filter(pk=self.question.pk).update(
+            secondary_topic=self.calculus, list_under_secondary=True)
+        questions, topics = self.listed(self.calculus)
+        self.assertEqual(questions, [self.question])
+        self.assertIn(self.calculus, topics)
+
+    def test_the_topic_editor_is_for_superusers_only(self):
+        url = reverse('exam_papers:worksheet_generator')
+        self.client.force_login(self.admin)
+        self.assertContains(self.client.get(url, {'topic': self.functions.id}),
+                            'topic-retag')
+        self.client.force_login(self.staff)
+        self.assertNotContains(self.client.get(url, {'topic': self.functions.id}),
+                               'topic-retag')
+
+
+class TagQuestionTopicsTests(PartTopicsTestBase):
+    """The command ranks a question's topics by the part marks they carry."""
+
+    def test_runner_up_and_third_fill_secondary_and_need_to_know(self):
+        ExamQuestionPart.objects.create(
+            question=self.question, label='(c)', max_marks=5, order=3,
+            topic=self.finance)
+        call_command('tag_question_topics', stdout=StringIO())
+        self.question.refresh_from_db()
+        # (b) Calculus carries 20 marks, (a) Functions 10, (c) Finance 5.
+        self.assertEqual(self.question.topic, self.functions)  # already set, kept
+        self.assertEqual(self.question.secondary_topic, self.calculus)
+        self.assertTrue(self.question.list_under_secondary)
+        self.assertEqual(self.question.need_to_know_topic, self.finance)
+
+    def test_overwrite_reorders_by_marks(self):
+        call_command('tag_question_topics', '--overwrite', stdout=StringIO())
+        self.question.refresh_from_db()
+        self.assertEqual(self.question.topic, self.calculus)
+        self.assertEqual(self.question.secondary_topic, self.functions)
+        self.assertTrue(self.question.list_under_secondary)  # 10 of 30 is a third
+
+    def test_a_small_secondary_is_not_ticked(self):
+        self.part_a.max_marks = 5
+        self.part_a.topic = self.finance
+        self.part_a.save()
+        self.part_b.max_marks = 10
+        self.part_b.save()
+        ExamQuestionPart.objects.create(
+            question=self.question, label='(c)', max_marks=25, order=3,
+            topic=self.functions)
+        ExamQuestion.objects.filter(pk=self.question.pk).update(topic=None)
+        call_command('tag_question_topics', stdout=StringIO())
+        self.question.refresh_from_db()
+        # Functions 25, Calculus 10, Finance 5 of 40: Calculus is a quarter.
+        self.assertEqual(self.question.topic, self.functions)
+        self.assertEqual(self.question.secondary_topic, self.calculus)
+        self.assertFalse(self.question.list_under_secondary)
+        self.assertEqual(self.question.need_to_know_topic, self.finance)

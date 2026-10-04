@@ -1,7 +1,7 @@
 {% extends "_base.html" %}
 {% load static %}
 
-{% block title %}Print Exam Questions - NumScoil{% endblock %}
+{% block title %}Exam Questions & Marking Schemes - NumScoil{% endblock %}
 
 {% block content %}
 <style>
@@ -13,11 +13,11 @@
     .ms-preview.open .ms-preview-content { display: block !important; }
 </style>
 
-<div class="mx-auto max-w-6xl px-4 py-8">
-    <h1 class="text-2xl font-semibold text-mist text-center">Print Exam Questions</h1>
+<div class="mx-auto max-w-3xl px-4 py-8">
+    <h1 class="text-2xl font-semibold text-mist text-center">Exam Questions &amp; Marking Schemes</h1>
     <p class="mt-4 rounded-xl border border-indigo-deep/20 bg-mist px-5 py-4 text-sm text-indigo-deep shadow-[0_8px_24px_rgba(0,0,0,0.08)]">
         Select a topic to browse exam questions, then pick questions to generate a printable worksheet with optional marking schemes.
-        {% if can_edit_topics %}Change a question's topic with the dropdown on its card — it saves as you pick.{% endif %}
+        {% if can_edit_topics %}Set each question's main, secondary and need-to-know topics on its card — they save as you pick. Tick "List under it" to show the question under its secondary topic as well.{% endif %}
     </p>
 
     {% include "exam_papers/_worksheet_filters.html" with untagged_noun="questions" untagged_count=unassigned_count %}
@@ -29,7 +29,7 @@
 
         {% include "exam_papers/_worksheet_toolbar.html" with total=questions|length pdf_url=pdf_url show_solutions_toggle=True %}
 
-        <div class="mt-6 grid grid-cols-1 gap-5 md:grid-cols-2">
+        <div class="mt-6 grid grid-cols-1 gap-5">
             {% for question in questions %}
             <div>
                 <label data-selectable class="question-card block cursor-pointer rounded-xl border-2 border-mist/15 p-4 transition hover:border-mist/30" for="q-{{ question.id }}">
@@ -59,7 +59,7 @@
                 </label>
 
                 {# Outside the label above, or picking a topic would tick the card. #}
-                {% include "exam_papers/_topic_select.html" with retag_object=question retag_url=question.get_retag_url %}
+                {% include "exam_papers/_topic_select.html" with question=question %}
 
                 {% with scheme_parts=question.parts_with_schemes %}
                 {% if scheme_parts %}

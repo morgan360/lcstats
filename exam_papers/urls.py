@@ -15,15 +15,12 @@ urlpatterns = [
     path('worksheet/print/', views.worksheet_print, name='worksheet_print'),
     path('worksheet/pdf/', views.worksheet_pdf, name='worksheet_pdf'),
 
-    # The same, one card per question part
-    path('worksheet/parts/', views.parts_generator, name='parts_generator'),
-    path('worksheet/parts/print/', views.parts_print, name='parts_print'),
-    path('worksheet/parts/pdf/', views.parts_pdf, name='parts_pdf'),
+    # Retagging from the worksheet page (superusers only; the view re-checks)
+    path('question/<int:pk>/topics/',
+         views.set_question_topics, name='set_question_topics'),
 
-    # Retagging from those two pages (superusers only; the views re-check)
-    path('question/<int:pk>/topic/',
-         views.set_question_topic, name='set_question_topic'),
-    path('part/<int:pk>/topic/', views.set_part_topic, name='set_part_topic'),
+    # Exam questions by topic
+    path('questions/', views.exam_questions_index, name='exam_questions_index'),
 
     # Full paper attempt (timed or practice) - slug catch-all must come after specific routes
     path('<slug:slug>/', views.paper_detail, name='paper_detail'),
