@@ -124,7 +124,6 @@ class Command(BaseCommand):
                     name = (f'{paper.slug}_q{question.question_number}_'
                             f'{letter}_ms.png')
                     part.solution_image.save(name, ContentFile(data), save=True)
-                    part.extra_solution_images.all().delete()
                     saved += 1
 
         self.stdout.write(self.style.SUCCESS('\n=== Done ==='))

@@ -10,7 +10,7 @@ That logic lived only on ``homework.HomeworkTask``. It is here so the study plan
 can reuse it rather than grow a second copy that drifts. The *columns* are still
 declared on each model: an abstract base would force HomeworkTask's
 ``task_type`` field and its ``homework_tasks`` related names to change, and
-``reports.services`` and the ``merge_question_parts`` command both rely on those.
+``reports.services`` relies on those.
 
 Every URL carries ``?subject=`` because ``core.middleware.SubjectMiddleware``
 reads it to switch the session's subject -- without it a student working on

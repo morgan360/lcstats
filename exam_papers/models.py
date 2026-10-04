@@ -348,51 +348,18 @@ class ExamQuestionPart(models.Model):
 
     @property
     def solution_images(self):
-        """Every marking-scheme crop for this part, primary first.
+        """This part's marking scheme as a list: its one image, or none.
 
-        A part that used to be (b)(i) and (b)(ii) covers both sub-parts now, so
-        it needs both of their crops. The first stays on solution_image, where
-        a dozen call sites already read it; the rest hang off
-        extra_solution_images and are only seen by code that wants them all.
+        A part is a whole letter and its scheme is one image covering every
+        (i), (ii) of it. The grader, the printable sheets and the PDFs take a
+        list, which once held a crop per sub-part.
         """
-        images = [self.solution_image] if self.solution_image else []
-        images.extend(extra.image for extra in self.extra_solution_images.all()
-                      if extra.image)
-        return images
+        return [self.solution_image] if self.solution_image else []
 
     @property
     def has_solution_image(self):
         """Returns True if solution image has been uploaded"""
         return bool(self.solution_image)
-
-
-class ExamPartSolutionImage(models.Model):
-    """A marking-scheme crop beyond the first, for a part that covers several.
-
-    Merging (b)(i) and (b)(ii) into one (b) leaves two crops and one
-    solution_image slot. Rather than throw a crop away -- cropping marking
-    schemes is hours of hand work, and the grader reads them -- the extras
-    live here and ExamQuestionPart.solution_images stitches them back together.
-    """
-    part = models.ForeignKey(
-        ExamQuestionPart,
-        on_delete=models.CASCADE,
-        related_name='extra_solution_images',
-    )
-    image = models.ImageField(
-        upload_to='exam_papers/marking_schemes/',
-        help_text="A further marking-scheme crop for this part",
-    )
-    order = models.PositiveIntegerField(
-        default=0,
-        help_text="Reading order after the part's primary crop",
-    )
-
-    class Meta:
-        ordering = ['part', 'order', 'id']
-
-    def __str__(self):
-        return f"{self.part} - extra scheme {self.order}"
 
 
 

@@ -9,7 +9,6 @@ from django.db.models import Count, Q
 from django import forms
 from .models import (
     ExamPaper,
-    ExamPartSolutionImage,
     ExamQuestion,
     ExamQuestionPart,
     ExamAttempt,
@@ -362,14 +361,6 @@ class ExamQuestionAttemptInline(admin.TabularInline):
     can_delete = False
 
 
-class ExamPartSolutionImageInline(admin.TabularInline):
-    """The second and later marking-scheme crops of a part that covers several."""
-    model = ExamPartSolutionImage
-    extra = 0
-    fields = ('image', 'order')
-    ordering = ['order', 'id']
-
-
 @admin.register(ExamQuestionPart)
 class ExamQuestionPartAdmin(admin.ModelAdmin):
     """
@@ -406,7 +397,6 @@ class ExamQuestionPartAdmin(admin.ModelAdmin):
     list_select_related = (
         'question', 'question__exam_paper', 'question__topic',
     )
-    inlines = [ExamPartSolutionImageInline]
     list_editable = ['max_marks']
     ordering = (
         '-question__exam_paper__year', 'question__order', 'order',

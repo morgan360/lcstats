@@ -1,22 +1,8 @@
-"""A part's marking scheme is one image.
+"""A part's marking scheme is one image; letter_region decides what it covers
+when cut from the scheme PDF."""
+from django.test import SimpleTestCase
 
-letter_region decides what that image covers when cut from the scheme;
-flatten_solution_images folds the crops stacked by the old sub-part merge.
-"""
-import tempfile
-from io import BytesIO, StringIO
-
-from django.core.files.uploadedfile import SimpleUploadedFile
-from django.core.management import call_command
-from django.test import SimpleTestCase, TestCase, override_settings
-from PIL import Image
-
-from core.models import Subject
-from exam_papers.models import (
-    ExamPaper, ExamPartSolutionImage, ExamQuestion, ExamQuestionPart,
-)
 from exam_papers.utils import letter_region
-from interactive_lessons.models import Topic
 
 
 class LetterRegionTests(SimpleTestCase):
@@ -54,72 +40,3 @@ class LetterRegionTests(SimpleTestCase):
     def test_no_region_for_the_letter(self):
         self.assertIsNone(letter_region({}, 5, 'a'))
         self.assertIsNone(letter_region(None, 5, 'a'))
-
-
-def png(height, shade=0):
-    buffer = BytesIO()
-    Image.new('RGB', (4, height), (shade, shade, shade)).save(buffer, 'PNG')
-    return SimpleUploadedFile(f'crop{height}_{shade}.png', buffer.getvalue(),
-                              content_type='image/png')
-
-
-@override_settings(MEDIA_ROOT=tempfile.mkdtemp(prefix='flatten-crops-test-'))
-class FlattenTests(TestCase):
-    @classmethod
-    def setUpTestData(cls):
-        maths = Subject.objects.get(slug='maths')
-        topic = Topic.objects.create(name='Probability', subject=maths, paper='p2')
-        paper = ExamPaper.objects.create(subject=maths, year=2025, paper_type='p2',
-                                         total_marks=300, is_published=True)
-        cls.question = ExamQuestion.objects.create(
-            exam_paper=paper, question_number=9, topic=topic, total_marks=50)
-
-    def stacked(self, label, *crops):
-        part = ExamQuestionPart.objects.create(
-            question=self.question, label=label, max_marks=10,
-            solution_image=crops[0])
-        for index, crop in enumerate(crops[1:]):
-            ExamPartSolutionImage.objects.create(part=part, order=index, image=crop)
-        return part
-
-    def flatten(self, *extra):
-        out = StringIO()
-        call_command('flatten_solution_images', *extra, stdout=out)
-        return out.getvalue()
-
-    def height(self, part):
-        part.refresh_from_db()
-        part.solution_image.open('rb')
-        try:
-            return Image.open(part.solution_image).height
-        finally:
-            part.solution_image.close()
-
-    def test_report_only_changes_nothing(self):
-        part = self.stacked('(a)', png(3), png(5, shade=200))
-        output = self.flatten()
-        self.assertIn('2 crops stitched', output)
-        self.assertEqual(part.extra_solution_images.count(), 1)
-
-    def test_apply_joins_the_stack_into_one_image(self):
-        part = self.stacked('(a)', png(3), png(5, shade=200), png(3))
-        output = self.flatten('--apply')
-        self.assertIn('1 repeat dropped', output)
-        self.assertEqual(self.height(part), 8)
-        self.assertFalse(ExamPartSolutionImage.objects.exists())
-        self.assertEqual(len(part.solution_images), 1)
-
-    def test_a_part_with_one_crop_is_left_alone(self):
-        part = ExamQuestionPart.objects.create(
-            question=self.question, label='(b)', max_marks=10,
-            solution_image=png(3))
-        name = part.solution_image.name
-        self.flatten('--apply')
-        part.refresh_from_db()
-        self.assertEqual(part.solution_image.name, name)
-
-    def test_recut_without_a_scheme_falls_back_to_stitching(self):
-        part = self.stacked('(a)', png(3), png(5, shade=200))
-        output = self.flatten('--recut', '--apply')
-        self.assertIn('no region in the scheme', output)
-        self.assertEqual(self.height(part), 8)

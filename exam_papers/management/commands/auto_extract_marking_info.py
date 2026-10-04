@@ -54,13 +54,6 @@ class Command(BaseCommand):
             help='Also replace marks that are already set (default: fill blanks only)'
         )
         parser.add_argument(
-            '--include-merged',
-            action='store_true',
-            help="Also read parts whose marking scheme spans several crops. "
-                 "Only matters for the vision fallback, which reads the first "
-                 "crop alone; the scheme text covers the whole region anyway"
-        )
-        parser.add_argument(
             '--verify-total',
             action='store_true',
             help='Deprecated: checking the total is now the default'
@@ -129,21 +122,10 @@ class Command(BaseCommand):
         denominator under a student's grade.
         """
         overwrite = options['overwrite']
-        include_merged = options['include_merged']
         verify = options['verify_total_enabled']
 
         parts = list(question.parts.all().order_by('order'))
-        # A merged part covers several rows of the scheme. The scheme text
-        # reads the whole region so it handles them, but the vision fallback
-        # sees the first crop alone -- which would write, say, 10 onto a part
-        # actually worth 25 and quietly halve every future score on it.
-        merged = [p for p in parts
-                  if not include_merged and p.extra_solution_images.exists()]
-        wanted = [p for p in parts
-                  if (overwrite or not p.max_marks) and p not in merged]
-        if merged:
-            self.stdout.write(self.style.WARNING(
-                f'  {len(merged)} merged part(s) left to the scheme text only'))
+        wanted = [p for p in parts if overwrite or not p.max_marks]
         if not wanted:
             counts['skipped'] += len(parts)
             self.stdout.write('  nothing to read')
