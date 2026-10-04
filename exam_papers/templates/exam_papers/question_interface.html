@@ -1074,6 +1074,9 @@ function submitAnswer(partId, attemptId) {
 }
 
 // Toggle solution function (show/hide)
+// Parts whose solution is on its way from the server.
+const loadingSolutions = new Set();
+
 function toggleSolution(partId, attemptId, isUnlocked) {
     const solutionArea = document.getElementById('solution-' + partId);
     const btnText = document.getElementById('solution-btn-text-' + partId);
@@ -1098,10 +1101,17 @@ function toggleSolution(partId, attemptId, isUnlocked) {
         return;
     }
 
-    // Otherwise, fetch the solution
+    // Otherwise, fetch the solution. The first fetch can take seconds, and a
+    // click in that time used to send another and leave a heading with no
+    // scheme under it, so the button says so and ignores clicks meanwhile.
+    if (loadingSolutions.has(partId)) return;
+    loadingSolutions.add(partId);
+    btnText.textContent = '⏳ Loading…';
     fetch(`/exam-papers/attempt/${attemptId}/solution/${partId}/`)
     .then(response => response.json())
     .then(data => {
+        loadingSolutions.delete(partId);
+        btnText.textContent = '💚 Show Solution';
         if (data.success) {
             solutionArea.style.display = 'block';
             let html = '<h4>📖 Marking Scheme</h4>';
@@ -1121,6 +1131,8 @@ function toggleSolution(partId, attemptId, isUnlocked) {
         }
     })
     .catch(error => {
+        loadingSolutions.delete(partId);
+        btnText.textContent = '💚 Show Solution';
         console.error('Error:', error);
         alert('An error occurred while fetching the solution.');
     });

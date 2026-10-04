@@ -18,13 +18,12 @@ student did. The inert run is the one you get if you fumble the invocation.
 import re
 from collections import defaultdict
 
+from django.core.files.base import ContentFile
 from django.core.management.base import BaseCommand
 from django.db import transaction
 
-from exam_papers.models import (
-    ExamPartSolutionImage, ExamQuestionAttempt, ExamQuestionPart,
-)
-from exam_papers.utils import parse_part_label
+from exam_papers.models import ExamQuestionAttempt, ExamQuestionPart
+from exam_papers.utils import parse_part_label, stack_images
 
 
 ROMAN_RANK = {None: 0, 'i': 1, 'ii': 2, 'iii': 3, 'iv': 4,
@@ -161,7 +160,7 @@ class Command(BaseCommand):
             f'-> {canonical} (keeping part {survivor.pk})')
         self.stdout.write(f'  marks: {marks_note}')
         if len(crops) > 1:
-            self.stdout.write(f'  {len(crops)} marking-scheme crops stacked')
+            self.stdout.write(f'  {len(crops)} marking-scheme crops joined into one')
         if any(moving.values()):
             self.stdout.write(
                 '  moving: '
@@ -225,27 +224,27 @@ class Command(BaseCommand):
         return [image for part in members for image in part.solution_images]
 
     def _stack_crops(self, survivor, crops):
-        """Primary stays put; the rest become extra_solution_images.
+        """The group's crops become the survivor's one solution image.
 
-        The files are handed over by name. Re-saving the bytes would duplicate
-        them, and deleting a row does not delete its file, so this is a change
-        of owner and nothing on disk moves.
+        A single crop is handed over by name: re-saving the bytes would
+        duplicate the file, and deleting a row does not delete its file, so
+        that is a change of owner and nothing on disk moves. Several are
+        stitched top to bottom into a new file, an exact repeat shown once --
+        sub-parts printed in one table of the scheme were each given it.
         """
         if not crops:
             return
-        primary, extras = crops[0], crops[1:]
-        if survivor.solution_image.name != primary.name:
-            survivor.solution_image.name = primary.name
-
+        if len(crops) == 1:
+            if survivor.solution_image.name != crops[0].name:
+                survivor.solution_image.name = crops[0].name
+        else:
+            parsed = parse_part_label(survivor.label or '')
+            letter = parsed[0] if parsed else 'x'
+            name = (f'{survivor.question.exam_paper.slug}_'
+                    f'q{survivor.question.question_number}_{letter}_ms.png')
+            survivor.solution_image.save(name, ContentFile(stack_images(crops)),
+                                         save=False)
         survivor.extra_solution_images.all().delete()
-        ExamPartSolutionImage.objects.bulk_create([
-            ExamPartSolutionImage(part=survivor, order=index)
-            for index, _ in enumerate(extras)
-        ])
-        for row, image in zip(survivor.extra_solution_images.order_by('order'),
-                              extras):
-            row.image.name = image.name
-            row.save(update_fields=['image'])
 
     # ---- the things that point at a part --------------------------------
 

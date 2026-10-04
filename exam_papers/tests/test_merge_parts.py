@@ -4,12 +4,13 @@ The command deletes rows, and every foreign key pointing at a part cascades,
 so most of what is tested here is that nothing a student did goes with them.
 """
 import tempfile
-from io import StringIO
+from io import BytesIO, StringIO
 
 from django.contrib.auth.models import User
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.core.management import call_command
 from django.test import TestCase, override_settings
+from PIL import Image
 
 from core.models import Subject
 from exam_papers.models import (
@@ -197,39 +198,53 @@ class MarksTests(MergeTestBase):
         self.assertEqual(part.max_marks, 10)
 
 
+def png(height, shade=0):
+    """A real PNG of a given height, so joined crops can be measured."""
+    buffer = BytesIO()
+    Image.new('RGB', (4, height), (shade, shade, shade)).save(buffer, 'PNG')
+    return SimpleUploadedFile(f'crop{height}_{shade}.png', buffer.getvalue(),
+                              content_type='image/png')
+
+
 class CropTests(MergeTestBase):
-    def test_every_crop_survives_in_reading_order(self):
-        first = self.part('(c) (i)', order=1, solution_image=image('i.png'))
-        second = self.part('(c) (ii)', order=2, solution_image=image('ii.png'))
-        first_name, second_name = first.solution_image.name, second.solution_image.name
+    def _height(self, part):
+        part.solution_image.open('rb')
+        try:
+            return Image.open(part.solution_image).height
+        finally:
+            part.solution_image.close()
 
-        self.merge('--apply')
-
-        survivor = ExamQuestionPart.objects.get()
-        self.assertEqual([i.name for i in survivor.solution_images],
-                         [first_name, second_name])
-
-    def test_the_file_changes_owner_rather_than_being_copied(self):
-        """Deleting a row does not delete its file, so the name can move."""
-        self.part('(c) (i)', order=1, solution_image=image('i.png'))
-        second = self.part('(c) (ii)', order=2, solution_image=image('ii.png'))
-        second_name = second.solution_image.name
-
-        self.merge('--apply')
-
-        extra = ExamPartSolutionImage.objects.get()
-        self.assertEqual(extra.image.name, second_name)
-
-    def test_a_sub_part_with_no_crop_does_not_leave_a_gap(self):
-        self.part('(c) (i)', order=1)
-        self.part('(c) (ii)', order=2, solution_image=image('ii.png'))
+    def test_the_crops_become_one_image(self):
+        self.part('(c) (i)', order=1, solution_image=png(3))
+        self.part('(c) (ii)', order=2, solution_image=png(5, shade=200))
 
         self.merge('--apply')
 
         survivor = ExamQuestionPart.objects.get()
         self.assertEqual(len(survivor.solution_images), 1)
+        self.assertFalse(ExamPartSolutionImage.objects.exists())
+        self.assertEqual(self._height(survivor), 8)
+
+    def test_a_repeated_crop_is_shown_once(self):
+        """Sub-parts printed in one scheme table were each given that table."""
+        self.part('(c) (i)', order=1, solution_image=png(3))
+        self.part('(c) (ii)', order=2, solution_image=png(3))
+
+        self.merge('--apply')
+
+        self.assertEqual(self._height(ExamQuestionPart.objects.get()), 3)
+
+    def test_a_single_crop_changes_owner_rather_than_being_copied(self):
+        """Deleting a row does not delete its file, so the name can move."""
+        self.part('(c) (i)', order=1)
+        second = self.part('(c) (ii)', order=2, solution_image=image('ii.png'))
+        second_name = second.solution_image.name
+
+        self.merge('--apply')
+
+        survivor = ExamQuestionPart.objects.get()
+        self.assertEqual(survivor.solution_image.name, second_name)
         self.assertFalse(survivor.extra_solution_images.exists())
-        self.assertTrue(survivor.solution_image)
 
 
 class CascadeTests(MergeTestBase):

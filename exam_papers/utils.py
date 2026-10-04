@@ -657,6 +657,38 @@ def render_marking_scheme_region(pdf_path, region, dpi=200):
         doc.close()
 
 
+def stack_images(files):
+    """One PNG of several image files top to bottom, an exact repeat dropped.
+
+    For folding a part's stacked sub-part crops into its one solution image.
+    Sub-parts printed in one table of the scheme were each given that table,
+    so the same bytes can turn up twice; they are shown once.
+    """
+    seen, images = set(), []
+    for file in files:
+        file.open('rb')
+        try:
+            data = file.read()
+        finally:
+            file.close()
+        if data in seen:
+            continue
+        seen.add(data)
+        images.append(Image.open(io.BytesIO(data)).convert('RGB'))
+    combined = Image.new(
+        'RGB',
+        (max(i.width for i in images), sum(i.height for i in images)),
+        'white',
+    )
+    offset = 0
+    for image in images:
+        combined.paste(image, (0, offset))
+        offset += image.height
+    buffer = io.BytesIO()
+    combined.save(buffer, format='PNG')
+    return buffer.getvalue()
+
+
 _PART_LABEL_LETTER = re.compile(r'([a-h])', re.I)
 _PART_LABEL_ROMAN = re.compile(r'\b(i{1,3}|iv|v|vi{1,3})\b', re.I)
 
@@ -703,6 +735,36 @@ def regions_for_letter(regions, question_number, letter):
              if number == question_number and key == letter]
     found.sort(key=lambda pair: _ROMAN_ORDER.get(pair[0], 99))
     return [region for _, region in found]
+
+
+def letter_region(regions, question_number, letter):
+    """One region covering everything the scheme prints for a part letter.
+
+    A part's solution is one image now. regions_for_letter will not do for
+    cutting it: a row printed "(a)(i)(ii)" is detected as the whole-letter
+    region, which then hides the separate (iii) and (iv) rows -- and that whole
+    region can run on into them anyway. So this takes every region for the
+    letter and merges their spans page by page, which drops a repeat and
+    collapses an overlap instead of printing it twice. None if there are none.
+    """
+    found = [region for (number, key, _), region in (regions or {}).items()
+             if number == question_number and key == letter]
+    if not found:
+        return None
+    spans = {}
+    for region in found:
+        for page_index, y0, y1 in region['slices']:
+            spans.setdefault(page_index, []).append([y0, y1])
+    slices = []
+    for page_index in sorted(spans):
+        merged = []
+        for y0, y1 in sorted(spans[page_index]):
+            if merged and y0 <= merged[-1][1]:
+                merged[-1][1] = max(merged[-1][1], y1)
+            else:
+                merged.append([y0, y1])
+        slices.extend((page_index, y0, y1) for y0, y1 in merged)
+    return {'slices': slices, 'width': max(region['width'] for region in found)}
 
 
 def question_text(pdf_path, item, legacy=False):

@@ -18,9 +18,9 @@ import re
 from django.core.files.base import ContentFile
 from django.core.management.base import BaseCommand, CommandError
 
-from exam_papers.models import ExamPaper, ExamPartSolutionImage
+from exam_papers.models import ExamPaper
 from exam_papers.utils import (
-    detect_marking_scheme_layout, parse_part_label, regions_for_letter,
+    detect_marking_scheme_layout, letter_region, parse_part_label,
     render_marking_scheme_region,
 )
 
@@ -103,39 +103,28 @@ class Command(BaseCommand):
                     continue
 
                 letter, _ = parsed
-                # A part is a whole letter now, so where the scheme still
-                # splits (b) into (b)(i) and (b)(ii) it needs both regions --
-                # the first as its image, the rest stacked behind it, which is
-                # the shape merge_question_parts leaves too.
-                found = regions_for_letter(regions, question.question_number, letter)
-                how = 'exact' if len(found) == 1 else f'{len(found)} regions'
+                # A part is a whole letter, and its solution is one image:
+                # where the scheme still splits (b) into (b)(i) and (b)(ii),
+                # every row for (b) is merged into a single crop.
+                region = letter_region(regions, question.question_number, letter)
 
-                if not found:
+                if region is None:
                     self.stdout.write(self.style.ERROR(
                         f'  {tag:<22} no region for ({letter})'
                     ))
                     unmatched += 1
                     continue
 
-                pages = {slice_[0] + 1 for region in found
-                         for slice_ in region['slices']}
+                pages = {slice_[0] + 1 for slice_ in region['slices']}
                 where = f"p{min(pages)}" + (f"-{max(pages)}" if len(pages) > 1 else '')
-                self.stdout.write(f'  {tag:<22} -> ({letter}) {where:<8} {how}')
+                self.stdout.write(f'  {tag:<22} -> ({letter}) {where}')
 
                 if apply_changes:
+                    data = render_marking_scheme_region(pdf_path, region)
+                    name = (f'{paper.slug}_q{question.question_number}_'
+                            f'{letter}_ms.png')
+                    part.solution_image.save(name, ContentFile(data), save=True)
                     part.extra_solution_images.all().delete()
-                    for index, region in enumerate(found):
-                        data = render_marking_scheme_region(pdf_path, region)
-                        name = (f'{paper.slug}_q{question.question_number}_'
-                                f'{letter}{index or ""}_ms.png')
-                        if index == 0:
-                            part.solution_image.save(name, ContentFile(data),
-                                                     save=True)
-                        else:
-                            extra = ExamPartSolutionImage(part=part,
-                                                          order=index - 1)
-                            extra.image.save(name, ContentFile(data), save=False)
-                            extra.save()
                     saved += 1
 
         self.stdout.write(self.style.SUCCESS('\n=== Done ==='))
