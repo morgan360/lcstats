@@ -290,7 +290,10 @@ def select_topic(request):
     for topic in topics:
         note_count = Note.objects.filter(topic=topic).count()
         question_count = Question.objects.filter(topic=topic).count()
-        cheatsheet_count = CheatSheet.objects.filter(topic=topic).count()
+        # The Log Tables booklet is filed under a topic but is not that topic's.
+        sheet_count = CheatSheet.objects.filter(topic=topic).exclude(
+            kind=CheatSheet.KIND_REFERENCE
+        ).count()
         quickkick_count = QuickKick.objects.filter(topic=topic).count()
         flashcard_count = FlashcardSet.objects.filter(topic=topic, is_published=True).count()
         # Count exam questions for this topic (only from published papers)
@@ -306,8 +309,8 @@ def select_topic(request):
             'has_notes': note_count > 0,
             'note_count': note_count,
             'question_count': question_count,
-            'cheatsheet_count': cheatsheet_count,
-            'has_cheatsheets': cheatsheet_count > 0,
+            'sheet_count': sheet_count,
+            'has_sheets': sheet_count > 0,
             'quickkick_count': quickkick_count,
             'has_quickkicks': quickkick_count > 0,
             'flashcard_count': flashcard_count,

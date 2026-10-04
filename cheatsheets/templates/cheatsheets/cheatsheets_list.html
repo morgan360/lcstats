@@ -1,5 +1,5 @@
 {% extends "_base.html" %}
-{% block title %}{{ topic.name }} - Cheat Sheets{% endblock %}
+{% block title %}{{ topic.name }} - Summary Notes & Cheat Sheet{% endblock %}
 {% block content %}
 
 <style>
@@ -91,6 +91,13 @@
         margin-right: 8px;
     }
 
+    .sheet-kind-heading {
+        color: #2c3e50;
+        font-size: 1.25em;
+        font-weight: 600;
+        margin: 10px 0 15px;
+    }
+
     .no-cheatsheets {
         text-align: center;
         padding: 60px 20px;
@@ -128,12 +135,14 @@
 
     <div class="topic-header">
         <h2>{{ topic.name }}</h2>
-        <p style="color: #666;">Cheat Sheets & Quick Reference Guides</p>
+        <p style="color: #666;">Summary Notes &amp; Cheat Sheet</p>
     </div>
 
-    {% if cheatsheets %}
+    {% for heading, sheets in sections %}
+    <h3 class="sheet-kind-heading">{{ heading }}</h3>
+    {% if sheets %}
         <div class="cheatsheets-grid">
-            {% for sheet in cheatsheets %}
+            {% for sheet in sheets %}
             <div class="cheatsheet-card">
                 <div class="cheatsheet-title">
                     {{ sheet.title }}
@@ -157,10 +166,11 @@
     {% else %}
         <div class="no-cheatsheets">
             <div class="no-cheatsheets-icon">📄</div>
-            <h3>No Cheat Sheets Available</h3>
-            <p>Cheat sheets for this topic haven't been added yet. Check back soon!</p>
+            <h3>No {{ heading }} Yet</h3>
+            <p>{{ heading }} for this topic haven't been added yet. Check back soon!</p>
         </div>
     {% endif %}
+    {% endfor %}
 </div>
 
 {% endblock %}

@@ -1,42 +1,37 @@
 {% extends "_base.html" %}
 
-{% block title %}Cheatsheets | NumScoil {% endblock %}
+{% block title %}{{ heading }} | NumScoil {% endblock %}
 
 {% block content %}
 <div class="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
-    <h1 class="mb-3 text-3xl font-semibold text-mist">Cheatsheets</h1>
-    <p class="mb-10 text-lg text-mist/80">
-        Quick reference guides for all LC Maths topics - perfect for revision!
-    </p>
+    <h1 class="mb-3 text-3xl font-semibold text-mist">{{ heading }}</h1>
+    <p class="mb-10 text-lg text-mist/80">{{ intro }}</p>
 
-    {% if cheatsheets %}
+    {% if topic_groups %}
         <div class="grid gap-6 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3">
-            {% for cheatsheet in cheatsheets %}
+            {% for topic, sheets in topic_groups %}
                 <div class="group flex h-full flex-col rounded-2xl border border-msit/10 bg-white/90 p-5 shadow-[0_12px_28px_rgba(0,0,0,0.08)] transition hover:-translate-y-1 hover:shadow-[0_18px_38px_rgba(0,0,0,0.12)]">
-                    <div class="mb-3">
-                        <span class="inline-flex items-center rounded-full bg-violet-royal px-3 py-1 text-xs font-semibold text-mist shadow-[0_6px_18px_rgba(148,72,176,0.25)]">
-                            {{ cheatsheet.topic.name }}
-                        </span>
-                    </div>
                     <h3 class="mb-3 text-xl font-semibold text-midnight">
-                        {{ cheatsheet.title }}
+                        <a href="{% url 'cheatsheets:cheatsheets_topic' topic.slug %}" class="hover:underline">{{ topic.name }}</a>
                     </h3>
-                    {% if cheatsheet.description %}
-                        <p class="mb-4 block text-sm leading-relaxed text-indigo-deep/80">
-                            {{ cheatsheet.description }}
-                        </p>
-                    {% endif %}
-                    <a href="{{ cheatsheet.pdf_file.url }}"
-                       target="_blank"
-                       class="mt-auto inline-flex items-center gap-2 rounded-lg bg-gradient-03 px-4 py-2 text-sm font-semibold text-mist shadow-[0_12px_24px_rgba(148,72,176,0.28)] transition hover:-translate-y-0.5 hover:shadow-[0_16px_30px_rgba(148,72,176,0.34)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-royal">
-                        <span class="text-lg">📄</span> View PDF
-                    </a>
+                    {% for sheet in sheets %}
+                        {% if sheet.description %}
+                            <p class="mb-4 block text-sm leading-relaxed text-indigo-deep/80">
+                                {{ sheet.description }}
+                            </p>
+                        {% endif %}
+                        <a href="{{ sheet.pdf_file.url }}"
+                           target="_blank"
+                           class="mt-auto inline-flex items-center gap-2 rounded-lg bg-gradient-03 px-4 py-2 text-sm font-semibold text-mist shadow-[0_12px_24px_rgba(148,72,176,0.28)] transition hover:-translate-y-0.5 hover:shadow-[0_16px_30px_rgba(148,72,176,0.34)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-royal">
+                            <span class="text-lg">📄</span> {% if sheets|length > 1 %}{{ sheet.title }}{% else %}View PDF{% endif %}
+                        </a>
+                    {% endfor %}
                 </div>
             {% endfor %}
         </div>
     {% else %}
         <div class="rounded-2xl border border-indigo-deep/20 bg-mist px-6 py-12 text-center shadow-[0_12px_28px_rgba(0,0,0,0.08)]">
-            <p class="text-lg font-semibold text-midnight">No cheatsheets available yet.</p>
+            <p class="text-lg font-semibold text-midnight">No {{ heading|lower }} available yet.</p>
             <p class="text-indigo-deep/70">Check back soon!</p>
         </div>
     {% endif %}

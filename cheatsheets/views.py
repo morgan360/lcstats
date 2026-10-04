@@ -6,31 +6,61 @@ from .models import CheatSheet
 from . import log_tables_index
 
 
+def _sheets_for_subject(request, kind):
+    """One kind of sheet, for the subject the session is in."""
+    sheets = CheatSheet.objects.filter(kind=kind).select_related('topic')
+    current_subject = getattr(request, 'current_subject', None)
+    if current_subject:
+        sheets = sheets.filter(topic__subject=current_subject)
+    return sheets
+
+
+def _grouped_by_topic(sheets):
+    """[(topic, [sheet, ...]), ...] in the topic order the Exercises page uses."""
+    groups = {}
+    for sheet in sheets.order_by('topic__order', 'topic__name', 'order', 'title'):
+        groups.setdefault(sheet.topic, []).append(sheet)
+    return list(groups.items())
+
+
+def _sheet_index(request, kind, heading, intro):
+    return render(request, 'cheatsheets/index.html', {
+        'heading': heading,
+        'intro': intro,
+        'topic_groups': _grouped_by_topic(_sheets_for_subject(request, kind)),
+    })
+
+
 @login_required
 def cheatsheets_index(request):
-    """
-    Display all cheat sheets across all topics.
-    """
-    cheatsheets = CheatSheet.objects.select_related('topic').order_by('topic__name', 'order', 'title')
+    """The two-page cheat sheets, one per topic."""
+    return _sheet_index(
+        request, CheatSheet.KIND_CHEAT_SHEET, 'Cheat Sheets',
+        'Two A4 pages per topic: the formulae, methods and exam traps to know.',
+    )
 
-    context = {
-        'cheatsheets': cheatsheets,
-    }
-    return render(request, 'cheatsheets/index.html', context)
+
+@login_required
+def summary_notes_index(request):
+    """The summary notes, one section of the notes per topic."""
+    return _sheet_index(
+        request, CheatSheet.KIND_SUMMARY_NOTES, 'Summary Notes',
+        'The notes for each topic, with worked examples and proofs.',
+    )
 
 
 @login_required
 def cheatsheets_by_topic(request, topic_slug):
-    """
-    Display all cheat sheets for a specific topic.
-    Each PDF can be opened in a new tab.
-    """
+    """A topic's Summary Notes and Cheat Sheet, each under its own heading."""
     topic = get_object_or_404(Topic, slug=topic_slug)
-    cheatsheets = CheatSheet.objects.filter(topic=topic).order_by('order', 'title')
+    sheets = CheatSheet.objects.filter(topic=topic).order_by('order', 'title')
 
     context = {
         'topic': topic,
-        'cheatsheets': cheatsheets,
+        'sections': [
+            ('Summary Notes', sheets.filter(kind=CheatSheet.KIND_SUMMARY_NOTES)),
+            ('Cheat Sheet', sheets.filter(kind=CheatSheet.KIND_CHEAT_SHEET)),
+        ],
     }
 
     return render(request, 'cheatsheets/cheatsheets_list.html', context)
@@ -38,11 +68,12 @@ def cheatsheets_by_topic(request, topic_slug):
 
 def get_log_tables_cheatsheet():
     """The Formulae and Tables booklet, or None if it has not been uploaded."""
-    return CheatSheet.objects.filter(
-        title__icontains='log'
-    ).filter(
-        title__icontains='table'
-    ).first()
+    reference = CheatSheet.objects.filter(kind=CheatSheet.KIND_REFERENCE)
+    # Fall back to the title for a row added before the kind field existed.
+    return (
+        reference.filter(title__icontains='log').first()
+        or CheatSheet.objects.filter(title__icontains='log').filter(title__icontains='table').first()
+    )
 
 
 @login_required

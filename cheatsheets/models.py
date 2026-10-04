@@ -4,14 +4,32 @@ from interactive_lessons.models import Topic
 
 class CheatSheet(models.Model):
     """
-    Stores PDF cheat sheets organized by topic.
-    Each cheat sheet is a PDF file that can be viewed in a separate tab.
+    A PDF filed under a topic: the topic's Summary Notes, its two-page Cheat
+    Sheet, or a reference document such as the Log Tables booklet. Each kind
+    has its own page under the Study menu.
     """
+    KIND_SUMMARY_NOTES = 'summary_notes'
+    KIND_CHEAT_SHEET = 'cheat_sheet'
+    KIND_REFERENCE = 'reference'
+    KIND_CHOICES = [
+        (KIND_SUMMARY_NOTES, 'Summary Notes'),
+        (KIND_CHEAT_SHEET, 'Cheat Sheet'),
+        (KIND_REFERENCE, 'Reference'),
+    ]
+
     topic = models.ForeignKey(
         Topic,
         on_delete=models.CASCADE,
         related_name='cheatsheets',
         help_text="Topic this cheat sheet belongs to"
+    )
+    kind = models.CharField(
+        max_length=20,
+        choices=KIND_CHOICES,
+        default=KIND_CHEAT_SHEET,
+        db_index=True,
+        help_text="Summary Notes and Cheat Sheets are listed on separate pages; "
+                  "Reference (the Log Tables booklet) is listed on neither"
     )
     title = models.CharField(
         max_length=200,
