@@ -58,14 +58,16 @@ class ViewTestBase(TestCase):
             teacher=cls.teacher, name='6th Year Maths A')
         cls.klass.students.add(cls.student, cls.classmate)
 
-        cls.parts = []
-        for year in (2019, 2020, 2021, 2022, 2023, 2024):
+        # Enough for a two-question Badge Test, its retries, and practice.
+        cls.parts, cls.questions = [], []
+        for year in range(2013, 2025):
             paper = ExamPaper.objects.create(
                 subject=cls.maths, year=year, paper_type='p1',
                 total_marks=300, is_published=True)
             question = ExamQuestion.objects.create(
                 exam_paper=paper, question_number=6,
                 topic=cls.topic, total_marks=20)
+            cls.questions.append(question)
             for n, label in enumerate(['(a)', '(b)'], start=1):
                 cls.parts.append(ExamQuestionPart.objects.create(
                     question=question, label=label, max_marks=10,
@@ -84,7 +86,7 @@ class ViewTestBase(TestCase):
             end_date=cls.today + timedelta(days=6), minutes_budget=120)
         cls.item = StudyPlanItem.objects.create(
             plan=cls.plan, week=cls.week, goal=cls.goal,
-            content_type='exam_part', exam_question_part=cls.parts[4],
+            content_type='exam_question', exam_question=cls.questions[2],
             estimated_minutes=5, available_from=cls.today,
             due_date=cls.today + timedelta(days=6))
 
@@ -584,7 +586,7 @@ class MicroBadgeEditingTests(ViewTestBase):
         self.assertContains(response, f'id="topic-{self.goal.id}"')
         response = self.client.post(
             reverse('studyplans:add_item', args=[self.plan.id, self.badges[2].id]),
-            {'content': f'exam_part:{self.parts[5].id}'}, **ajax)
+            {'content': f'exam_question:{self.questions[5].id}'}, **ajax)
         self.assertContains(response, f'id="topic-{self.goal.id}"')
         self.assertTrue(self.badges[2].items.exists())
 
@@ -620,19 +622,19 @@ class MicroBadgeEditingTests(ViewTestBase):
         self.assertEqual(response.status_code, 404)
 
     def test_adding_unused_practice_to_a_microbadge(self):
-        part = self.parts[5]
+        question = self.questions[5]
         self.client.force_login(self.teacher_user)
         self.client.post(
             reverse('studyplans:add_item', args=[self.plan.id, self.badges[2].id]),
-            {'content': f'exam_part:{part.id}'})
+            {'content': f'exam_question:{question.id}'})
         added = self.badges[2].items.get()
-        self.assertEqual((added.exam_question_part, added.origin), (part, 'teacher'))
+        self.assertEqual((added.exam_question, added.origin), (question, 'teacher'))
 
     def test_something_already_on_the_plan_cannot_be_added_again(self):
         self.client.force_login(self.teacher_user)
         self.client.post(
             reverse('studyplans:add_item', args=[self.plan.id, self.badges[2].id]),
-            {'content': f'exam_part:{self.item.exam_question_part_id}'})
+            {'content': f'exam_question:{self.item.exam_question_id}'})
         self.assertFalse(self.badges[2].items.exists())
 
     def test_awarding_a_microbadge_by_hand(self):
@@ -759,10 +761,10 @@ class AddingWorkBackTests(ViewTestBase):
         self.item.save()
         self.client.force_login(self.teacher_user)
 
-    def add(self, part):
+    def add(self, question):
         return self.client.post(
             reverse('studyplans:add_item', args=[self.plan.id, self.badge.id]),
-            {'content': f'exam_part:{part.id}'})
+            {'content': f'exam_question:{question.id}'})
 
     def test_a_removed_item_can_be_added_back(self):
         self.client.post(
@@ -770,39 +772,39 @@ class AddingWorkBackTests(ViewTestBase):
         self.item.refresh_from_db()
         self.assertEqual(self.item.status, 'skipped')
 
-        self.add(self.item.exam_question_part)
+        self.add(self.item.exam_question)
         self.item.refresh_from_db()
         self.assertEqual(self.item.status, 'pending')
         self.assertEqual(self.item.micro_badge, self.badge)
         self.assertEqual(self.item.origin, 'teacher')
 
     def test_adding_it_back_does_not_make_a_second_row(self):
-        part = self.item.exam_question_part
+        question = self.item.exam_question
         self.client.post(
             reverse('studyplans:remove_item', args=[self.plan.id, self.item.id]))
-        self.add(part)
+        self.add(question)
         self.assertEqual(
-            self.plan.items.filter(exam_question_part=part).count(), 1)
+            self.plan.items.filter(exam_question=question).count(), 1)
 
     def test_the_nightly_run_never_revives_what_a_teacher_removed(self):
         self.client.post(
             reverse('studyplans:remove_item', args=[self.plan.id, self.item.id]))
         offered = [(c.kind, c.obj.id)
                    for c in nightly.revisit_candidates(self.plan, self.goal)]
-        self.assertNotIn(('exam_part', self.item.exam_question_part_id), offered)
+        self.assertNotIn(('exam_question', self.item.exam_question_id), offered)
 
     def test_the_teachers_own_list_offers_it_back(self):
         self.client.post(
             reverse('studyplans:remove_item', args=[self.plan.id, self.item.id]))
         offered = [(c.kind, c.obj.id) for c in nightly.revisit_candidates(
             self.plan, self.goal, allow_removed=True)]
-        self.assertIn(('exam_part', self.item.exam_question_part_id), offered)
+        self.assertIn(('exam_question', self.item.exam_question_id), offered)
 
     def test_a_topic_with_nothing_left_says_so(self):
-        for part in self.parts:
+        for question in self.questions:
             StudyPlanItem.objects.create(
                 plan=self.plan, goal=self.goal, micro_badge=self.badge,
-                content_type='exam_part', exam_question_part=part,
+                content_type='exam_question', exam_question=question,
                 estimated_minutes=5, available_from=self.today,
                 due_date=self.today + timedelta(days=3))
         response = self.client.get(
@@ -861,8 +863,9 @@ class CopyPlanTests(ViewTestBase):
         self.assertEqual(goal.micro_badges.count(), 10)
         items = list(copy.items.order_by('micro_badge__number', 'order'))
         self.assertEqual(
-            [(i.micro_badge.number, i.exam_question_part) for i in items],
-            [(3, self.parts[5]), (3, self.parts[4])])
+            [(i.micro_badge.number, i.exam_question_part or i.exam_question)
+             for i in items],
+            [(3, self.parts[5]), (3, self.questions[2])])
         self.assertEqual({i.status for i in items}, {'pending'})
         self.assertEqual(items[0].origin, 'teacher')
 

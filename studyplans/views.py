@@ -936,22 +936,22 @@ def topic_candidates(request, topic_id):
     student_id = request.GET.get('student')
     student = _owned_student(request, int(student_id)) if student_id else None
 
-    parts = checkpoint_service.candidate_parts(topic, plan=None, student=student)
+    questions = checkpoint_service.candidate_questions(topic, plan=None, student=student)
     size = int(request.GET.get('size') or constants.DEFAULT_CHECKPOINT_SIZE)
     needed = size * (1 + constants.RETRY_ROUNDS)
 
     return JsonResponse({
         'topic': topic.name,
-        'unseen_exam_parts': len(parts),
+        'unseen_exam_questions': len(questions),
         'needed_for_retries': needed,
-        'sufficient': len(parts) >= needed,
-        'can_start': len(parts) >= size,
+        'sufficient': len(questions) >= needed,
+        'can_start': len(questions) >= size,
         'suggested': [
-            {'id': p.id,
-             'label': (f"{p.question.exam_paper.year} "
-                       f"{p.question.exam_paper.get_paper_type_display()} "
-                       f"Q{p.question.question_number}{p.label}"),
-             'marks': p.max_marks}
-            for p in checkpoint_service.spread_across_papers(parts, size)
+            {'id': q.id,
+             'label': (f"{q.exam_paper.year} "
+                       f"{q.exam_paper.get_paper_type_display()} "
+                       f"Q{q.question_number}"),
+             'marks': q.total_marks}
+            for q in checkpoint_service.spread_across_papers(questions, size)
         ],
     })

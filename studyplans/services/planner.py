@@ -7,9 +7,9 @@ testable without a database full of half-made plans.
 
 Which work is chosen is ranked on what the student has already done; the order
 it is bundled in is a teaching judgement, not an optimisation. Recall material
-comes early, exam parts come late, and anything the student has already
-cracked comes last if at all. Parts held back for the Badge Test never appear
-here: a test sat on a question they have already worked through with the
+comes early, exam questions come late, and anything the student has already
+cracked comes last if at all. Questions held back for the Badge Test never
+appear here: a test sat on a question they have already worked through with the
 marking scheme open proves nothing.
 """
 import logging
@@ -18,7 +18,8 @@ from datetime import date, timedelta
 
 from django.db.models import Count, Q
 
-from exam_papers.models import ExamQuestionAttempt, ExamQuestionPart
+from exam_papers.models import ExamQuestionAttempt
+from exam_papers.services.topic_questions import questions_for_topic
 from flashcards.models import Flashcard, FlashcardAttempt, FlashcardSet
 from interactive_lessons.models import Section
 from quickkicks.models import QuickKick, QuickKickView
@@ -151,14 +152,14 @@ def _best_part_ratios(student, parts):
 #: Base scores. Higher is offered sooner. The ordering is the teaching
 #: judgement: meet it, practise it, then prove it on exam questions.
 BASE_SCORES = {
-    'exam_part_untried': 100,
-    'exam_part_weak': 90,
+    'exam_question_untried': 100,
+    'exam_question_weak': 90,
     'section_fresh': 80,
     'section_partial': 70,
     'flashcard': 60,
     'quickkick_question': 50,
     'quickkick': 40,
-    'exam_part_cracked': 20,
+    'exam_question_cracked': 20,
     'quickkick_seen': 15,
 }
 
@@ -184,24 +185,29 @@ STAGES = {'quickkick': 0, 'flashcard': 1, 'section': 2,
 
 
 def candidates_for_goal(student, topic, excluded_part_ids):
-    """Everything this student could usefully do on this topic, best first."""
+    """Everything this student could usefully do on this topic, best first.
+
+    Exam practice is whole questions listed under the topic; one with any part
+    in ``excluded_part_ids`` (held for a Badge Test, or already issued) is out.
+    """
     out = []
 
-    parts = [p for p in ExamQuestionPart.objects
-             .filter(topic=topic, question__exam_paper__is_published=True)
-             .select_related('question__exam_paper')
-             if p.id not in excluded_part_ids]
-    ratios = _best_part_ratios(student, parts)
-    for part in parts:
-        ratio = ratios.get(part.id)
-        if ratio is None:
-            flavour = 'exam_part_untried'
-        elif ratio < 0.6:
-            flavour = 'exam_part_weak'
+    questions = [q for q in questions_for_topic(topic)
+                 if q.parts.all()
+                 and not any(p.id in excluded_part_ids for p in q.parts.all())]
+    ratios = _best_part_ratios(
+        student, [p for q in questions for p in q.parts.all()])
+    for question in questions:
+        parts = question.parts.all()
+        tried = [ratios[p.id] for p in parts if p.id in ratios]
+        if not tried:
+            flavour = 'exam_question_untried'
+        elif sum(tried) / len(parts) < 0.6:
+            flavour = 'exam_question_weak'
         else:
-            flavour = 'exam_part_cracked'
-        out.append(Candidate('exam_part', part, BASE_SCORES[flavour],
-                             estimates.exam_part_minutes(part), flavour))
+            flavour = 'exam_question_cracked'
+        out.append(Candidate('exam_question', question, BASE_SCORES[flavour],
+                             estimates.exam_question_minutes(question), flavour))
 
     section_progress, sections = _section_progress(student, [topic])
     for section in sections:
@@ -249,11 +255,11 @@ def candidates_for_goal(student, topic, excluded_part_ids):
 # ---------------------------------------------------------------------------
 
 def _reserve_checkpoints(student, spec, warnings):
-    """Pick this goal's checkpoint and hold back parts for its retries."""
+    """Pick this goal's checkpoint questions and hold back more for its retries."""
     size = spec.get('checkpoint_size') or constants.DEFAULT_CHECKPOINT_SIZE
     topic = spec['topic']
 
-    pool = checkpoint_service.candidate_parts(topic, plan=None, student=student)
+    pool = checkpoint_service.candidate_questions(topic, plan=None, student=student)
     needed = size * (1 + constants.RETRY_ROUNDS)
 
     goal = ProposedGoal(
@@ -266,30 +272,31 @@ def _reserve_checkpoints(student, spec, warnings):
 
     if not pool:
         warnings.append(
-            f"{topic.name}: no exam parts are tagged to this topic, so it "
-            f"cannot have a checkpoint. Tag some parts first, or drop the topic.")
+            f"{topic.name}: no exam questions have this as their main topic, so "
+            f"it cannot have a checkpoint. Set some questions' topics first, or "
+            f"drop the topic.")
         return goal
 
     taken = checkpoint_service.spread_across_papers(pool, size)
-    goal.checkpoint_parts = taken
+    goal.checkpoint_parts = checkpoint_service.parts_of(taken)
 
     if len(taken) < size:
         warnings.append(
-            f"{topic.name}: only {len(taken)} exam part(s) available for a "
+            f"{topic.name}: only {len(taken)} exam question(s) available for a "
             f"checkpoint of {size}.")
 
-    remaining = [p for p in pool if p.id not in {t.id for t in taken}]
+    remaining = [q for q in pool if q.id not in {t.id for t in taken}]
     for _ in range(constants.RETRY_ROUNDS):
-        round_parts = checkpoint_service.spread_across_papers(remaining, size)
-        if len(round_parts) < size:
+        round_questions = checkpoint_service.spread_across_papers(remaining, size)
+        if len(round_questions) < size:
             break
-        goal.reserve_rounds.append(round_parts)
-        chosen = {p.id for p in round_parts}
-        remaining = [p for p in remaining if p.id not in chosen]
+        goal.reserve_rounds.append(checkpoint_service.parts_of(round_questions))
+        chosen = {q.id for q in round_questions}
+        remaining = [q for q in remaining if q.id not in chosen]
 
     if len(pool) < needed:
         warnings.append(
-            f"{topic.name}: {len(pool)} unseen exam parts available but "
+            f"{topic.name}: {len(pool)} unseen exam questions available but "
             f"{needed} are needed to cover a checkpoint plus {constants.RETRY_ROUNDS} "
             f"retries. A student who fails twice will run out.")
 

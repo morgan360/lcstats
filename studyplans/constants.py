@@ -7,11 +7,12 @@ real plans have run for a term.
 
 # --- Badge Tests (StudyPlanCheckpoint) -------------------------------------------------------
 
-#: Exam parts in a Badge Test, when the teacher does not say otherwise.
-DEFAULT_CHECKPOINT_SIZE = 3
+#: Whole exam questions in a Badge Test, when the teacher does not say
+#: otherwise. Two, not three: a whole question runs 25-50 marks.
+DEFAULT_CHECKPOINT_SIZE = 2
 
-#: Extra rounds of Badge Test parts held back at build time, so a student who
-#: fails twice still meets parts they have never seen.
+#: Extra rounds of Badge Test questions held back at build time, so a student
+#: who fails twice still meets questions they have never seen.
 RETRY_ROUNDS = 2
 
 #: Marks lost for help taken, matching the convention the graders already use

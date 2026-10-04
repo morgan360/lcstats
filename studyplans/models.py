@@ -2,7 +2,7 @@
 
 The loop is deliberately simple: a teacher names the topics a student should get
 solid on, the plan hands out work week by week, and each topic ends in a
-**checkpoint** -- two or three real exam parts the student sits. Passing the
+**checkpoint** -- whole exam questions (stored as their parts) the student sits. Passing the
 checkpoint *is* mastery. Nothing here infers mastery from a blend of attempt
 history, because a number a teacher cannot check by hand is a number they will
 not trust.
@@ -204,7 +204,7 @@ class StudyPlanGoal(models.Model):
     checkpoint_size = models.PositiveSmallIntegerField(
         default=constants.DEFAULT_CHECKPOINT_SIZE,
         validators=[MinValueValidator(1), MaxValueValidator(10)],
-        help_text="How many exam parts make up each checkpoint")
+        help_text="How many whole exam questions make up each checkpoint")
     priority = models.PositiveSmallIntegerField(default=1, choices=PRIORITY_CHOICES)
     order = models.PositiveSmallIntegerField(default=0)
 

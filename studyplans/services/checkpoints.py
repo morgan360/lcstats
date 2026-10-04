@@ -1,7 +1,8 @@
 """Choosing, unlocking and marking the checkpoints that decide mastery.
 
-A checkpoint is two or three real exam parts. The student sits them, the marks
-are added up, and passing the total *is* mastery for that topic. That is the
+A checkpoint is one or more whole exam questions, stored as their parts. The
+student sits them, the marks are added up, and passing the total *is* mastery
+for that topic. That is the
 whole of it -- no weighted blend of attempt history, nothing a teacher cannot
 recompute on paper from the marks shown.
 
@@ -29,7 +30,9 @@ from django.conf import settings
 from django.db import transaction
 from django.utils import timezone
 
-from exam_papers.models import ExamQuestionAttempt, ExamQuestionPart
+from django.db.models import Prefetch
+
+from exam_papers.models import ExamQuestion, ExamQuestionAttempt, ExamQuestionPart
 from students.models import WorkSubmission
 
 from .. import constants
@@ -58,16 +61,22 @@ def reserved_part_ids(plan):
 
 
 def practice_part_ids(plan, count_removed=True):
-    """Parts this plan has already issued as ordinary practice.
+    """Parts this plan has already issued as ordinary practice, whether as a
+    part on its own or as one of a whole question's parts.
 
-    ``count_removed=False`` leaves out parts a teacher took off the plan, so
-    they can be offered back. Only the teacher's own Add list asks for that:
-    everywhere else a removed part still counts as met.
+    ``count_removed=False`` leaves out work a teacher took off the plan, so
+    it can be offered back. Only the teacher's own Add list asks for that:
+    everywhere else removed work still counts as met.
     """
-    items = StudyPlanItem.objects.filter(plan=plan, exam_question_part__isnull=False)
+    items = StudyPlanItem.objects.filter(plan=plan)
     if not count_removed:
         items = items.exclude(status='skipped')
-    return set(items.values_list('exam_question_part_id', flat=True))
+    part_ids = set(items.filter(exam_question_part__isnull=False)
+                   .values_list('exam_question_part_id', flat=True))
+    question_ids = items.filter(exam_question__isnull=False).values('exam_question_id')
+    part_ids |= set(ExamQuestionPart.objects.filter(question_id__in=question_ids)
+                    .values_list('id', flat=True))
+    return part_ids
 
 
 def attempted_part_ids(student, part_ids):
@@ -81,76 +90,89 @@ def attempted_part_ids(student, part_ids):
     )
 
 
-def candidate_parts(topic, plan=None, student=None):
-    """Parts on this topic that could serve as a checkpoint, best first.
+def candidate_questions(topic, plan=None, student=None):
+    """Whole questions on this topic that could make a checkpoint, best first.
 
-    Ranked so that the parts a student has never met, from the most recent
+    Only questions whose *main* topic this is: a Badge Test is named for its
+    topic, so it should not be won on a question mostly about another. A
+    question with any part already reserved or practised on this plan is out.
+    Ranked so the questions a student has never met, from the most recent
     papers, with their marks filled in, come first.
     """
-    parts = list(
-        ExamQuestionPart.objects
-        .filter(topic=topic, question__exam_paper__is_published=True)
-        .select_related('question__exam_paper', 'topic')
-    )
-    if not parts:
+    questions = [
+        q for q in ExamQuestion.objects
+        .filter(topic=topic, exam_paper__is_published=True)
+        .select_related('exam_paper', 'topic')
+        .prefetch_related(Prefetch(
+            'parts', queryset=ExamQuestionPart.objects.order_by('order', 'id')))
+        if q.parts.all()
+    ]
+    if not questions:
         return []
 
-    blocked = set()
     if plan is not None:
         blocked = reserved_part_ids(plan) | practice_part_ids(plan)
-    parts = [p for p in parts if p.id not in blocked]
+        questions = [q for q in questions
+                     if not any(p.id in blocked for p in q.parts.all())]
 
-    seen = attempted_part_ids(student, [p.id for p in parts]) if student else set()
+    seen = set()
+    if student:
+        seen = attempted_part_ids(
+            student, [p.id for q in questions for p in q.parts.all()])
 
-    def rank(part):
-        paper = part.question.exam_paper
+    def rank(question):
+        parts = question.parts.all()
         return (
-            part.id in seen,                 # unseen first
-            part.max_marks in (None, 0),     # marks filled in first
-            -(paper.year or 0),              # most recent paper first
-            part.question.question_number or 0,
-            part.order or 0,
-            part.id,
+            any(p.id in seen for p in parts),            # unseen first
+            any(p.max_marks in (None, 0) for p in parts),  # marks filled in first
+            -(question.exam_paper.year or 0),            # most recent paper first
+            question.question_number or 0,
+            question.id,
         )
 
-    return sorted(parts, key=rank)
+    return sorted(questions, key=rank)
 
 
-def spread_across_papers(parts, count):
-    """Take `count` parts, avoiding two from one paper while that is possible."""
+def spread_across_papers(questions, count):
+    """Take `count` questions, avoiding two from one paper while that is possible."""
     chosen, used_papers, leftovers = [], set(), []
-    for part in parts:
+    for question in questions:
         if len(chosen) == count:
             break
-        paper_id = part.question.exam_paper_id
-        if paper_id in used_papers:
-            leftovers.append(part)
+        if question.exam_paper_id in used_papers:
+            leftovers.append(question)
             continue
-        chosen.append(part)
-        used_papers.add(paper_id)
-    for part in leftovers:
+        chosen.append(question)
+        used_papers.add(question.exam_paper_id)
+    for question in leftovers:
         if len(chosen) == count:
             break
-        chosen.append(part)
+        chosen.append(question)
     return chosen
 
 
+def parts_of(questions):
+    """Every part of these questions, question by question, in order."""
+    return [part for question in questions for part in question.parts.all()]
+
+
 def suggest_parts(goal, count=None):
-    """The shortlist a teacher picks a checkpoint from."""
+    """The parts of the whole questions a checkpoint would be made from."""
     count = count or goal.checkpoint_size
-    pool = candidate_parts(goal.topic, plan=goal.plan, student=goal.plan.student)
-    return spread_across_papers(pool, count)
+    pool = candidate_questions(goal.topic, plan=goal.plan, student=goal.plan.student)
+    return parts_of(spread_across_papers(pool, count))
 
 
 def pool_report(goal):
-    """How much unseen material this topic has, for the builder's warnings.
+    """How many unseen questions this topic has, for the builder's warnings.
 
-    A topic needs enough parts for the first checkpoint *and* its retries, or a
-    student who fails twice meets a question they have already worked through.
+    A topic needs enough questions for the first checkpoint *and* its retries,
+    or a student who fails twice meets a question they have already worked
+    through.
     """
     needed = goal.checkpoint_size * (1 + constants.RETRY_ROUNDS)
-    available = len(candidate_parts(goal.topic, plan=goal.plan,
-                                    student=goal.plan.student))
+    available = len(candidate_questions(goal.topic, plan=goal.plan,
+                                        student=goal.plan.student))
     return {
         'topic': goal.topic,
         'available': available,
@@ -160,11 +182,6 @@ def pool_report(goal):
     }
 
 
-# ---------------------------------------------------------------------------
-# Building one
-# ---------------------------------------------------------------------------
-
-@transaction.atomic
 def create_checkpoint(goal, parts=None, round_number=None, status='locked'):
     """Set a checkpoint for this goal from the given parts.
 
@@ -445,10 +462,10 @@ def next_round(goal, open_now=True):
 
     parts = suggest_parts(goal)
     if len(parts) < 1:
-        goal.flag("No unseen exam parts left for another Badge Test")
+        goal.flag("No unseen exam questions left for another Badge Test")
         StudyPlanEvent.log(
             goal.plan, 'attention',
-            f"{goal.topic.name}: ran out of unseen exam parts for a new Badge Test")
+            f"{goal.topic.name}: ran out of unseen exam questions for a new Badge Test")
         return None
 
     return create_checkpoint(goal, parts=parts,

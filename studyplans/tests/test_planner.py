@@ -1,8 +1,8 @@
 """Building a plan: what gets chosen, how it is cut into ten MicroBadges, and
 what is held back.
 
-The rule worth guarding is the reservation: a part kept for a Badge Test must
-never also be handed out as practice, or the test covers work the student has
+The rule worth guarding is the reservation: a question kept for a Badge Test
+must never also be handed out as practice, or the test covers work the student has
 already done with the marking scheme available.
 """
 from datetime import date, timedelta
@@ -38,9 +38,10 @@ class PlannerTestBase(TestCase):
         cls.teacher_user, cls.teacher = make_teacher('ms_teacher')
         cls.student = User.objects.create_user('aoife', password='pw')
 
-        # Plenty of exam parts: enough for a checkpoint, its retries, and practice.
+        # Plenty of exam questions: enough for a two-question checkpoint, its
+        # two retries, and practice.
         cls.parts = []
-        for year in (2018, 2019, 2020, 2021):
+        for year in range(2012, 2022):
             paper = ExamPaper.objects.create(
                 subject=cls.maths, year=year, paper_type='p1',
                 total_marks=300, is_published=True)
@@ -119,15 +120,25 @@ class ProposalTests(PlannerTestBase):
                  StudyPlanCheckpointPart.objects.count())
         self.assertEqual(before, after)
 
-    def test_it_reserves_a_checkpoint_and_parts_for_the_retries(self):
+    def test_it_reserves_whole_questions_for_the_checkpoint_and_retries(self):
         proposal = planner.build_plan(
             self.student, [self.spec(checkpoint_size=2)],
             date(2026, 9, 21), date(2026, 10, 18), 120)
         goal = proposal.goals[0]
-        self.assertEqual(len(goal.checkpoint_parts), 2)
+        # Two whole questions of three parts each.
+        self.assertEqual(len(goal.checkpoint_parts), 6)
+        self.assertEqual(len({p.question_id for p in goal.checkpoint_parts}), 2)
         self.assertEqual(len(goal.reserve_rounds), constants.RETRY_ROUNDS)
         for round_parts in goal.reserve_rounds:
-            self.assertEqual(len(round_parts), 2)
+            self.assertEqual(len({p.question_id for p in round_parts}), 2)
+
+    def test_practice_is_whole_questions(self):
+        proposal = planner.build_plan(
+            self.student, [self.spec()],
+            date(2026, 9, 21), date(2026, 12, 20), 120)
+        kinds = {item.kind for badge in proposal.goals[0].badges for item in badge}
+        self.assertIn('exam_question', kinds)
+        self.assertNotIn('exam_part', kinds)
 
     def test_reserved_parts_are_never_handed_out_as_practice(self):
         """The capstone must test work the student has not already done."""
@@ -137,8 +148,9 @@ class ProposalTests(PlannerTestBase):
         reserved = proposal.goals[0].reserved_part_ids
         self.assertTrue(reserved)
 
-        issued = {item.obj.id for badge in proposal.goals[0].badges
-                  for item in badge if item.kind == 'exam_part'}
+        issued = {part.id for badge in proposal.goals[0].badges
+                  for item in badge if item.kind == 'exam_question'
+                  for part in item.obj.parts.all()}
         self.assertFalse(reserved & issued,
                          "a reserved checkpoint part was issued as practice")
 
@@ -154,7 +166,7 @@ class ProposalTests(PlannerTestBase):
     def test_a_thin_topic_warns_that_the_retries_will_run_out(self):
         thin = Topic.objects.create(name='Thin', subject=self.maths, paper='p1')
         paper = ExamPaper.objects.create(
-            subject=self.maths, year=2017, paper_type='p1',
+            subject=self.maths, year=2011, paper_type='p1',
             total_marks=300, is_published=True)
         question = ExamQuestion.objects.create(
             exam_paper=paper, question_number=1, topic=thin, total_marks=20)
@@ -187,7 +199,7 @@ class ProposalTests(PlannerTestBase):
             date(2026, 9, 21), date(2026, 12, 20), 120)
         kinds = [item.kind for badge in proposal.goals[0].badges for item in badge]
         last_section = max(i for i, k in enumerate(kinds) if k == 'section')
-        first_exam = min(i for i, k in enumerate(kinds) if k == 'exam_part')
+        first_exam = min(i for i, k in enumerate(kinds) if k == 'exam_question')
         self.assertLess(last_section, first_exam)
 
     def test_a_short_budget_still_fills_all_ten(self):

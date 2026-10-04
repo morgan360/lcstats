@@ -8,7 +8,7 @@
   <h2 class="mb-1 text-2xl font-semibold text-mist">Build a Study Plan</h2>
   <p class="mb-6 text-sm text-mist/70">
     Pick the topics and the deadline. Each topic becomes ten MicroBadges of
-    practice, then a Badge Test of real exam parts &mdash; passing it is what
+    practice, then a Badge Test of real exam questions &mdash; passing it is what
     counts as mastered.
   </p>
   <div class="mb-8 h-1 w-full rounded-full bg-gradient-to-r from-violet-royal to-lime-glow"></div>
@@ -62,7 +62,7 @@
       <h3 class="mb-1 text-base font-semibold text-midnight">Topics</h3>
       <p class="mb-4 text-sm text-twilight/70">
         Tick a topic to add it. The number beside it is how many unseen exam
-        parts are available &mdash; a topic needs enough for a Badge Test and its
+        questions are available &mdash; a topic needs enough for a Badge Test and its
         retries.
       </p>
       <div class="space-y-2">
@@ -79,9 +79,9 @@
             <input type="number" name="target_{{ topic.id }}" value="{{ default_target }}"
                    min="1" max="100" class="ml-1 w-16 rounded border-twilight/20 text-xs">%
           </label>
-          <label class="text-xs text-twilight/70">parts
+          <label class="text-xs text-twilight/70">questions
             <input type="number" name="size_{{ topic.id }}" value="{{ default_checkpoint_size }}"
-                   min="1" max="10" class="ml-1 w-14 rounded border-twilight/20 text-xs">
+                   min="1" max="5" class="ml-1 w-14 rounded border-twilight/20 text-xs">
           </label>
           <label class="text-xs text-twilight/70">priority
             <select name="priority_{{ topic.id }}" class="ml-1 rounded border-twilight/20 text-xs">
@@ -120,7 +120,7 @@ document.addEventListener('DOMContentLoaded', function () {
         .then(function (r) { return r.json(); })
         .then(function (data) {
           label.dataset.loaded = '1';
-          label.textContent = data.unseen_exam_parts + ' exam parts';
+          label.textContent = data.unseen_exam_questions + ' exam questions';
           if (!data.can_start) {
             label.textContent += ' — too few for a Badge Test';
             label.className = 'text-xs font-semibold text-rose-pop';
