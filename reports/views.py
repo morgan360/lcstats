@@ -9,7 +9,7 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
 from django.core.exceptions import ObjectDoesNotExist, PermissionDenied
-from django.db.models import Avg, Count
+from django.db.models import Avg, Count, Prefetch
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
@@ -209,6 +209,8 @@ def dashboard(request):
     classes = (
         class_qs.filter(is_active=True)
         .annotate(num_students=Count('students', distinct=True))
+        .prefetch_related(Prefetch(
+            'students', queryset=User.objects.order_by('last_name', 'first_name', 'username')))
         .order_by('name')
     )
     today = timezone.localdate()
