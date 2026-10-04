@@ -376,3 +376,18 @@ class TagQuestionTopicsTests(PartTopicsTestBase):
         self.assertEqual(self.question.secondary_topic, self.calculus)
         self.assertFalse(self.question.list_under_secondary)
         self.assertEqual(self.question.need_to_know_topic, self.finance)
+
+
+class ExamQuestionsIndexTests(PartTopicsTestBase):
+    """The Exam Questions page lists topics under Paper 1 and Paper 2."""
+
+    def test_topics_are_grouped_by_paper(self):
+        probability = Topic.objects.create(name='Probability', subject=self.maths, paper='p2')
+        self.client.force_login(self.student)
+        response = self.client.get(reverse('exam_papers:exam_questions_index'))
+        groups = {g['label']: [r['topic'] for r in g['rows']]
+                  for g in response.context['groups']}
+        self.assertIn(self.functions, groups['Paper 1'])
+        self.assertIn(probability, groups['Paper 2'])
+        self.assertContains(response, '>Paper 1</h2>')
+        self.assertContains(response, '>Paper 2</h2>')

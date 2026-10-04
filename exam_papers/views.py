@@ -828,8 +828,18 @@ def exam_questions_index(request):
     if subject:
         topics = topics.filter(subject=subject)
     published = ExamQuestion.objects.filter(exam_paper__is_published=True)
-    rows = []
+    # Grouped by paper the way the Exercises page is: unassigned topics stay
+    # visible at the end, and one group alone shows no heading.
+    grouped = {'p1': [], 'p2': [], '': []}
     for topic in topics.order_by('order', 'name'):
         count = published.filter(topic_filter(topic)).distinct().count()
-        rows.append({'topic': topic, 'count': count})
-    return render(request, 'exam_papers/exam_questions_index.html', {'rows': rows})
+        grouped[topic.paper or ''].append({'topic': topic, 'count': count})
+    groups = [
+        {'label': label, 'rows': grouped[key]}
+        for key, label in (('p1', 'Paper 1'), ('p2', 'Paper 2'), ('', 'Other topics'))
+        if grouped[key]
+    ]
+    return render(request, 'exam_papers/exam_questions_index.html', {
+        'groups': groups,
+        'show_group_headings': len(groups) > 1,
+    })

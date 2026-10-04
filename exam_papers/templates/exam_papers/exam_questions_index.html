@@ -9,25 +9,30 @@
         Past Leaving Cert questions, by topic. A question is listed under its main topic, and under a second topic where that plays a big part too.
     </p>
 
-    <ul class="mt-6 space-y-2">
-        {% for row in rows %}
+    {% for group in groups %}
+    {% if show_group_headings %}
+    <h2 class="mb-3 mt-8 text-lg font-semibold text-mist">{{ group.label }}</h2>
+    {% endif %}
+    <ul class="{% if not show_group_headings %}mt-6 {% endif %}space-y-2">
+        {% for row in group.rows %}
         <li>
             {% if row.count %}
             <a href="{% url 'topic_exam_questions' row.topic.slug %}"
-               class="flex items-center justify-between rounded-xl border border-mist/10 bg-twilight px-5 py-3 text-mist transition hover:border-mist/30">
-                <span class="font-semibold">{{ row.topic.name }}</span>
-                <span class="text-sm text-mist/70">{{ row.count }} question{{ row.count|pluralize }} &rarr;</span>
+               class="flex items-center justify-between gap-3 rounded-xl border border-mist/10 bg-twilight px-5 py-3 text-mist transition hover:border-mist/30">
+                <span class="min-w-0 font-semibold">{{ row.topic.name }}</span>
+                <span class="shrink-0 text-sm text-mist/70">{{ row.count }} question{{ row.count|pluralize }} &rarr;</span>
             </a>
             {% else %}
-            <div class="flex items-center justify-between rounded-xl border border-mist/5 px-5 py-3 text-mist/40">
-                <span class="font-semibold">{{ row.topic.name }}</span>
-                <span class="text-sm">None yet</span>
+            <div class="flex items-center justify-between gap-3 rounded-xl border border-mist/5 px-5 py-3 text-mist/40">
+                <span class="min-w-0 font-semibold">{{ row.topic.name }}</span>
+                <span class="shrink-0 text-sm">None yet</span>
             </div>
             {% endif %}
         </li>
-        {% empty %}
-        <li class="text-center text-mist/60">No topics yet.</li>
         {% endfor %}
     </ul>
+    {% empty %}
+    <p class="mt-6 text-center text-mist/60">No topics yet.</p>
+    {% endfor %}
 </div>
 {% endblock %}
