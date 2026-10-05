@@ -267,6 +267,30 @@ def info_bot(request, topic_slug):
 # ----------------------------------------------------------------------
 # Topic selection / completion
 # ----------------------------------------------------------------------
+# Section names that are difficulty levels, not sub-topics.
+_LEVEL_SECTIONS = {"warm-up", "workout", "stretch"}
+
+
+def topic_subtopics(topic):
+    """Section names for the Exercises hover, as a reader would list them.
+
+    Some topics carry each section twice, once prefixed with the topic name
+    ("Descriptive Statistics - Mean"), and the geometry topics are split into
+    difficulty levels rather than sub-topics. Both are dropped here.
+    """
+    prefix = f"{topic.name} - ".lower()
+    seen, names = set(), []
+    for name in topic.sections.order_by("order", "name").values_list("name", flat=True):
+        name = name.strip()
+        if name.lower().startswith(prefix):
+            name = name[len(prefix):].strip()
+        key = name.lower()
+        if key and key not in seen and key not in _LEVEL_SECTIONS:
+            seen.add(key)
+            names.append(name)
+    return names
+
+
 def select_topic(request):
     from notes.models import Note
     from revision.models import RevisionModule
@@ -318,7 +342,8 @@ def select_topic(request):
             'exam_question_count': exam_question_count,
             'has_exam_questions': exam_question_count > 0,
             'has_revision': revision_module is not None,
-            'revision_module': revision_module
+            'revision_module': revision_module,
+            'subtopics': topic_subtopics(topic),
         })
     # Grouped by exam paper, with anything unassigned kept visible at the end
     # rather than dropped -- Physics has no paper split, and a newly added

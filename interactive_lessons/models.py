@@ -20,6 +20,12 @@ class Topic(models.Model):
     ]
 
     name = models.CharField(max_length=100)
+    short_name = models.CharField(
+        max_length=40,
+        blank=True,
+        help_text="Shown in the Exercises table instead of the full name, "
+                  "which then appears on hover. Leave blank to use the name."
+    )
     slug = models.SlugField(unique=True, blank=True)
     paper = models.CharField(
         max_length=2,
@@ -43,6 +49,10 @@ class Topic(models.Model):
 
     def __str__(self):
         return self.name
+
+    @property
+    def display_name(self):
+        return self.short_name or self.name
 
     class Meta:
         # order first, then name. Every existing row is 0, so this is

@@ -14,8 +14,8 @@ renders exactly as it did before, with no stray heading over one table.
 <h2 class="mb-3 mt-8 text-lg font-semibold text-mist first:mt-0">{{ group.label }}</h2>
 {% endif %}
 
-<div class="mb-8 w-full overflow-hidden rounded-xl border border-indigo-deep/15 bg-mist/90 shadow-[0_10px_30px_rgba(0,0,0,0.08)] text-center">
-    <div class="hidden gap-4 bg-[linear-gradient(135deg,#667eea_0%,#764ba2_100%)] px-5 py-4 text-sm font-semibold text-white md:grid md:grid-cols-6">
+<div class="mb-8 w-full rounded-xl border border-indigo-deep/15 bg-mist/90 shadow-[0_10px_30px_rgba(0,0,0,0.08)] text-center">
+    <div class="hidden gap-4 rounded-t-xl bg-[linear-gradient(135deg,#667eea_0%,#764ba2_100%)] px-5 py-4 text-sm font-semibold text-white md:grid md:grid-cols-6">
         <div>Topic</div>
         <div class="text-center">Interactive Quiz</div>
         <div class="text-center">Exam Questions</div>
@@ -25,10 +25,25 @@ renders exactly as it did before, with no stray heading over one table.
     </div>
 
     {% for item in group.items %}
-    <div class="grid grid-cols-1 items-center gap-3 border-b border-indigo-deep/15 px-5 py-5 transition hover:bg-mist/80 last:border-b-0 md:grid md:grid-cols-6 md:gap-4">
+    <div class="grid grid-cols-1 items-center gap-3 border-b border-indigo-deep/15 px-5 py-5 transition hover:bg-mist/80 last:rounded-b-xl last:border-b-0 md:grid md:grid-cols-6 md:gap-4">
         <div class="text-center font-semibold text-midnight md:mb-0 md:border-0 mb-2 lg:ml-6 lg:text-left border-b border-indigo-deep/15 pb-2">
             <div class="md:hidden mb-1 text-xs font-semibold uppercase tracking-wide text-indigo-deep/70">Topic</div>
-            <div class="text-lg">{{ item.topic.name }}</div>
+            {% comment %}
+            The short name keeps the title on one line so the buttons get the
+            width. The full name and the sub-topics show on hover, or on focus
+            for keyboard and touch.
+            {% endcomment %}
+            <div class="group relative inline-block cursor-help text-lg" tabindex="0">
+                {{ item.topic.display_name }}
+                <div role="tooltip" class="invisible absolute left-1/2 top-full z-20 mt-2 w-72 -translate-x-1/2 rounded-lg border border-indigo-deep/15 bg-white px-4 py-3 text-left text-sm font-normal text-indigo-deep opacity-0 shadow-[0_12px_28px_rgba(0,0,0,0.18)] transition group-hover:visible group-hover:opacity-100 group-focus:visible group-focus:opacity-100 lg:left-0 lg:translate-x-0">
+                    <p class="font-semibold text-midnight">{{ item.topic.name }}</p>
+                    {% if item.subtopics %}
+                    <ul class="mt-2 list-disc space-y-0.5 pl-5">
+                        {% for name in item.subtopics %}<li>{{ name }}</li>{% endfor %}
+                    </ul>
+                    {% endif %}
+                </div>
+            </div>
         </div>
 
         <div class="flex justify-center">

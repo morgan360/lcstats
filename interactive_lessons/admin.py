@@ -17,16 +17,16 @@ from .models import Topic, Section, Question, QuestionPart, StudentInquiry
 class TopicAdmin(admin.ModelAdmin):
     # paper and order are list_editable so the whole running order can be set
     # from the changelist in one save, rather than opening 21 topics one by one.
-    list_display = ["name", "subject", "paper", "order", "slug"]
-    list_editable = ["paper", "order"]
+    list_display = ["name", "short_name", "subject", "paper", "order", "slug"]
+    list_editable = ["short_name", "paper", "order"]
     list_filter = ["subject", "paper"]
-    search_fields = ["name"]
+    search_fields = ["name", "short_name"]
     readonly_fields = ["slug"]
     ordering = ["subject", "paper", "order", "name"]
 
     fieldsets = (
         ("Basic Information", {
-            "fields": ("subject", "name", "slug")
+            "fields": ("subject", "name", "short_name", "slug")
         }),
         ("Placement", {
             "fields": ("paper", "order"),
