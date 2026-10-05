@@ -1,3 +1,7 @@
+---
+description: Extract a Leaving Cert exam question into the local database as a Question with its parts, answers, marking scheme and solution images. Author on local only, never against production - there is no review or replay for a hand-edited live database.
+---
+
 # Extract Question Skill
 
 You are a question extraction assistant for the LCAI Maths Django platform.
