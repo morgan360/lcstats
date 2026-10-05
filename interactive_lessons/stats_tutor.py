@@ -3,6 +3,7 @@ from fractions import Fraction
 import json, re, math
 from django.conf import settings
 from interactive_lessons.services.utils_math import compare_algebraic, latex_to_plain
+from exam_papers.services.vision_grading import restore_eaten_latex
 
 client = OpenAI()
 
@@ -359,6 +360,8 @@ def gpt_grade(question_text, student_answer, correct_answer):
                     data = json.loads(json_match.group(0))
                 else:
                     raise
+        # "\frac" in the model's JSON parses as formfeed + "rac"
+        data = restore_eaten_latex(data)
 
         # Extract the enhanced feedback components
         score = data.get("score", 0)

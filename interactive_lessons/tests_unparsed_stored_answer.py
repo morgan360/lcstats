@@ -36,3 +36,23 @@ class UnparsedStoredAnswerTests(SimpleTestCase):
     def test_parsed_wrong_numeric_answer_still_scores_50(self, gpt_grade):
         result = mark_student_answer("Find x.", "7", "5")
         self.assertEqual(result["score"], 50)
+
+
+class GptGradeEatenLatexTests(SimpleTestCase):
+    """The model writes "\\frac" in its JSON, which json.loads reads as formfeed
+    + "rac": Francesco's re-marked feedback showed "$rac{}{}$"."""
+
+    def _reply(self, content):
+        message = type("M", (), {"content": content})()
+        choice = type("C", (), {"message": message})()
+        return type("R", (), {"choices": [choice]})()
+
+    def test_frac_and_theta_survive_parsing(self):
+        from interactive_lessons.stats_tutor import gpt_grade
+        raw = r'{"feedback": "Use $\frac{x}{2}$ and $\theta$.", "hint": "$\beta$", "score": 70}'
+        with patch("interactive_lessons.stats_tutor.client.chat.completions.create",
+                   return_value=self._reply(raw)):
+            score, feedback, hint = gpt_grade("q", "a", "b")
+        self.assertEqual(feedback, r"Use $\frac{x}{2}$ and $\theta$.")
+        self.assertEqual(hint, r"$\beta$")
+        self.assertEqual(score, 70)
