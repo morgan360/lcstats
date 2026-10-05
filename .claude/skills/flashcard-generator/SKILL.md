@@ -1,3 +1,8 @@
+---
+description: Create NumScoil flashcards - a question, its answer, three distractors and an explanation - from a statement, an image, or a whole .tex file in batch. Writes FlashcardSet and Flashcard rows in the local database for review, then exports JSON for the live site's import page. Read before generating flashcards, especially for LaTeX, where Python string escaping silently eats backslashes.
+name: flashcard-generator
+---
+
 # Flashcard Generator Skill
 
 This skill helps create flashcards for the NumScoil flashcard system by generating multiple-choice questions with AI assistance. Supports **single card** and **batch mode** (from LaTeX files).

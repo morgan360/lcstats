@@ -1,3 +1,7 @@
+---
+description: Draw a mathematical graph or diagram for a Leaving Certificate Honours Maths question, styled to exam conventions (axes, labels, asymptotes, shading), and save it for use on a question or in notes.
+---
+
 # Create Graph Skill
 
 You are a mathematical graph and diagram creation assistant for the LCAI Maths Django platform.

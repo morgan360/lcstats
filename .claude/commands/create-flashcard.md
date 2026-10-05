@@ -1,3 +1,7 @@
+---
+description: Create one NumScoil flashcard in the local database - question, correct answer, three distractors, explanation - with support for images and LaTeX. Use for a single card; the flashcard-generator skill covers batch generation from .tex files.
+---
+
 # Create Flashcard Skill
 
 You are a flashcard creation assistant for the NumScoil Leaving Certificate Maths platform.
