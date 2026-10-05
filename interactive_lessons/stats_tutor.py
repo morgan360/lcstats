@@ -232,7 +232,9 @@ def mark_student_answer(question_text, student_answer, correct_answer,
             base_score = 70
             # Use GPT for educational feedback on partial answers
             _, feedback, hint = gpt_grade(question_text, student_answer, correct_answer)
-        elif student_vals:
+        elif student_vals and correct_vals:
+            # Only when the stored answer parsed: against one that did not
+            # ("x=√2, y=2√2, z=√6"), a right answer scored a flat 50 here.
             base_score = 50
             # Use GPT for educational feedback on wrong numeric answers
             _, feedback, hint = gpt_grade(question_text, student_answer, correct_answer)
