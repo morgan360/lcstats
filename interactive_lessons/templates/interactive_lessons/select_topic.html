@@ -59,7 +59,7 @@ renders exactly as it did before, with no stray heading over one table.
 
         <div class="flex justify-center">
             {% if item.has_exam_questions %}
-            <a href="{% url 'topic_exam_questions' item.topic.slug %}" class="inline-flex w-full max-w-[200px] items-center justify-center gap-2 rounded-lg bg-[linear-gradient(135deg,#fa709a_0%,#fee140_100%)] px-4 py-2 text-sm font-semibold text-white shadow-[0_12px_24px_rgba(0,0,0,0.2)] transition hover:-translate-y-0.5 hover:shadow-[0_16px_30px_rgba(0,0,0,0.26)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-royal">
+            <a href="{% url 'topic_exam_questions' item.topic.slug %}" class="inline-flex w-full max-w-[200px] items-center justify-center gap-2 whitespace-nowrap rounded-lg bg-[linear-gradient(135deg,#fa709a_0%,#fee140_100%)] px-2 py-2 text-sm font-semibold text-white shadow-[0_12px_24px_rgba(0,0,0,0.2)] transition hover:-translate-y-0.5 hover:shadow-[0_16px_30px_rgba(0,0,0,0.26)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-royal">
                 <svg class="h-4 w-4" fill="currentColor" viewBox="0 0 24 24">
                     <path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z"/>
                 </svg>
