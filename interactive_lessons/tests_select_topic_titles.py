@@ -33,9 +33,14 @@ class TopicTitleTests(TestCase):
     def test_blank_short_name_falls_back_to_name(self):
         self.assertEqual(self.levels.display_name, 'Congruence & Proof')
 
-    def test_page_shows_short_name_with_full_name_in_hover(self):
+    def test_hover_lists_only_the_sections(self):
         self.client.force_login(self.user)
         html = self.client.get(reverse('select_topic')).content.decode()
         self.assertIn('Descriptive Stats', html)
-        self.assertIn('<p class="font-semibold text-midnight">Descriptive Statistics</p>', html)
         self.assertIn('<li>Histograms</li>', html)
+        self.assertNotIn('Descriptive Statistics', html)
+
+    def test_topic_without_sections_has_no_hover(self):
+        self.client.force_login(self.user)
+        html = self.client.get(reverse('select_topic')).content.decode()
+        self.assertEqual(html.count('role="tooltip"'), 1)

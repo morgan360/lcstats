@@ -30,20 +30,21 @@ renders exactly as it did before, with no stray heading over one table.
             <div class="md:hidden mb-1 text-xs font-semibold uppercase tracking-wide text-indigo-deep/70">Topic</div>
             {% comment %}
             The short name keeps the title on one line so the buttons get the
-            width. The full name and the sub-topics show on hover, or on focus
-            for keyboard and touch.
+            width. The sub-topics show on hover, or on focus for keyboard and
+            touch; a topic with none gets no hover at all.
             {% endcomment %}
+            {% if item.subtopics %}
             <div class="group relative inline-block cursor-help text-lg" tabindex="0">
                 {{ item.topic.display_name }}
                 <div role="tooltip" class="invisible absolute left-1/2 top-full z-20 mt-2 w-72 -translate-x-1/2 rounded-lg border border-indigo-deep/15 bg-white px-4 py-3 text-left text-sm font-normal text-indigo-deep opacity-0 shadow-[0_12px_28px_rgba(0,0,0,0.18)] transition group-hover:visible group-hover:opacity-100 group-focus:visible group-focus:opacity-100 lg:left-0 lg:translate-x-0">
-                    <p class="font-semibold text-midnight">{{ item.topic.name }}</p>
-                    {% if item.subtopics %}
-                    <ul class="mt-2 list-disc space-y-0.5 pl-5">
+                    <ul class="list-disc space-y-0.5 pl-5">
                         {% for name in item.subtopics %}<li>{{ name }}</li>{% endfor %}
                     </ul>
-                    {% endif %}
                 </div>
             </div>
+            {% else %}
+            <div class="text-lg">{{ item.topic.display_name }}</div>
+            {% endif %}
         </div>
 
         <div class="flex justify-center">
