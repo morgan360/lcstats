@@ -800,7 +800,8 @@ class WorkSubmissionAdmin(admin.ModelAdmin):
     list_filter = ('status', 'confidence', 'has_diagram', 'readable', 'has_working')
     search_fields = ('student__user__username', 'transcription')
     date_hierarchy = 'created_at'
-    readonly_fields = ('student', 'question_part', 'exam_question_part', 'photo_preview',
+    readonly_fields = ('student', 'question_part', 'exam_question_part',
+                       'hw_section', 'hw_question_label', 'photo_preview',
                        'status', 'transcription', 'method_feedback', 'diagram_feedback',
                        'next_step', 'has_diagram', 'has_working', 'readable', 'confidence',
                        'estimated_mark', 'estimated_max_marks', 'mark_reasoning',
@@ -816,7 +817,7 @@ class WorkSubmissionAdmin(admin.ModelAdmin):
         return False
 
     def part_display(self, obj):
-        return str(obj.part) if obj.part else '—'
+        return obj.target_label or '—'
     part_display.short_description = 'Question part'
 
     def mark_display(self, obj):

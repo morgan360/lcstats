@@ -206,7 +206,11 @@
       var body = new FormData();
       body.append("csrfmiddlewaretoken", csrf(root));
       body.append("part_type", partType);
-      body.append("part_id", partId);
+      // Read at click time, not on load: on the homework help page the
+      // exercise and question are picked after the block is wired.
+      body.append("part_id", root.getAttribute("data-part-id") || partId);
+      var question = root.getAttribute("data-question");
+      if (question !== null) body.append("question", question);
 
       fetch("/students/work/slot/", {
         method: "POST",

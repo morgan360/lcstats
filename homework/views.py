@@ -142,6 +142,30 @@ def student_homework_dashboard(request):
 
 
 @login_required
+def homework_help(request):
+    """Photograph a question from a homework sheet and get a hint on it.
+
+    For paper homework: the student picks the exercise and types the question
+    number from their sheet. The worked solutions behind each exercise are
+    read by the model only (homework_check.services.question_help) -- nothing
+    on this page links to or shows a solutions PDF.
+    """
+    from hw_solutions.models import HWSolution
+    from students.work_access import work_capture_visible
+
+    solutions = HWSolution.objects.prefetch_related('sections')
+    subject = getattr(request, 'current_subject', None)
+    if subject:
+        solutions = solutions.filter(Q(subject=subject) | Q(subject__isnull=True))
+    sheets = [(sol.title, list(sol.sections.all())) for sol in solutions]
+
+    return render(request, 'homework/homework_help.html', {
+        'sheets': [(title, sections) for title, sections in sheets if sections],
+        'show_work_capture': work_capture_visible(request.user),
+    })
+
+
+@login_required
 def assignment_detail(request, assignment_id):
     """
     Detailed view of a single assignment with all tasks.

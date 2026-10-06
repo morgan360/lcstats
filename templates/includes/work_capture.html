@@ -7,6 +7,8 @@ Include once per question part, passing the two things that identify it:
   {% include "includes/work_capture.html" with part_type="lesson" part_id=part.id %}
   {% include "includes/work_capture.html" with part_type="exam" part_id=part_data.part.id %}
 
+label and help optionally replace the button text and the line under it.
+
 The caller is responsible for the staff gate (show_work_capture) and for
 including includes/work_capture_assets.html once on the page.
 
@@ -20,10 +22,10 @@ the last and the slot POST would 403. This makes the block self-sufficient.
      data-csrf="{{ csrf_token }}">
     <button type="button" data-action="open"
             class="inline-flex items-center gap-2 rounded-md border border-indigo-deep/30 bg-white px-3 py-2 text-sm font-medium text-indigo-deep transition hover:bg-indigo-deep/5">
-        📷 Photograph my working
+        {{ label|default:"📷 Photograph my working" }}
     </button>
     <p class="mt-1 text-xs text-gray-500">
-        Did it in your copy? Send a photo and get feedback on your method.
+        {{ help|default:"Did it in your copy? Send a photo and get feedback on your method." }}
         Stored privately, deleted after 90 days.
     </p>
 

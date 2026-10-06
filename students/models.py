@@ -306,9 +306,11 @@ class WorkSubmission(models.Model):
     this version never produces a mark at all -- so it does not belong on a row
     whose purpose is to record a score.
 
-    Two nullable part FKs rather than a GenericForeignKey: there are only ever
-    two kinds of target, and real foreign keys give cascade delete and a
-    workable admin on MySQL.
+    Nullable FKs rather than a GenericForeignKey: there are only ever a few
+    kinds of target, and real foreign keys give cascade delete and a workable
+    admin on MySQL. The third, a homework sheet's exercise plus a question
+    number, is for paper homework: the question exists only on the printed
+    sheet, so the student names it rather than picking a database row.
     """
 
     class Status(models.TextChoices):
@@ -330,6 +332,14 @@ class WorkSubmission(models.Model):
         'exam_papers.ExamQuestionPart', null=True, blank=True,
         on_delete=models.CASCADE, related_name='work_submissions'
     )
+    # Homework help: an exercise from a solutions PDF, and which question on
+    # the student's sheet. SET_NULL so re-detecting a PDF's exercises cannot
+    # take a student's photos with it; the label below still says what it was.
+    hw_section = models.ForeignKey(
+        'hw_solutions.HWSolutionSection', null=True, blank=True,
+        on_delete=models.SET_NULL, related_name='work_submissions'
+    )
+    hw_question_label = models.CharField(max_length=20, blank=True)
 
     image = models.ImageField(
         upload_to=work_photo_path, storage=private_storage, blank=True,
@@ -383,12 +393,18 @@ class WorkSubmission(models.Model):
             models.Index(fields=['status']),
         ]
         constraints = [
+            # A homework-help row is told apart by its question label, not its
+            # section, because the section is SET_NULL and may later vanish.
             models.CheckConstraint(
                 condition=(
-                    models.Q(question_part__isnull=False, exam_question_part__isnull=True)
-                    | models.Q(question_part__isnull=True, exam_question_part__isnull=False)
+                    models.Q(question_part__isnull=False, exam_question_part__isnull=True,
+                             hw_question_label='')
+                    | models.Q(question_part__isnull=True, exam_question_part__isnull=False,
+                               hw_question_label='')
+                    | (models.Q(question_part__isnull=True, exam_question_part__isnull=True)
+                       & ~models.Q(hw_question_label=''))
                 ),
-                name='worksubmission_exactly_one_part',
+                name='worksubmission_exactly_one_target',
             )
         ]
 
@@ -398,15 +414,30 @@ class WorkSubmission(models.Model):
     def clean(self):
         # Mirrors the constraint, for admin and forms, and because older MySQL
         # may not enforce CHECK.
-        if bool(self.question_part) == bool(self.exam_question_part):
+        targets = [bool(self.question_part_id), bool(self.exam_question_part_id),
+                   bool(self.hw_question_label)]
+        if sum(targets) != 1:
             raise ValidationError(
-                "Set exactly one of question_part or exam_question_part."
+                "Set exactly one of question_part, exam_question_part or a "
+                "homework question."
             )
 
     @property
     def part(self):
-        """Whichever part this belongs to."""
+        """Whichever part this belongs to. None for a homework-help photo."""
         return self.question_part or self.exam_question_part
+
+    @property
+    def is_homework_help(self):
+        return bool(self.hw_question_label)
+
+    @property
+    def target_label(self):
+        """What the photo is of, in words: for the phone page and the admin."""
+        if self.is_homework_help:
+            exercise = self.hw_section.label if self.hw_section else "Homework"
+            return f"{exercise} \u00b7 Q{self.hw_question_label}"
+        return str(self.part) if self.part else ""
 
     def save(self, *args, **kwargs):
         if not self.purge_after:

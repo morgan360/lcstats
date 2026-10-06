@@ -7,6 +7,7 @@ urlpatterns = [
     # Student views
     path('', views.student_homework_dashboard, name='student_dashboard'),
     path('assignment/<int:assignment_id>/', views.assignment_detail, name='assignment_detail'),
+    path('help/', views.homework_help, name='homework_help'),
     path('toggle-task/<int:progress_id>/', views.toggle_task_completion, name='toggle_task'),
     path('submit/<int:assignment_id>/', views.submit_homework, name='submit_homework'),
 

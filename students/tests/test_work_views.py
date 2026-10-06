@@ -338,3 +338,130 @@ class StaffOnlyGateTests(TestCase):
     @override_settings(WORK_PHOTO_STAFF_ONLY=False)
     def test_students_allowed_once_the_flag_is_off(self):
         self.assertTrue(self.open_slot(self.student).json()["success"])
+
+
+@override_settings(PRIVATE_MEDIA_ROOT=PRIVATE_ROOT, WORK_PHOTO_STAFF_ONLY=False)
+class HomeworkHelpTests(TestCase):
+    """The third target: a question on a paper homework sheet.
+
+    The student names an exercise and a question number; the worked solutions
+    behind the exercise go to the model only. What matters here is that the
+    slot refuses what it should, that the row never carries a mark, and that
+    the page never hands the student a way to the solutions.
+    """
+
+    @classmethod
+    def tearDownClass(cls):
+        shutil.rmtree(PRIVATE_ROOT, ignore_errors=True)
+        super().tearDownClass()
+
+    def setUp(self):
+        from core.models import Subject
+        from hw_solutions.models import HWSolution, HWSolutionSection
+
+        self.user = User.objects.create_user("orla", password="pw")
+        maths = Subject.objects.get(slug="maths")
+        physics = Subject.objects.get(slug="physics")
+        sheet = HWSolution.objects.create(subject=maths, title="Algebra 2 - Solutions",
+                                          pdf_file="hw_solutions/algebra2.pdf")
+        self.section = HWSolutionSection.objects.create(
+            solution=sheet, label="Exercise 2.3", first_page=17, last_page=21)
+        other = HWSolution.objects.create(subject=physics, title="Optics - Solutions",
+                                          pdf_file="hw_solutions/optics.pdf")
+        self.physics_section = HWSolutionSection.objects.create(
+            solution=other, label="Exercise 4.1", first_page=1, last_page=3)
+
+    def open_slot(self, section=None, question="5(ii)"):
+        self.client.force_login(self.user)
+        section = section or self.section
+        return self.client.post(reverse("work_slot"), {
+            "part_type": "hw", "part_id": section.pk, "question": question,
+        }).json()
+
+    def test_slot_binds_the_exercise_and_the_question(self):
+        data = self.open_slot()
+        self.assertTrue(data["success"], data)
+        submission = WorkSubmission.objects.get(pk=data["id"])
+        self.assertEqual(submission.hw_section, self.section)
+        self.assertEqual(submission.hw_question_label, "5(ii)")
+        self.assertIsNone(submission.part)
+        self.assertEqual(submission.target_label, "Exercise 2.3 · Q5(ii)")
+
+    def test_slot_needs_a_question_number(self):
+        self.assertFalse(self.open_slot(question="  ")["success"])
+        self.assertFalse(WorkSubmission.objects.exists())
+
+    def test_an_exercise_from_another_subject_is_refused(self):
+        # The session's subject defaults to Maths.
+        self.assertFalse(self.open_slot(section=self.physics_section)["success"])
+        self.assertFalse(WorkSubmission.objects.exists())
+
+    @override_settings(HOMEWORK_CHECK_MAX_SOLUTION_PAGES=3)
+    def test_an_exercise_over_the_page_cap_is_refused_before_the_photo(self):
+        data = self.open_slot()
+        self.assertFalse(data["success"])
+        self.assertIn("isn't available", data["message"])
+
+    def upload(self):
+        token = signing.dumps({"sub": self.open_slot()["id"]}, salt=TOKEN_SALT)
+        return self.client.post(reverse("work_mobile_upload", args=[token]),
+                                {"photo": photo()}).json()
+
+    def test_upload_asks_question_help_and_stores_no_mark(self):
+        canned = dict(CANNED, question_found=True, estimated_mark=3)
+        with mock.patch("students.views_work.question_help.analyse_question",
+                        return_value=canned) as analyse, \
+                mock.patch("students.views_work.analyse_student_work") as exam_path:
+            data = self.upload()
+
+        self.assertTrue(data["success"], data)
+        exam_path.assert_not_called()
+        _, section, label = analyse.call_args.args
+        self.assertEqual((section, label), (self.section, "5(ii)"))
+        self.assertIsNone(data["estimated_mark"])
+        self.assertEqual(data["mark_label"], "")
+        submission = WorkSubmission.objects.latest("created_at")
+        self.assertEqual(submission.status, WorkSubmission.Status.COMPLETE)
+        self.assertEqual(submission.next_step, CANNED["next_step"])
+
+    def test_an_unusable_exercise_tells_the_student_why(self):
+        from homework_check.services.question_help import Unavailable
+
+        with mock.patch("students.views_work.question_help.analyse_question",
+                        side_effect=Unavailable("Help isn't available for this exercise yet.")):
+            data = self.upload()
+        self.assertFalse(data["success"])
+        self.assertEqual(data["message"], "Help isn't available for this exercise yet.")
+
+    def test_the_phone_page_names_the_exercise_and_question(self):
+        token = signing.dumps({"sub": self.open_slot()["id"]}, salt=TOKEN_SALT)
+        self.client.logout()
+        page = self.client.get(reverse("work_mobile", args=[token])).content.decode()
+        self.assertIn("Exercise 2.3", page)
+        self.assertIn("Q5(ii)", page)
+
+    def test_the_row_must_have_exactly_one_target(self):
+        from django.core.exceptions import ValidationError
+
+        student = StudentProfile.objects.get(user=self.user)
+        with self.assertRaises(ValidationError):
+            WorkSubmission(student=student).clean()
+        topic = Topic.objects.create(name="Calculus", slug="calculus-hw")
+        part = QuestionPart.objects.create(
+            question=Question.objects.create(topic=topic), prompt="Find $x$.")
+        with self.assertRaises(ValidationError):
+            WorkSubmission(student=student, question_part=part,
+                           hw_section=self.section, hw_question_label="1").clean()
+
+    def test_help_page_lists_this_subjects_exercises_and_no_solutions(self):
+        self.client.force_login(self.user)
+        page = self.client.get(reverse("homework:homework_help")).content.decode()
+        # The page's own content, not the site-wide nav, whose Downloads menu
+        # links to HW Solutions on every page.
+        body = page[page.index("Stuck on a homework question?"):page.index("work_capture.js")]
+        self.assertIn("Exercise 2.3", body)
+        self.assertNotIn("Exercise 4.1", body)
+        self.assertIn('data-part-type="hw"', body)
+        # The solutions stay hidden: no PDF, no rendered page, no downloads link.
+        self.assertNotIn("hw_solutions/", body)
+        self.assertNotIn(reverse("hw_solutions:hw_solutions_index"), body)

@@ -30,6 +30,8 @@ from django.views.decorators.http import require_GET, require_POST
 
 from exam_papers.models import ExamQuestionPart
 from exam_papers.services.work_analysis import analyse_student_work
+from homework_check.services import question_help
+from hw_solutions.models import HWSolutionSection
 from interactive_lessons.models import QuestionPart
 
 from .models import StudentProfile, WorkSubmission
@@ -47,6 +49,24 @@ ANALYSIS_FAILED_MESSAGE = (
     "I couldn't read that one. Try again with the page flat, "
     "straight on, and in good light."
 )
+
+HW_UNAVAILABLE_MESSAGE = "Help isn't available for this exercise yet."
+
+
+def _hw_section_for(request, section_id):
+    """The exercise a student may ask about, or None.
+
+    The same subject rule as the HW Solutions list: sheets for the current
+    subject, plus any with no subject set.
+    """
+    section = (HWSolutionSection.objects.select_related("solution")
+               .filter(pk=section_id).first() if str(section_id).isdigit() else None)
+    if section is None:
+        return None
+    subject = getattr(request, "current_subject", None)
+    if subject and section.solution.subject_id not in (None, subject.id):
+        return None
+    return section
 
 
 def _student(request):
@@ -140,6 +160,23 @@ def work_slot(request):
         kwargs["question_part"] = get_object_or_404(QuestionPart, pk=part_id)
     elif part_type == "exam":
         kwargs["exam_question_part"] = get_object_or_404(ExamQuestionPart, pk=part_id)
+    elif part_type == "hw":
+        section = _hw_section_for(request, part_id)
+        question = (request.POST.get("question") or "").strip()
+        if section is None:
+            return JsonResponse({"success": False, "message": "Pick an exercise first."})
+        if not question:
+            return JsonResponse({"success": False,
+                                 "message": "Type the question number first."})
+        if len(question) > 20:
+            return JsonResponse({"success": False,
+                                 "message": "That question number is too long."})
+        # Refused here, before the student photographs anything, rather than
+        # after: the cap is the one Homework Check uses for the same pages.
+        if section.page_count > getattr(settings, "HOMEWORK_CHECK_MAX_SOLUTION_PAGES", 30):
+            return JsonResponse({"success": False, "message": HW_UNAVAILABLE_MESSAGE})
+        kwargs["hw_section"] = section
+        kwargs["hw_question_label"] = question
     else:
         return JsonResponse({"success": False, "message": "Unknown question type."}, status=400)
 
@@ -237,6 +274,8 @@ def work_mobile(request, token):
     prompt = ""
     if part is not None:
         prompt = getattr(part, "prompt", "") or ""
+    elif submission is not None and submission.is_homework_help:
+        prompt = f"{submission.target_label}: photograph your working."
 
     return render(request, "students/work_mobile.html", {
         "token": token,
@@ -287,6 +326,13 @@ def work_mobile_upload(request, token):
 
     try:
         result = _analyse(submission)
+    except question_help.Unavailable as e:
+        # The one failure whose message is written for students: the exercise
+        # can't be used. A retry would fail the same way, so say so.
+        submission.status = WorkSubmission.Status.FAILED
+        submission.error_message = repr(e)
+        submission.save(update_fields=["status", "error_message"])
+        return JsonResponse({"success": False, "message": str(e)})
     except Exception as e:
         # The one place this could leak: keep the detail in the log, give the
         # student a fixed sentence. The photo is kept so they can retry.
@@ -303,6 +349,17 @@ def work_mobile_upload(request, token):
 
 def _analyse(submission):
     """Run the vision call and flatten the result onto the row."""
+    if submission.is_homework_help:
+        if submission.hw_section is None:
+            raise question_help.Unavailable(HW_UNAVAILABLE_MESSAGE)
+        result = question_help.analyse_question(
+            encode_for_api(submission.image), submission.hw_section,
+            submission.hw_question_label)
+        # Never a mark: there is no scheme behind a homework sheet.
+        result.pop("estimated_mark", None)
+        result.pop("estimated_max_marks", None)
+        return _store_result(submission, result)
+
     part = submission.part
     is_lesson = submission.question_part_id is not None
 
@@ -335,7 +392,11 @@ def _analyse(submission):
         expected_answer=expected,
         max_marks=max_marks,
     )
+    return _store_result(submission, result)
 
+
+def _store_result(submission, result):
+    """Flatten an analysis onto the row and mark it complete."""
     submission.analysis = result
     submission.transcription = result.get("transcription", "") or ""
     submission.method_feedback = result.get("method_feedback", "") or ""

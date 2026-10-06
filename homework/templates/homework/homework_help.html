@@ -1,0 +1,75 @@
+{% extends "_base.html" %}
+
+{% block title %}Homework Help - NumScoil{% endblock %}
+
+{% block content %}
+{% comment %}
+  Paper homework: the student names the exercise and question from their sheet
+  and photographs their working. The worked solutions are read by the model
+  only -- nothing here may link to or show a solutions PDF.
+{% endcomment %}
+<div class="mx-auto max-w-2xl px-4 py-8">
+    <h1 class="text-2xl font-semibold text-mist">Stuck on a homework question?</h1>
+    <p class="mt-2 text-sm text-mist/80">
+        Pick the exercise and question from your sheet, then photograph your working.
+        You'll get a hint on where it's going wrong &mdash; not the answer.
+    </p>
+
+    <div class="mt-6 rounded-2xl bg-white px-5 py-5 text-midnight shadow-[0_12px_28px_rgba(0,0,0,0.12)]">
+        {% if not sheets %}
+        <p class="text-sm">There are no homework sheets to ask about yet.</p>
+        {% elif not show_work_capture %}
+        <p class="text-sm">Homework help isn't available yet.</p>
+        {% else %}
+        <div class="grid gap-4 sm:grid-cols-[1fr_9rem]">
+            <label class="block text-sm font-semibold">
+                Exercise
+                <select id="hw-exercise"
+                    class="mt-1 block w-full rounded-lg border border-indigo-deep/30 bg-white px-3 py-2 text-sm font-normal">
+                    <option value="">Choose the exercise…</option>
+                    {% for title, sections in sheets %}
+                    <optgroup label="{{ title }}">
+                        {% for section in sections %}
+                        <option value="{{ section.id }}">{{ section.label }}</option>
+                        {% endfor %}
+                    </optgroup>
+                    {% endfor %}
+                </select>
+            </label>
+            <label class="block text-sm font-semibold">
+                Question
+                <input id="hw-question" type="text" maxlength="20" placeholder="e.g. 5(ii)"
+                    autocomplete="off"
+                    class="mt-1 block w-full rounded-lg border border-indigo-deep/30 px-3 py-2 text-sm font-normal">
+            </label>
+        </div>
+
+        {% include "includes/work_capture.html" with part_type="hw" part_id="" label="📷 Get help with this question" help="Photograph your working on this question." %}
+        {% endif %}
+    </div>
+</div>
+
+{% if sheets and show_work_capture %}
+{% include "includes/work_capture_assets.html" %}
+<script>
+(function () {
+    var exercise = document.getElementById("hw-exercise");
+    var question = document.getElementById("hw-question");
+    var root = document.querySelector("[data-work-capture]");
+    var open = root.querySelector("[data-action=open]");
+
+    // work_capture.js reads these two attributes when the button is pressed.
+    function sync() {
+        var q = question.value.trim();
+        root.setAttribute("data-part-id", exercise.value);
+        root.setAttribute("data-question", q);
+        open.disabled = !(exercise.value && q);
+        open.classList.toggle("opacity-50", open.disabled);
+    }
+    exercise.addEventListener("change", sync);
+    question.addEventListener("input", sync);
+    sync();
+})();
+</script>
+{% endif %}
+{% endblock %}

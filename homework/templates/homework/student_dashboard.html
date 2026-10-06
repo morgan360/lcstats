@@ -7,6 +7,15 @@
 <div class="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
     <h1 class="mb-8 text-3xl font-semibold text-mist">📚 My Homework</h1>
 
+    <a href="{% url 'homework:homework_help' %}"
+        class="mb-10 flex items-center justify-between gap-4 rounded-2xl border border-mist/15 bg-twilight/60 px-5 py-4 text-mist transition hover:border-mist/30 hover:bg-twilight/80">
+        <span>
+            <span class="block text-base font-semibold">📷 Stuck on a question from your homework sheet?</span>
+            <span class="block text-sm text-mist/70">Photograph your working and get a hint &mdash; not the answer.</span>
+        </span>
+        <span aria-hidden="true" class="text-xl">→</span>
+    </a>
+
     <!-- Active Assignments -->
     <section class="mb-12">
         <div class="mb-6 flex items-center justify-between">
