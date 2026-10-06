@@ -10,6 +10,9 @@ question they have already seen worked.
 question. A class rollout copies one plan per student, so the same question
 sits in each of their plans as a separate item.
 """
+from collections import defaultdict
+
+from django.db.models import Q
 from django.utils import timezone
 
 from ..models import StudyPlanEvent, StudyPlanItem
@@ -66,3 +69,50 @@ def mark_done(items, when=None):
         changed.append(item)
     microbadges.award(microbadges.goals_of(changed), when=when)
     return changed
+
+
+# ---------------------------------------------------------------------------
+# By question, for a whole class: the papers-by-questions grid
+# ---------------------------------------------------------------------------
+
+def _class_items(teacher_class):
+    """Live exam items in the class's current plans, for its current students."""
+    return (StudyPlanItem.objects
+            .filter(plan__teacher_class=teacher_class,
+                    plan__student__in=teacher_class.students.all(),
+                    content_type__in=KINDS)
+            .exclude(status='skipped')
+            .exclude(plan__status='archived'))
+
+
+def _for_question(items, question):
+    """Whole-question items, plus the older single-part ones of that question."""
+    return items.filter(Q(content_type='exam_question', exam_question=question)
+                        | Q(content_type='exam_part', exam_question_part__question=question))
+
+
+def question_items(teacher_class, question):
+    """Every student's items for this question, keyed by student id."""
+    by_student = defaultdict(list)
+    for item in _for_question(_class_items(teacher_class), question).select_related(
+            'plan', 'micro_badge', 'exam_question_part'):
+        by_student[item.plan.student_id].append(item)
+    return by_student
+
+
+def coverage(teacher_class):
+    """{question_id: (students done, students with it on their plan)}.
+
+    A student counts as done once every one of their items for the question
+    is done -- normally there is one.
+    """
+    pending, seen = defaultdict(set), defaultdict(set)
+    rows = _class_items(teacher_class).values_list(
+        'plan__student_id', 'status', 'exam_question_id', 'exam_question_part__question_id')
+    for student_id, status, question_id, part_question_id in rows:
+        question_id = question_id or part_question_id
+        seen[question_id].add(student_id)
+        if status != 'done':
+            pending[question_id].add(student_id)
+    return {qid: (len(students - pending[qid]), len(students))
+            for qid, students in seen.items()}

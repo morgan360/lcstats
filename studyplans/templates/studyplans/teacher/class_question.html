@@ -1,0 +1,73 @@
+{% extends "_base.html" %}
+{% block title %}{{ question.exam_paper }} Q{{ question.question_number }} &mdash; {{ teacher_class.name }}{% endblock %}
+
+{% block content %}
+<div class="mx-auto max-w-2xl px-4 py-8 sm:px-6">
+  <h2 class="mb-1 text-2xl font-semibold text-mist">{{ question.exam_paper }} &middot; Q{{ question.question_number }}</h2>
+  <p class="mb-6 text-sm text-mist/70">
+    {{ teacher_class.name }}{% if question.topic %} &middot; {{ question.topic.name }}{% endif %}
+  </p>
+
+  <form method="post" class="rounded-2xl bg-white p-5 text-midnight shadow-sm ring-1 ring-twilight/10">
+    {% csrf_token %}
+    <p class="mb-3 text-sm">
+      Tick who has covered this question. It's marked complete in their
+      MicroBadge, which counts towards earning it.
+    </p>
+
+    {% if markable %}
+    <label class="mb-2 flex cursor-pointer items-center gap-3 border-b border-twilight/10 pb-2 text-sm font-semibold">
+      <input type="checkbox" data-select-all class="h-4 w-4 rounded accent-violet-royal">
+      Whole class
+    </label>
+    {% endif %}
+
+    <ul class="divide-y divide-twilight/10">
+      {% for row in rows %}
+      <li class="flex items-center justify-between gap-3 py-2">
+        <label class="flex flex-1 items-center gap-3 text-sm {% if row.state == 'pending' %}cursor-pointer{% else %}text-twilight/50{% endif %}">
+          <input type="checkbox" name="student_ids" value="{{ row.student.id }}"
+                 class="h-4 w-4 rounded accent-violet-royal" {% if row.state == 'pending' %}data-student{% else %}disabled{% endif %}
+                 {% if row.state == 'done' %}checked{% endif %}>
+          <span>{{ row.student.get_full_name|default:row.student.username }}</span>
+        </label>
+        <span class="text-xs text-twilight/60">
+          {% if row.state == 'done' %}&check; {{ row.note|default:"complete" }}
+          {% elif row.state == 'absent' %}not on their plan
+          {% elif row.badges %}MicroBadge {{ row.badges|join:", " }}
+          {% else %}on their plan{% endif %}
+        </span>
+      </li>
+      {% empty %}
+      <li class="py-2 text-sm text-twilight/60">No students in this class.</li>
+      {% endfor %}
+    </ul>
+
+    <div class="mt-5 flex items-center justify-between gap-3">
+      <a href="{% url 'studyplans:class_questions' teacher_class.id %}#paper-{{ question.exam_paper_id }}"
+         class="text-sm text-twilight/70 hover:underline">Back</a>
+      {% if markable %}
+      <button type="submit"
+              class="rounded-lg bg-violet-royal px-4 py-2 text-sm font-semibold text-white hover:bg-violet-royal/90">
+        Mark complete
+      </button>
+      {% endif %}
+    </div>
+  </form>
+</div>
+<script>
+(function () {
+  var all = document.querySelector("[data-select-all]");
+  if (!all) return;
+  var boxes = Array.prototype.slice.call(document.querySelectorAll("[data-student]"));
+  all.addEventListener("change", function () {
+    boxes.forEach(function (b) { b.checked = all.checked; });
+  });
+  boxes.forEach(function (b) {
+    b.addEventListener("change", function () {
+      all.checked = boxes.every(function (x) { return x.checked; });
+    });
+  });
+})();
+</script>
+{% endblock %}

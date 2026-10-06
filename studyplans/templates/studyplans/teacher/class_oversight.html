@@ -6,7 +6,11 @@
   {% include "studyplans/_messages.html" %}
 
   <h2 class="mb-1 text-2xl font-semibold text-mist">{{ teacher_class.name }}</h2>
-  <p class="mb-6 text-sm text-mist/70">Where everyone stands, topic by topic.</p>
+  <p class="mb-6 text-sm text-mist/70">
+    Where everyone stands, topic by topic.
+    <a href="{% url 'studyplans:class_questions' teacher_class.id %}"
+       class="ml-2 font-semibold text-lime-glow hover:underline">Exam questions covered &rarr;</a>
+  </p>
   <div class="mb-8 h-1 w-full rounded-full bg-gradient-to-r from-violet-royal to-lime-glow"></div>
 
   <div class="overflow-x-auto rounded-2xl bg-white p-5 shadow-sm ring-1 ring-twilight/10">

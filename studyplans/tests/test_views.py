@@ -915,8 +915,8 @@ class CopyPlanTests(ViewTestBase):
         self.assertContains(response, 'brian')
 
 
-class DoneInClassTests(ViewTestBase):
-    """A question worked through in class, ticked off for whoever was there."""
+class DoneInClassBase(ViewTestBase):
+    """Two classmates whose plans each have the same exam question."""
 
     def setUp(self):
         self.badge = StudyPlanMicroBadge.objects.create(
@@ -937,6 +937,11 @@ class DoneInClassTests(ViewTestBase):
             plan=self.mate_plan, goal=mate_goal, micro_badge=self.mate_badge,
             content_type='exam_question', exam_question=self.questions[2],
             available_from=self.today, due_date=self.today + timedelta(days=6))
+
+
+
+class DoneInClassTests(DoneInClassBase):
+    """A question worked through in class, ticked off for whoever was there."""
 
     def url(self):
         return reverse('studyplans:done_in_class', args=[self.plan.id, self.item.id])
@@ -1007,3 +1012,73 @@ class DoneInClassTests(ViewTestBase):
         page = self.client.get(
             reverse('studyplans:plan_manage', args=[self.plan.id])).content.decode()
         self.assertIn(self.url(), page)
+
+
+class ClassQuestionGridTests(DoneInClassBase):
+    """Papers down the side, questions across; tick who covered a question."""
+
+    def grid_url(self):
+        return reverse('studyplans:class_questions', args=[self.klass.id])
+
+    def question_url(self, question=None):
+        question = question or self.questions[2]
+        return reverse('studyplans:class_question', args=[self.klass.id, question.id])
+
+    def test_the_grid_lists_papers_and_links_each_question(self):
+        self.client.force_login(self.teacher_user)
+        page = self.client.get(self.grid_url()).content.decode()
+        self.assertIn(self.question_url(), page)
+        self.assertIn(f'id="paper-{self.questions[2].exam_paper_id}"', page)
+        # Both students have it on their plan, neither done yet.
+        self.assertIn('0 of 2 done', page)
+
+    def test_ticking_students_marks_the_question_complete_for_them(self):
+        self.client.force_login(self.teacher_user)
+        self.client.post(self.question_url(), {'student_ids': [self.classmate.id]})
+        self.item.refresh_from_db()
+        self.mate_item.refresh_from_db()
+        self.assertEqual(self.item.status, 'pending')
+        self.assertEqual(self.mate_item.status, 'done')
+        self.mate_badge.refresh_from_db()
+        self.assertTrue(self.mate_badge.is_earned)
+
+    def test_whole_class_shows_as_done_on_the_grid(self):
+        self.client.force_login(self.teacher_user)
+        self.client.post(self.question_url(),
+                         {'student_ids': [self.student.id, self.classmate.id]})
+        page = self.client.get(self.grid_url()).content.decode()
+        self.assertIn('2 of 2 done', page)
+
+    def test_a_student_without_it_on_their_plan_is_listed_but_not_markable(self):
+        self.mate_item.status = 'skipped'
+        self.mate_item.save()
+        self.client.force_login(self.teacher_user)
+        page = self.client.get(self.question_url()).content.decode()
+        self.assertIn('not on their plan', page)
+        self.client.post(self.question_url(), {'student_ids': [self.classmate.id]})
+        self.mate_item.refresh_from_db()
+        self.assertEqual(self.mate_item.status, 'skipped')
+
+    def test_a_student_outside_the_class_is_never_marked(self):
+        self.client.force_login(self.teacher_user)
+        self.client.post(self.question_url(), {'student_ids': [self.stranger.id]})
+        self.assertFalse(StudyPlanItem.objects.filter(status='done').exists())
+
+    def test_another_teachers_class_is_refused(self):
+        self.client.force_login(self.other_teacher_user)
+        self.assertEqual(self.client.get(self.grid_url()).status_code, 403)
+        response = self.client.post(self.question_url(), {'student_ids': [self.student.id]})
+        self.assertEqual(response.status_code, 403)
+        self.item.refresh_from_db()
+        self.assertEqual(self.item.status, 'pending')
+
+    def test_an_older_single_part_item_counts_for_its_question(self):
+        part_item = StudyPlanItem.objects.create(
+            plan=self.plan, goal=self.goal, micro_badge=self.badge,
+            content_type='exam_part', exam_question_part=self.parts[6],
+            available_from=self.today, due_date=self.today + timedelta(days=6))
+        question = self.parts[6].question
+        self.client.force_login(self.teacher_user)
+        self.client.post(self.question_url(question), {'student_ids': [self.student.id]})
+        part_item.refresh_from_db()
+        self.assertEqual(part_item.status, 'done')

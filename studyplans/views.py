@@ -27,6 +27,7 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
 
 from core import content_links
+from exam_papers.models import ExamPaper, ExamQuestion
 from homework.models import TeacherClass
 from interactive_lessons.models import Topic
 from students.decorators import student_or_teacher_required, teacher_required
@@ -915,6 +916,101 @@ def run_now(request, plan_id):
         f"{summary['unlocked']} Badge Test(s) opened, "
         f"{summary['graded']} marked, {summary['behind']} topic(s) behind.")
     return redirect('studyplans:plan_manage', plan_id=plan.id)
+
+
+#: Question columns on the grid; LC Higher papers have ten questions.
+QUESTION_SLOTS = 10
+
+
+def _teacher_classes(request):
+    if request.user.is_superuser:
+        return TeacherClass.objects.filter(is_active=True).order_by('name')
+    profile = _teacher_profile(request)
+    return profile.classes.filter(is_active=True).order_by('name') if profile else TeacherClass.objects.none()
+
+
+@teacher_required
+def class_questions(request, class_id):
+    """Past papers down the side, questions across: what this class has covered.
+
+    Each question's cell opens the class list for it (class_question), where
+    the teacher ticks off the whole class or individual students.
+    """
+    teacher_class = _owned_class(request, class_id)
+    papers = (ExamPaper.objects.filter(is_published=True)
+              .prefetch_related('questions__topic')
+              .order_by('-year', 'is_deferred', 'paper_type'))
+    subject = getattr(request, 'current_subject', None)
+    if subject is not None:
+        papers = papers.filter(subject=subject)
+    covered = in_class.coverage(teacher_class)
+
+    rows = []
+    for paper in papers:
+        by_number = {q.question_number: q for q in paper.questions.all()}
+        cells = []
+        for number in range(1, QUESTION_SLOTS + 1):
+            question = by_number.get(number)
+            done, total = covered.get(question.id, (0, 0)) if question else (0, 0)
+            cells.append({'number': number, 'question': question,
+                          'done': done, 'total': total})
+        rows.append({'paper': paper, 'cells': cells})
+
+    return render(request, 'studyplans/teacher/class_questions.html', {
+        'teacher_class': teacher_class,
+        'classes': _teacher_classes(request),
+        'numbers': range(1, QUESTION_SLOTS + 1),
+        'rows': rows,
+    })
+
+
+@teacher_required
+def class_question(request, class_id, question_id):
+    """One question, the whole class: tick who has covered it.
+
+    Ticking marks the question complete on each student's plan, which counts
+    towards the MicroBadge it sits in. Students whose plan does not have the
+    question are listed but cannot be ticked -- there is nothing to complete.
+    """
+    teacher_class = _owned_class(request, class_id)
+    question = get_object_or_404(ExamQuestion.objects.select_related('exam_paper'),
+                                 id=question_id)
+    by_student = in_class.question_items(teacher_class, question)
+
+    if request.method == 'POST':
+        chosen = set(request.POST.getlist('student_ids'))
+        items = [item for student_id, items in by_student.items()
+                 if str(student_id) in chosen for item in items]
+        changed = in_class.mark_done(items)
+        students = len({item.plan.student_id for item in changed})
+        if students:
+            messages.success(
+                request, f"Q{question.question_number} of {question.exam_paper} marked "
+                         f"complete for {students} student{'s' if students != 1 else ''}.")
+        url = reverse('studyplans:class_questions', args=[teacher_class.id])
+        return redirect(f"{url}#paper-{question.exam_paper_id}")
+
+    rows = []
+    for student in teacher_class.students.order_by('first_name', 'last_name', 'username'):
+        items = by_student.get(student.id, [])
+        if not items:
+            state = 'absent'
+        elif all(item.status == 'done' for item in items):
+            state = 'done'
+        else:
+            state = 'pending'
+        badges = sorted({item.micro_badge.number for item in items
+                         if item.micro_badge and not item.micro_badge.is_retry})
+        rows.append({'student': student, 'state': state, 'items': items,
+                     'badges': badges,
+                     'note': next((i.evidence_note for i in items if i.status == 'done'), '')})
+
+    return render(request, 'studyplans/teacher/class_question.html', {
+        'teacher_class': teacher_class,
+        'question': question,
+        'rows': rows,
+        'markable': sum(r['state'] == 'pending' for r in rows),
+    })
 
 
 @teacher_required

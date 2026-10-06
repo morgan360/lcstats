@@ -21,6 +21,10 @@
        class="rounded-lg bg-white/10 px-3 py-2 text-sm font-semibold text-mist transition hover:bg-white/20">
       {{ c.name }} &rarr;
     </a>
+    <a href="{% url 'studyplans:class_questions' c.id %}"
+       class="rounded-lg bg-white/10 px-3 py-2 text-sm font-semibold text-mist transition hover:bg-white/20">
+      {{ c.name }} &middot; exam questions &rarr;
+    </a>
     {% endfor %}
   </div>
   {% endif %}

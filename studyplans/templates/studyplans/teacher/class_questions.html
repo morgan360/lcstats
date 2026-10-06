@@ -1,0 +1,67 @@
+{% extends "_base.html" %}
+{% block title %}{{ teacher_class.name }} &mdash; Exam questions covered{% endblock %}
+
+{% block content %}
+<div class="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
+  {% include "studyplans/_messages.html" %}
+
+  <h2 class="mb-1 text-2xl font-semibold text-mist">{{ teacher_class.name }} &middot; exam questions</h2>
+  <p class="mb-4 text-sm text-mist/70">
+    Click a question to tick off who has covered it. It's marked complete in
+    their MicroBadge.
+  </p>
+  {% if classes|length > 1 %}
+  <div class="mb-4 flex flex-wrap gap-2">
+    {% for c in classes %}
+    <a href="{% url 'studyplans:class_questions' c.id %}"
+       class="rounded-full px-3 py-1 text-xs font-semibold {% if c.id == teacher_class.id %}bg-violet-royal text-white{% else %}bg-white/10 text-mist hover:bg-white/20{% endif %}">{{ c.name }}</a>
+    {% endfor %}
+  </div>
+  {% endif %}
+  <div class="mb-6 flex flex-wrap items-center gap-4 text-xs text-mist/80">
+    <span class="flex items-center gap-1"><span class="grid h-6 w-6 place-items-center rounded-full bg-lime-glow font-bold text-midnight">&check;</span> whole class done</span>
+    <span class="flex items-center gap-1"><span class="grid h-6 w-6 place-items-center rounded-full bg-amber-300 text-[10px] font-bold text-midnight">3/8</span> some done</span>
+    <span class="flex items-center gap-1"><span class="grid h-6 w-6 place-items-center rounded-full border-2 border-violet-royal text-[10px] font-bold text-violet-royal">8</span> on plans, none done</span>
+    <span class="flex items-center gap-1"><span class="grid h-6 w-6 place-items-center rounded-full border border-mist/40 text-mist/70">&middot;</span> not on anyone's plan</span>
+  </div>
+
+  <div class="overflow-x-auto rounded-2xl bg-white p-4 shadow-sm ring-1 ring-twilight/10">
+    <table class="w-full text-sm">
+      <thead>
+        <tr class="border-b border-twilight/10">
+          <th class="sticky left-0 bg-white px-2 py-2 text-left font-semibold text-midnight">Paper</th>
+          {% for n in numbers %}
+          <th class="px-1 py-2 text-center font-semibold text-midnight">Q{{ n }}</th>
+          {% endfor %}
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in rows %}
+        <tr id="paper-{{ row.paper.id }}" class="scroll-mt-24 border-b border-twilight/5">
+          <th class="sticky left-0 whitespace-nowrap bg-white px-2 py-1.5 text-left font-semibold text-midnight">
+            {{ row.paper.year }} {{ row.paper.get_paper_type_display }}{% if row.paper.is_deferred %} <span class="text-xs font-normal text-twilight/60">deferred</span>{% endif %}
+          </th>
+          {% for cell in row.cells %}
+          <td class="px-1 py-1.5 text-center">
+            {% if cell.question %}
+            <a href="{% url 'studyplans:class_question' teacher_class.id cell.question.id %}"
+               title="{{ row.paper }} Q{{ cell.number }}{% if cell.question.topic %} &middot; {{ cell.question.topic.name }}{% endif %} &middot; {{ cell.done }} of {{ cell.total }} done"
+               class="mx-auto grid h-8 w-8 place-items-center rounded-full text-[11px] font-bold transition hover:scale-110
+                 {% if cell.total and cell.done == cell.total %}bg-lime-glow text-midnight
+                 {% elif cell.done %}bg-amber-300 text-midnight
+                 {% elif cell.total %}border-2 border-violet-royal text-violet-royal
+                 {% else %}border border-twilight/30 text-twilight/50{% endif %}">
+              {% if cell.total and cell.done == cell.total %}&check;{% elif cell.done %}{{ cell.done }}/{{ cell.total }}{% elif cell.total %}{{ cell.total }}{% else %}&middot;{% endif %}
+            </a>
+            {% endif %}
+          </td>
+          {% endfor %}
+        </tr>
+        {% empty %}
+        <tr><td colspan="11" class="px-2 py-6 text-center text-twilight/60">No exam papers yet.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
