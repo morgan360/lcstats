@@ -5,10 +5,10 @@ from .models import HWSolution, HWSolutionPage, HWSolutionSection
 
 @admin.register(HWSolution)
 class HWSolutionAdmin(admin.ModelAdmin):
-    list_display = ['title', 'subject', 'order', 'created_at']
-    list_filter = ['subject', 'created_at']
+    list_display = ['title', 'subject', 'is_released', 'order', 'created_at']
+    list_filter = ['subject', 'is_released', 'created_at']
     search_fields = ['title', 'description']
-    list_editable = ['order']
+    list_editable = ['is_released', 'order']
 
     fieldsets = (
         ('Basic Information', {
@@ -18,7 +18,7 @@ class HWSolutionAdmin(admin.ModelAdmin):
             'fields': ('pdf_file',)
         }),
         ('Display Options', {
-            'fields': ('order',)
+            'fields': ('is_released', 'order')
         }),
     )
 

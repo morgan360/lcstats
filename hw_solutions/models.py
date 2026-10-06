@@ -6,8 +6,8 @@ from core.models import Subject
 
 class HWSolution(models.Model):
     """
-    A homework solution PDF, uploaded by staff and readable by any logged-in
-    student from the Downloads menu.
+    A homework solution PDF, uploaded by staff and listed for students under
+    Downloads once it is released.
     """
     subject = models.ForeignKey(
         Subject,
@@ -33,6 +33,15 @@ class HWSolution(models.Model):
     order = models.PositiveIntegerField(
         default=0,
         help_text="Display order (lower numbers appear first)"
+    )
+    # Students see a sheet's solutions only once it is released. Hiding is
+    # the whole of it for now: the PDF is still public media, so anyone who
+    # already has the link can open it. Homework Check and homework help read
+    # every sheet, released or not.
+    is_released = models.BooleanField(
+        default=False,
+        verbose_name="Released to students",
+        help_text="Tick to show this sheet's solutions to students."
     )
     page_count = models.PositiveSmallIntegerField(
         default=0,

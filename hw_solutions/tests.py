@@ -7,7 +7,8 @@ not be mistaken for an exercise starting.
 import os
 import tempfile
 
-from django.test import SimpleTestCase
+from django.test import SimpleTestCase, TestCase
+from django.urls import reverse
 
 from hw_solutions.services import detect_sections
 
@@ -186,3 +187,57 @@ class BuildSectionsDedupTests(SimpleTestCase):
             for i in range(1, 6)
         ])
         self.assertEqual(len(kept), 1)
+
+
+class ReleaseTests(TestCase):
+    """Students see a sheet only once it is released; teachers see them all."""
+
+    def setUp(self):
+        from django.contrib.auth.models import User
+        from hw_solutions.models import HWSolution
+
+        self.student = User.objects.create_user("aine", password="pw")
+        self.teacher = User.objects.create_user("ms_t", password="pw", is_staff=True)
+        self.released = HWSolution.objects.create(
+            title="Algebra 1 - Solutions", pdf_file="hw_solutions/a1.pdf", is_released=True)
+        self.held = HWSolution.objects.create(
+            title="Algebra 2 - Solutions", pdf_file="hw_solutions/a2.pdf")
+
+    def page(self, user):
+        self.client.force_login(user)
+        return self.client.get(reverse("hw_solutions:hw_solutions_index")).content.decode()
+
+    def test_a_new_upload_starts_unreleased(self):
+        self.assertFalse(self.held.is_released)
+
+    def test_students_see_only_released_sheets(self):
+        page = self.page(self.student)
+        self.assertIn("Algebra 1 - Solutions", page)
+        self.assertNotIn("Algebra 2 - Solutions", page)
+        self.assertNotIn("a2.pdf", page)
+        self.assertNotIn("Released to students", page)
+
+    def test_teachers_see_every_sheet_with_its_tick_box(self):
+        page = self.page(self.teacher)
+        self.assertIn("Algebra 2 - Solutions", page)
+        self.assertEqual(page.count("Released to students"), 2)
+
+    def test_a_teacher_can_release_and_withdraw(self):
+        self.client.force_login(self.teacher)
+        url = reverse("hw_solutions:set_released", args=[self.held.id])
+        response = self.client.post(url, {"released": "1"},
+                                    HTTP_X_REQUESTED_WITH="XMLHttpRequest")
+        self.assertEqual(response.json(), {"released": True})
+        self.held.refresh_from_db()
+        self.assertTrue(self.held.is_released)
+        self.client.post(url, {"released": "0"})
+        self.held.refresh_from_db()
+        self.assertFalse(self.held.is_released)
+
+    def test_a_student_cannot_release_a_sheet(self):
+        self.client.force_login(self.student)
+        response = self.client.post(
+            reverse("hw_solutions:set_released", args=[self.held.id]), {"released": "1"})
+        self.assertEqual(response.status_code, 403)
+        self.held.refresh_from_db()
+        self.assertFalse(self.held.is_released)
