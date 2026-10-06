@@ -913,3 +913,97 @@ class CopyPlanTests(ViewTestBase):
         response = self.client.get(reverse('studyplans:plan_manage', args=[self.plan.id]))
         self.assertContains(response, reverse('studyplans:copy_plan', args=[self.plan.id]))
         self.assertContains(response, 'brian')
+
+
+class DoneInClassTests(ViewTestBase):
+    """A question worked through in class, ticked off for whoever was there."""
+
+    def setUp(self):
+        self.badge = StudyPlanMicroBadge.objects.create(
+            goal=self.goal, number=1, target_date=self.today + timedelta(days=2))
+        self.item.micro_badge = self.badge
+        self.item.save()
+        # The classmate's own copy of the plan, with the same question in it.
+        self.mate_plan = StudyPlan.objects.create(
+            student=self.classmate, teacher=self.teacher, subject=self.maths,
+            title='Christmas Push', start_date=self.today,
+            deadline=self.today + timedelta(days=21), status='active',
+            teacher_class=self.klass)
+        mate_goal = StudyPlanGoal.objects.create(
+            plan=self.mate_plan, topic=self.topic, checkpoint_size=2)
+        self.mate_badge = StudyPlanMicroBadge.objects.create(
+            goal=mate_goal, number=1, target_date=self.today + timedelta(days=2))
+        self.mate_item = StudyPlanItem.objects.create(
+            plan=self.mate_plan, goal=mate_goal, micro_badge=self.mate_badge,
+            content_type='exam_question', exam_question=self.questions[2],
+            available_from=self.today, due_date=self.today + timedelta(days=6))
+
+    def url(self):
+        return reverse('studyplans:done_in_class', args=[self.plan.id, self.item.id])
+
+    def test_the_page_lists_classmates_with_the_same_question(self):
+        self.client.force_login(self.teacher_user)
+        page = self.client.get(self.url()).content.decode()
+        self.assertIn(f'value="{self.item.id}"', page)
+        self.assertIn(f'value="{self.mate_item.id}"', page)
+        self.assertIn('6th Year Maths A', page)
+
+    def test_marking_ticks_off_only_the_students_chosen(self):
+        self.client.force_login(self.teacher_user)
+        self.client.post(self.url(), {'item_ids': [self.item.id]})
+        self.item.refresh_from_db()
+        self.mate_item.refresh_from_db()
+        self.assertEqual(self.item.status, 'done')
+        self.assertTrue(self.item.evidence_note.startswith('Done in class'))
+        self.assertEqual(self.mate_item.status, 'pending')
+
+    def test_marking_the_last_item_earns_the_microbadge(self):
+        self.client.force_login(self.teacher_user)
+        self.client.post(self.url(), {'item_ids': [self.item.id, self.mate_item.id]})
+        self.badge.refresh_from_db()
+        self.mate_badge.refresh_from_db()
+        self.assertTrue(self.badge.is_earned)
+        self.assertTrue(self.mate_badge.is_earned)
+        self.assertFalse(self.badge.earned_by_teacher)
+
+    def test_an_id_not_on_the_list_is_ignored(self):
+        other = StudyPlan.objects.create(
+            student=self.stranger, teacher=self.other_teacher, subject=self.maths,
+            title='Elsewhere', start_date=self.today,
+            deadline=self.today + timedelta(days=21), status='active')
+        stranger_item = StudyPlanItem.objects.create(
+            plan=other, content_type='exam_question', exam_question=self.questions[2],
+            available_from=self.today, due_date=self.today + timedelta(days=6))
+        self.client.force_login(self.teacher_user)
+        self.client.post(self.url(), {'item_ids': [stranger_item.id]})
+        stranger_item.refresh_from_db()
+        self.assertEqual(stranger_item.status, 'pending')
+
+    def test_another_teacher_cannot_mark_it(self):
+        self.client.force_login(self.other_teacher_user)
+        response = self.client.post(self.url(), {'item_ids': [self.item.id]})
+        self.assertEqual(response.status_code, 403)
+        self.item.refresh_from_db()
+        self.assertEqual(self.item.status, 'pending')
+
+    def test_a_student_cannot_mark_it(self):
+        self.client.force_login(self.student)
+        self.client.post(self.url(), {'item_ids': [self.item.id]})
+        self.item.refresh_from_db()
+        self.assertEqual(self.item.status, 'pending')
+
+    def test_the_nightly_run_leaves_it_done(self):
+        from studyplans.services import completion
+
+        self.client.force_login(self.teacher_user)
+        self.client.post(self.url(), {'item_ids': [self.item.id]})
+        self.item.refresh_from_db()
+        completion.persist([self.item], student=self.student)
+        self.item.refresh_from_db()
+        self.assertEqual(self.item.status, 'done')
+
+    def test_the_plan_page_offers_it_on_exam_questions(self):
+        self.client.force_login(self.teacher_user)
+        page = self.client.get(
+            reverse('studyplans:plan_manage', args=[self.plan.id])).content.decode()
+        self.assertIn(self.url(), page)

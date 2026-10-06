@@ -48,7 +48,13 @@
                       {% if forloop.last %}disabled{% endif %}>&#9660;</button>
             </form>
             <span class="min-w-0 flex-1 truncate text-sm text-midnight">{{ item.get_content_display }}</span>
-            <span class="text-xs text-twilight/60">{{ item.get_status_display }}</span>
+            <span class="text-xs text-twilight/60">
+              {% if item.status == 'done' and item.evidence_note %}&check; {{ item.evidence_note }}{% else %}{{ item.get_status_display }}{% endif %}
+            </span>
+            {% if item.content_type == 'exam_question' or item.content_type == 'exam_part' %}{% if item.status != 'done' %}
+            <a href="{% url 'studyplans:done_in_class' plan.id item.id %}"
+               class="rounded bg-lime-glow/30 px-2 py-0.5 text-xs font-semibold text-midnight hover:bg-lime-glow/50">Done in class</a>
+            {% endif %}{% endif %}
             <form method="post" action="{% url 'studyplans:move_item' plan.id item.id %}" data-ajax class="flex items-center gap-1">
               {% csrf_token %}
               <select name="micro_badge" class="rounded border-twilight/20 py-0 text-xs"

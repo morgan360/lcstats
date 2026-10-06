@@ -33,6 +33,8 @@ urlpatterns = [
          views.move_item, name='move_item'),
     path('teacher/plan/<int:plan_id>/item/<int:item_id>/reorder/',
          views.reorder_item, name='reorder_item'),
+    path('teacher/plan/<int:plan_id>/item/<int:item_id>/done-in-class/',
+         views.done_in_class, name='done_in_class'),
     path('teacher/plan/<int:plan_id>/microbadge/<int:badge_id>/add/',
          views.add_item, name='add_item'),
     path('teacher/plan/<int:plan_id>/microbadge/<int:badge_id>/award/',

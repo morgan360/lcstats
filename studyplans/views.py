@@ -38,8 +38,8 @@ from .models import (
 )
 from .services import checkpoints as checkpoint_service
 from .services import (
-    completion, copying, exam_stamps, microbadges, nightly, notify, planner,
-    progress, stamps,
+    completion, copying, exam_stamps, in_class, microbadges, nightly, notify,
+    planner, progress, stamps,
 )
 
 logger = logging.getLogger(__name__)
@@ -817,6 +817,45 @@ def award_microbadge(request, plan_id, badge_id):
     if microbadges.earn(badge, by_teacher=True):
         messages.success(request, f"{_badge_label(badge)} awarded.")
     return redirect('studyplans:plan_manage', plan_id=plan.id)
+
+
+@teacher_required
+def done_in_class(request, plan_id, item_id):
+    """Mark an exam question done in class, for whoever was in the room.
+
+    GET lists every student in the plan's class whose plan has the same
+    question, all ticked; the teacher unticks anyone absent. Classmates are
+    offered only to the class's own teacher -- someone who can open this one
+    plan because they teach the student elsewhere sees just this student.
+    """
+    plan = _owned_plan(request, plan_id)
+    item = get_object_or_404(StudyPlanItem.objects.select_related('plan__teacher_class'),
+                             id=item_id, plan=plan)
+    if item.content_type not in in_class.KINDS:
+        raise PermissionDenied
+    teacher_class = plan.teacher_class
+    whole_class = bool(teacher_class) and (
+        request.user.is_superuser or teacher_class.teacher == _teacher_profile(request))
+    items = in_class.matching_items(item, include_class=whole_class)
+
+    if request.method == 'POST':
+        # Only ids from the list this teacher was shown are honoured.
+        chosen = set(request.POST.getlist('item_ids'))
+        changed = in_class.mark_done([i for i in items if str(i.id) in chosen])
+        if changed:
+            messages.success(
+                request, f"Marked done in class for {len(changed)} "
+                         f"student{'s' if len(changed) != 1 else ''}.")
+        url = reverse('studyplans:plan_manage', args=[plan.id])
+        return redirect(f"{url}#badge-{item.micro_badge_id}" if item.micro_badge_id else url)
+
+    return render(request, 'studyplans/teacher/done_in_class.html', {
+        'plan': plan,
+        'item': item,
+        'teacher_class': teacher_class if whole_class else None,
+        'rows': [{'item': i, 'student': i.plan.student, 'markable': in_class.can_mark(i)}
+                 for i in items],
+    })
 
 
 def _badge_label(badge):
