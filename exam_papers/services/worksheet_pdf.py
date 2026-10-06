@@ -9,6 +9,7 @@ import io
 import os
 
 import fitz
+import numpy as np
 from PIL import Image
 
 PAGE_WIDTH, PAGE_HEIGHT = fitz.paper_size('a4')
@@ -17,10 +18,23 @@ HEADING_SIZE = 11
 LINE_HEIGHT = 16
 GAP = 14
 
-# A question crop is a whole exam page, so it rarely fits under whatever is
-# already on the page. Rather than leave the rest of a page empty, an image is
-# shrunk to the space left when that space is still most of a page.
+# A question crop is a stack of whole exam pages, three to six times taller than
+# it is wide. Shrinking that onto one A4 page left a strip a quarter of the
+# page wide, pinned to the left margin. Every image is drawn at the full page
+# width instead, and one too tall for the page carries on overleaf, cut in a
+# band of blank rows so no line of print is split. One exam page at full width
+# fills one A4 page almost exactly.
+#
+# An image starts under whatever is already on the page only when that space
+# is still most of a page; otherwise it starts a fresh one.
 SQUEEZE_RATIO = 0.6
+
+# A row counts as blank when no pixel in it is darker than INK_LEVEL, and a cut
+# needs a run of at least MIN_GAP_PX such rows - the gap between two lines of
+# print, not the white inside a letter. The cut is looked for in the lower
+# half of the slice, so a page is never left mostly empty to reach one.
+INK_LEVEL = 200
+MIN_GAP_PX = 8
 
 # The crops are 200 DPI PNGs of a whole page, which go into a PDF at about
 # 25MB each if handed over untouched. Re-encoding to a JPEG no wider than a
@@ -46,18 +60,45 @@ def _image_path(field):
 
 
 def _prepare_image(path):
-    """(jpeg bytes, width, height) for one image, or None if it cannot be read."""
+    """The image as RGB no wider than a page needs, or None if it cannot be read."""
     try:
         with Image.open(path) as img:
             img = img.convert('RGB')
             if img.width > MAX_IMAGE_WIDTH_PX:
                 height = round(img.height * MAX_IMAGE_WIDTH_PX / img.width)
                 img = img.resize((MAX_IMAGE_WIDTH_PX, height), Image.LANCZOS)
-            buffer = io.BytesIO()
-            img.save(buffer, format='JPEG', quality=JPEG_QUALITY, optimize=True)
-            return buffer.getvalue(), img.width, img.height
+            else:
+                img.load()
+            return img
     except (OSError, ValueError):
         return None
+
+
+def _jpeg(img):
+    buffer = io.BytesIO()
+    img.save(buffer, format='JPEG', quality=JPEG_QUALITY, optimize=True)
+    return buffer.getvalue()
+
+
+def _cut_row(img, top, limit):
+    """Where to end a slice that starts at row top and may be limit rows tall.
+
+    The middle of the lowest blank band in the lower half of the slice, or the
+    limit itself when there is none (a graph or grid that runs on).
+    """
+    lo, hi = top + limit // 2, top + limit
+    rows = np.asarray(img.crop((0, lo, img.width, hi)).convert('L'))
+    blank = rows.min(axis=1) > INK_LEVEL
+    run_end = None
+    for y in range(len(blank) - 1, -1, -1):
+        if blank[y]:
+            if run_end is None:
+                run_end = y
+            if run_end - y + 1 >= MIN_GAP_PX and (y == 0 or not blank[y - 1]):
+                return lo + (y + run_end) // 2
+        else:
+            run_end = None
+    return hi
 
 
 class _Sheet:
@@ -98,38 +139,40 @@ class _Sheet:
         writing first would strand a heading at the foot of a page with its
         question overleaf.
         """
-        prepared = _prepare_image(path)
-        if not prepared:
+        img = _prepare_image(path)
+        if img is None:
             self.text(label, size=size)
             self.text('No usable image on file.', size=size, bold=False)
             self.y += GAP
             return
 
-        data, width, height = prepared
+        scale = self.width / img.width
         full_page = PAGE_HEIGHT - 2 * MARGIN - LINE_HEIGHT
         here = (self.space_left() - LINE_HEIGHT) if self.page else 0
 
-        # Use what is left of this page when that is still most of a page;
-        # otherwise start a page and take the whole of it.
-        if here >= full_page * SQUEEZE_RATIO:
-            usable = here
-        else:
+        # Stay on this page if the image fits, or if most of a page is left
+        # to start it in; otherwise start a page and take the whole of it.
+        if here < img.height * scale and here < full_page * SQUEEZE_RATIO:
             self.new_page()
-            usable = full_page
-
-        draw_width = self.width
-        draw_height = height * (draw_width / width)
-        if draw_height > usable:
-            draw_height = usable
-            draw_width = width * (draw_height / height)
-
-        self.ensure(LINE_HEIGHT + draw_height)
         self.text(label, size=size)
-        self.page.insert_image(
-            fitz.Rect(MARGIN, self.y, MARGIN + draw_width, self.y + draw_height),
-            stream=data,
-        )
-        self.y += draw_height + GAP
+
+        top = 0
+        while top < img.height:
+            limit = int(self.space_left() / scale)
+            if limit < MIN_GAP_PX * 2:
+                self.new_page()
+                continue
+            bottom = img.height if img.height - top <= limit else _cut_row(img, top, limit)
+            draw_height = (bottom - top) * scale
+            self.page.insert_image(
+                fitz.Rect(MARGIN, self.y, MARGIN + self.width, self.y + draw_height),
+                stream=_jpeg(img.crop((0, top, img.width, bottom))),
+            )
+            self.y += draw_height
+            top = bottom
+            if top < img.height:
+                self.new_page()
+        self.y += GAP
 
     def bytes(self):
         if self.page is None:

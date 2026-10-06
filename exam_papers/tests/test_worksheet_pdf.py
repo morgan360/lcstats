@@ -79,6 +79,37 @@ class WorksheetPdfTests(TestCase):
         doc = self.pdf(build_worksheet_pdf([]))
         self.assertEqual(doc.page_count, 1)
 
+    def test_a_tall_question_runs_over_pages_at_full_width(self):
+        # Four exam pages stacked, as the real crops are: lines of "print"
+        # every 40px with white gaps between them. Shrunk onto one page this
+        # came out a quarter of the page wide, pinned to the left margin.
+        img = Image.new('RGB', (1240, 4 * 1754), 'white')
+        for y in range(100, img.height - 100, 40):
+            img.paste((0, 0, 0), (100, y, 1140, y + 20))
+        buffer = io.BytesIO()
+        img.save(buffer, format='PNG')
+        tall = ExamQuestion.objects.create(
+            exam_paper=self.paper, question_number=8, topic=self.topic, total_marks=50,
+            image=ContentFile(buffer.getvalue(), name='tall.png'),
+        )
+
+        doc = self.pdf(build_worksheet_pdf([tall]))
+
+        self.assertGreaterEqual(doc.page_count, 4)
+        page_width = doc[0].rect.width
+        for page in doc:
+            for info in page.get_image_info():
+                x0, _, x1, _ = info['bbox']
+                self.assertAlmostEqual(x1 - x0, page_width - 80, delta=1)
+        # Every cut lands in a gap: no slice starts or ends on a line of print.
+        for page in doc:
+            for xref, *_ in page.get_images():
+                pix = fitz.Pixmap(doc, xref)
+                strip = Image.frombytes('RGB', (pix.width, pix.height), pix.samples).convert('L')
+                for row in (0, strip.height - 1):
+                    line = strip.crop((0, row, strip.width, row + 1))
+                    self.assertGreater(line.getextrema()[0], 150, f'cut through print at row {row}')
+
 
 @override_settings(MEDIA_ROOT=tempfile.mkdtemp())
 class WorksheetDownloadViewTests(WorksheetPdfTests):
