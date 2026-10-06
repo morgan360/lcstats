@@ -34,7 +34,8 @@ from students.decorators import student_or_teacher_required, teacher_required
 
 from . import constants
 from .models import (
-    StudyPlan, StudyPlanCheckpoint, StudyPlanEvent, StudyPlanGoal, StudyPlanItem,
+    QuestionCoverage, StudyPlan, StudyPlanCheckpoint, StudyPlanEvent, StudyPlanGoal,
+    StudyPlanItem,
     StudyPlanMicroBadge,
 )
 from .services import checkpoints as checkpoint_service
@@ -944,6 +945,7 @@ def class_questions(request, class_id):
     if subject is not None:
         papers = papers.filter(subject=subject)
     covered = in_class.coverage(teacher_class)
+    total = teacher_class.students.count()
 
     rows = []
     for paper in papers:
@@ -951,9 +953,9 @@ def class_questions(request, class_id):
         cells = []
         for number in range(1, QUESTION_SLOTS + 1):
             question = by_number.get(number)
-            done, total = covered.get(question.id, (0, 0)) if question else (0, 0)
             cells.append({'number': number, 'question': question,
-                          'done': done, 'total': total})
+                          'done': covered.get(question.id, 0) if question else 0,
+                          'total': total})
         rows.append({'paper': paper, 'cells': cells})
 
     return render(request, 'studyplans/teacher/class_questions.html', {
@@ -968,48 +970,38 @@ def class_questions(request, class_id):
 def class_question(request, class_id, question_id):
     """One question, the whole class: tick who has covered it.
 
-    Ticking marks the question complete on each student's plan, which counts
-    towards the MicroBadge it sits in. Students whose plan does not have the
-    question are listed but cannot be ticked -- there is nothing to complete.
+    Independent of study plans. Saving makes the class's coverage match the
+    ticks: a ticked student's exam stamp card has the question inked (and it is
+    ticked off on their plan, if it is there); unticking takes the stamp back.
     """
     teacher_class = _owned_class(request, class_id)
-    question = get_object_or_404(ExamQuestion.objects.select_related('exam_paper'),
+    question = get_object_or_404(ExamQuestion.objects.select_related('exam_paper', 'topic'),
                                  id=question_id)
-    by_student = in_class.question_items(teacher_class, question)
 
     if request.method == 'POST':
-        chosen = set(request.POST.getlist('student_ids'))
-        items = [item for student_id, items in by_student.items()
-                 if str(student_id) in chosen for item in items]
-        changed = in_class.mark_done(items)
-        students = len({item.plan.student_id for item in changed})
-        if students:
-            messages.success(
-                request, f"Q{question.question_number} of {question.exam_paper} marked "
-                         f"complete for {students} student{'s' if students != 1 else ''}.")
+        added, removed = in_class.set_coverage(
+            teacher_class, question, request.POST.getlist('student_ids'), by=request.user)
+        if added or removed:
+            parts = []
+            if added:
+                parts.append(f"{len(added)} marked covered")
+            if removed:
+                parts.append(f"{len(removed)} unmarked")
+            messages.success(request, f"{question.exam_paper} Q{question.question_number}: "
+                                      f"{', '.join(parts)}.")
         url = reverse('studyplans:class_questions', args=[teacher_class.id])
         return redirect(f"{url}#paper-{question.exam_paper_id}")
 
-    rows = []
-    for student in teacher_class.students.order_by('first_name', 'last_name', 'username'):
-        items = by_student.get(student.id, [])
-        if not items:
-            state = 'absent'
-        elif all(item.status == 'done' for item in items):
-            state = 'done'
-        else:
-            state = 'pending'
-        badges = sorted({item.micro_badge.number for item in items
-                         if item.micro_badge and not item.micro_badge.is_retry})
-        rows.append({'student': student, 'state': state, 'items': items,
-                     'badges': badges,
-                     'note': next((i.evidence_note for i in items if i.status == 'done'), '')})
+    covered = {c.student_id: c for c in QuestionCoverage.objects.filter(
+        question=question, student__in=teacher_class.students.all())}
+    rows = [{'student': student, 'coverage': covered.get(student.id)}
+            for student in teacher_class.students.order_by('first_name', 'last_name', 'username')]
 
     return render(request, 'studyplans/teacher/class_question.html', {
         'teacher_class': teacher_class,
         'question': question,
         'rows': rows,
-        'markable': sum(r['state'] == 'pending' for r in rows),
+        'all_covered': bool(rows) and all(r['coverage'] for r in rows),
     })
 
 

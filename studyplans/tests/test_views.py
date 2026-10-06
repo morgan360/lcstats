@@ -1015,7 +1015,11 @@ class DoneInClassTests(DoneInClassBase):
 
 
 class ClassQuestionGridTests(DoneInClassBase):
-    """Papers down the side, questions across; tick who covered a question."""
+    """Papers down the side, questions across: who has covered each question.
+
+    Coverage is its own record, independent of study plans; it inks the
+    question on the student's exam stamp card.
+    """
 
     def grid_url(self):
         return reverse('studyplans:class_questions', args=[self.klass.id])
@@ -1024,61 +1028,69 @@ class ClassQuestionGridTests(DoneInClassBase):
         question = question or self.questions[2]
         return reverse('studyplans:class_question', args=[self.klass.id, question.id])
 
+    def covered(self, student, question=None):
+        from studyplans.models import QuestionCoverage
+        return QuestionCoverage.objects.filter(
+            student=student, question=question or self.questions[2]).exists()
+
     def test_the_grid_lists_papers_and_links_each_question(self):
         self.client.force_login(self.teacher_user)
         page = self.client.get(self.grid_url()).content.decode()
         self.assertIn(self.question_url(), page)
         self.assertIn(f'id="paper-{self.questions[2].exam_paper_id}"', page)
-        # Both students have it on their plan, neither done yet.
-        self.assertIn('0 of 2 done', page)
+        self.assertIn('0 of 2 covered', page)
 
-    def test_ticking_students_marks_the_question_complete_for_them(self):
+    def test_a_question_on_no_plan_can_still_be_covered(self):
+        question = self.questions[7]
+        self.assertFalse(StudyPlanItem.objects.filter(exam_question=question).exists())
+        self.client.force_login(self.teacher_user)
+        self.client.post(self.question_url(question), {'student_ids': [self.classmate.id]})
+        self.assertTrue(self.covered(self.classmate, question))
+        self.assertFalse(self.covered(self.student, question))
+
+    def test_covering_inks_the_exam_stamp_card(self):
+        from studyplans.services import exam_stamps
+
+        self.client.force_login(self.teacher_user)
+        self.client.post(self.question_url(), {'student_ids': [self.student.id]})
+        paper = self.questions[2].exam_paper
+        row = next(r for r in exam_stamps.rows_for(self.student, self.maths)
+                   if r['paper'] == paper)
+        cell = row['cells'][self.questions[2].question_number - 1]
+        self.assertTrue(cell['stamped'])
+        self.assertTrue(cell['covered'])
+
+    def test_covering_also_ticks_it_off_a_plan_that_has_it(self):
         self.client.force_login(self.teacher_user)
         self.client.post(self.question_url(), {'student_ids': [self.classmate.id]})
-        self.item.refresh_from_db()
         self.mate_item.refresh_from_db()
-        self.assertEqual(self.item.status, 'pending')
+        self.item.refresh_from_db()
         self.assertEqual(self.mate_item.status, 'done')
-        self.mate_badge.refresh_from_db()
-        self.assertTrue(self.mate_badge.is_earned)
+        self.assertEqual(self.item.status, 'pending')
 
-    def test_whole_class_shows_as_done_on_the_grid(self):
+    def test_whole_class_shows_on_the_grid(self):
         self.client.force_login(self.teacher_user)
         self.client.post(self.question_url(),
                          {'student_ids': [self.student.id, self.classmate.id]})
         page = self.client.get(self.grid_url()).content.decode()
-        self.assertIn('2 of 2 done', page)
+        self.assertIn('2 of 2 covered', page)
 
-    def test_a_student_without_it_on_their_plan_is_listed_but_not_markable(self):
-        self.mate_item.status = 'skipped'
-        self.mate_item.save()
+    def test_unticking_takes_the_coverage_back(self):
         self.client.force_login(self.teacher_user)
-        page = self.client.get(self.question_url()).content.decode()
-        self.assertIn('not on their plan', page)
-        self.client.post(self.question_url(), {'student_ids': [self.classmate.id]})
-        self.mate_item.refresh_from_db()
-        self.assertEqual(self.mate_item.status, 'skipped')
+        self.client.post(self.question_url(),
+                         {'student_ids': [self.student.id, self.classmate.id]})
+        self.client.post(self.question_url(), {'student_ids': [self.student.id]})
+        self.assertTrue(self.covered(self.student))
+        self.assertFalse(self.covered(self.classmate))
 
-    def test_a_student_outside_the_class_is_never_marked(self):
+    def test_a_student_outside_the_class_is_never_covered(self):
         self.client.force_login(self.teacher_user)
         self.client.post(self.question_url(), {'student_ids': [self.stranger.id]})
-        self.assertFalse(StudyPlanItem.objects.filter(status='done').exists())
+        self.assertFalse(self.covered(self.stranger))
 
     def test_another_teachers_class_is_refused(self):
         self.client.force_login(self.other_teacher_user)
         self.assertEqual(self.client.get(self.grid_url()).status_code, 403)
         response = self.client.post(self.question_url(), {'student_ids': [self.student.id]})
         self.assertEqual(response.status_code, 403)
-        self.item.refresh_from_db()
-        self.assertEqual(self.item.status, 'pending')
-
-    def test_an_older_single_part_item_counts_for_its_question(self):
-        part_item = StudyPlanItem.objects.create(
-            plan=self.plan, goal=self.goal, micro_badge=self.badge,
-            content_type='exam_part', exam_question_part=self.parts[6],
-            available_from=self.today, due_date=self.today + timedelta(days=6))
-        question = self.parts[6].question
-        self.client.force_login(self.teacher_user)
-        self.client.post(self.question_url(question), {'student_ids': [self.student.id]})
-        part_item.refresh_from_db()
-        self.assertEqual(part_item.status, 'done')
+        self.assertFalse(self.covered(self.student))

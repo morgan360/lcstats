@@ -86,3 +86,12 @@ class ExamStampTests(TestCase):
         self.assertContains(response, 'MicroBadge earned')
         self.assertContains(response, reverse('exam_papers:practise_question',
                                               args=[self.q2.id]))
+
+    def test_a_question_a_teacher_marked_covered_is_stamped(self):
+        from studyplans.models import QuestionCoverage
+
+        QuestionCoverage.objects.create(student=self.student, question=self.q2)
+        cells = self.row(self.p1)['cells']
+        self.assertTrue(cells[1]['stamped'])
+        self.assertTrue(cells[1]['covered'])
+        self.assertFalse(cells[0]['stamped'])

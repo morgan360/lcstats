@@ -16,7 +16,7 @@
 
   {% if tab == 'exams' %}
   <p class="mb-6 text-sm text-mist/70">
-    Answer every part of a question to earn its MicroBadge. Earn all of a
+    Answer every part of a question, or cover it with your teacher, to earn its MicroBadge. Earn all of a
     paper's MicroBadges for its paper badge.
   </p>
   <div class="mb-8 h-1 w-full rounded-full bg-gradient-to-r from-violet-royal to-lime-glow"></div>
@@ -44,7 +44,7 @@
             {% if cell.question %}
             <a href="{% url 'exam_papers:practise_question' cell.question.id %}"
                class="inline-block align-middle"
-               title="{{ row.paper }} Q{{ cell.number }}{% if cell.stamped %} - MicroBadge earned{% endif %}"
+               title="{{ row.paper }} Q{{ cell.number }}{% if cell.covered %} - covered with your teacher{% elif cell.stamped %} - MicroBadge earned{% endif %}"
                aria-label="Question {{ cell.number }}{% if cell.stamped %}, MicroBadge earned{% else %}, not yet earned{% endif %}">
               {% include "studyplans/_stamp.html" with kind="micro" filled=cell.stamped %}
             </a>

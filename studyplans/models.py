@@ -640,3 +640,35 @@ class StudyPlanEvent(models.Model):
             plan=plan, kind=kind, message=message[:300],
             item=item, checkpoint=checkpoint)
 
+
+
+class QuestionCoverage(models.Model):
+    """A teacher's record that a student has covered an exam question.
+
+    Kept apart from study plans on purpose: a question worked through in
+    class, or done on paper, is covered whether or not it was ever on the
+    student's plan. It inks the question's MicroBadge on the student's exam
+    stamp card (services/exam_stamps.py) as an online attempt would.
+    """
+    student = models.ForeignKey(
+        User, on_delete=models.CASCADE, related_name='covered_questions')
+    question = models.ForeignKey(
+        ExamQuestion, on_delete=models.CASCADE, related_name='coverage')
+    covered_by = models.ForeignKey(
+        User, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='+', help_text="The teacher who marked it")
+    teacher_class = models.ForeignKey(
+        'homework.TeacherClass', on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='+')
+    covered_at = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        verbose_name = "Covered exam question"
+        ordering = ['-covered_at']
+        constraints = [
+            models.UniqueConstraint(fields=['student', 'question'],
+                                    name='uniq_questioncoverage_student_question'),
+        ]
+
+    def __str__(self):
+        return f"{self.student.username}: {self.question} (covered)"

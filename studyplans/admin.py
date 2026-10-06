@@ -1,6 +1,7 @@
 from django.contrib import admin
 
 from .models import (
+    QuestionCoverage,
     StudyPlan, StudyPlanCheckpoint, StudyPlanCheckpointPart, StudyPlanEvent,
     StudyPlanGoal, StudyPlanItem, StudyPlanMicroBadge,
 )
@@ -122,3 +123,12 @@ class StudyPlanEventAdmin(admin.ModelAdmin):
     list_filter = ('kind',)
     search_fields = ('plan__title', 'message')
     readonly_fields = ('plan', 'kind', 'message', 'item', 'checkpoint', 'created_at')
+
+
+@admin.register(QuestionCoverage)
+class QuestionCoverageAdmin(admin.ModelAdmin):
+    """Exam questions a teacher marked covered, in class or on paper."""
+    list_display = ('student', 'question', 'teacher_class', 'covered_by', 'covered_at')
+    list_filter = ('teacher_class', 'question__exam_paper__year')
+    search_fields = ('student__username', 'student__first_name', 'student__last_name')
+    raw_id_fields = ('student', 'question', 'covered_by')

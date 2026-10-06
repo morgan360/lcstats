@@ -1,7 +1,8 @@
 """Exam stamp cards: one row per past paper, a MicroBadge per question.
 
 A question's MicroBadge is inked once the student has attempted every one of
-its parts, in any mode and at any score. The paper's badge is inked once every
+its parts, in any mode and at any score, or once a teacher has marked the
+question covered (QuestionCoverage: done in class or on paper). The paper's badge is inked once every
 question on it has its MicroBadge. Unlike the topic cards this reads attempts
 directly -- no plan is involved.
 
@@ -40,6 +41,12 @@ def rows_for(user, subject=None):
                     .values_list('question_part_id', flat=True)
                     .distinct())
 
+    from ..models import QuestionCoverage
+
+    covered = set(QuestionCoverage.objects
+                  .filter(student=user, question__exam_paper__in=papers)
+                  .values_list('question_id', flat=True))
+
     rows = []
     for paper in papers:
         by_number = {q.question_number: q for q in paper.questions.all()}
@@ -47,10 +54,12 @@ def rows_for(user, subject=None):
         for number in range(1, SLOTS + 1):
             question = by_number.get(number)
             parts = parts_by_question.get(question.id, set()) if question else set()
+            is_covered = bool(question) and question.id in covered
             cells.append({
                 'number': number,
                 'question': question,
-                'stamped': bool(parts) and parts <= attempted,
+                'covered': is_covered,
+                'stamped': is_covered or (bool(parts) and parts <= attempted),
             })
         questions = [c for c in cells if c['question']]
         earned = sum(c['stamped'] for c in questions)
