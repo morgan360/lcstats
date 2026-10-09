@@ -1,4 +1,4 @@
-"""Add the Functions practice questions: seven Warm-up, seven Workout, six Stretch.
+"""Add the Functions practice questions: Warm-up, Workout, Stretch and Composite Functions.
 
 Content authored on local and replayed here so production gets exactly what was
 tested. Idempotent: keyed on topic slug, section name and question order rather
@@ -9,8 +9,10 @@ Written to the learning outcomes of Active Maths 4, Chapter 6 (Functions), in
 our own words and numbers: a function's unique output, domain and range,
 composite functions, the shapes of linear, quadratic, cubic, exponential and
 log graphs, graphical solutions of f(x) = k and f(x) = g(x), completed square
-form, transformations, injective/surjective/bijective, and inverses. The three
-existing "Composite Functions" questions are left as they are.
+form, transformations, injective/surjective/bijective, and inverses. The
+"Composite Functions" section is rewritten with real composites; the three
+exponential/log questions it held are moved out by move_exp_log_questions,
+which must run first (this command refuses until it has).
 
 Answers are stored in forms the grader checks without GPT: plain numbers,
 single letters for multiple choice, expressions it can compare algebraically,
@@ -549,6 +551,99 @@ $$x^3 + 1 = 28 \;\Rightarrow\; x^3 = 27 \;\Rightarrow\; x = 3$$
 ]
 
 
+# The existing "Composite Functions" section held three exponential/log
+# questions that never composed anything; move_exp_log_questions moves them to
+# Indices and Logs. These take their place.
+QUESTIONS.append(("""Composite Functions""", 10, [
+    question(1, r"""$(f \circ g)(x)$ means $f(g(x))$: do $g$ **first**, then $f$. In general $f \circ g$ and $g \circ f$ are different functions, so always check which is asked for.""", [
+        part("(a)", 0, r"""$f(x) = x - 4$ and $g(x) = 3x$. Find $(f \circ g)(2)$.""",
+             "2", "numeric", NUM, 5,
+             r"""$(f \circ g)(2) = f(g(2))$. Inside first: $g(2) = 6$. Then $f(6) = 6 - 4 = 2$.
+
+**Answer:** $2$"""),
+        part("(b)", 1, r"""Find $(g \circ f)(2)$.""",
+             "-6", "numeric", NUM, 5,
+             r"""$(g \circ f)(2) = g(f(2))$. Inside first: $f(2) = -2$. Then $g(-2) = 3(-2) = -6$.
+
+**Answer:** $-6$"""),
+        part("(c)", 2, r"""For which values of $x$ is $(f \circ g)(x) = (g \circ f)(x)$?
+
+**(A)** $x = 4$ only
+
+**(B)** $x = 0$ only
+
+**(C)** Every value of $x$
+
+**(D)** No value of $x$
+
+Type the letter of your answer.""",
+             "D", "multi", LETTER, 10,
+             r"""$(f \circ g)(x) = 3x - 4$ and $(g \circ f)(x) = 3(x - 4) = 3x - 12$.
+
+$$3x - 4 = 3x - 12 \;\Rightarrow\; -4 = -12$$
+
+which is never true, so the two composites are never equal.
+
+**Answer:** D"""),
+    ]),
+    question(2, r"""With three functions, work from the innermost outwards: $f(g(h(x)))$ means $h$ first, then $g$, then $f$.""", [
+        part("(a)", 0, r"""$f(x) = x^2$, $g(x) = x + 3$ and $h(x) = 2x$. Find $f(g(h(1)))$.""",
+             "25", "numeric", NUM, 5,
+             r"""$h(1) = 2$, then $g(2) = 5$, then $f(5) = 25$.
+
+**Answer:** $25$"""),
+        part("(b)", 1, r"""Find $h(g(f(x)))$ as an expression in $x$.""",
+             "2*x**2 + 6", "expression", EXPR, 10,
+             r"""$f(x) = x^2$, then $g(x^2) = x^2 + 3$, then $h(x^2 + 3) = 2(x^2 + 3) = 2x^2 + 6$.
+
+**Answer:** $2x^2 + 6$"""),
+    ]),
+    question(3, r"""To split $k(x)$ into $f(g(x))$, look for the "inside" expression: that is $g(x)$. Replace it with $x$ to see what $f$ does to it.""", [
+        part("(a)", 0, r"""$k(x) = (2x + 5)^3$ can be written as $f(g(x))$, where $g(x) = 2x + 5$. Find $f(x)$.""",
+             "x**3", "expression", EXPR, 5,
+             r"""$g(x) = 2x + 5$ is the inside; $k$ then cubes it. So $f(x) = x^3$. Check: $f(g(x)) = (2x + 5)^3$. ✓
+
+**Answer:** $f(x) = x^3$"""),
+        part("(b)", 1, r"""$m(x) = \sqrt{x^2 + 1}$ can be written as $f(g(x))$, where $f(x) = \sqrt{x}$. Find $g(x)$.""",
+             "x**2 + 1", "expression", EXPR, 5,
+             r"""$f$ takes the square root, so $g$ must produce what is under it: $g(x) = x^2 + 1$. Check: $f(g(x)) = \sqrt{x^2 + 1}$. ✓
+
+**Answer:** $g(x) = x^2 + 1$"""),
+    ]),
+    question(4, r"""Write $f(f(x))$ in terms of $a$ and $b$, then compare coefficients with the given expression: the $x$ terms give one equation, the constants another.""", [
+        part("(a)", 0, r"""$f(x) = ax + b$, where $a > 0$, and $f(f(x)) = 9x + 8$. Find $a$.""",
+             "3", "numeric", NUM, 10,
+             r"""$$f(f(x)) = a(ax + b) + b = a^2x + ab + b$$
+
+Comparing the $x$ terms with $9x + 8$: $a^2 = 9$, and $a > 0$, so $a = 3$.
+
+**Answer:** $a = 3$"""),
+        part("(b)", 1, r"""Find $b$.""",
+             "2", "numeric", NUM, 10,
+             r"""Comparing the constants: $ab + b = 8$. With $a = 3$: $3b + b = 4b = 8$, so $b = 2$.
+
+Check: $f(x) = 3x + 2$ gives $f(f(x)) = 3(3x + 2) + 2 = 9x + 8$. ✓
+
+**Answer:** $b = 2$"""),
+    ]),
+    question(5, r"""$f(x) = \dfrac{1}{x - 2}$ is undefined only when its input is $2$. In $f(g(x))$ the input is $g(x)$, so find the $x$ values that make $g(x) = 2$.""", [
+        part("(a)", 0, r"""$f(x) = \dfrac{1}{x - 2}$ and $g(x) = x^2$. For which values of $x$ is $f(g(x))$ undefined? Give your answers correct to two decimal places.""",
+             "-1.41, 1.41", "numeric",
+             "Two numbers to 2 decimal places, separated by a comma, smallest first (e.g., -1.25, 1.25)", 10,
+             r"""$$f(g(x)) = \frac{1}{x^2 - 2}$$
+
+This is undefined when $x^2 - 2 = 0$, i.e. $x = \pm\sqrt{2} \approx \pm 1.41$.
+
+**Answer:** $x = -1.41,\ 1.41$"""),
+        part("(b)", 1, r"""Find $g(f(3))$.""",
+             "1", "numeric", NUM, 5,
+             r"""$f(3) = \dfrac{1}{3 - 2} = 1$, then $g(1) = 1^2 = 1$.
+
+**Answer:** $1$"""),
+    ]),
+]))
+
+
 class Command(BaseCommand):
     help = "Add or update the Functions practice questions"
 
@@ -568,6 +663,14 @@ class Command(BaseCommand):
             self.stderr.write(self.style.ERROR(
                 f'No "{SUBJECT_NAME}" subject - run the core migrations first.'
             ))
+            return
+
+        from .move_exp_log_questions import misfiled
+        composite = Section.objects.filter(topic__slug=TOPIC_SLUG, name="Composite Functions").first()
+        if composite and misfiled(composite):
+            self.stderr.write(self.style.ERROR(
+                "Composite Functions still holds the exponential/log questions. "
+                "Run move_exp_log_questions first, or they would be overwritten."))
             return
 
         with transaction.atomic():

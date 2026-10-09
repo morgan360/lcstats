@@ -106,7 +106,24 @@ EXPECTED = {
     ("Stretch", 5, "(b)"): "C" if s5.subs(x, -4) == s5.subs(x, -2) else "?",
     ("Stretch", 6, "(a)"): [7.0, 2.0],
     ("Stretch", 6, "(b)"): nums(real_roots(x**3 + 1 - 28)),
+
+    # Composite Functions
+    ("Composite Functions", 1, "(a)"): nums([(x - 4).subs(x, (3 * x).subs(x, 2))]),
+    ("Composite Functions", 1, "(b)"): nums([(3 * x).subs(x, (x - 4).subs(x, 2))]),
+    ("Composite Functions", 1, "(c)"): "D" if not sp.solve(sp.Eq((x - 4).subs(x, 3 * x), (3 * x).subs(x, x - 4)), x) else "?",
+    ("Composite Functions", 2, "(a)"): nums([(x**2).subs(x, (x + 3).subs(x, (2 * x).subs(x, 1)))]),
+    ("Composite Functions", 2, "(b)"): ("expr", (2 * x).subs(x, (x + 3).subs(x, x**2))),
+    ("Composite Functions", 3, "(a)"): ("expr", x**3),
+    ("Composite Functions", 3, "(b)"): ("expr", x**2 + 1),
+    ("Composite Functions", 4, "(a)"): [float(v[0]) for v in sp.solve([sp.Eq(a**2, 9), sp.Eq(a * y + y, 8)], [a, y]) if v[0] > 0],
+    ("Composite Functions", 4, "(b)"): [float(v[1]) for v in sp.solve([sp.Eq(a**2, 9), sp.Eq(a * y + y, 8)], [a, y]) if v[0] > 0],
+    ("Composite Functions", 5, "(a)"): nums(real_roots(x**2 - 2), 2),
+    ("Composite Functions", 5, "(b)"): nums([(x**2).subs(x, (1 / (x - 2)).subs(x, 3))]),
 }
+
+# The decompositions really do recompose to the given functions.
+assert sp.expand(x**3).subs(x, 2 * x + 5) == (2 * x + 5) ** 3
+assert sp.sqrt(x).subs(x, x**2 + 1) == sp.sqrt(x**2 + 1)
 
 # Extra spot checks the dictionary can't express.
 assert all((k3f - k3g).subs(x, v) < 0 for v in [-0.5, 0, 3.9]), "Workout 3(b): f < g inside"
