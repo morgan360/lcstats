@@ -255,5 +255,9 @@ def compare_algebraic(student_ans: str, correct_ans: str) -> bool:
         s = _parse_any(student_ans)
         c = _parse_any(correct_ans)
         return simplify(s - c) == 0
-    except (SympifyError, SyntaxError, TypeError, ValueError, TokenError):
+    except (SympifyError, SyntaxError, TypeError, ValueError, TokenError,
+            AttributeError, NameError):
+        # A sentence such as "Because it is going upwards. It is decelerating"
+        # parses as a product of letters until ".It..." raises AttributeError.
+        # Not an expression, so not a match: the caller then asks GPT.
         return False

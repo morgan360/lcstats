@@ -16,12 +16,9 @@ which must run first (this command refuses until it has).
 
 Answers are stored in forms the grader checks without GPT: plain numbers,
 single letters for multiple choice, expressions it can compare algebraically,
-and pairs of numbers. A pair is stored smallest first (or x first for a point)
-and the format line says so, because mark_student_answer reads any
-comma-separated answer as an interval: it compares only the first two numbers,
-in order. For the same reason no answer here has three values.
-Where a question asks for a particular form, the parts ask for the numbers in
-it instead, because an algebraic check would also accept the expanded form.
+lists of values (marked in any order) and points in brackets (marked in order,
+x first). A point must be bracketed: a bare "2, 3" is a list, so "3, 2" would
+also pass.
 Every answer was checked with SymPy (scripts/check_functions_answers.py).
 """
 from django.core.management.base import BaseCommand
@@ -36,8 +33,8 @@ SUBJECT_NAME = "Maths"
 PAPER = "p1"
 
 NUM = "Number only (e.g., 7 or -2.5)"
-NUMS = "Two numbers separated by a comma, smallest first (e.g., -2, 3)"
-POINT = "Two numbers separated by a comma, x first (e.g., 3, -2)"
+NUMS = "Two numbers separated by a comma, in any order (e.g., -2, 3)"
+POINT = "A point, x first (e.g., (3, -2))"
 LETTER = "Single letter (e.g., B or D)"
 EXPR = "An expression in $x$ (e.g., 3x^2 - 2x + 1)"
 
@@ -202,7 +199,7 @@ $$x^2 - 4x + 7 = (x - 2)^2 - 4 + 7 = (x - 2)^2 + 3$$
 
 **Answer:** $q = 3$"""),
             part("(c)", 2, r"""Hence write down the coordinates of the turning point of the graph of $f$.""",
-                 "2, 3", "numeric", POINT, 5,
+                 "(2, 3)", "numeric", POINT, 5,
                  r"""$(x - 2)^2 \geq 0$, so $f(x)$ is smallest when $x - 2 = 0$, i.e. $x = 2$. Then $f(2) = 3$.
 
 **Answer:** $(2,\ 3)$, a minimum point"""),
@@ -229,7 +226,7 @@ Type the letter of your answer.""",
 
 **Answer:** $c = -1$"""),
             part("(c)", 2, r"""Write down the coordinates of the turning point of $y = g(x - 2)$.""",
-                 "2, -4", "numeric", POINT, 5,
+                 "(2, -4)", "numeric", POINT, 5,
                  r"""$g(x - 2) = (x - 2)^2 - 4$. The graph of $g$ moves **2 units right**, so its turning point moves from $(0, -4)$ to $(2, -4)$.
 
 **Answer:** $(2,\ -4)$"""),
@@ -282,7 +279,7 @@ So $a = 2$, $p = -3$, $q = -8$.
 
 **Answer:** $q = -8$"""),
             part("(b)", 1, r"""Write down the coordinates of the turning point.""",
-                 "3, -8", "numeric", POINT, 5,
+                 "(3, -8)", "numeric", POINT, 5,
                  r"""$f(x) = 2(x - 3)^2 - 8$, with turning point at $x = 3$, $f(3) = -8$. Since $a = 2 > 0$ it is a minimum.
 
 **Answer:** $(3,\ -8)$"""),
@@ -473,7 +470,7 @@ So $b = 2$, and the roots of $f(x) = 0$ are $x = -2,\ -1,\ 2$.
 
 **Answer:** $b = 2$"""),
             part("(b)", 1, r"""One solution of $f(x) = -4$ is $x = 0$. Find the other two, correct to two decimal places.""",
-                 "-2.56, 1.56", "numeric", "Two numbers to 2 decimal places, separated by a comma, smallest first (e.g., -1.25, 3.40)", 15,
+                 "-2.56, 1.56", "numeric", "Two numbers to 2 decimal places, separated by a comma, in any order (e.g., -1.25, 3.40)", 15,
                  r"""$$x^3 + x^2 - 4x - 4 = -4 \;\Rightarrow\; x^3 + x^2 - 4x = 0 \;\Rightarrow\; x(x^2 + x - 4) = 0$$
 
 So $x = 0$, or
@@ -535,7 +532,7 @@ Type the letter of your answer.""",
         ]),
         question(6, r"""The graph of $f^{-1}$ is the reflection of the graph of $f$ in the line $y = x$, so the point $(a, b)$ on $f$ becomes $(b, a)$ on $f^{-1}$. And $f^{-1}(b)$ is the input that $f$ sends to $b$.""", [
             part("(a)", 0, r"""The point $(2, 7)$ is on the graph of a bijective function $f$. Write down the point it becomes on the graph of $f^{-1}$.""",
-                 "7, 2", "numeric", POINT, 5,
+                 "(7, 2)", "numeric", POINT, 5,
                  r"""Reflecting in $y = x$ swaps the coordinates.
 
 **Answer:** $(7,\ 2)$"""),
@@ -629,7 +626,7 @@ Check: $f(x) = 3x + 2$ gives $f(f(x)) = 3(3x + 2) + 2 = 9x + 8$. ✓
     question(5, r"""$f(x) = \dfrac{1}{x - 2}$ is undefined only when its input is $2$. In $f(g(x))$ the input is $g(x)$, so find the $x$ values that make $g(x) = 2$.""", [
         part("(a)", 0, r"""$f(x) = \dfrac{1}{x - 2}$ and $g(x) = x^2$. For which values of $x$ is $f(g(x))$ undefined? Give your answers correct to two decimal places.""",
              "-1.41, 1.41", "numeric",
-             "Two numbers to 2 decimal places, separated by a comma, smallest first (e.g., -1.25, 1.25)", 10,
+             "Two numbers to 2 decimal places, separated by a comma, in any order (e.g., -1.25, 1.25)", 10,
              r"""$$f(g(x)) = \frac{1}{x^2 - 2}$$
 
 This is undefined when $x^2 - 2 = 0$, i.e. $x = \pm\sqrt{2} \approx \pm 1.41$.

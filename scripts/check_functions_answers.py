@@ -137,6 +137,7 @@ def stored_value(answer, kind):
         return answer.strip()
     if kind == "expression":
         return ("expr", sp.sympify(answer.replace("^", "**"), locals={"a": a, "x": x}))
+    answer = answer.strip("()[] ")
     return [float(sp.Rational(v.strip())) if "/" in v else float(v) for v in answer.split(",")]
 
 
@@ -157,11 +158,11 @@ for section, _, entries in QUESTIONS:
                 # Pairs must be stored in the order the format line asks for:
                 # x first for a point, otherwise smallest first, because the
                 # grader compares the first two numbers of a pair in order.
-                is_point = "x first" in p["expected_format"]
+                is_point = p["answer"].strip().startswith("(")
                 g = got
                 w = want if is_point else sorted(want)
-                if not is_point and got != sorted(got):
-                    print(f"     ^ stored out of order: {p['answer']!r}")
+                if not is_point:
+                    g = sorted(got)
                 ok = len(g) == len(w) and all(abs(i - j) < 0.006 for i, j in zip(g, w))
             else:
                 ok = got == want
