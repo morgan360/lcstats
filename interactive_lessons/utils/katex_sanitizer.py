@@ -1,7 +1,7 @@
 import re
 from typing import List, Tuple
 
-SANITIZER_VERSION = "1.0.8"  # sanity check
+SANITIZER_VERSION = "1.0.9"  # sanity check
 
 # ---------- helpers ----------
 def _inline(tok: str) -> str:
@@ -20,6 +20,12 @@ MATH_TOKENS = [
 CODE_FENCE_RE  = re.compile(r"(```[\s\S]*?```)", re.MULTILINE)
 DISPLAYMATH_RE = re.compile(r"\$\$[\s\S]*?\$\$", re.MULTILINE)
 INLINEMATH_RE  = re.compile(r"\\\([\s\S]*?\\\)")
+# Single-dollar inline maths, $...$ but not $$. Protected like the others:
+# before 1.0.9 it was not, so the (\sigma) wrapper below fired inside
+# formulas and turned \left(\frac{a}{b}\right) into \left\(...\right\) and
+# \ln(x) into \ln\(x\), which KaTeX shows as raw code. Protecting a "$5 and
+# $10" price pair by mistake is harmless: protected text is only left alone.
+DOLLARMATH_RE  = re.compile(r"(?<!\$)\$(?!\$)[^$\n]+?\$(?!\$)")
 
 # Plain parenthesised tokens to turn into inline math: (\sigma), (\sigma_{\bar{x}}), (n)
 PARENS_MATH_RE = re.compile(r"\(\s*(" + "|".join(MATH_TOKENS) + r")\s*\)")
@@ -49,6 +55,7 @@ def _protect_math(s: str) -> Tuple[str, List[str], List[str]]:
 
     s = DISPLAYMATH_RE.sub(sub_display, s)
     s = INLINEMATH_RE.sub(sub_inline, s)
+    s = DOLLARMATH_RE.sub(sub_inline, s)
     return s, displays, inlines
 
 def _restore_math(s: str, displays: List[str], inlines: List[str]) -> str:
