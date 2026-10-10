@@ -1,18 +1,22 @@
-"""Add the Functions practice questions: Warm-up, Workout, Stretch and Composite Functions.
+"""Add the Functions practice questions, one section per subtopic.
 
 Content authored on local and replayed here so production gets exactly what was
-tested. Idempotent: keyed on topic slug, section name and question order rather
-than primary key, because ids differ between local and production. Re-running
-updates in place and never duplicates.
+tested. Idempotent, and keyed on content rather than primary key, because ids
+differ between local and production. Re-running updates in place and never
+duplicates.
 
-Written to the learning outcomes of Active Maths 4, Chapter 6 (Functions), in
-our own words and numbers: a function's unique output, domain and range,
-composite functions, the shapes of linear, quadratic, cubic, exponential and
-log graphs, graphical solutions of f(x) = k and f(x) = g(x), completed square
-form, transformations, injective/surjective/bijective, and inverses. The
-"Composite Functions" section is rewritten with real composites; the three
-exponential/log questions it held are moved out by move_exp_log_questions,
-which must run first (this command refuses until it has).
+The sections follow Active Maths 4, Chapter 6: 6.2 mappings, 6.3 composite,
+6.4 linear and quadratic, 6.5 completed square, 6.6 cubic, 6.7 exponential,
+6.8 log graphs, 6.9 injective/surjective/bijective, 6.10 inverses. Each runs
+from easiest to hardest. The questions are our own words and numbers.
+
+They were first published (2026-10-09) as Warm-up / Workout / Stretch. Those
+questions are *moved* into the subtopics, matched by their first prompt, so
+they keep their rows and any attempts; the emptied tier sections are then
+deleted, and "Composite Functions" is renamed "6.3 Composite Functions". The
+three exponential/log questions that section once held are moved out by
+move_exp_log_questions, which must run first (this command refuses until it
+has).
 
 Answers are stored in forms the grader checks without GPT: plain numbers,
 single letters for multiple choice, expressions it can compare algebraically,
@@ -641,6 +645,296 @@ This is undefined when $x^2 - 2 = 0$, i.e. $x = \pm\sqrt{2} \approx \pm 1.41$.
 ]))
 
 
+# ---------------------------------------------------------------------------
+# New questions for the thin subtopics (2026-10-10)
+# ---------------------------------------------------------------------------
+
+M_MAPPING = question(0, r"""$f : x \mapsto 2x^2 - 3$ means "$f$ sends $x$ to $2x^2 - 3$", the same as $f(x) = 2x^2 - 3$. Several inputs may share an output, but each input has exactly one.""", [
+    part("(a)", 0, r"""$f : x \mapsto 2x^2 - 3$. Find $f(-2)$.""",
+         "5", "numeric", NUM, 5,
+         r"""$$f(-2) = 2(-2)^2 - 3 = 8 - 3 = 5$$
+
+**Answer:** $5$"""),
+    part("(b)", 1, r"""Find the values of $x$ for which $f(x) = 15$.""",
+         "-3, 3", "numeric", NUMS, 5,
+         r"""$$2x^2 - 3 = 15 \;\Rightarrow\; x^2 = 9 \;\Rightarrow\; x = \pm 3$$
+
+Two inputs give the same output: that is allowed in a function.
+
+**Answer:** $x = -3,\ 3$"""),
+    part("(c)", 2, r"""$f$ maps the set $\lbrace -1, 0, 1 \rbrace$ to which set of outputs?
+
+**(A)** $\lbrace -1, 0, 1 \rbrace$
+
+**(B)** $\lbrace -3, -1 \rbrace$
+
+**(C)** $\lbrace -1, -3, 1 \rbrace$
+
+**(D)** $\lbrace -5, -3, -1 \rbrace$
+
+Type the letter of your answer.""",
+         "B", "multi", LETTER, 5,
+         r"""$f(-1) = -1$, $f(0) = -3$, $f(1) = -1$. Listed once each, the outputs are $\lbrace -3, -1 \rbrace$.
+
+**Answer:** B"""),
+])
+
+C_FACTORISE = question(0, r"""For a cubic $f(x) = (x - a)(x - b)(x - c)$ the roots are $a$, $b$ and $c$, and the $y$-intercept is $f(0)$. Group in pairs to factorise: $x^2(x - 3) - 1(x - 3)$.""", [
+    part("(a)", 0, r"""$f(x) = x^3 - 3x^2 - x + 3$. Where does the graph cross the $y$-axis? Give the $y$ value.""",
+         "3", "numeric", NUM, 5,
+         r"""$f(0) = 3$.
+
+**Answer:** $3$"""),
+    part("(b)", 1, r"""Find the roots of $f(x) = 0$.""",
+         "-1, 1, 3", "numeric", "Three numbers separated by commas, in any order (e.g., -2, 0, 5)", 10,
+         r"""$$x^3 - 3x^2 - x + 3 = x^2(x - 3) - 1(x - 3) = (x - 3)(x^2 - 1) = (x - 3)(x - 1)(x + 1)$$
+
+**Answer:** $x = -1,\ 1,\ 3$"""),
+    part("(c)", 2, r"""Between $x = 1$ and $x = 3$, where is the graph of $f$?
+
+**(A)** Above the $x$-axis
+
+**(B)** Below the $x$-axis
+
+**(C)** On the $x$-axis
+
+**(D)** It crosses the $x$-axis
+
+Type the letter of your answer.""",
+         "B", "multi", LETTER, 5,
+         r"""Test a value between the roots: $f(2) = 8 - 12 - 2 + 3 = -3 < 0$. No root lies strictly between $1$ and $3$, so the graph stays below the axis there.
+
+**Answer:** B"""),
+])
+
+C_FROM_ROOTS = question(0, r"""A cubic with roots $-2$, $1$ and $4$ is $y = a(x + 2)(x - 1)(x - 4)$. Use the other point on the graph to find $a$. To solve $f(x) = 8$, move the $8$ across first: $x$ becomes a common factor.""", [
+    part("(a)", 0, r"""The graph of $y = a(x + 2)(x - 1)(x - 4)$ passes through $(0, 8)$. Find $a$.""",
+         "1", "numeric", NUM, 10,
+         r"""$$8 = a(2)(-1)(-4) = 8a \;\Rightarrow\; a = 1$$
+
+**Answer:** $a = 1$"""),
+    part("(b)", 1, r"""With this value of $a$, find $f(2)$, where $f(x) = a(x + 2)(x - 1)(x - 4)$.""",
+         "-8", "numeric", NUM, 5,
+         r"""$$f(2) = (4)(1)(-2) = -8$$
+
+**Answer:** $-8$"""),
+    part("(c)", 2, r"""Solve $f(x) = 8$. Give non-whole answers correct to two decimal places.""",
+         "-1.37, 0, 4.37", "numeric", "Three numbers separated by commas, in any order, to 2 decimal places where needed (e.g., -1.25, 0, 3.40)", 15,
+         r"""Expand: $f(x) = (x^2 + x - 2)(x - 4) = x^3 - 3x^2 - 6x + 8$.
+
+$$x^3 - 3x^2 - 6x + 8 = 8 \;\Rightarrow\; x(x^2 - 3x - 6) = 0$$
+
+So $x = 0$ or $x = \dfrac{3 \pm \sqrt{33}}{2}$, i.e. $x \approx 4.37$ or $x \approx -1.37$.
+
+**Answer:** $x = -1.37,\ 0,\ 4.37$"""),
+])
+
+E_GRAPH = question(0, r"""For $f(x) = k \cdot a^x$ with $a > 1$: $f(0) = k$, each step of $1$ in $x$ multiplies the output by $a$, and as $x$ becomes very negative the graph gets closer and closer to the $x$-axis without reaching it.""", [
+    part("(a)", 0, r"""$f(x) = 3 \cdot 2^x$. Find $f(0)$.""",
+         "3", "numeric", NUM, 5,
+         r"""$f(0) = 3 \cdot 2^0 = 3 \cdot 1 = 3$.
+
+**Answer:** $3$"""),
+    part("(b)", 1, r"""Find $f(4)$.""",
+         "48", "numeric", NUM, 5,
+         r"""$f(4) = 3 \cdot 2^4 = 3 \cdot 16 = 48$.
+
+**Answer:** $48$"""),
+    part("(c)", 2, r"""What happens to $f(x)$ as $x$ becomes very large and negative?
+
+**(A)** It becomes very large and negative
+
+**(B)** It gets closer and closer to $0$
+
+**(C)** It gets closer and closer to $3$
+
+**(D)** It becomes very large and positive
+
+Type the letter of your answer.""",
+         "B", "multi", LETTER, 5,
+         r"""$2^x$ halves with each step to the left: $2^{-10} \approx 0.001$. So $3 \cdot 2^x$ approaches $0$, always staying positive. The $x$-axis is an asymptote.
+
+**Answer:** B"""),
+])
+
+E_GROWTH = question(0, r"""In $P(t) = 500(1.2)^t$ the population grows by $20\%$ a year. For "first exceeds", find when $P(t) = 2000$ using logs, then round **up** to the next whole year, and check the year before.""", [
+    part("(a)", 0, r"""A population of fish is modelled by $P(t) = 500(1.2)^t$, where $t$ is in years. Find $P(3)$.""",
+         "864", "numeric", NUM, 5,
+         r"""$$P(3) = 500 \times 1.2^3 = 500 \times 1.728 = 864$$
+
+**Answer:** $864$"""),
+    part("(b)", 1, r"""After how many whole years does the population first exceed $2000$?""",
+         "8", "numeric", "A whole number of years (e.g., 5)", 10,
+         r"""$$500(1.2)^t > 2000 \;\Rightarrow\; 1.2^t > 4 \;\Rightarrow\; t > \frac{\ln 4}{\ln 1.2} \approx 7.6$$
+
+Check: $P(7) \approx 1792$, $P(8) \approx 2150$.
+
+**Answer:** $8$ years"""),
+])
+
+L_BASIC = question(0, r"""$y = \log_2 x$ asks "what power of $2$ gives $x$?". So $\log_2 8 = 3$ and $\log_2 1 = 0$. The graph only exists for $x > 0$, and gets closer and closer to the $y$-axis as $x$ approaches $0$.""", [
+    part("(a)", 0, r"""Find the value of $y = \log_2 x$ when $x = 8$.""",
+         "3", "numeric", NUM, 5,
+         r"""$2^3 = 8$, so $\log_2 8 = 3$.
+
+**Answer:** $3$"""),
+    part("(b)", 1, r"""Where does the graph of $y = \log_2 x$ cross the $x$-axis? Give the $x$ value.""",
+         "1", "numeric", NUM, 5,
+         r"""On the $x$-axis $y = 0$: $\log_2 x = 0 \Rightarrow x = 2^0 = 1$.
+
+**Answer:** $x = 1$"""),
+    part("(c)", 2, r"""Which line is an asymptote of the graph of $y = \log_2 x$?
+
+**(A)** $y = 0$
+
+**(B)** $x = 0$
+
+**(C)** $x = 1$
+
+**(D)** $y = 1$
+
+Type the letter of your answer.""",
+         "B", "multi", LETTER, 5,
+         r"""As $x$ gets closer to $0$ from the right, $\log_2 x$ falls without limit, so the graph runs down alongside the $y$-axis, the line $x = 0$, without touching it.
+
+**Answer:** B"""),
+])
+
+L_SHIFTED = question(0, r"""$y = \log_3(x - 2)$ is $y = \log_3 x$ moved $2$ units to the right. Everything moves with it: the $x$-intercept and the asymptote.""", [
+    part("(a)", 0, r"""Where does $y = \log_3(x - 2)$ cross the $x$-axis? Give the $x$ value.""",
+         "3", "numeric", NUM, 5,
+         r"""$\log_3(x - 2) = 0 \Rightarrow x - 2 = 3^0 = 1 \Rightarrow x = 3$.
+
+**Answer:** $x = 3$"""),
+    part("(b)", 1, r"""The graph has a vertical asymptote $x = k$. Find $k$.""",
+         "2", "numeric", NUM, 5,
+         r"""The log is only defined when $x - 2 > 0$, i.e. $x > 2$. As $x$ approaches $2$ the graph falls without limit, so the asymptote is $x = 2$.
+
+**Answer:** $k = 2$"""),
+    part("(c)", 2, r"""Find $y$ when $x = 11$.""",
+         "2", "numeric", NUM, 5,
+         r"""$y = \log_3(11 - 2) = \log_3 9 = 2$, since $3^2 = 9$.
+
+**Answer:** $2$"""),
+])
+
+L_INVERSE = question(0, r"""$y = 2^x$ and $y = \log_2 x$ are inverse functions, so each graph is the reflection of the other in the line $y = x$: the point $(a, b)$ on one is $(b, a)$ on the other. To solve $\log_2 x = k$, write $x = 2^k$.""", [
+    part("(a)", 0, r"""The point $(3, 8)$ is on the graph of $y = 2^x$. Write down the matching point on the graph of $y = \log_2 x$.""",
+         "(8, 3)", "numeric", POINT, 5,
+         r"""Reflecting in $y = x$ swaps the coordinates. Check: $\log_2 8 = 3$.
+
+**Answer:** $(8,\ 3)$"""),
+    part("(b)", 1, r"""Solve $\log_2 x = 5$.""",
+         "32", "numeric", NUM, 5,
+         r"""$x = 2^5 = 32$.
+
+**Answer:** $x = 32$"""),
+    part("(c)", 2, r"""What is the domain of $y = \log_2 x$?
+
+**(A)** All real numbers
+
+**(B)** $x > 0$
+
+**(C)** $x \geq 0$
+
+**(D)** $x > 1$
+
+Type the letter of your answer.""",
+         "B", "multi", LETTER, 5,
+         r"""$2^y$ is always positive, so only positive $x$ can be written as $2^y$. $\log_2 0$ is undefined, so $x = 0$ is excluded.
+
+**Answer:** B"""),
+])
+
+I_MORE = question(0, r"""**Injective:** no two inputs share an output. **Surjective:** every element of the codomain is reached. Check the codomain carefully: $\mathbb{N}$ and $\mathbb{R}$ give different answers for the same rule.""", [
+    part("(a)", 0, r"""$f : \mathbb{N} \to \mathbb{N}$, $f(x) = x + 5$. Which describes $f$?
+
+**(A)** Injective and surjective
+
+**(B)** Injective but not surjective
+
+**(C)** Surjective but not injective
+
+**(D)** Neither injective nor surjective
+
+Type the letter of your answer.""",
+         "B", "multi", LETTER, 5,
+         r"""Injective: different inputs give different outputs.
+
+Not surjective: the smallest output is $1 + 5 = 6$, so $1, 2, 3, 4, 5$ in the codomain are never reached.
+
+**Answer:** B"""),
+    part("(b)", 1, r"""$g : \mathbb{R} \to \mathbb{R}$, $g(x) = x^3$. Which describes $g$?
+
+**(A)** Injective and surjective
+
+**(B)** Injective but not surjective
+
+**(C)** Surjective but not injective
+
+**(D)** Neither injective nor surjective
+
+Type the letter of your answer.""",
+         "A", "multi", LETTER, 5,
+         r"""$x^3$ is always increasing, so no two inputs share an output: injective. Every real $y$ is reached by $x = \sqrt[3]{y}$: surjective. So $g$ is bijective.
+
+**Answer:** A"""),
+])
+
+
+# ---------------------------------------------------------------------------
+# The sections students see: Active Maths 4 chapter 6's headings, each
+# running from easiest to hardest. Built from the questions above, which were
+# first written as Warm-up / Workout / Stretch; those sections are retired.
+# ---------------------------------------------------------------------------
+
+_BY_TIER = {name: {q["order"]: q for q in entries} for name, _, entries in QUESTIONS}
+
+
+def _old(tier, order):
+    return _BY_TIER[tier][order]
+
+
+#: Every question with the label the answer checker keys it on.
+ALL_SOURCES = [(tier, q["order"], q) for tier, _, entries in QUESTIONS for q in entries] + [
+    ("New 6.2", 1, M_MAPPING), ("New 6.6", 1, C_FACTORISE), ("New 6.6", 2, C_FROM_ROOTS),
+    ("New 6.7", 1, E_GRAPH), ("New 6.7", 2, E_GROWTH), ("New 6.8", 1, L_BASIC),
+    ("New 6.8", 2, L_SHIFTED), ("New 6.8", 3, L_INVERSE), ("New 6.9", 1, I_MORE),
+]
+
+SUBTOPICS = [
+    ("6.2 Functions as Mappings from One Set to Another", 2,
+     [_old("Warm-up", 1), _old("Warm-up", 2), M_MAPPING]),
+    ("6.3 Composite Functions", 3,
+     [_old("Warm-up", 3), _old("Composite Functions", 1), _old("Composite Functions", 2),
+      _old("Composite Functions", 3), _old("Workout", 1), _old("Composite Functions", 5),
+      _old("Composite Functions", 4), _old("Stretch", 2)]),
+    ("6.4 Linear and Quadratic Functions", 4,
+     [_old("Warm-up", 4), _old("Warm-up", 6), _old("Workout", 3)]),
+    ("6.5 Completed Square Form (Vertex Form)", 5,
+     [_old("Warm-up", 5), _old("Workout", 2), _old("Workout", 4), _old("Stretch", 4)]),
+    ("6.6 Cubic Functions", 6, [C_FACTORISE, C_FROM_ROOTS, _old("Stretch", 3)]),
+    ("6.7 Exponential Functions", 7, [E_GRAPH, _old("Workout", 7), E_GROWTH]),
+    ("6.8 Graphing Logarithmic Functions", 8, [L_BASIC, L_SHIFTED, L_INVERSE]),
+    ("6.9 Injective, Surjective and Bijective Functions", 9,
+     [_old("Workout", 5), I_MORE, _old("Stretch", 5)]),
+    ("6.10 Inverse Functions", 10,
+     [_old("Warm-up", 7), _old("Workout", 6), _old("Stretch", 6), _old("Stretch", 1)]),
+]
+
+#: Sections this layout replaces. Emptied by the move, then deleted.
+RETIRED_SECTIONS = ("Warm-up", "Workout", "Stretch")
+#: The one existing section that carries on, under a new name.
+RENAMED_SECTIONS = {"Composite Functions": "6.3 Composite Functions"}
+
+assert sorted(id(q) for _, _, qs in SUBTOPICS for q in qs) == sorted(
+    id(q) for _, _, q in ALL_SOURCES), "every question placed exactly once"
+
+
+def _first_prompt(entry):
+    return entry["parts"][0]["prompt"]
+
+
 class Command(BaseCommand):
     help = "Add or update the Functions practice questions"
 
@@ -663,12 +957,13 @@ class Command(BaseCommand):
             return
 
         from .move_exp_log_questions import misfiled
-        composite = Section.objects.filter(topic__slug=TOPIC_SLUG, name="Composite Functions").first()
-        if composite and misfiled(composite):
-            self.stderr.write(self.style.ERROR(
-                "Composite Functions still holds the exponential/log questions. "
-                "Run move_exp_log_questions first, or they would be overwritten."))
-            return
+        for name in ("Composite Functions", "6.3 Composite Functions"):
+            composite = Section.objects.filter(topic__slug=TOPIC_SLUG, name=name).first()
+            if composite and misfiled(composite):
+                self.stderr.write(self.style.ERROR(
+                    "Composite Functions still holds the exponential/log questions. "
+                    "Run move_exp_log_questions first, or they would be overwritten."))
+                return
 
         with transaction.atomic():
             topic, created = Topic.objects.get_or_create(
@@ -677,33 +972,54 @@ class Command(BaseCommand):
             )
             self.stdout.write(f'{"Created" if created else "Found"} topic "{topic.name}"')
 
-            questions = parts = 0
-            for section_name, section_order, entries in QUESTIONS:
-                section, _ = Section.objects.get_or_create(
-                    topic=topic,
-                    name=section_name,
-                    defaults={"order": section_order},
-                )
-                self.stdout.write(f"  section {section.name}")
+            # Keep the composite section (and its slug) under its new name.
+            for old_name, new_name in RENAMED_SECTIONS.items():
+                old = Section.objects.filter(topic=topic, name=old_name).first()
+                if old and not Section.objects.filter(topic=topic, name=new_name).exists():
+                    old.name = new_name
+                    old.save(update_fields=["name"])
+                    self.stdout.write(f'  renamed section "{old_name}" -> "{new_name}"')
 
-                for entry in entries:
-                    if dry_run:
-                        exists = Question.objects.filter(
-                            topic=topic, section=section, order=entry["order"]
-                        ).exists()
-                        verb = "update" if exists else "create"
-                        self.stdout.write(
-                            f'    would {verb} question {entry["order"]} '
-                            f'({len(entry["parts"])} parts)'
-                        )
-                        questions += 1
-                        parts += len(entry["parts"])
-                        continue
+            # Existing questions move to their new place rather than being
+            # re-created, so they keep their rows and any attempts. They are
+            # found by their first prompt, which is unique within the topic.
+            by_prompt = {}
+            for q in Question.objects.filter(topic=topic).prefetch_related("parts"):
+                first = q.parts.order_by("order").first()
+                if first:
+                    by_prompt[first.prompt] = q
 
+            sections, moved = {}, 0
+            for name, order, entries in SUBTOPICS:
+                section, made = Section.objects.get_or_create(
+                    topic=topic, name=name, defaults={"order": order})
+                if section.order != order:
+                    section.order = order
+                    section.save(update_fields=["order"])
+                sections[name] = section
+                if made:
+                    self.stdout.write(f"  created section {name}")
+            # Two passes, so no two questions ever share a position mid-move.
+            placed = []
+            for name, _, entries in SUBTOPICS:
+                for position, entry in enumerate(entries, start=1):
+                    q = by_prompt.get(_first_prompt(entry))
+                    if q and (q.section_id != sections[name].id or q.order != position):
+                        Question.objects.filter(pk=q.pk).update(
+                            section=sections[name], order=1000 + position)
+                        placed.append((q.pk, position))
+                        moved += 1
+            for pk, position in placed:
+                Question.objects.filter(pk=pk).update(order=position)
+
+            questions = parts = created_count = 0
+            for name, _, entries in SUBTOPICS:
+                section = sections[name]
+                for position, entry in enumerate(entries, start=1):
                     question_row, made = Question.objects.update_or_create(
                         topic=topic,
                         section=section,
-                        order=entry["order"],
+                        order=position,
                         defaults={
                             "hint": entry["hint"],
                             "solution": entry["solution"],
@@ -713,10 +1029,7 @@ class Command(BaseCommand):
                         },
                     )
                     questions += 1
-                    self.stdout.write(
-                        f'    {"created" if made else "updated"} question {question_row.order}'
-                    )
-
+                    created_count += made
                     for p in entry["parts"]:
                         QuestionPart.objects.update_or_create(
                             question=question_row,
@@ -735,11 +1048,24 @@ class Command(BaseCommand):
                             },
                         )
                         parts += 1
+                self.stdout.write(f"  {name}: {len(entries)} questions")
+
+            for name in RETIRED_SECTIONS:
+                old = Section.objects.filter(topic=topic, name=name).first()
+                if not old:
+                    continue
+                if Question.objects.filter(section=old).exists():
+                    self.stderr.write(self.style.WARNING(
+                        f'  section "{name}" still has questions; left in place'))
+                else:
+                    old.delete()
+                    self.stdout.write(f'  removed empty section "{name}"')
 
             if dry_run:
                 transaction.set_rollback(True)
 
-        prefix = "Would touch" if dry_run else "Wrote"
+        prefix = "Would write" if dry_run else "Wrote"
         self.stdout.write(self.style.SUCCESS(
-            f"\n{prefix} {questions} questions and {parts} parts."
+            f"\n{prefix} {questions} questions and {parts} parts: "
+            f"{moved} moved into place, {created_count} new."
         ))

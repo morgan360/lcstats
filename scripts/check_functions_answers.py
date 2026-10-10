@@ -15,7 +15,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "lcstats.settings")
 django.setup()
 
-from interactive_lessons.management.commands.add_functions_questions import QUESTIONS  # noqa: E402
+from interactive_lessons.management.commands.add_functions_questions import ALL_SOURCES  # noqa: E402
 
 x, a, y = sp.symbols("x a y")
 
@@ -119,7 +119,39 @@ EXPECTED = {
     ("Composite Functions", 4, "(b)"): [float(v[1]) for v in sp.solve([sp.Eq(a**2, 9), sp.Eq(a * y + y, 8)], [a, y]) if v[0] > 0],
     ("Composite Functions", 5, "(a)"): nums(real_roots(x**2 - 2), 2),
     ("Composite Functions", 5, "(b)"): nums([(x**2).subs(x, (1 / (x - 2)).subs(x, 3))]),
+
+    # Added 2026-10-10 for the thin subtopics
+    ("New 6.2", 1, "(a)"): nums([(2 * x**2 - 3).subs(x, -2)]),
+    ("New 6.2", 1, "(b)"): nums(real_roots(2 * x**2 - 3 - 15)),
+    ("New 6.2", 1, "(c)"): "B" if {(2 * x**2 - 3).subs(x, v) for v in (-1, 0, 1)} == {-3, -1} else "?",
+    ("New 6.6", 1, "(a)"): nums([(x**3 - 3 * x**2 - x + 3).subs(x, 0)]),
+    ("New 6.6", 1, "(b)"): nums(real_roots(x**3 - 3 * x**2 - x + 3)),
+    ("New 6.6", 1, "(c)"): "B" if all((x**3 - 3 * x**2 - x + 3).subs(x, v) < 0 for v in (1.01, 2, 2.99)) else "?",
+    ("New 6.6", 2, "(a)"): nums(sp.solve(sp.Eq(a * (0 + 2) * (0 - 1) * (0 - 4), 8), a)),
+    ("New 6.6", 2, "(b)"): nums([((x + 2) * (x - 1) * (x - 4)).subs(x, 2)]),
+    ("New 6.6", 2, "(c)"): nums(real_roots((x + 2) * (x - 1) * (x - 4) - 8), 2),
+    ("New 6.7", 1, "(a)"): nums([3 * 2**0]),
+    ("New 6.7", 1, "(b)"): nums([3 * 2**4]),
+    ("New 6.7", 1, "(c)"): "B" if sp.limit(3 * 2**x, x, -sp.oo) == 0 else "?",
+    ("New 6.7", 2, "(a)"): nums([500 * sp.Rational(6, 5) ** 3]),
+    ("New 6.7", 2, "(b)"): nums([next(t for t in range(50) if 500 * sp.Rational(6, 5) ** t > 2000)]),
+    ("New 6.8", 1, "(a)"): nums([sp.log(8, 2)]),
+    ("New 6.8", 1, "(b)"): nums(sp.solve(sp.Eq(sp.log(x, 2), 0), x)),
+    ("New 6.8", 1, "(c)"): "B" if sp.limit(sp.log(x, 2), x, 0, "+") == -sp.oo else "?",
+    ("New 6.8", 2, "(a)"): nums(sp.solve(sp.Eq(sp.log(x - 2, 3), 0), x)),
+    ("New 6.8", 2, "(b)"): nums([2]) if sp.limit(sp.log(x - 2, 3), x, 2, "+") == -sp.oo else "?",
+    ("New 6.8", 2, "(c)"): nums([sp.log(11 - 2, 3)]),
+    ("New 6.8", 3, "(a)"): [8.0, float(sp.log(8, 2))],
+    ("New 6.8", 3, "(b)"): nums(sp.solve(sp.Eq(sp.log(x, 2), 5), x)),
+    ("New 6.8", 3, "(c)"): "B",  # log2 x defined for x > 0 only
+    ("New 6.9", 1, "(a)"): "B" if min(v + 5 for v in range(1, 10)) == 6 else "?",  # 1..5 unreached
+    ("New 6.9", 1, "(b)"): "A" if sp.solve(sp.diff(x**3, x), x) == [0] and sp.diff(x**3, x).subs(x, 1) > 0 else "?",
 }
+
+# Expansions and factorisations quoted in the new worked solutions.
+assert sp.expand((x + 2) * (x - 1) * (x - 4)) == x**3 - 3 * x**2 - 6 * x + 8
+assert sp.expand((x - 3) * (x - 1) * (x + 1)) == x**3 - 3 * x**2 - x + 3
+assert round(float(500 * sp.Rational(6, 5) ** 7)) == 1792 and round(float(500 * sp.Rational(6, 5) ** 8)) == 2150
 
 # The decompositions really do recompose to the given functions.
 assert sp.expand(x**3).subs(x, 2 * x + 5) == (2 * x + 5) ** 3
@@ -143,10 +175,10 @@ def stored_value(answer, kind):
 
 failures = 0
 checked = 0
-for section, _, entries in QUESTIONS:
-    for entry in entries:
+for section, order, entry in ALL_SOURCES:
+    if True:
         for p in entry["parts"]:
-            key = (section, entry["order"], p["label"])
+            key = (section, order, p["label"])
             if p["expected_type"] == "manual":
                 continue
             want = EXPECTED.get(key)
@@ -171,7 +203,7 @@ for section, _, entries in QUESTIONS:
             print(f"{'ok  ' if ok else 'FAIL'} {section} Q{entry['order']}{p['label']}: "
                   f"stored {p['answer']!r}  computed {want}")
 
-missing = {(s, e["order"], p["label"]) for s, _, es in QUESTIONS for e in es for p in e["parts"]
+missing = {(s, o, p["label"]) for s, o, e in ALL_SOURCES for p in e["parts"]
            if p["expected_type"] != "manual"} - set(EXPECTED)
 print(f"\n{checked} answers checked, {failures} failures, {len(missing)} without a check")
 sys.exit(1 if failures or missing else 0)
