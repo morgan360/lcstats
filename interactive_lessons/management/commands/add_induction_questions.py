@@ -4,6 +4,12 @@ Content authored on local and replayed here so production gets exactly what was
 tested. Idempotent: keyed on topic slug, section name and question order rather
 than primary key, because ids differ between local and production. Re-running
 updates in place and never duplicates.
+
+October 2026: four multiple-choice solutions explained the wrong option (one
+called the correct answer "false for every k"), the first hint named the
+answer to its own part (b), and the multiple-choice parts asked for
+"Answer: [A/B/C/D]". Every option was checked with SymPy
+(scripts/check_induction_answers.py).
 """
 from django.core.management.base import BaseCommand
 from django.db import transaction
@@ -21,7 +27,7 @@ QUESTIONS = [
     ("""Divisibility""", 1, [
         {
             "order": 1,
-            "hint": """**The three steps:** (1) *Base case* — prove $P(n)$ for the smallest $n$. (2) *Hypothesis* — assume $P(k)$ is true. (3) *Inductive step* — use that assumption to prove $P(k+1)$. For divisibility by $d$, rewrite $P(k+1)$ so that $P(k)$ appears as a factor and every remaining term contains $d$. Splitting the larger base (e.g., $7 = 4 + 3$) is the usual trick.""",
+            "hint": """**The three steps:** (1) *Base case* — prove $P(n)$ for the smallest $n$. (2) *Hypothesis* — assume $P(k)$ is true. (3) *Inductive step* — use that assumption to prove $P(k+1)$. For divisibility by $d$, rewrite $P(k+1)$ so that $P(k)$ appears as a factor and every remaining term contains $d$. Splitting the larger base so that the divisor appears is the usual trick.""",
             "solution": None,
             "is_copyrighted": True,
             "is_exam_question": False,
@@ -65,7 +71,7 @@ Starting from $7^{k+1} - 3^{k+1} = 7^k(7) - 3^k(3)$, which manipulation makes $P
 
 **(D)** Split $3 = 7 - 4$, giving $7^{k+1} - 7^k(7) + 7^k(4)$
 
-**Format your answer as:** Answer: [A/B/C/D]""",
+Type the letter of your answer.""",
                     "answer": """C""",
                     "expected_format": """Single letter (e.g., B or D)""",
                     "expected_type": """multi""",
@@ -176,7 +182,7 @@ Which regrouping of this expression shows that $P(k+1)$ is divisible by **3**, g
 
 **(D)** $3\bigl(k^3 + 2k\bigr) + \bigl(k^2 + k + 1\bigr)$
 
-**Format your answer as:** Answer: [A/B/C/D]""",
+Type the letter of your answer.""",
                     "answer": """B""",
                     "expected_format": """Single letter (e.g., C or D)""",
                     "expected_type": """multi""",
@@ -195,7 +201,7 @@ $$= \bigl(k^3 + 2k\bigr) + \bigl(3k^2 + 3k + 3\bigr)$$
 
 $$= \bigl(k^3 + 2k\bigr) + 3\bigl(k^2 + k + 1\bigr)$$
 
-Option **B** is short by $3$, and option **C** leaves the remainder unfactored, so neither shows the divisibility.
+Option **A** is short by $3$, option **C** leaves the remainder unfactored, and option **D** is not equal to $P(k+1)$ at all, so none of them shows the divisibility.
 
 **Answer:** B
 """,
@@ -295,7 +301,7 @@ Which regrouping shows this?
 
 **(D)** $4\bigl(4^k + 6k - 1\bigr) - 9(2k - 1)$
 
-**Format your answer as:** Answer: [A/B/C/D]""",
+Type the letter of your answer.""",
                     "answer": """D""",
                     "expected_format": """Single letter (e.g., B or C)""",
                     "expected_type": """multi""",
@@ -417,7 +423,7 @@ What is the $(k+1)$-th term of the series?
 
 **(D)** $3k - 1$
 
-**Format your answer as:** Answer: [A/B/C/D]""",
+Type the letter of your answer.""",
                     "answer": """A""",
                     "expected_format": """Single letter (e.g., B or D)""",
                     "expected_type": """multi""",
@@ -534,7 +540,7 @@ Which of the following correctly takes out the common factor?
 
 **(D)** $\dfrac{k + 1}{6}\Bigl[k(2k + 1) + 6(k + 1)\Bigr]$
 
-**Format your answer as:** Answer: [A/B/C/D]""",
+Type the letter of your answer.""",
                     "answer": """D""",
                     "expected_format": """Single letter (e.g., C or D)""",
                     "expected_type": """multi""",
@@ -549,7 +555,7 @@ $$\frac{k(k + 1)(2k + 1)}{6} + \frac{6(k + 1)^2}{6} = \frac{k(k + 1)(2k + 1) + 6
 
 $$= \frac{(k + 1)\Bigl[k(2k + 1) + 6(k + 1)\Bigr]}{6}$$
 
-Option **B** forgets to multiply $(k+1)^2$ by $6$ when forming the common denominator, and **D** drops a factor of $(k+1)$.
+Option **A** drops a factor of $(k+1)$ from the second term, **B** forgets to multiply $(k+1)^2$ by $6$ when forming the common denominator, and **C** takes out $k$, which is not a factor of $(k+1)^2$.
 
 **Answer:** D
 """,
@@ -658,7 +664,7 @@ Simplify this to a single fraction in its simplest form.
 
 **(D)** $\dfrac{1}{k + 2}$
 
-**Format your answer as:** Answer: [A/B/C/D]""",
+Type the letter of your answer.""",
                     "answer": """B""",
                     "expected_format": """Single letter (e.g., B or D)""",
                     "expected_type": """multi""",
@@ -786,7 +792,7 @@ What remains to be shown to complete the inductive step?
 
 **(D)** $2k^2 \geq k^2 + 1$ for $k \geq 5$
 
-**Format your answer as:** Answer: [A/B/C/D]""",
+Type the letter of your answer.""",
                     "answer": """C""",
                     "expected_format": """Single letter (e.g., B or C)""",
                     "expected_type": """multi""",
@@ -801,7 +807,7 @@ $$2k^2 \geq (k + 1)^2$$
 
 because then $2^{k+1} > 2k^2 \geq (k+1)^2$.
 
-**Step 3:** Option **C** is false for every $k$, and option **D** is true but too weak — it does not reach $(k+1)^2$.
+**Step 3:** Options **A** and **B** are false for every $k$, and option **D** is true but too weak — it does not reach $(k+1)^2$.
 
 **Answer:** C
 """,
@@ -902,7 +908,7 @@ The target for $P(k+1)$ is $1 + 2(k + 1) = 2k + 3$. Which inequality completes t
 
 **(D)** $3k + 1 \geq 2k + 3$
 
-**Format your answer as:** Answer: [A/B/C/D]""",
+Type the letter of your answer.""",
                     "answer": """A""",
                     "expected_format": """Single letter (e.g., C or D)""",
                     "expected_type": """multi""",
@@ -1017,7 +1023,7 @@ What remains to be shown to complete the inductive step?
 
 **(D)** $(k + 1)2^k \geq 2\bigl(2^k\bigr)$, which holds because $k + 1 > 2$ for $k \geq 4$
 
-**Format your answer as:** Answer: [A/B/C/D]""",
+Type the letter of your answer.""",
                     "answer": """D""",
                     "expected_format": """Single letter (e.g., B or C)""",
                     "expected_type": """multi""",
@@ -1032,7 +1038,7 @@ $$(k + 1)2^k \geq 2\bigl(2^k\bigr)$$
 
 which is true precisely when $k + 1 \geq 2$. For $k \geq 4$ we have $k + 1 \geq 5 > 2$. $\checkmark$
 
-**Step 3:** Option **D** is true but too weak — it only reaches $2^k$, not $2^{k+1}$.
+**Step 3:** Option **A** is true but too weak — it only reaches $2^k$, not $2^{k+1}$. Option **B** claims a positive number is at least twice itself, and option **C** needs $k \leq 1$.
 
 **Answer:** D
 """,
