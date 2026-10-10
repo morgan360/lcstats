@@ -97,3 +97,25 @@ class MixedAnswerTests(SimpleTestCase):
         # compare_algebraic used to raise AttributeError on prose.
         self.assertEqual(score("It is going up so it is slowing down",
                                "Because it is going upwards. It is decelerating"), 0)
+
+
+class MoneyTests(SimpleTestCase):
+
+    def test_a_euro_sign_is_ignored(self):
+        self.assertEqual(score("€2492.36", "2492.36"), 100)
+        self.assertEqual(score("2492.36", "€2492.36"), 100)
+
+    def test_thousands_commas_in_a_single_amount(self):
+        self.assertEqual(score("€15,000", "15000"), 100)
+        self.assertEqual(score("2,492.36", "2492.36"), 100)
+        self.assertEqual(score("1,234,567", "1234567"), 100)
+
+    def test_a_list_keeps_its_commas(self):
+        # Two angles, not thirty thousand one hundred and fifty.
+        self.assertEqual(score("30,150", "30, 150"), 100)
+        self.assertEqual(score("150, 30", "30, 150"), 100)
+
+    def test_a_percent_sign_is_ignored(self):
+        self.assertEqual(score("6.17%", "6.17"), 100)
+        self.assertEqual(score(r"6.17\%", "6.17"), 100)
+        self.assertLess(score("6%", "6.17"), 100)

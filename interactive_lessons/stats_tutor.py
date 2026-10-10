@@ -187,6 +187,11 @@ def normalise_numeric_answer(answer):
         result.append("^(" + "".join(superscript_buffer) + ")")
     answer = "".join(result)
 
+    # Units the format line already names: "€2,463.32" and "6.17%" are the
+    # numbers 2463.32 and 6.17. A percentage is not turned into a decimal --
+    # questions that want a rate as a percentage store it as one.
+    answer = answer.replace("€", "").replace("£", "").replace("\\%", "").replace("%", "")
+
     # replace degree symbol with radians equivalent
     answer = answer.replace("°", "*pi/180")
 
@@ -284,8 +289,22 @@ def _same_text(student_answer, correct_answer):
     return bool(squash(correct_answer)) and squash(student_answer) == squash(correct_answer)
 
 
+_THOUSANDS = re.compile(r"(?<![\d.])(\d{1,3}(?:,\d{3})+)(?![\d,])")
+
+
+def _drop_thousands_commas(student_answer, correct_answer):
+    """Read "2,492.36" as one number when one number is what is stored.
+
+    Only then: against a stored list, "30,150" is two angles, not 30150.
+    """
+    if not student_answer or len(normalise_numeric_answer(correct_answer)) != 1:
+        return student_answer
+    return _THOUSANDS.sub(lambda m: m.group(1).replace(",", ""), student_answer)
+
+
 def mark_student_answer(question_text, student_answer, correct_answer,
                         hint_used=False, solution_used=False):
+    student_answer = _drop_thousands_commas(student_answer, correct_answer)
     if _same_text(student_answer, correct_answer):
         deduction = (20 if hint_used else 0) + (50 if solution_used else 0)
         return {"score": max(0, 100 - deduction),
