@@ -1,9 +1,12 @@
 # exam_papers/models.py
+import uuid
+
 from django.db import models
 from django.contrib.auth.models import User
 from django.utils.text import slugify
 from django.utils import timezone
 from interactive_lessons.models import Topic
+from students.storage import private_storage
 
 
 class ExamPaper(models.Model):
@@ -625,3 +628,130 @@ def question_marks(question):
     if question.total_marks:
         return question.total_marks
     return sum(part.max_marks or 0 for part in question.parts.all())
+
+
+def script_page_path(instance, filename):
+    # Served only through a view that checks the exam's owner; random names
+    # anyway, as homework_check does, so nothing here is guessable.
+    return f'exam_scripts/{instance.script_id}/{uuid.uuid4().hex}.jpg'
+
+
+class ExamScript(models.Model):
+    """One student's answered paper for a teacher's exam, scanned in.
+
+    Students write on the printed paper, so page n of the scan is page n of
+    the exam and each question's pages are known without reading anything.
+    The pages are student work: kept in private storage, served only to the
+    exam's owner, never shown to the student.
+    """
+    exam = models.ForeignKey(TeacherExam, on_delete=models.CASCADE, related_name='scripts')
+    student = models.ForeignKey(User, on_delete=models.CASCADE, related_name='exam_scripts')
+    page_count = models.PositiveSmallIntegerField(default=0)
+    # The page count the exam's PDF had when the scan came in. A mismatch means
+    # the pages cannot be lined up by number and the teacher sets them by hand.
+    expected_pages = models.PositiveSmallIntegerField(default=0)
+    reviewed_at = models.DateTimeField(null=True, blank=True,
+                                       help_text='When the teacher confirmed the marks')
+    teacher_comment = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['student__last_name', 'student__first_name', 'student__username']
+        unique_together = ('exam', 'student')
+
+    def __str__(self):
+        return f'{self.exam} - {self.student.username}'
+
+    @property
+    def pages_line_up(self):
+        return self.page_count == self.expected_pages
+
+    def ordered_questions(self):
+        return self.questions.select_related('item__question').prefetch_related(
+            'marks__part').order_by('item__order', 'item__id')
+
+    @property
+    def total(self):
+        """(awarded, possible); awarded is None while any part is unmarked."""
+        awarded, possible = 0, 0
+        for question in self.ordered_questions():
+            got, out_of = question.total
+            possible += out_of
+            awarded = None if awarded is None or got is None else awarded + got
+        return awarded, possible
+
+
+class ExamScriptPage(models.Model):
+    script = models.ForeignKey(ExamScript, on_delete=models.CASCADE, related_name='pages')
+    number = models.PositiveSmallIntegerField(help_text='1 for the cover')
+    image = models.ImageField(upload_to=script_page_path, storage=private_storage)
+
+    class Meta:
+        ordering = ['number']
+        unique_together = ('script', 'number')
+
+
+class ExamScriptQuestion(models.Model):
+    """One question of one script: which pages it is on, and how marking went."""
+    PENDING, MARKED, FAILED = 'pending', 'marked', 'failed'
+    STATUS_CHOICES = [(PENDING, 'Not marked yet'), (MARKED, 'Marked'), (FAILED, 'Could not be marked')]
+
+    script = models.ForeignKey(ExamScript, on_delete=models.CASCADE, related_name='questions')
+    item = models.ForeignKey(TeacherExamQuestion, on_delete=models.CASCADE,
+                             related_name='script_questions')
+    first_page = models.PositiveSmallIntegerField(null=True, blank=True)
+    last_page = models.PositiveSmallIntegerField(null=True, blank=True)
+    status = models.CharField(max_length=8, choices=STATUS_CHOICES, default=PENDING)
+    message = models.CharField(max_length=300, blank=True,
+                               help_text='Why it could not be marked, in words for the teacher')
+    model_used = models.CharField(max_length=64, blank=True)
+    prompt_tokens = models.PositiveIntegerField(default=0)
+    completion_tokens = models.PositiveIntegerField(default=0)
+    marked_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ['item__order', 'item__id']
+        unique_together = ('script', 'item')
+
+    def page_numbers(self):
+        if not self.first_page or not self.last_page:
+            return []
+        return list(range(self.first_page, self.last_page + 1))
+
+    @property
+    def total(self):
+        """(awarded, possible) over this question's marks rows."""
+        marks = list(self.marks.all())
+        possible = sum(mark.max_marks for mark in marks)
+        if any(mark.final is None for mark in marks) or not marks:
+            return None, possible
+        return sum(mark.final for mark in marks), possible
+
+
+class ExamScriptMark(models.Model):
+    """The mark for one part of one question on one script.
+
+    part is empty for a question marked as a whole: one whose parts carry no
+    marks of their own, so only the question's total is known.
+    """
+    question = models.ForeignKey(ExamScriptQuestion, on_delete=models.CASCADE,
+                                 related_name='marks')
+    part = models.ForeignKey(ExamQuestionPart, on_delete=models.CASCADE, null=True, blank=True)
+    label = models.CharField(max_length=20)
+    max_marks = models.PositiveSmallIntegerField()
+    ai_mark = models.PositiveSmallIntegerField(null=True, blank=True)
+    teacher_mark = models.PositiveSmallIntegerField(null=True, blank=True)
+    transcription = models.TextField(blank=True)
+    reasoning = models.TextField(blank=True)
+    feedback = models.TextField(blank=True)
+    confidence = models.CharField(max_length=8, blank=True)
+    order = models.PositiveSmallIntegerField(default=0)
+
+    class Meta:
+        ordering = ['order', 'id']
+
+    @property
+    def final(self):
+        """The teacher's mark if they gave one, otherwise the marker's."""
+        return self.teacher_mark if self.teacher_mark is not None else self.ai_mark

@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>{{ student_name }} - {{ exam.title }}</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+  <style>
+    * { box-sizing: border-box; }
+    body { font-family: Arial, Helvetica, sans-serif; color: #222; margin: 0; padding: 28px; max-width: 800px; }
+    h1 { font-size: 20px; margin: 0; }
+    .sub { color: #555; font-size: 13px; margin-top: 4px; }
+    .total { font-size: 28px; font-weight: bold; text-align: right; }
+    .head { display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 2px solid #222; padding-bottom: 10px; }
+    table { width: 100%; border-collapse: collapse; margin-top: 18px; font-size: 13px; }
+    th, td { border: 1px solid #bbb; padding: 6px 8px; vertical-align: top; text-align: left; }
+    th { background: #f2f2f2; }
+    td.num { text-align: center; white-space: nowrap; width: 70px; }
+    tr.question td { background: #fafafa; font-weight: bold; }
+    .comment { margin-top: 18px; font-size: 13px; border: 1px solid #bbb; padding: 10px; }
+    .no-print { margin-bottom: 16px; }
+    .no-print button { padding: 8px 14px; font-size: 14px; }
+    @media print { .no-print { display: none; } body { padding: 0; } }
+  </style>
+</head>
+<body>
+  <div class="no-print">
+    <button onclick="window.print()">Print / Save as PDF</button>
+    {% if not script.reviewed_at %}<span style="color:#b00; font-size: 13px; margin-left: 8px;">These marks haven't been marked as checked yet.</span>{% endif %}
+  </div>
+
+  <div class="head">
+    <div>
+      <h1>{{ student_name }}</h1>
+      <div class="sub">{{ exam.title }}{% if exam.subtitle %} &middot; {{ exam.subtitle }}{% endif %}{% if exam.exam_date %} &middot; {{ exam.exam_date|date:"j F Y" }}{% endif %}</div>
+    </div>
+    <div class="total">{% if awarded is not None %}{{ awarded }}{% else %}&ndash;{% endif %} / {{ possible }}</div>
+  </div>
+
+  <table>
+    <thead><tr><th>Question</th><th>Mark</th><th>Feedback</th></tr></thead>
+    <tbody>
+      {% for number, question in questions %}
+        {% with t=question.total %}
+        <tr class="question">
+          <td>Question {{ number }}</td>
+          <td class="num">{% if t.0 is not None %}{{ t.0 }}{% else %}&ndash;{% endif %} / {{ t.1 }}</td>
+          <td>{% if question.item.skip_note %}{{ question.item.skip_note }}{% endif %}</td>
+        </tr>
+        {% endwith %}
+        {% for mark in question.marks.all %}
+          {% if mark.part or question.marks.all|length > 1 %}
+          <tr>
+            <td>&nbsp;&nbsp;{{ mark.label }}</td>
+            <td class="num">{% if mark.final is not None %}{{ mark.final }}{% else %}&ndash;{% endif %} / {{ mark.max_marks }}</td>
+            <td>{{ mark.feedback }}</td>
+          </tr>
+          {% elif mark.feedback %}
+          <tr><td></td><td></td><td>{{ mark.feedback }}</td></tr>
+          {% endif %}
+        {% endfor %}
+      {% endfor %}
+    </tbody>
+  </table>
+
+  {% if script.teacher_comment %}<div class="comment"><strong>Comment:</strong> {{ script.teacher_comment|linebreaksbr }}</div>{% endif %}
+
+  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', function () {
+      if (window.renderMathInElement) renderMathInElement(document.body, {delimiters: [
+        {left: '$$', right: '$$', display: true}, {left: '$', right: '$', display: false},
+        {left: '\\(', right: '\\)', display: false}, {left: '\\[', right: '\\]', display: true}]});
+    });
+  </script>
+</body>
+</html>

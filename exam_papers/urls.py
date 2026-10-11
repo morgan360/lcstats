@@ -1,5 +1,5 @@
 from django.urls import path
-from . import exam_builder, views
+from . import exam_builder, exam_marking, views
 
 app_name = 'exam_papers'
 
@@ -29,6 +29,22 @@ urlpatterns = [
     path('exams/<int:pk>/items/<int:item_pk>/omit/', exam_builder.exam_set_omitted,
          name='exam_set_omitted'),
     path('exams/<int:pk>/delete/', exam_builder.exam_delete, name='exam_delete'),
+    # Marking scanned scripts of a teacher's exam (teachers only, owner only).
+    path('exams/<int:pk>/marking/', exam_marking.marking_overview, name='marking_overview'),
+    path('exams/<int:pk>/marking/results.csv', exam_marking.results_csv, name='results_csv'),
+    path('exams/<int:pk>/scripts/upload/', exam_marking.script_upload, name='script_upload'),
+    path('exams/<int:pk>/scripts/<int:script_pk>/', exam_marking.script_detail, name='script_detail'),
+    path('exams/<int:pk>/scripts/<int:script_pk>/page/<int:number>/', exam_marking.script_page,
+         name='script_page'),
+    path('exams/<int:pk>/scripts/<int:script_pk>/mark-next/', exam_marking.script_mark_next,
+         name='script_mark_next'),
+    path('exams/<int:pk>/scripts/<int:script_pk>/save/', exam_marking.script_save, name='script_save'),
+    path('exams/<int:pk>/scripts/<int:script_pk>/questions/<int:question_pk>/remark/',
+         exam_marking.script_remark, name='script_remark'),
+    path('exams/<int:pk>/scripts/<int:script_pk>/delete/', exam_marking.script_delete,
+         name='script_delete'),
+    path('exams/<int:pk>/scripts/<int:script_pk>/results/', exam_marking.results_sheet,
+         name='results_sheet'),
     path('exams/<int:pk>/exam.pdf', exam_builder.exam_pdf, name='exam_pdf'),
     path('exams/<int:pk>/marking-scheme.pdf', exam_builder.exam_scheme_pdf,
          name='exam_scheme_pdf'),

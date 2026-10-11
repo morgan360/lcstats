@@ -265,13 +265,28 @@ def _cover(sheet, exam, items):
 
 def build_exam_pdf(exam):
     """The exam to hand out: cover, then each question on its own page(s)."""
+    return _build_exam(exam)[0]
+
+
+def exam_layout(exam):
+    """{item id: (first page, last page)}, numbered from 1 for the cover.
+
+    Exactly the pages the printed exam puts each question on, because it is
+    the same build: page n of a student's scanned script is page n here.
+    """
+    return _build_exam(exam)[1]
+
+
+def _build_exam(exam):
     items = list(exam.ordered_items())
     sheet = _ExamSheet()
     _cover(sheet, exam, items)
+    layout = {}
 
     for number, item in enumerate(items, start=1):
         question = item.question
         sheet.new_page()
+        first = sheet.doc.page_count
         heading = f'Question {number}'
         if item.skip_note:
             heading += f' - {item.skip_note}'
@@ -281,13 +296,14 @@ def build_exam_pdf(exam):
             sheet.text(heading, size=12, right=_marks_text(item.marks))
             sheet.text('No image of this question on file.', bold=False)
             sheet.y += GAP
-            continue
-        sheet.labelled_image(heading, path, size=12,
-                             img=_students_copy(img),
-                             right=_marks_text(item.marks))
+        else:
+            sheet.labelled_image(heading, path, size=12,
+                                 img=_students_copy(img),
+                                 right=_marks_text(item.marks))
+        layout[item.id] = (first, sheet.doc.page_count)
 
     sheet.stamp(exam.title, first_numbered=1)
-    return sheet.doc.tobytes()
+    return sheet.doc.tobytes(), layout
 
 
 def build_exam_scheme_pdf(exam):

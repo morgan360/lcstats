@@ -1,0 +1,137 @@
+{% extends "_base.html" %}
+{% block title %}Marking - {{ exam.title }} - NumScoil{% endblock %}
+
+{% block content %}
+<style>select option { background: #001C3D; color: #F0EFEB; }</style>
+<div class="mx-auto max-w-5xl px-4 py-6 sm:px-6">
+  <a href="{% url 'exam_papers:exam_builder' exam.pk %}" class="text-sm font-semibold text-mist/70 hover:text-mist">&larr; {{ exam.title }}</a>
+  <h1 class="mt-2 text-2xl font-bold text-mist">Marking</h1>
+  <p class="mt-1 text-sm text-mist/70">
+    Upload each student's answered paper as one scanned PDF. The marker reads each question against its
+    marking scheme and proposes a mark for every part; you check and adjust them before printing results.
+    Only you see these marks.
+  </p>
+
+  <div class="mt-4">{% include "homework_check/_messages.html" %}</div>
+
+  <form method="post" action="{% url 'exam_papers:script_upload' exam.pk %}" enctype="multipart/form-data"
+        class="mt-2 rounded-xl bg-white p-5 shadow-sm ring-1 ring-twilight/15">
+    {% csrf_token %}
+    <h2 class="text-lg font-bold text-twilight">Add a script</h2>
+    {% if student_groups %}
+      <div class="mt-3 flex flex-wrap items-end gap-3">
+        <label class="flex flex-col gap-1 text-sm font-semibold text-twilight">
+          Student
+          <select name="student" required class="rounded-lg border border-mist/20 bg-midnight px-3 py-2 text-sm text-mist">
+            <option value="">-- choose --</option>
+            {% for teacher_class, group in student_groups %}
+              <optgroup label="{{ teacher_class.name }}">
+                {% for student in group %}
+                  <option value="{{ student.pk }}">{{ student.get_full_name|default:student.username }}</option>
+                {% endfor %}
+              </optgroup>
+            {% endfor %}
+          </select>
+        </label>
+        <label class="flex flex-col gap-1 text-sm font-semibold text-twilight">
+          Scanned script (PDF)
+          <input type="file" name="scan" accept="application/pdf,.pdf" required class="text-sm text-twilight">
+        </label>
+        <button type="submit" class="rounded-xl bg-violet-royal px-4 py-2 text-sm font-semibold text-white shadow-sm">Upload</button>
+      </div>
+      <p class="mt-3 text-xs text-twilight/60">
+        Scan the whole paper, cover included, single-sided and in order, so each page of the scan matches
+        the same page of the exam. If the page count is off, you can set each question's pages by hand.
+      </p>
+    {% else %}
+      <p class="mt-2 text-sm text-twilight/70">Every student in your classes already has a script here.</p>
+    {% endif %}
+  </form>
+
+  <section class="mt-6 rounded-xl bg-white p-5 shadow-sm ring-1 ring-twilight/15">
+    {% csrf_token %}
+    <div class="flex flex-wrap items-center justify-between gap-3">
+      <h2 class="text-lg font-bold text-twilight">Results <span class="text-sm font-semibold text-twilight/60">{{ rows|length }} script{{ rows|length|pluralize }} &middot; out of {{ total_marks }}</span></h2>
+      <div class="flex flex-wrap items-center gap-2">
+        <span id="mark-all-status" class="text-sm font-semibold text-twilight/70"></span>
+        {% if rows %}
+          <button type="button" id="mark-all" class="rounded-xl bg-violet-royal px-4 py-2 text-sm font-semibold text-white shadow-sm">Mark all unmarked</button>
+          <a href="{% url 'exam_papers:results_csv' exam.pk %}" class="rounded-xl bg-white px-4 py-2 text-sm font-semibold text-twilight ring-1 ring-twilight/15">Download CSV</a>
+        {% endif %}
+      </div>
+    </div>
+    {% if rows %}
+      <div class="mt-4 overflow-x-auto">
+        <table class="w-full text-sm text-twilight">
+          <thead>
+            <tr class="text-left text-xs text-twilight/60">
+              <th class="py-2 pr-3">Student</th>
+              {% for item in items %}<th class="py-2 pr-3">Q{{ forloop.counter }} <span class="font-normal">/{{ item.marks }}</span></th>{% endfor %}
+              <th class="py-2 pr-3">Total</th>
+              <th class="py-2 pr-3">Status</th>
+              <th class="py-2"></th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-twilight/10">
+            {% for row in rows %}
+              <tr data-script="{% url 'exam_papers:script_mark_next' exam.pk row.script.pk %}" data-pending="{{ row.pending }}">
+                <td class="py-2 pr-3 font-semibold">{{ row.script.student.get_full_name|default:row.script.student.username }}</td>
+                {% for question, total in row.cells %}
+                  <td class="py-2 pr-3">
+                    {% if total.0 is not None %}{{ total.0 }}{% elif question.status == 'failed' %}<span class="text-rose-pop" title="{{ question.message }}">!</span>{% else %}<span class="text-twilight/40">&ndash;</span>{% endif %}
+                  </td>
+                {% endfor %}
+                <td class="py-2 pr-3 font-bold">{% if row.awarded is not None %}{{ row.awarded }}{% else %}<span class="text-twilight/40">&ndash;</span>{% endif %}</td>
+                <td class="py-2 pr-3 text-xs">
+                  {% if row.script.reviewed_at %}<span class="font-semibold text-twilight">Reviewed</span>
+                  {% elif row.pending %}<span class="text-twilight/60">{{ row.pending }} to mark</span>
+                  {% elif not row.script.pages_line_up %}<span class="text-rose-pop">Set pages</span>
+                  {% else %}<span class="text-twilight/60">Check marks</span>{% endif %}
+                </td>
+                <td class="py-2 text-right">
+                  <a href="{% url 'exam_papers:script_detail' exam.pk row.script.pk %}" class="font-semibold text-violet-royal hover:underline">Open</a>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      <p class="mt-3 text-xs text-twilight/60">A dash is a part still to mark (by the marker, or by you where there's no marking scheme). "!" means a question couldn't be marked automatically.</p>
+    {% else %}
+      <p class="mt-3 text-sm text-twilight/70">No scripts yet.</p>
+    {% endif %}
+  </section>
+</div>
+
+<script>
+// Each question is one slow call (up to a few minutes), so the browser drives
+// them one at a time, script by script, as Homework Check does.
+(function () {
+  const button = document.getElementById('mark-all');
+  if (!button) return;
+  const status = document.getElementById('mark-all-status');
+  const csrf = document.querySelector('[name=csrfmiddlewaretoken]').value;
+  button.addEventListener('click', async function () {
+    const rows = [...document.querySelectorAll('tr[data-script]')].filter(r => r.dataset.pending !== '0');
+    if (!rows.length) { status.textContent = 'Nothing left to mark.'; return; }
+    button.disabled = true;
+    for (let i = 0; i < rows.length; i++) {
+      const url = rows[i].dataset.script;
+      const name = rows[i].cells[0].textContent.trim();
+      for (;;) {
+        status.textContent = `Marking ${name} (${i + 1} of ${rows.length})...`;
+        let data;
+        try {
+          const response = await fetch(url, {method: 'POST', headers: {'X-CSRFToken': csrf}});
+          data = await response.json();
+        } catch (e) { data = {success: false, message: 'The connection dropped. Press the button again to carry on.'}; }
+        if (!data.success) { status.textContent = data.message; button.disabled = false; return; }
+        if (data.complete) break;
+      }
+    }
+    status.textContent = 'Done.';
+    window.location.reload();
+  });
+})();
+</script>
+{% endblock %}

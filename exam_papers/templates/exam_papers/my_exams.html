@@ -48,6 +48,8 @@
                  class="rounded-xl bg-white px-3 py-2 text-sm font-semibold text-twilight ring-1 ring-twilight/15">Exam PDF</a>
               <a href="{% url 'exam_papers:exam_scheme_pdf' exam.pk %}"
                  class="rounded-xl bg-white px-3 py-2 text-sm font-semibold text-twilight ring-1 ring-twilight/15">Marking scheme</a>
+              <a href="{% url 'exam_papers:marking_overview' exam.pk %}"
+                 class="rounded-xl bg-white px-3 py-2 text-sm font-semibold text-twilight ring-1 ring-twilight/15">Marking</a>
             {% endif %}
           </div>
         </li>
