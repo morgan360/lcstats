@@ -242,3 +242,44 @@ class ExamBuilderTests(TestCase):
         response = self.client.get(reverse('exam_papers:exam_pdf', args=[exam.pk]))
         self.assertRedirects(response, reverse('exam_papers:exam_builder', args=[exam.pk]),
                              fetch_redirect_response=False)
+
+    # ---- leaving parts out ----
+    def omit(self, exam, question, *labels):
+        item = exam.items.get(question=question)
+        ids = [str(p.pk) for p in question.parts.filter(label__in=labels)]
+        return self.client.post(reverse('exam_papers:exam_set_omitted', args=[exam.pk, item.pk]),
+                                {'omit': ids})
+
+    def test_a_left_out_part_comes_off_the_marks_and_is_flagged_on_the_paper(self):
+        exam = self.make_exam(self.q_alg, self.q_trig)
+        self.omit(exam, self.q_trig, '(b)')
+        self.assertEqual(exam.total_marks, 45)  # 30 + 25 - (b)'s 10
+
+        doc = fitz.open(stream=build_exam_pdf(exam), filetype='pdf')
+        self.assertIn('Total marks: 45', doc[0].get_text())
+        trig_page = doc[2].get_text()
+        self.assertIn('Question 2 - Do not answer part (b).', trig_page)
+        self.assertIn('(15 marks)', trig_page)
+
+        scheme = '\n'.join(page.get_text() for page in
+                           fitz.open(stream=build_exam_scheme_pdf(exam), filetype='pdf'))
+        self.assertIn('Not set: (b)', scheme)
+        self.assertIn('(15 marks)', scheme)
+
+    def test_ticking_nothing_puts_every_part_back(self):
+        exam = self.make_exam(self.q_trig)
+        self.omit(exam, self.q_trig, '(b)')
+        self.omit(exam, self.q_trig)
+        self.assertEqual(exam.total_marks, 25)
+
+    def test_every_part_cannot_be_left_out(self):
+        exam = self.make_exam(self.q_trig)
+        self.omit(exam, self.q_trig, '(a)', '(b)')
+        self.assertEqual(exam.total_marks, 25)
+        self.assertFalse(exam.items.get().omitted_parts.exists())
+
+    def test_another_teacher_cannot_leave_parts_out(self):
+        exam = self.make_exam(self.q_trig)
+        self.client.force_login(self.other_teacher)
+        self.assertEqual(self.omit(exam, self.q_trig, '(b)').status_code, 404)
+        self.assertFalse(exam.items.get().omitted_parts.exists())

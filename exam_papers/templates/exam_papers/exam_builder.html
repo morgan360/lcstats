@@ -66,6 +66,25 @@
               <span class="text-twilight/70">&middot; {{ item.question.exam_paper.year }} {{ item.question.exam_paper.get_paper_type_display }}{% if item.question.exam_paper.is_deferred %} (deferred){% endif %} Q{{ item.question.question_number }}</span>
               {% if item.question.topic %}<span class="text-twilight/70">&middot; {{ item.question.topic.name }}</span>{% endif %}
               {% if item.marks %}<span class="font-semibold">&middot; {{ item.marks }} marks</span>{% endif %}
+              {% if item.skip_note %}<div class="mt-1 text-xs font-semibold text-rose-pop">{{ item.skip_note }}</div>{% endif %}
+              {% with parts=item.question.parts.all %}
+              {% if parts|length > 1 %}
+                <details class="mt-1">
+                  <summary class="cursor-pointer text-xs font-semibold text-twilight/60 hover:text-twilight">Parts to answer</summary>
+                  <form method="post" action="{% url 'exam_papers:exam_set_omitted' exam.pk item.pk %}" class="mt-2 flex flex-wrap items-center gap-3">
+                    {% csrf_token %}<input type="hidden" name="topic" value="{{ selected_topic }}">
+                    <span class="text-xs text-twilight/70">Leave out:</span>
+                    {% for part in parts %}
+                      <label class="flex items-center gap-1 text-xs text-twilight">
+                        <input type="checkbox" name="omit" value="{{ part.id }}" {% if part in item.omitted_parts.all %}checked{% endif %}>
+                        {{ part.label }}{% if part.max_marks %} ({{ part.max_marks }}){% endif %}
+                      </label>
+                    {% endfor %}
+                    <button type="submit" class="rounded-lg px-2 py-1 text-xs font-semibold text-twilight ring-1 ring-twilight/15">Save</button>
+                  </form>
+                </details>
+              {% endif %}
+              {% endwith %}
             </div>
             <div class="flex gap-1">
               <form method="post" action="{% url 'exam_papers:exam_move_question' exam.pk item.pk %}">

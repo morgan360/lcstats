@@ -26,6 +26,8 @@ urlpatterns = [
          name='exam_remove_question'),
     path('exams/<int:pk>/items/<int:item_pk>/move/', exam_builder.exam_move_question,
          name='exam_move_question'),
+    path('exams/<int:pk>/items/<int:item_pk>/omit/', exam_builder.exam_set_omitted,
+         name='exam_set_omitted'),
     path('exams/<int:pk>/delete/', exam_builder.exam_delete, name='exam_delete'),
     path('exams/<int:pk>/exam.pdf', exam_builder.exam_pdf, name='exam_pdf'),
     path('exams/<int:pk>/marking-scheme.pdf', exam_builder.exam_scheme_pdf,

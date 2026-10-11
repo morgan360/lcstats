@@ -153,6 +153,24 @@ def exam_move_question(request, pk, item_pk):
     return _back(exam, request.POST.get('topic'), 'exam-questions')
 
 
+@teacher_required
+@require_POST
+def exam_set_omitted(request, pk, item_pk):
+    """Which parts of one question students are told not to answer."""
+    exam = _own_exam(request, pk)
+    item = get_object_or_404(TeacherExamQuestion, pk=item_pk, exam=exam)
+    wanted = {int(v) for v in request.POST.getlist('omit') if v.isdigit()}
+    # Only this question's own parts, and never all of them: a question with
+    # nothing left to answer belongs out of the exam, not in it at 0 marks.
+    parts = [part for part in item.question.parts.all() if part.id in wanted]
+    if parts and len(parts) == item.question.parts.count():
+        messages.error(request, 'That would leave nothing to answer. Remove the question instead.')
+        return _back(exam, request.POST.get('topic'), 'exam-questions')
+    item.omitted_parts.set(parts)
+    exam.save(update_fields=['updated_at'])
+    return _back(exam, request.POST.get('topic'), 'exam-questions')
+
+
 def _renumber(exam, items=None):
     """Orders 0, 1, 2 ... in the given (or current) order, with no gaps."""
     items = items if items is not None else list(exam.items.order_by('order', 'id'))

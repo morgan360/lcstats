@@ -570,7 +570,7 @@ class TeacherExam(models.Model):
     def ordered_items(self):
         return self.items.select_related(
             'question__exam_paper', 'question__topic').prefetch_related(
-            'question__parts').order_by('order', 'id')
+            'question__parts', 'omitted_parts').order_by('order', 'id')
 
     @property
     def total_marks(self):
@@ -583,6 +583,11 @@ class TeacherExamQuestion(models.Model):
     question = models.ForeignKey(ExamQuestion, on_delete=models.CASCADE,
                                  related_name='teacher_exam_items')
     order = models.PositiveIntegerField(default=0)
+    # Parts the teacher has told students not to answer, e.g. (c) of a long
+    # question in a short exam. They come off the question's marks, the paper
+    # tells students to skip them, and the marking scheme leaves them out.
+    omitted_parts = models.ManyToManyField(ExamQuestionPart, blank=True,
+                                           related_name='omitted_from_teacher_exams')
 
     class Meta:
         ordering = ['order', 'id']
@@ -591,9 +596,25 @@ class TeacherExamQuestion(models.Model):
     def __str__(self):
         return f'{self.exam} - {self.question}'
 
+    def omitted(self):
+        """The left-out parts, in the question's order."""
+        return sorted(self.omitted_parts.all(), key=lambda part: (part.order, part.id))
+
     @property
     def marks(self):
-        return question_marks(self.question)
+        """The question's marks less any parts left out."""
+        left_out = sum(part.max_marks or 0 for part in self.omitted_parts.all())
+        return max(0, question_marks(self.question) - left_out)
+
+    @property
+    def skip_note(self):
+        """'Do not answer part (c).' for the paper, or '' when nothing is left out."""
+        labels = [part.label for part in self.omitted()]
+        if not labels:
+            return ''
+        if len(labels) == 1:
+            return f'Do not answer part {labels[0]}.'
+        return f'Do not answer parts {", ".join(labels[:-1])} and {labels[-1]}.'
 
 
 def question_marks(question):

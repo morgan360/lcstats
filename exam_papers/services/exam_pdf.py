@@ -273,6 +273,8 @@ def build_exam_pdf(exam):
         question = item.question
         sheet.new_page()
         heading = f'Question {number}'
+        if item.skip_note:
+            heading += f' - {item.skip_note}'
         path = _image_path(question.image)
         img = _prepare_image(path) if path else None
         if img is None:
@@ -303,7 +305,10 @@ def build_exam_scheme_pdf(exam):
         sheet.ensure(LINE_HEIGHT * 3)
         sheet.text(f'Question {number}', size=12, right=_marks_text(item.marks))
         sheet.text(f'Source: {source_label(question)}', size=9, bold=False)
-        crops = _scheme_crops(question.parts.all())
+        omitted = item.omitted()
+        if omitted:
+            sheet.text('Not set: ' + ', '.join(part.label for part in omitted), size=9, bold=False)
+        crops = _scheme_crops([part for part in question.parts.all() if part not in omitted])
         if not crops:
             sheet.text('No marking scheme on file for this question.', size=10, bold=False)
         for label, path in crops:
