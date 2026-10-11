@@ -1,0 +1,60 @@
+{% extends "_base.html" %}
+{% block title %}My Exams - NumScoil{% endblock %}
+
+{% block content %}
+<div class="mx-auto max-w-4xl px-4 py-6 sm:px-6">
+
+  {% include "homework_check/_messages.html" %}
+
+  <div class="mb-6">
+    <h1 class="text-2xl font-bold text-mist">My Exams</h1>
+    <p class="mt-1 text-sm text-mist/70">
+      Put together an exam from past Leaving Cert questions on any topics, then download it
+      as a PDF with a cover page, and its marking scheme as a separate PDF.
+    </p>
+  </div>
+
+  <form method="post" action="{% url 'exam_papers:exam_create' %}"
+        class="mb-8 flex flex-wrap items-end gap-3 rounded-xl border border-mist/10 bg-twilight p-5">
+    {% csrf_token %}
+    <label class="flex flex-1 flex-col gap-1 text-sm font-semibold text-mist">
+      New exam
+      <input type="text" name="title" maxlength="120" required placeholder="e.g. Christmas Exam 2026"
+             class="rounded-lg border border-mist/20 bg-midnight px-3 py-2 text-sm font-normal text-mist">
+    </label>
+    <button type="submit" class="rounded-xl bg-violet-royal px-4 py-3 text-sm font-semibold text-white shadow-sm">
+      + Create exam
+    </button>
+  </form>
+
+  {% if exams %}
+    <ul class="space-y-3">
+      {% for exam in exams %}
+        <li class="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-white px-5 py-4 shadow-sm ring-1 ring-twilight/15">
+          <div>
+            <a href="{% url 'exam_papers:exam_builder' exam.pk %}" class="text-lg font-semibold text-twilight hover:underline">{{ exam.title }}</a>
+            <p class="text-sm text-twilight/70">
+              {% if exam.subtitle %}{{ exam.subtitle }} &middot; {% endif %}
+              {{ exam.items.all|length }} question{{ exam.items.all|length|pluralize }}
+              &middot; {{ exam.total_marks }} marks
+              &middot; edited {{ exam.updated_at|date:"j M Y" }}
+            </p>
+          </div>
+          <div class="flex flex-wrap gap-2">
+            <a href="{% url 'exam_papers:exam_builder' exam.pk %}"
+               class="rounded-xl bg-twilight px-3 py-2 text-sm font-semibold text-white">Edit</a>
+            {% if exam.items.all %}
+              <a href="{% url 'exam_papers:exam_pdf' exam.pk %}"
+                 class="rounded-xl bg-white px-3 py-2 text-sm font-semibold text-twilight ring-1 ring-twilight/15">Exam PDF</a>
+              <a href="{% url 'exam_papers:exam_scheme_pdf' exam.pk %}"
+                 class="rounded-xl bg-white px-3 py-2 text-sm font-semibold text-twilight ring-1 ring-twilight/15">Marking scheme</a>
+            {% endif %}
+          </div>
+        </li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <p class="text-center text-mist/60">No exams yet. Give your first one a name above.</p>
+  {% endif %}
+</div>
+{% endblock %}

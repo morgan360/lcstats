@@ -2,7 +2,7 @@
 Admin forms for exam paper management.
 """
 from django import forms
-from .models import ExamPaper
+from .models import ExamPaper, TeacherExam
 
 
 class ExtractQuestionsForm(forms.Form):
@@ -90,3 +90,27 @@ class ExtractQuestionsForm(forms.Form):
             result.append((int(q_num), int(start), int(end)))
 
         return result
+
+
+class TeacherExamForm(forms.ModelForm):
+    """The details a teacher sets on their exam: what goes on the cover page.
+
+    Styled by the builder template: Tailwind does not scan .py files, so
+    classes set on these widgets would never be generated.
+    """
+
+    class Meta:
+        model = TeacherExam
+        fields = ['title', 'subtitle', 'exam_date', 'duration_minutes', 'instructions']
+        labels = {
+            'subtitle': 'Class or level',
+            'exam_date': 'Date',
+            'duration_minutes': 'Time allowed (minutes)',
+        }
+        widgets = {
+            'subtitle': forms.TextInput(attrs={'placeholder': 'e.g. 6th Year Higher Level'}),
+            'exam_date': forms.DateInput(attrs={'type': 'date'}, format='%Y-%m-%d'),
+            'duration_minutes': forms.NumberInput(attrs={'min': 1, 'max': 600}),
+            'instructions': forms.Textarea(attrs={'rows': 4}),
+        }
+        help_texts = {'instructions': 'One instruction per line.'}

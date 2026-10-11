@@ -533,3 +533,74 @@ class ExamQuestionFeedback(models.Model):
 
     def __str__(self):
         return f"{self.user.username} - {self.get_feedback_type_display()} - Attempt {self.attempt.id}"
+
+class TeacherExam(models.Model):
+    """An exam a teacher puts together from past exam questions, to print.
+
+    Owned by the teacher who made it and seen by no one else. The questions are
+    shared ExamQuestion rows, so a retag or a better crop reaches every exam
+    that uses them.
+    """
+    DEFAULT_INSTRUCTIONS = (
+        'Answer all questions.\n'
+        'Write your answers in the spaces provided.\n'
+        'Show all necessary work clearly. Marks may be lost if you do not.\n'
+        'The Formulae and Tables booklet may be used.'
+    )
+
+    owner = models.ForeignKey(User, on_delete=models.CASCADE, related_name='teacher_exams')
+    subject = models.ForeignKey('core.Subject', on_delete=models.CASCADE,
+                                related_name='teacher_exams')
+    title = models.CharField(max_length=120, help_text='e.g. Christmas Exam 2026')
+    subtitle = models.CharField(max_length=120, blank=True,
+                                help_text='School, class or level, e.g. 6th Year Higher Level')
+    exam_date = models.DateField(null=True, blank=True)
+    duration_minutes = models.PositiveIntegerField(null=True, blank=True,
+                                                   help_text='Time allowed')
+    instructions = models.TextField(blank=True, default=DEFAULT_INSTRUCTIONS)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-updated_at']
+
+    def __str__(self):
+        return self.title
+
+    def ordered_items(self):
+        return self.items.select_related(
+            'question__exam_paper', 'question__topic').prefetch_related(
+            'question__parts').order_by('order', 'id')
+
+    @property
+    def total_marks(self):
+        return sum(item.marks for item in self.ordered_items())
+
+
+class TeacherExamQuestion(models.Model):
+    """One past question in a teacher's exam, at its place in the running order."""
+    exam = models.ForeignKey(TeacherExam, on_delete=models.CASCADE, related_name='items')
+    question = models.ForeignKey(ExamQuestion, on_delete=models.CASCADE,
+                                 related_name='teacher_exam_items')
+    order = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        ordering = ['order', 'id']
+        unique_together = ('exam', 'question')
+
+    def __str__(self):
+        return f'{self.exam} - {self.question}'
+
+    @property
+    def marks(self):
+        return question_marks(self.question)
+
+
+def question_marks(question):
+    """A question's marks, or its parts' when the total was never filled in.
+
+    Some questions carry total_marks = 0 with the marks on their parts.
+    """
+    if question.total_marks:
+        return question.total_marks
+    return sum(part.max_marks or 0 for part in question.parts.all())

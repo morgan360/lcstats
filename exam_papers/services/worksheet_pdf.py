@@ -122,26 +122,29 @@ class _Sheet:
         if self.page is None or (height > self.space_left() and self.y > MARGIN):
             self.new_page()
 
-    def text(self, line, size=HEADING_SIZE, bold=True):
+    def text(self, line, size=HEADING_SIZE, bold=True, right=None):
+        """One line of text; right, if given, is set flush with the right margin."""
         self.ensure(LINE_HEIGHT)
-        self.page.insert_text(
-            fitz.Point(MARGIN, self.y + size),
-            line,
-            fontname='hebo' if bold else 'helv',
-            fontsize=size,
-        )
+        font = 'hebo' if bold else 'helv'
+        self.page.insert_text(fitz.Point(MARGIN, self.y + size), line,
+                              fontname=font, fontsize=size)
+        if right:
+            width = fitz.get_text_length(right, fontname=font, fontsize=size)
+            self.page.insert_text(fitz.Point(MARGIN + self.width - width, self.y + size),
+                                  right, fontname=font, fontsize=size)
         self.y += LINE_HEIGHT
 
-    def labelled_image(self, label, path, size=HEADING_SIZE):
+    def labelled_image(self, label, path, size=HEADING_SIZE, img=None, right=None):
         """A heading and its image, kept together on one page.
 
         Measuring the image before the heading is written is the whole point:
         writing first would strand a heading at the foot of a page with its
-        question overleaf.
+        question overleaf. img, when given, is used instead of reading path.
         """
-        img = _prepare_image(path)
         if img is None:
-            self.text(label, size=size)
+            img = _prepare_image(path)
+        if img is None:
+            self.text(label, size=size, right=right)
             self.text('No usable image on file.', size=size, bold=False)
             self.y += GAP
             return
@@ -154,7 +157,7 @@ class _Sheet:
         # to start it in; otherwise start a page and take the whole of it.
         if here < img.height * scale and here < full_page * SQUEEZE_RATIO:
             self.new_page()
-        self.text(label, size=size)
+        self.text(label, size=size, right=right)
 
         top = 0
         while top < img.height:

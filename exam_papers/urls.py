@@ -1,5 +1,5 @@
 from django.urls import path
-from . import views
+from . import exam_builder, views
 
 app_name = 'exam_papers'
 
@@ -14,6 +14,22 @@ urlpatterns = [
     path('worksheet/', views.worksheet_generator, name='worksheet_generator'),
     path('worksheet/print/', views.worksheet_print, name='worksheet_print'),
     path('worksheet/pdf/', views.worksheet_pdf, name='worksheet_pdf'),
+
+    # Teachers' own exams, built from past questions (teachers only). Above the
+    # <slug:slug>/ paper route, which would otherwise swallow "exams/".
+    path('exams/', exam_builder.my_exams, name='my_exams'),
+    path('exams/new/', exam_builder.exam_create, name='exam_create'),
+    path('exams/<int:pk>/', exam_builder.exam_builder, name='exam_builder'),
+    path('exams/<int:pk>/details/', exam_builder.exam_save_details, name='exam_save_details'),
+    path('exams/<int:pk>/add/', exam_builder.exam_add_question, name='exam_add_question'),
+    path('exams/<int:pk>/items/<int:item_pk>/remove/', exam_builder.exam_remove_question,
+         name='exam_remove_question'),
+    path('exams/<int:pk>/items/<int:item_pk>/move/', exam_builder.exam_move_question,
+         name='exam_move_question'),
+    path('exams/<int:pk>/delete/', exam_builder.exam_delete, name='exam_delete'),
+    path('exams/<int:pk>/exam.pdf', exam_builder.exam_pdf, name='exam_pdf'),
+    path('exams/<int:pk>/marking-scheme.pdf', exam_builder.exam_scheme_pdf,
+         name='exam_scheme_pdf'),
 
     # Retagging from the worksheet page (superusers only; the view re-checks)
     path('question/<int:pk>/topics/',
