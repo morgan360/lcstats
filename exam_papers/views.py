@@ -46,6 +46,9 @@ def paper_list(request):
             attempt_mode='full_timed',
             is_completed=False
         ).first()
+        paper.out_of_time = bool(
+            paper.active_attempt
+            and paper.active_attempt.time_remaining_seconds() == 0)
 
         # Get best completed attempt
         paper.completed_attempt = ExamAttempt.objects.filter(
@@ -84,12 +87,16 @@ def paper_detail(request, slug):
 
     # Check if user has an active (incomplete) attempt
     active_attempt = previous_attempts.filter(is_completed=False).first()
+    out_of_time = bool(
+        active_attempt and active_attempt.attempt_mode == 'full_timed'
+        and active_attempt.time_remaining_seconds() == 0)
 
     context = {
         'paper': paper,
         'questions': questions,
         'previous_attempts': previous_attempts,
         'active_attempt': active_attempt,
+        'out_of_time': out_of_time,
     }
     return render(request, 'exam_papers/paper_detail.html', context)
 
@@ -242,18 +249,10 @@ def question_interface(request, attempt_id, question_id):
     timer_percentage = 0
     is_paused = attempt.is_paused
     if attempt.attempt_mode == 'full_timed':
-        # Calculate elapsed time excluding paused time
-        elapsed = (timezone.now() - attempt.started_at).total_seconds()
-
-        # If currently paused, use the paused_at timestamp instead of now
-        if attempt.is_paused and attempt.paused_at:
-            elapsed = (attempt.paused_at - attempt.started_at).total_seconds()
-
-        # Subtract total paused time
-        elapsed -= attempt.total_paused_seconds
-
+        # Coming back after leaving without pausing: that time was paused
+        attempt.note_presence()
         time_limit = attempt.exam_paper.time_limit_minutes * 60
-        time_remaining = int(max(0, time_limit - elapsed))
+        time_remaining = attempt.time_remaining_seconds()
 
         # Calculate timer progress percentage
         if time_limit > 0:
@@ -587,6 +586,7 @@ def resume_exam(request, attempt_id):
     # Resume the exam
     attempt.is_paused = False
     attempt.paused_at = None
+    attempt.last_seen_at = timezone.now()
     attempt.save()
 
     return JsonResponse({
@@ -601,6 +601,7 @@ def resume_exam(request, attempt_id):
 def exit_exam(request, attempt_id):
     """Exit and complete an exam attempt early"""
     attempt = get_object_or_404(ExamAttempt, id=attempt_id, student=request.user)
+    attempt.note_presence()
 
     # If paused, unpause first to calculate final time
     if attempt.is_paused and attempt.paused_at:
@@ -623,6 +624,18 @@ def exit_exam(request, attempt_id):
     return JsonResponse({
         'success': True,
         'redirect_url': f'/exam-papers/attempt/{attempt.id}/results/'
+    })
+
+
+@login_required
+@require_POST
+def exam_heartbeat(request, attempt_id):
+    """The open exam page checking in, so leaving it pauses the clock."""
+    attempt = get_object_or_404(ExamAttempt, id=attempt_id, student=request.user)
+    attempt.note_presence()
+    return JsonResponse({
+        'success': True,
+        'time_remaining': attempt.time_remaining_seconds(),
     })
 
 

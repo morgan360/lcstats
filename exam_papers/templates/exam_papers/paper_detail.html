@@ -31,10 +31,17 @@
 
     {% if active_attempt %}
     <div class="alert alert-info">
+        {% if out_of_time %}
+        <strong>The time ran out on your last attempt.</strong>
+        <a href="{% url 'exam_papers:question_interface' active_attempt.id questions.first.id %}" class="btn btn-primary">
+            See Results
+        </a>
+        {% else %}
         <strong>You have an active attempt!</strong>
         <a href="{% url 'exam_papers:question_interface' active_attempt.id questions.first.id %}" class="btn btn-primary">
             Resume Attempt
         </a>
+        {% endif %}
     </div>
     {% endif %}
 

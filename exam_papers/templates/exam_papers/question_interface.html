@@ -815,6 +815,26 @@ function exitExam() {
     });
 }
 
+// Check in with the server while the page is open. If the student leaves
+// without pausing (closes the tab, shuts the laptop), the silence counts as
+// paused time, so the clock has not run down when they come back.
+function examHeartbeat() {
+    fetch('{% url "exam_papers:exam_heartbeat" attempt.id %}', {
+        method: 'POST',
+        headers: {'X-CSRFToken': '{{ csrf_token }}'}
+    })
+    .then(response => response.json())
+    .then(data => {
+        // The server's clock is the real one; correct any drift after sleep
+        if (data.success && !isPaused) timeRemaining = data.time_remaining;
+    })
+    .catch(() => {});
+}
+setInterval(examHeartbeat, 30000);
+document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') examHeartbeat();
+});
+
 // Initialize timer - only update if not paused
 if (!isPaused) {
     updateTimer();

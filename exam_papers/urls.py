@@ -96,5 +96,7 @@ urlpatterns = [
          views.resume_exam, name='resume_exam'),
     path('attempt/<int:attempt_id>/exit/',
          views.exit_exam, name='exit_exam'),
+    path('attempt/<int:attempt_id>/heartbeat/',
+         views.exam_heartbeat, name='exam_heartbeat'),
 
 ]

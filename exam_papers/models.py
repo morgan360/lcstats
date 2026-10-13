@@ -1,5 +1,6 @@
 # exam_papers/models.py
 import uuid
+from datetime import timedelta
 
 from django.db import models
 from django.contrib.auth.models import User
@@ -418,6 +419,11 @@ class ExamAttempt(models.Model):
         default=0,
         help_text="Total time the exam has been paused (to calculate accurate time remaining)"
     )
+    last_seen_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="When the exam page last checked in; a longer silence counts as paused"
+    )
 
     # Scoring
     total_marks_awarded = models.FloatField(default=0.0)
@@ -436,6 +442,35 @@ class ExamAttempt(models.Model):
 
     def __str__(self):
         return f"{self.student.username} - {self.exam_paper} ({self.started_at.strftime('%Y-%m-%d')})"
+
+    # The timed exam page checks in every 30 seconds while it is open. A
+    # silence longer than this means the student left without pausing --
+    # closed the tab, shut the laptop, locked the phone -- and the gap is
+    # treated as paused, so Resume picks up with the time they had left.
+    AWAY_AFTER = timedelta(minutes=2)
+
+    def note_presence(self, now=None):
+        """Record that the exam page is open, crediting any absence as paused."""
+        if self.attempt_mode != 'full_timed' or self.is_completed:
+            return
+        now = now or timezone.now()
+        if (not self.is_paused and self.last_seen_at
+                and now - self.last_seen_at > self.AWAY_AFTER):
+            self.total_paused_seconds += int((now - self.last_seen_at).total_seconds())
+        self.last_seen_at = now
+        self.save(update_fields=['total_paused_seconds', 'last_seen_at'])
+
+    def time_remaining_seconds(self, now=None):
+        """Seconds left on a timed attempt, not counting paused or away time."""
+        now = now or timezone.now()
+        end = now
+        if self.is_paused and self.paused_at:
+            end = self.paused_at
+        elif self.last_seen_at and now - self.last_seen_at > self.AWAY_AFTER:
+            # Away and not yet back: the clock stopped when the page went quiet
+            end = self.last_seen_at
+        elapsed = (end - self.started_at).total_seconds() - self.total_paused_seconds
+        return int(max(0, self.exam_paper.time_limit_minutes * 60 - elapsed))
 
     def calculate_score(self):
         """Calculate total score from all question attempts"""
