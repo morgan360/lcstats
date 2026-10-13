@@ -3,7 +3,9 @@ from django.contrib.auth.decorators import login_required
 from django.http import HttpResponse, JsonResponse
 from django.urls import reverse
 from django.utils import timezone
+from django.utils.http import url_has_allowed_host_and_scheme
 from django.utils.text import slugify
+from urllib.parse import urlsplit
 from django.db import transaction
 from django.db.models import Count, Sum, Prefetch, Q
 from django.views.decorators.http import require_POST
@@ -197,6 +199,28 @@ def practise_question(request, question_id):
                     attempt_id=attempt.id, question_id=question.id)
 
 
+def practice_return_url(request, attempt):
+    """Where Exit and Back take a student out of question practice.
+
+    Practice is reached from topic pages, homework, study plans and the Exam
+    Questions index, and Exit used to send everyone to the Exam Papers list.
+    The page the student came from is kept per attempt; moving between the
+    paper's questions arrives from another question page and leaves it alone.
+    The Referer survives the redirect from practise_question and friends, so
+    it is the page the student actually clicked on.
+    """
+    key = f'practice_return_{attempt.id}'
+    referer = request.META.get('HTTP_REFERER', '')
+    if referer and url_has_allowed_host_and_scheme(
+            referer, allowed_hosts={request.get_host()},
+            require_https=request.is_secure()):
+        parts = urlsplit(referer)
+        # Another question of the paper, or the login page on the way in
+        if not parts.path.startswith(('/exam-papers/attempt/', '/accounts/')):
+            request.session[key] = parts.path + (f'?{parts.query}' if parts.query else '')
+    return request.session.get(key)
+
+
 @login_required
 def question_interface(request, attempt_id, question_id):
     """Display question interface with timer and answer submission"""
@@ -274,9 +298,14 @@ def question_interface(request, attempt_id, question_id):
     prev_question = all_questions[current_index - 1] if current_index > 0 else None
     next_question = all_questions[current_index + 1] if current_index < len(all_questions) - 1 else None
 
+    return_url = None
+    if attempt.attempt_mode != 'full_timed':
+        return_url = practice_return_url(request, attempt)
+
     context = {
         'attempt': attempt,
         'question': question,
+        'return_url': return_url,
         'parts_with_attempts': parts_with_attempts,
         'focus_part': focus_part,
         'time_remaining': time_remaining,

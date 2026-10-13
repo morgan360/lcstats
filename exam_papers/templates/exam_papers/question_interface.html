@@ -132,6 +132,11 @@
 
     <!-- Progress Header -->
     <div class="progress-header {% if time_remaining is not None and question.suggested_time_minutes %}dual-timer{% endif %}">
+        {% if attempt.attempt_mode != 'full_timed' %}
+        <a class="practice-back" href="{% if return_url %}{{ return_url }}{% else %}{% url 'exam_papers:paper_detail' attempt.exam_paper.slug %}{% endif %}">
+            ← {% if return_url %}Back{% else %}Back to {{ attempt.exam_paper }}{% endif %}
+        </a>
+        {% endif %}
         <div class="breadcrumb">
             <a href="{% url 'exam_papers:paper_list' %}">Exam Papers</a> →
             <a href="{% url 'exam_papers:paper_detail' attempt.exam_paper.slug %}">{{ attempt.exam_paper }}</a> →
@@ -346,6 +351,18 @@
 .breadcrumb a {
     color: #007bff;
     text-decoration: none;
+}
+
+.practice-back {
+    display: inline-block;
+    margin-bottom: 8px;
+    color: #007bff;
+    font-weight: 600;
+    text-decoration: none;
+}
+
+.practice-back:hover {
+    text-decoration: underline;
 }
 
 .progress-info {
@@ -939,8 +956,8 @@ function exitPractice() {
         return;
     }
 
-    // Redirect to exam papers list
-    window.location.href = '/exam-papers/';
+    // Back to wherever the student came from: a topic page, homework, a plan
+    window.location.href = document.querySelector('.practice-back').href;
 }
 
 // Parts with an answer out for marking. Marking takes seconds, and a second
