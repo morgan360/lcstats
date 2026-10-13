@@ -64,6 +64,10 @@
                             <a href="{% url 'exam_papers:question_interface' paper.active_attempt.id paper.active_attempt.exam_paper.questions.first.id %}" class="inline-flex items-center rounded-lg bg-gradient-03 px-4 py-2 text-sm font-semibold text-mist shadow-[0_10px_26px_rgba(148,72,176,0.3)] transition hover:-translate-y-0.5 hover:shadow-[0_14px_32px_rgba(148,72,176,0.4)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-royal">
                                 {% if paper.out_of_time %}See Results →{% else %}Resume Exam →{% endif %}
                             </a>
+                            <form method="post" action="{% url 'exam_papers:restart_exam' paper.active_attempt.id %}" onsubmit="return confirm('Start this exam again from the beginning, with the full time? Your answers so far stay in your past attempts.')" class="mt-2">
+                                {% csrf_token %}
+                                <button type="submit" class="text-sm font-semibold text-indigo-deep underline-offset-2 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-royal">↺ Start over</button>
+                            </form>
                         {% else %}
                             <form method="post" action="{% url 'exam_papers:start_paper_attempt' paper.slug %}" class="inline">
                                 {% csrf_token %}

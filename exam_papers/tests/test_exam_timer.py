@@ -7,10 +7,11 @@ from django.urls import reverse
 from django.utils import timezone
 
 from core.models import Subject
-from exam_papers.models import ExamAttempt, ExamPaper, ExamQuestion, ExamQuestionPart
+from exam_papers.models import (ExamAttempt, ExamPaper, ExamQuestion, ExamQuestionAttempt,
+                                ExamQuestionPart)
 
 
-class ExamTimerTests(TestCase):
+class TimedExamSetup:
     def setUp(self):
         maths, _ = Subject.objects.get_or_create(slug='maths', defaults={'name': 'Maths'})
         self.paper = ExamPaper.objects.create(subject=maths, year=2018, paper_type='p1',
@@ -35,6 +36,8 @@ class ExamTimerTests(TestCase):
                           else now - timedelta(minutes=last_seen_minutes_ago)))
         self.attempt.refresh_from_db()
 
+
+class ExamTimerTests(TimedExamSetup, TestCase):
     def test_coming_back_days_later_resumes_with_the_time_that_was_left(self):
         # 20 minutes in, then the laptop was shut for three days
         self.rewind(started_minutes_ago=3 * 24 * 60 + 20, last_seen_minutes_ago=3 * 24 * 60)
@@ -96,3 +99,67 @@ class ExamTimerTests(TestCase):
 
         self.assertContains(response, 'Resume Exam')
         self.assertNotContains(response, "Time's up")
+
+
+class StartOverTests(TimedExamSetup, TestCase):
+    """Start over abandons an unfinished timed attempt without losing its answers."""
+
+    def restart(self, attempt=None):
+        return self.client.post(
+            reverse('exam_papers:restart_exam', args=[(attempt or self.attempt).id]))
+
+    def answer(self, marks):
+        part = self.question.parts.get()
+        ExamQuestionAttempt.objects.create(
+            exam_attempt=self.attempt, question_part=part, student_answer='4',
+            marks_awarded=marks, max_marks=10, is_correct=marks == 10)
+
+    def test_starting_over_gives_a_fresh_attempt_with_the_full_time(self):
+        self.rewind(started_minutes_ago=100, last_seen_minutes_ago=0)
+
+        response = self.restart()
+
+        fresh = ExamAttempt.objects.exclude(id=self.attempt.id).get()
+        self.assertRedirects(response, reverse('exam_papers:question_interface',
+                                               args=[fresh.id, self.question.id]))
+        self.assertEqual(fresh.attempt_mode, 'full_timed')
+        self.assertAlmostEqual(fresh.time_remaining_seconds(), 150 * 60, delta=5)
+
+    def test_the_old_attempt_is_closed_but_its_answers_are_kept(self):
+        self.answer(10)
+
+        self.restart()
+
+        self.attempt.refresh_from_db()
+        self.assertTrue(self.attempt.is_completed)
+        self.assertIsNotNone(self.attempt.started_over_at)
+        # Homework, plans and reports count these answers
+        self.assertEqual(self.attempt.question_attempts.count(), 1)
+
+    def test_a_paused_attempt_can_be_started_over(self):
+        self.client.post(reverse('exam_papers:pause_exam', args=[self.attempt.id]))
+
+        self.restart()
+
+        self.attempt.refresh_from_db()
+        self.assertTrue(self.attempt.is_completed)
+        self.assertFalse(self.attempt.is_paused)
+
+    def test_the_best_score_badge_ignores_an_attempt_given_up_on(self):
+        # One right answer out of one tried would show as 100%
+        self.answer(10)
+        self.restart()
+
+        response = self.client.get(reverse('exam_papers:paper_list'))
+
+        self.assertNotContains(response, '✓ 100%')
+
+    def test_another_students_attempt_cannot_be_started_over(self):
+        intruder = User.objects.create_user('ciaran', password='pw')
+        self.client.force_login(intruder)
+
+        response = self.restart()
+
+        self.assertEqual(response.status_code, 404)
+        self.attempt.refresh_from_db()
+        self.assertFalse(self.attempt.is_completed)

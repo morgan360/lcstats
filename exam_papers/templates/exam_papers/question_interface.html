@@ -25,6 +25,23 @@
                 " onmouseover="this.style.background='#0056b3'" onmouseout="this.style.background='#007bff'">
                     <span id="pause-icon">⏸️ Pause</span>
                 </button>
+                <form method="post" action="{% url 'exam_papers:restart_exam' attempt.id %}" onsubmit="return confirm('Start this exam again from the beginning, with the full time? Your answers so far stay in your past attempts.')" style="margin: 0;">
+                    {% csrf_token %}
+                    <button type="submit" style="
+                        padding: 6px 16px !important;
+                        background: #6c757d !important;
+                        color: white !important;
+                        font-weight: 600 !important;
+                        font-size: 14px !important;
+                        border-radius: 6px !important;
+                        border: none !important;
+                        cursor: pointer !important;
+                        box-shadow: 0 2px 4px rgba(0,0,0,0.1) !important;
+                        transition: all 0.2s !important;
+                    " onmouseover="this.style.background='#5a6268'" onmouseout="this.style.background='#6c757d'">
+                        ↺ Start over
+                    </button>
+                </form>
                 <button onclick="exitExam()" style="
                     padding: 6px 16px !important;
                     background: #dc3545 !important;

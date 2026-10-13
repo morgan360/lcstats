@@ -424,6 +424,11 @@ class ExamAttempt(models.Model):
         blank=True,
         help_text="When the exam page last checked in; a longer silence counts as paused"
     )
+    started_over_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="Set when the student abandoned this attempt to start the paper again"
+    )
 
     # Scoring
     total_marks_awarded = models.FloatField(default=0.0)

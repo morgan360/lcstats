@@ -55,7 +55,9 @@ def paper_list(request):
             student=request.user,
             exam_paper=paper,
             attempt_mode='full_timed',
-            is_completed=True
+            is_completed=True,
+            # A half-done attempt given up on is not a score worth showing
+            started_over_at__isnull=True,
         ).order_by('-percentage_score').first()
 
     # Group papers by year
@@ -625,6 +627,38 @@ def exit_exam(request, attempt_id):
         'success': True,
         'redirect_url': f'/exam-papers/attempt/{attempt.id}/results/'
     })
+
+
+@login_required
+@require_POST
+def restart_exam(request, attempt_id):
+    """Abandon an unfinished timed attempt and start the paper again.
+
+    The old attempt is closed, not deleted: homework, study plans and teacher
+    reports all count the answers given in it.
+    """
+    attempt = get_object_or_404(ExamAttempt, id=attempt_id, student=request.user,
+                                 attempt_mode='full_timed')
+    if not attempt.is_completed:
+        attempt.note_presence()
+        now = timezone.now()
+        if attempt.is_paused and attempt.paused_at:
+            attempt.total_paused_seconds += int((now - attempt.paused_at).total_seconds())
+            attempt.is_paused = False
+        attempt.is_completed = True
+        attempt.completed_at = now
+        attempt.started_over_at = now
+        attempt.time_spent_seconds = int(
+            (now - attempt.started_at).total_seconds() - attempt.total_paused_seconds)
+        attempt.calculate_score()
+
+    paper = attempt.exam_paper
+    fresh = get_or_create_attempt(request.user, paper, 'full_timed')
+    first = paper.questions.order_by('order').first()
+    if first is None:
+        return redirect('exam_papers:paper_detail', slug=paper.slug)
+    return redirect('exam_papers:question_interface',
+                    attempt_id=fresh.id, question_id=first.id)
 
 
 @login_required

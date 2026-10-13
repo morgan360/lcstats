@@ -42,6 +42,12 @@
             Resume Attempt
         </a>
         {% endif %}
+        {% if active_attempt.attempt_mode == 'full_timed' %}
+        <form method="post" action="{% url 'exam_papers:restart_exam' active_attempt.id %}" onsubmit="return confirm('Start this exam again from the beginning, with the full time? Your answers so far stay in your past attempts.')" style="display: inline;">
+            {% csrf_token %}
+            <button type="submit" class="btn">↺ Start Over</button>
+        </form>
+        {% endif %}
     </div>
     {% endif %}
 
@@ -113,7 +119,7 @@
                 {% for attempt in previous_attempts %}
                 <tr>
                     <td>{{ attempt.started_at|date:"d M Y H:i" }}</td>
-                    <td>{{ attempt.get_attempt_mode_display }}</td>
+                    <td>{{ attempt.get_attempt_mode_display }}{% if attempt.started_over_at %} (started over){% endif %}</td>
                     <td>
                         {{ attempt.total_marks_awarded|floatformat:1 }}/{{ attempt.total_marks_possible|floatformat:0 }}
                         <span class="percentage">({{ attempt.percentage_score|floatformat:1 }}%)</span>
