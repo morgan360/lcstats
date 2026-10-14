@@ -7,7 +7,9 @@ practice for that topic.
 """
 from django.db.models import Prefetch, Q
 
-from exam_papers.models import ExamQuestion, ExamQuestionAttempt, ExamQuestionPart
+from exam_papers.models import (
+    ExamQuestion, ExamQuestionAttempt, ExamQuestionPart, QuestionRestart,
+)
 
 
 def topic_filter(topic, prefix=''):
@@ -32,12 +34,25 @@ def questions_for_topic(topic, published_only=True):
 
 
 def best_part_attempts(user, parts):
-    """{part_id: {'count', 'best'}} for this user's attempts, in one query."""
+    """{part_id: {'count', 'best'}} for this user's attempts, in one query.
+
+    A question started over in practice forgets that attempt's earlier
+    answers here, as it does on the question page (ExamAttempt.answers_to):
+    a 15/15 from before the restart is not the score to show after it.
+    """
     summary = {}
     attempts = (ExamQuestionAttempt.objects
                 .filter(exam_attempt__student=user, question_part__in=parts)
+                .select_related('question_part')
                 .order_by('question_part_id', '-marks_awarded'))
+    restarts = {
+        (r.exam_attempt_id, r.question_id): r.restarted_at
+        for r in QuestionRestart.objects.filter(exam_attempt__student=user)
+    }
     for attempt in attempts:
+        cutoff = restarts.get((attempt.exam_attempt_id, attempt.question_part.question_id))
+        if cutoff and attempt.submitted_at <= cutoff:
+            continue
         entry = summary.setdefault(attempt.question_part_id,
                                    {'count': 0, 'best': attempt})
         entry['count'] += 1

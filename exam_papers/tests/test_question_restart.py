@@ -117,3 +117,25 @@ class QuestionRestartTests(TestCase):
 
     def test_the_button_is_on_practice_questions(self):
         self.assertContains(self.page(), 'Start this question over')
+
+    # The question card on a topic's exam questions page
+    def best(self):
+        from exam_papers.services.topic_questions import best_part_attempts
+        return best_part_attempts(self.student, [self.part]).get(self.part.id)
+
+    def test_the_score_after_a_restart_is_the_new_one(self):
+        self.answer(self.part, 'y=4x+6', minutes_ago=10)
+        ExamQuestionAttempt.objects.filter(question_part=self.part).update(marks_awarded=15)
+        self.restart()
+        self.answer(self.part, 'y=4x-6', minutes_ago=-1)  # 5 marks
+
+        best = self.best()
+
+        self.assertEqual(best['best'].marks_awarded, 5)
+        self.assertEqual(best['count'], 1)
+
+    def test_a_restarted_question_not_yet_answered_again_shows_no_score(self):
+        self.answer(self.part, 'y=4x+6')
+        self.restart()
+
+        self.assertIsNone(self.best())
