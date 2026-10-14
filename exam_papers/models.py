@@ -527,6 +527,20 @@ class ExamAttempt(models.Model):
         elapsed = (end - self.started_at).total_seconds() - self.total_paused_seconds
         return int(max(0, self.exam_paper.time_limit_minutes * 60 - elapsed))
 
+    def answers_to(self, part):
+        """This attempt's answers to a part since its question was last started over.
+
+        Only practice questions are started over. The earlier answers are kept,
+        not deleted -- homework, study plans and teacher reports count them --
+        but the question page, the attempt count and the solution lock start
+        afresh from the restart.
+        """
+        rows = ExamQuestionAttempt.objects.filter(exam_attempt=self, question_part=part)
+        restart = self.question_restarts.filter(question_id=part.question_id).first()
+        if restart:
+            rows = rows.filter(submitted_at__gt=restart.restarted_at)
+        return rows
+
     def calculate_score(self):
         """Calculate total score from all question attempts"""
         question_attempts = self.question_attempts.all()
@@ -591,6 +605,31 @@ class ExamQuestionAttempt(models.Model):
 
     def __str__(self):
         return f"{self.exam_attempt.student.username} - {self.question_part} (Attempt {self.attempt_number})"
+
+
+class QuestionRestart(models.Model):
+    """A student starting one question of their practice over.
+
+    Only the latest restart matters, so there is one row per attempt and
+    question, moved forward each time. See ExamAttempt.answers_to.
+    """
+    exam_attempt = models.ForeignKey(
+        ExamAttempt,
+        on_delete=models.CASCADE,
+        related_name='question_restarts'
+    )
+    question = models.ForeignKey(
+        ExamQuestion,
+        on_delete=models.CASCADE,
+        related_name='+'
+    )
+    restarted_at = models.DateTimeField()
+
+    class Meta:
+        unique_together = ('exam_attempt', 'question')
+
+    def __str__(self):
+        return f"{self.exam_attempt} restarted {self.question} at {self.restarted_at:%Y-%m-%d %H:%M}"
 
 
 class ExamQuestionFeedback(models.Model):

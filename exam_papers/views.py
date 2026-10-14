@@ -15,7 +15,7 @@ import logging
 
 from .models import (
     ExamPaper, ExamQuestion, ExamQuestionPart, topic_errors,
-    ExamAttempt, ExamQuestionAttempt
+    ExamAttempt, ExamQuestionAttempt, QuestionRestart
 )
 from .topic_editing import topic_editing_visible
 from interactive_lessons.models import Topic
@@ -240,10 +240,7 @@ def question_interface(request, attempt_id, question_id):
     parts_with_attempts = []
     for part in parts:
         # Get all attempts for this part in this exam attempt
-        part_attempts = ExamQuestionAttempt.objects.filter(
-            exam_attempt=attempt,
-            question_part=part
-        ).order_by('-submitted_at')
+        part_attempts = attempt.answers_to(part).order_by('-submitted_at')
 
         # Count attempts
         attempt_count = part_attempts.count()
@@ -382,8 +379,7 @@ def submit_answer(request, attempt_id):
         # the first one's row and hands back its result.
         with transaction.atomic():
             ExamAttempt.objects.select_for_update().get(pk=attempt.pk)
-            earlier = ExamQuestionAttempt.objects.filter(
-                exam_attempt=attempt, question_part=part)
+            earlier = attempt.answers_to(part)
             previous_attempts = earlier.count()
             last = earlier.order_by('-submitted_at', '-id').first()
             if (last is not None and last.student_answer == student_answer
@@ -445,11 +441,8 @@ def get_solution(request, attempt_id, part_id):
     attempt = get_object_or_404(ExamAttempt, id=attempt_id, student=request.user)
     part = get_object_or_404(ExamQuestionPart, id=part_id)
 
-    # Get all attempts for this part
-    part_attempts = ExamQuestionAttempt.objects.filter(
-        exam_attempt=attempt,
-        question_part=part
-    )
+    # Get all attempts for this part since the question was last started over
+    part_attempts = attempt.answers_to(part)
     attempt_count = part_attempts.count()
 
     # Check if student has a correct answer
@@ -470,10 +463,7 @@ def get_solution(request, attempt_id, part_id):
         })
 
     # Mark solution as viewed
-    latest_attempt = ExamQuestionAttempt.objects.filter(
-        exam_attempt=attempt,
-        question_part=part
-    ).order_by('-submitted_at').first()
+    latest_attempt = part_attempts.order_by('-submitted_at').first()
 
     if latest_attempt:
         latest_attempt.solution_viewed = True
@@ -693,6 +683,32 @@ def restart_exam(request, attempt_id):
         return redirect('exam_papers:paper_detail', slug=paper.slug)
     return redirect('exam_papers:question_interface',
                     attempt_id=fresh.id, question_id=first.id)
+
+
+@login_required
+@require_POST
+def restart_question(request, attempt_id, question_id):
+    """Start one practice question over: empty boxes, solutions locked again.
+
+    The answers given so far are kept (see ExamAttempt.answers_to); only the
+    question page and its attempt counting begin again from now. A timed exam
+    is started over whole, with restart_exam.
+    """
+    attempt = get_object_or_404(ExamAttempt, id=attempt_id, student=request.user,
+                                is_completed=False)
+    if attempt.attempt_mode == 'full_timed':
+        return redirect('exam_papers:question_interface',
+                        attempt_id=attempt.id, question_id=question_id)
+    question = get_object_or_404(ExamQuestion, id=question_id, exam_paper=attempt.exam_paper)
+    QuestionRestart.objects.update_or_create(
+        exam_attempt=attempt, question=question,
+        defaults={'restarted_at': timezone.now()})
+    url = reverse('exam_papers:question_interface',
+                  kwargs={'attempt_id': attempt.id, 'question_id': question.id})
+    part_id = request.POST.get('part_id', '')
+    if part_id.isdigit():
+        url += f'?part={part_id}'
+    return redirect(url)
 
 
 @login_required

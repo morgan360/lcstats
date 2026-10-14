@@ -136,6 +136,13 @@
         <a class="practice-back" href="{% if return_url %}{{ return_url }}{% else %}{% url 'exam_papers:paper_detail' attempt.exam_paper.slug %}{% endif %}">
             ← {% if return_url %}Back{% else %}Back to {{ attempt.exam_paper }}{% endif %}
         </a>
+        <form method="post" action="{% url 'exam_papers:restart_question' attempt.id question.id %}"
+              class="question-restart"
+              onsubmit="return confirm('Start this question over? Your boxes are emptied and the solutions lock again. Your earlier answers still count towards homework.')">
+            {% csrf_token %}
+            {% if focus_part %}<input type="hidden" name="part_id" value="{{ focus_part.id }}">{% endif %}
+            <button type="submit">↺ Start this question over</button>
+        </form>
         {% endif %}
         <div class="breadcrumb">
             <a href="{% url 'exam_papers:paper_list' %}">Exam Papers</a> →
@@ -413,6 +420,25 @@
 }
 
 .practice-back:hover {
+    text-decoration: underline;
+}
+
+.question-restart {
+    display: inline-block;
+    margin: 0 0 8px 16px;
+}
+
+.question-restart button {
+    padding: 0;
+    border: none;
+    background: none;
+    color: #6c757d;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.question-restart button:hover {
+    color: #495057;
     text-decoration: underline;
 }
 
@@ -1104,8 +1130,6 @@ function submitAnswer(partId, attemptId) {
             // KaTeX pass has already run - render maths in it explicitly.
             Feedback.renderMaths(feedbackArea);
 
-            // Clear the answer boxes for next attempt
-            answerFields.forEach(field => { field.value = ''; });
         } else {
             feedbackArea.className = 'feedback-area incorrect';
             feedbackArea.innerHTML = '<strong>Error:</strong> ' + data.error;
