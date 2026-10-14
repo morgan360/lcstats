@@ -39,6 +39,13 @@ python manage.py extract_exam_questions <paper_id> --legacy --dry-run
 # with --no-verify-total only when the question totals are themselves wrong.
 python manage.py auto_extract_marking_info <paper_id> --dry-run
 
+# Record which roman sub-parts each part covers ("i,ii"), read from the
+# marking scheme. The question page shows "This part has (i) and (ii)" under
+# the one answer box; without it students answered (i) alone. Report only
+# unless --apply; blanks only unless --overwrite. No paper id = every paper.
+# 2012-2015 schemes are unreadable and are skipped with a warning.
+python manage.py fill_sub_parts [<paper_id>] --apply
+
 # Give every question part its one topic. Writes straight to the database,
 # overwriting what is there. Part topics are never shown; they only feed the
 # next command.

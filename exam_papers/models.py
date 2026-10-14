@@ -303,6 +303,16 @@ class ExamQuestionPart(models.Model):
         help_text="Part label (e.g., '(a)', '(b)', '(i)', '(ii)')"
     )
 
+    # A part is a letter answered in one box, but on the paper (a) is often
+    # (i) and (ii). The question image is the only other place that says so,
+    # and students answered (i) alone and lost the marks for (ii).
+    sub_parts = models.CharField(
+        max_length=40,
+        blank=True,
+        help_text="Roman sub-parts this letter covers on the paper, comma-separated "
+                  "(e.g. 'i,ii'). Filled from the scheme by fill_sub_parts; blank if none."
+    )
+
     # Marking Scheme (replaces answer/solution fields)
     solution_image = models.ImageField(
         upload_to='exam_papers/marking_schemes/',
@@ -359,6 +369,14 @@ class ExamQuestionPart(models.Model):
         list, which once held a crop per sub-part.
         """
         return [self.solution_image] if self.solution_image else []
+
+    @property
+    def sub_parts_display(self):
+        """'(i) and (ii)', '(i), (ii) and (iii)' -- or '' for a plain letter."""
+        labels = [f'({r.strip()})' for r in self.sub_parts.split(',') if r.strip()]
+        if len(labels) < 2:
+            return ''
+        return ', '.join(labels[:-1]) + ' and ' + labels[-1]
 
     @property
     def has_solution_image(self):

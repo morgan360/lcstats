@@ -195,6 +195,12 @@
             <!-- Answer Input -->
             <div class="answer-section">
                 <label for="answer-{{ part_data.part.id }}">Your Answer:</label>
+                {% if part_data.part.sub_parts_display %}
+                <p class="sub-parts-note">
+                    This part has <strong>{{ part_data.part.sub_parts_display }}</strong>.
+                    Answer all of them in this box, labelled as they are on the paper.
+                </p>
+                {% endif %}
                 <math-field
                     id="answer-{{ part_data.part.id }}"
                     class="answer-input"
@@ -351,6 +357,15 @@
 .breadcrumb a {
     color: #007bff;
     text-decoration: none;
+}
+
+.sub-parts-note {
+    margin: 4px 0 10px;
+    padding: 8px 12px;
+    background: #e7f1ff;
+    border-left: 4px solid #007bff;
+    border-radius: 4px;
+    color: #084298;
 }
 
 .practice-back {
