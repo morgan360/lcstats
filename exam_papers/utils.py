@@ -275,6 +275,44 @@ def detect_question_layout(pdf_path):
     return layout
 
 
+# A line opening with a part letter, optionally followed on the same line by
+# its first roman sub-part: "(b)", "(b) (i)", "(b)(i)".
+_PAPER_LETTER = re.compile(r"^\s*\(([a-h])\)(?:\s*\((i{1,3}|iv|vi{0,3}|ix|x)\))?(?=\s|$)")
+_PAPER_ROMAN = re.compile(r"^\s*\((i{1,3}|iv|vi{0,3}|ix|x)\)(?=\s|$)")
+
+
+def question_sub_parts(pdf_path):
+    """Read each part's roman sub-parts from an exam paper's text layer.
+
+    Returns {(question, letter): ['i', 'ii', ...]} in the order printed, each
+    numeral once. The paper prints them cleanly under their letter; the marking
+    scheme repeats letter labels around its rows and loses numerals to the
+    wrong letter, so it is no use for this.
+    """
+    layout = detect_question_layout(pdf_path)
+    found = {}
+    doc = fitz.open(pdf_path)
+    try:
+        for item in layout:
+            letter = None
+            for page_index in range(item['start_page'] - 1, item['end_page']):
+                for line in doc[page_index].get_text().splitlines():
+                    match = _PAPER_LETTER.match(line)
+                    if match:
+                        letter = match.group(1)
+                        roman = match.group(2)
+                    else:
+                        match = _PAPER_ROMAN.match(line)
+                        roman = match.group(1) if match else None
+                    if roman and letter:
+                        romans = found.setdefault((item['question'], letter), [])
+                        if roman not in romans:
+                            romans.append(roman)
+    finally:
+        doc.close()
+    return found
+
+
 def _text_lines(page):
     """Yield (text, bbox) for each line of text on a page."""
     for block in page.get_text("dict")["blocks"]:

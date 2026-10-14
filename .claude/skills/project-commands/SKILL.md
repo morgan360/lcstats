@@ -46,6 +46,14 @@ python manage.py auto_extract_marking_info <paper_id> --dry-run
 # 2012-2015 schemes are unreadable and are skipped with a warning.
 python manage.py fill_sub_parts [<paper_id>] --apply
 
+# Record which roman sub-parts each part covers ("i,ii"), read from the
+# question paper's text layer (source_pdf). The question page gives such a
+# part a box per sub-part. NOT the marking scheme: its repeated letter labels
+# file numerals under the wrong letter. Only a clean run from (i) is saved;
+# anything else is reported as doubtful. Report only unless --apply; blanks
+# only unless --overwrite. No paper id = every paper with a PDF.
+python manage.py fill_sub_parts [<paper_id>] --apply
+
 # Give every question part its one topic. Writes straight to the database,
 # overwriting what is there. Part topics are never shown; they only feed the
 # next command.

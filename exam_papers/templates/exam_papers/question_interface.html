@@ -195,17 +195,34 @@
             <!-- Answer Input -->
             <div class="answer-section">
                 <label for="answer-{{ part_data.part.id }}">Your Answer:</label>
-                {% if part_data.part.sub_parts_display %}
-                <p class="sub-parts-note">
-                    This part has <strong>{{ part_data.part.sub_parts_display }}</strong>.
-                    Answer all of them in this box, labelled as they are on the paper.
-                </p>
+                <!-- A part covering (i) and (ii) gets a box for each. They are sent
+                     as one labelled answer, "(i) ... (ii) ...", which is how the
+                     grader marks a part against its scheme's sub-parts. -->
+                <div class="answer-boxes" id="answer-boxes-{{ part_data.part.id }}">
+                {% if part_data.sub_part_boxes %}
+                    <p class="sub-parts-note">
+                        This part has <strong>{{ part_data.part.sub_parts_display }}</strong>.
+                        Answer each one in its own box.
+                    </p>
+                    {% for roman, value in part_data.sub_part_boxes %}
+                    <div class="answer-row">
+                        <span class="answer-roman">({{ roman }})</span>
+                        <math-field
+                            id="answer-{{ part_data.part.id }}-{{ roman }}"
+                            class="answer-input"
+                            data-roman="{{ roman }}"
+                            {% if value %}value="{{ value }}"{% endif %}
+                        ></math-field>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <math-field
+                        id="answer-{{ part_data.part.id }}"
+                        class="answer-input"
+                        {% if part_data.latest_attempt %}value="{{ part_data.latest_attempt.student_answer }}"{% endif %}
+                    ></math-field>
                 {% endif %}
-                <math-field
-                    id="answer-{{ part_data.part.id }}"
-                    class="answer-input"
-                    {% if part_data.latest_attempt %}value="{{ part_data.latest_attempt.student_answer }}"{% endif %}
-                ></math-field>
+                </div>
 
                 <div class="answer-actions">
                     <button class="btn btn-primary" id="submit-btn-{{ part_data.part.id }}" onclick="submitAnswer({{ part_data.part.id }}, {{ attempt.id }})">
@@ -366,6 +383,25 @@
     border-left: 4px solid #007bff;
     border-radius: 4px;
     color: #084298;
+}
+
+.answer-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.answer-row .answer-input {
+    flex: 1;
+    min-width: 0;
+}
+
+.answer-roman {
+    flex-shrink: 0;
+    width: 2.4em;
+    margin-bottom: 15px;
+    font-weight: 600;
+    color: #495057;
 }
 
 .practice-back {
@@ -980,11 +1016,37 @@ function exitPractice() {
 // tries and unlocking the solution after one.
 const markingParts = new Set();
 
+// One answer from a part's boxes: the plain value for a single box, otherwise
+// each sub-part labelled so the grader can match it to its row of the scheme.
+// A box left empty is asked about first -- answering (i) and missing (ii) is
+// what the boxes are there to stop. null means the student went back to it.
+function collectAnswer(fields) {
+    if (fields.length === 1) return fields[0].value;
+    const labelled = [];
+    const blank = [];
+    fields.forEach(field => {
+        const label = '(' + field.dataset.roman + ')';
+        if (field.value.trim()) {
+            labelled.push('\\text{' + label + ' }' + field.value);
+        } else {
+            blank.push(label);
+        }
+    });
+    if (labelled.length && blank.length) {
+        const which = blank.join(' and ');
+        if (!confirm("You've left " + which + ' blank. Check your answer anyway?')) {
+            return null;
+        }
+    }
+    return labelled.join('\\quad ');
+}
+
 // Submit answer function
 function submitAnswer(partId, attemptId) {
     if (markingParts.has(partId)) return;
-    const answerField = document.getElementById('answer-' + partId);
-    const answer = answerField.value;
+    const answerFields = document.querySelectorAll('#answer-boxes-' + partId + ' math-field');
+    const answer = collectAnswer(answerFields);
+    if (answer === null) return;
 
     if (!answer.trim()) {
         alert('Please enter an answer before submitting.');
@@ -1042,8 +1104,8 @@ function submitAnswer(partId, attemptId) {
             // KaTeX pass has already run - render maths in it explicitly.
             Feedback.renderMaths(feedbackArea);
 
-            // Clear the answer field for next attempt
-            answerField.value = '';
+            // Clear the answer boxes for next attempt
+            answerFields.forEach(field => { field.value = ''; });
         } else {
             feedbackArea.className = 'feedback-area incorrect';
             feedbackArea.innerHTML = '<strong>Error:</strong> ' + data.error;

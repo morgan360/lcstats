@@ -268,6 +268,11 @@ def question_interface(request, attempt_id, question_id):
             'solution_unlocked': solution_unlocked,
             'latest_attempt': latest_attempt,
             'is_focused': focus_part is not None and part.id == focus_part.id,
+            # (roman, value) per sub-part box, the latest answer split back up
+            'sub_part_boxes': [
+                (roman, part.split_answer(
+                    latest_attempt.student_answer if latest_attempt else '').get(roman, ''))
+                for roman in part.sub_part_romans],
         })
 
     # Calculate time remaining (for timed mode)

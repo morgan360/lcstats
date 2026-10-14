@@ -1,4 +1,5 @@
 # exam_papers/models.py
+import re
 import uuid
 from datetime import timedelta
 
@@ -371,12 +372,43 @@ class ExamQuestionPart(models.Model):
         return [self.solution_image] if self.solution_image else []
 
     @property
+    def sub_part_romans(self):
+        """['i', 'ii'] for a part answered in a box per sub-part, else []."""
+        romans = [r.strip() for r in self.sub_parts.split(',') if r.strip()]
+        return romans if len(romans) >= 2 else []
+
+    @property
     def sub_parts_display(self):
         """'(i) and (ii)', '(i), (ii) and (iii)' -- or '' for a plain letter."""
-        labels = [f'({r.strip()})' for r in self.sub_parts.split(',') if r.strip()]
-        if len(labels) < 2:
+        labels = [f'({r})' for r in self.sub_part_romans]
+        if not labels:
             return ''
         return ', '.join(labels[:-1]) + ' and ' + labels[-1]
+
+    # The question page sends a box per sub-part as one answer, each piece
+    # labelled \text{(i) } and so on: the shape the grader marks against the
+    # scheme's sub-parts.
+    _ANSWER_LABEL = re.compile(r'\\text\{\((i{1,3}|iv|vi{0,3}|ix|x)\) \}')
+
+    def split_answer(self, answer):
+        """A stored answer back into its sub-part boxes, as {roman: value}.
+
+        An answer from before the boxes carries no labels, so it all goes in
+        the first box rather than being lost.
+        """
+        romans = self.sub_part_romans
+        if not romans or not answer:
+            return {}
+        pieces = self._ANSWER_LABEL.split(answer)
+        if len(pieces) < 3:
+            return {romans[0]: answer}
+        values = {}
+        for roman, value in zip(pieces[1::2], pieces[2::2]):
+            value = value.strip()
+            if value.endswith('\\quad'):
+                value = value[:-len('\\quad')].rstrip()
+            values[roman] = value
+        return values
 
     @property
     def has_solution_image(self):
