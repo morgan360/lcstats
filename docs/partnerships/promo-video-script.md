@@ -1,7 +1,8 @@
 # Promo video: shot list and AI voiceover script
 
-Two cuts from one set of recordings, made in **Screen Studio**. Voiceover generated on
-**WaveSpeed** (same service as the NumSkull intro animation).
+Two cuts from one set of recordings, recorded in **Screen Studio** and edited in **DaVinci
+Resolve 19**. Voiceover generated on **WaveSpeed** (same service as the NumSkull intro
+animation).
 
 - **Cut A, site promo:** 60–90 s, captions burned in, music, voiceover optional.
 - **Cut B, IoE backup:** about 3½ min, AI voiceover, little or no music. It follows the order
@@ -36,6 +37,9 @@ product doesn't do.
   questions, so it can be said.
 - Content figures: **over 500 practice questions across 21 topics**. Recheck the count
   before recording.
+- Exam questions: **350 from 37 papers, 2012 to 2026** (prod, 2026-10-15). Say "over three
+  hundred, going back to 2012". Don't say "every paper since 2012": 2014 has only Paper 1,
+  and 2012 and 2013 are each a question or two short.
 
 ## Take 1: 2025 Paper 1 Q2
 
@@ -43,15 +47,12 @@ product doesn't do.
 |---|---|---|
 | 1 | Open the question from Interactive Lessons → Exam Questions | Question image, answer boxes for (a)(i) and (a)(ii) |
 | 2 | Ask the help bot: **"How do I differentiate sin(ax)?"** | A reply tied to this question. Let it finish before moving on |
-| 3 | (a)(i): type the correct answer **`y = 2x + 4cos(4)`** | Full marks |
-| 4 | (a)(ii): type the nearly correct **`y - 4x + 6`** | Partial credit and an explanation of the sign slip |
-| 5 | (a)(ii): type the correct **`y - 4x - 6`** | Full marks |
+| 3 | (a)(i): type the correct answer **`y = 2x + 4cos(4x)`** | Full marks |
+| 4 | (a)(ii): type the nearly correct **`y = 4x + 6`** | Partial credit and an explanation of the sign slip |
+| 5 | (a)(ii): type the correct **`y = 4x - 6`** | Full marks |
 | 6 | Open the solution (marking-scheme image) and scroll through it | Solution unlocks because the answer is correct |
 
-Check before recording: the answers above are as typed in the plan. If (a)(i) is meant to be
-the derivative, `2x + 4cos(4x)` may be what you want. If (a)(ii) is an equation of a line,
-`y = 4x - 6` may read better on screen than `y - 4x - 6`. Do a dry run of steps 3 to 5
-first. If a take goes wrong, press **"Start this question over"** on the question: the boxes
+Do a dry run of steps 3 to 5 first. If a take goes wrong, press **"Start this question over"** on the question: the boxes
 empty, the solution locks again and the attempt count starts from zero. The earlier answers
 are kept in Ava's reports, which doesn't matter for a demo account.
 
@@ -82,6 +83,9 @@ the photo both show.
    iPhone with a Home button, swipe up from the bottom). Press and hold an empty space, tap
    **Add a Control**, and choose **Screen Recording**.
 2. **Before recording:**
+   - Hold the phone **upright (portrait)** throughout. The screen recording follows the
+     phone, and the camera and upload page are built for portrait; sideways, the page
+     rotates and looks cramped.
    - Turn on **Do Not Disturb**.
    - Charge the phone, since the battery shows in the status bar.
    - Leave the microphone off. The voiceover is the sound.
@@ -98,20 +102,17 @@ the photo both show.
    beside the desktop.
 
 Optional: open with 2–3 s filmed on a second phone (on a stand, good light) of your hand
-holding the phone over the paper, then cut to the screen recording. It shows the work being
+holding the phone over the paper, then cut to the screen recording. Film this one
+**sideways (landscape)**, so it fills the 16:9 frame, with the hand, phone and page in shot. It shows the work being
 done on paper, which the screen recording alone doesn't.
 
 Pick a page that is clean and well lit. If the marker declines it, that's correct behaviour,
 but it's not the shot you want. Re-shoot the photo rather than the take.
 
-**Before recording, check prod has "Start this question over"** (commit da23bc75 and its
-migration, exam_papers 0033). Without it, every typed attempt counts and a part's solution
-unlocks after two, so Take 1 would have to be right first time on Ava's account.
-
 ## Recording setup (Screen Studio)
 
 - Log in as **Ava Pierce** ("6th Year Demo") for the student shots and as the demo teacher
-  for B09. Real students must never appear.
+  for B08. Real students must never appear.
 - Record **window only**, the browser at 1920×1080 and 110–125% zoom. Hide the bookmarks bar,
   turn on Do Not Disturb, and use a clean profile.
 - Leave **auto-zoom on clicks** on. Before export, check each zoom lands on the answer box,
@@ -122,10 +123,27 @@ unlocks after two, so Take 1 would have to be right first time on Ava's account.
   them. The viewer should see that it takes a moment.
 - Take 2 has a phone clip, best recorded separately (see Take 2), and cut in before the
   desktop result.
-- Export Take 1 and Take 2 as separate clips at 1080p/60. Editing is easier.
+- Export Take 1 and Take 2 as separate clips at 1080p/60, with zooms and speed-ups already
+  applied in Screen Studio.
 - **Cut A is public, and both questions are SEC exam questions.** Either get SEC permission
   first, or in Cut A crop out or blur the question image and show only the answers, bot
   reply and feedback.
+
+## Editing (DaVinci Resolve 19)
+
+- New project, timeline **1920×1080 at 60 fps**, to match the Screen Studio exports. The
+  phone clip is portrait: Resolve offers to change the timeline to match the first clip
+  dropped in, so say **Don't change**.
+- **Tracks:** video track 1 for the clips, track 2 for the phone clip over a plain
+  background, and one audio track per voiceover block (`B01.mp3`, `B02.mp3`, …), so one
+  block can be swapped without moving the rest.
+- **Phone clip:** put a **Solid Color** generator (the title card's colour) on track 1 under
+  it, and centre the phone clip on track 2 at about 90% zoom.
+- **Title and end cards:** a **Text+** title over a Solid Color generator. Make the title card
+  once, then copy it and change the text for the end card.
+- **Fit pictures to words:** lay down the voiceover first, then trim each clip to its block.
+  If a clip runs short, slow a still moment (Retime Controls) rather than padding with silence.
+- **Export** (Deliver page): the **YouTube 1080p** preset, H.264. Upload as **Unlisted**.
 
 ---
 
@@ -169,7 +187,8 @@ whoever she forwards it to.
 
 **B02**
 > Students work through practice questions and past exam questions covering the whole
-> course. That's over five hundred practice questions, across twenty-one topics.
+> course. That's over five hundred practice questions across twenty-one topics, and over
+> three hundred past exam questions, going back to twenty twelve.
 
 **B03**
 > Here's a question from the twenty twenty-five paper. Before she starts, she asks for help
