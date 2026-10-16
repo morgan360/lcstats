@@ -82,10 +82,18 @@
                 <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                     <!-- Checkbox -->
                     <div class="flex items-start gap-3">
+                        {% if item.task.is_ticked_by_hand %}
                         <input type="checkbox"
                                class="task-checkbox h-6 w-6 cursor-pointer rounded border-indigo-deep/30 text-violet-royal focus:ring-violet-royal"
                                data-progress-id="{{ item.progress.id }}"
                                {% if item.progress.is_completed %}checked{% endif %}>
+                        {% else %}
+                        <span class="flex h-6 w-6 shrink-0 items-center justify-center rounded border {% if item.progress.is_completed %}border-lime-glow bg-lime-glow text-midnight{% else %}border-indigo-deep/30{% endif %}"
+                              title="Ticks itself once you have done it"
+                              aria-label="{% if item.progress.is_completed %}Done{% else %}Not done yet: ticks itself once you have done it{% endif %}">
+                            {% if item.progress.is_completed %}✓{% endif %}
+                        </span>
+                        {% endif %}
 
                         <!-- Task Content -->
                         <div>

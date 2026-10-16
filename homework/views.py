@@ -236,6 +236,9 @@ def toggle_task_completion(request, progress_id):
         return JsonResponse({'error': 'POST required'}, status=400)
 
     progress = get_object_or_404(StudentHomeworkProgress, id=progress_id, student=request.user)
+    if not progress.task.is_ticked_by_hand:
+        return JsonResponse(
+            {'error': 'This task completes itself once you have done it.'}, status=403)
 
     # Toggle completion
     if progress.is_completed:

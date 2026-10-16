@@ -334,6 +334,14 @@ class HomeworkTask(models.Model):
         content = self.get_content_display()
         return f"{self.assignment.title} - {content}"
 
+    @property
+    def is_ticked_by_hand(self):
+        """Only a written exercise is ticked off by the student. Every other
+        kind leaves a trace on the site, so it completes itself through
+        StudentHomeworkProgress.check_auto_completion once the work is done --
+        a tick box there would let a student mark it done without doing it."""
+        return self.task_type == 'custom'
+
     def get_content_display(self):
         """Return the display name of the linked content"""
         return content_links.content_display(
